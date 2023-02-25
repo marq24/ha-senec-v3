@@ -9,8 +9,23 @@
         },
         "step": {
             "user": {
+                "description": "If you need help with the configuration have a look here: https://github.com/marq24/home-assistant-senec",
                 "data": {
-                    "host": "IP or hostname of the Senec Device"
+                    "host": "IP or hostname of the Senec Device",
+                    "name": "Your System name",
+                    "scan_interval":"Polling Interval in seconds"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "user": {
+                "description": "If you need help with the configuration have a look here: https://github.com/marq24/home-assistant-senec",
+                "data": {
+                    "host": "IP or hostname of the Senec Device",
+                    "name": "Your System name",
+                    "scan_interval":"Polling Interval in seconds"
                 }
             }
         }
