@@ -14,10 +14,10 @@ from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pysenec import Senec
 
-from .const import DEFAULT_HOST, DEFAULT_NAME, DOMAIN, SCAN_INTERVAL
+from .const import DEFAULT_HOST, DEFAULT_NAME, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-
+SCAN_INTERVAL = timedelta(seconds=60)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
 PLATFORMS = ["sensor"]
@@ -29,6 +29,10 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+
+    global SCAN_INTERVAL
+    SCAN_INTERVAL = timedelta(seconds=entry.options.get(CONF_SCAN_INTERVAL, 60))
+
     """Set up senec from a config entry."""
     session = async_get_clientsession(hass)
 
