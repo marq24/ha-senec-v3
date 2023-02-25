@@ -73,9 +73,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)): str,
-                    vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, DEFAULT_HOST)): str,
-                    vol.Required(CONF_SCAN_INTERVAL, default=user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
+                    vol.Required(
+                        CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)
+                    ): str,
+                    vol.Required(
+                        CONF_HOST, default=user_input.get(CONF_HOST, DEFAULT_HOST)
+                    ): str,
+                    vol.Required(
+                        CONF_SCAN_INTERVAL, default=user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+                    ): int,
                 }
             ),
             errors=self._errors,
@@ -92,7 +98,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return SenedOptionsFlowHandler(config_entry)
+        return SenecOptionsFlowHandler(config_entry)
 
     async def _show_config_form(self, user_input):  # pylint: disable=unused-argument
         return self.async_show_form(
@@ -106,7 +112,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=self._errors,
         )
 
-class SenedOptionsFlowHandler(config_entries.OptionsFlow):
+class SenecOptionsFlowHandler(config_entries.OptionsFlow):
     """Config flow options handler for waterkotte_heatpump."""
 
     def __init__(self, config_entry):
@@ -133,10 +139,10 @@ class SenedOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_NAME, default=self.options.get(DEFAULT_NAME, DEFAULT_NAME),
                 ): str,
                 vol.Required(
-                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                ): int,  # pylint: disable=line-too-long
-                vol.Required(
                     CONF_HOST, default=self.options.get(CONF_HOST, DEFAULT_HOST),
+                ): str,  # pylint: disable=line-too-long
+                vol.Required(
+                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                 ): int,  # pylint: disable=line-too-long
             }
         )
