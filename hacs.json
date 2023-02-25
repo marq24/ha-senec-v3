@@ -1,7 +1,7 @@
 {
-  "name": "Senec solar system sensor (V3)",
+  "name": "Senec (V3) solar system sensor",
   "country": [
-    "DE"
+    "EN"
   ],
   "homeassistant": "2021.12.8",
   "hacs": "1.18.0",

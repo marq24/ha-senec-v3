@@ -1,0 +1,33 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Integration ist bereits eingereichtet"
+        },
+        "error": {
+            "cannot_connect": "Keine Verbindung möglich",
+            "unknown": "Unbekannter Fehler"
+        },
+        "step": {
+            "user": {
+                "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/home-assistant-senec",
+                "data": {
+                    "host": "IP oder Hostname des Senec V3",
+                    "name": "Ihr System Name",
+                    "scan_interval":"Aktualisierungsintervall in Sekunden"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "user": {
+                "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/home-assistant-senec",
+                "data": {
+                    "host": "IP oder Hostname des Senec V3",
+                    "name": "Ihr System Name",
+                    "scan_interval":"Aktualisierungsintervall in Sekunden"
+                }
+            }
+        }
+    }
+}
