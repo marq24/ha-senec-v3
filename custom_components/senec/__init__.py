@@ -12,7 +12,8 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from pysenec import Senec
+#from pysenec import Senec
+from custom_components.senec.pysenec_ha import Senec
 
 from .const import DEFAULT_HOST, DEFAULT_NAME, DOMAIN
 

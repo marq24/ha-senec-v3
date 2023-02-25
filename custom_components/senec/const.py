@@ -8,7 +8,14 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import ENERGY_KILO_WATT_HOUR, PERCENTAGE, POWER_WATT, TEMP_CELSIUS
+from homeassistant.const import (
+    ENERGY_KILO_WATT_HOUR,
+    PERCENTAGE,
+    POWER_WATT,
+    TEMP_CELSIUS,
+    UnitOfElectricPotential,
+    UnitOfElectricCurrent,
+)
 
 DOMAIN = "senec"
 
@@ -163,5 +170,78 @@ SENSOR_TYPES = [
         icon="mdi:transmission-tower-export",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+
+    SensorEntityDescription(
+        key="solar_mpp1_potential",
+        name="MPP1 Potential",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp1_current",
+        name="MPP1 Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp1_power",
+        name="MPP1 Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:meter-electric",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp2_potential",
+        name="MPP2 Potential",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp2_current",
+        name="MPP2 Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp2_power",
+        name="MPP2 Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:meter-electric",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp3_potential",
+        name="MPP3 Potential",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp3_current",
+        name="MPP3 Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="solar_mpp3_power",
+        name="MPP3 Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:meter-electric",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
 ]

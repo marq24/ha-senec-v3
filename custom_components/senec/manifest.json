@@ -4,9 +4,7 @@
   "config_flow": true,
   "documentation": "https://github.com/marq24/home-assistant-senec/blob/master/README.md",
   "issue_tracker": "https://github.com/marq24/home-assistant-senec/issues",
-  "requirements": [
-    "pysenec==0.3.0"
-  ],
+  "requirements": [],
   "dependencies": [],
   "codeowners": [
     "@mchwalisz",

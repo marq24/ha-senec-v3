@@ -7,7 +7,8 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import slugify
-from pysenec import Senec
+#from pysenec import Senec
+from custom_components.senec.pysenec_ha import Senec
 from requests.exceptions import HTTPError, Timeout
 
 from .const import DOMAIN  # pylint:disable=unused-import
