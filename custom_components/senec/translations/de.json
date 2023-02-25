@@ -9,7 +9,7 @@
         },
         "step": {
             "user": {
-                "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/home-assistant-senec",
+                "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "host": "IP oder Hostname des Senec V3",
                     "name": "Ihr System Name",
@@ -21,7 +21,7 @@
     "options": {
         "step": {
             "user": {
-                "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/home-assistant-senec",
+                "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "host": "IP oder Hostname des Senec V3",
                     "name": "Ihr System Name",

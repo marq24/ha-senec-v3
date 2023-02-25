@@ -2,8 +2,8 @@
   "domain": "senec",
   "name": "senec",
   "config_flow": true,
-  "documentation": "https://github.com/marq24/home-assistant-senec/blob/master/README.md",
-  "issue_tracker": "https://github.com/marq24/home-assistant-senec/issues",
+  "documentation": "https://github.com/marq24/ha-senec-v3/blob/master/README.md",
+  "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
   "requirements": [],
   "dependencies": [],
   "codeowners": [

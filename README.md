@@ -7,7 +7,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
 - Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
-- Add custom repository https://github.com/marq24/home-assistant-senec to HACS
+- Add custom repository https://github.com/marq24/ha-senec-v3 to HACS
 - Add integration repository (search for "Senec" in "Explore & Download Repositories")
     - Select latest version or `master`
 - Restart Home Assistant to install all dependencies
