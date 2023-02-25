@@ -1,4 +1,4 @@
-# Home Assistant sensor for Senec solar systems V3
+# Home Assistant sensor for Senec V3 solar systems
 
 ## Installation
 
