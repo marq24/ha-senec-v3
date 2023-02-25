@@ -2,14 +2,15 @@
   "domain": "senec",
   "name": "senec",
   "config_flow": true,
-  "documentation": "https://github.com/mchwalisz/home-assistant-senec/blob/master/README.md",
-  "issue_tracker": "https://github.com/mchwalisz/home-assistant-senec/issues",
+  "documentation": "https://github.com/marq24/home-assistant-senec/blob/master/README.md",
+  "issue_tracker": "https://github.com/marq24/home-assistant-senec/issues",
   "requirements": [
     "pysenec==0.3.0"
   ],
   "dependencies": [],
   "codeowners": [
-    "@mchwalisz"
+    "@mchwalisz",
+    "@marq24"
   ],
   "iot_class": "local_polling",
   "version": "2.0.0"

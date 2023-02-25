@@ -89,6 +89,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="already_configured")
         return await self.async_step_user(user_input)
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return SenedOptionsFlowHandler(config_entry)
+
     async def _show_config_form(self, user_input):  # pylint: disable=unused-argument
         return self.async_show_form(
             step_id="user",
@@ -100,3 +105,47 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             errors=self._errors,
         )
+
+class SenedOptionsFlowHandler(config_entries.OptionsFlow):
+    """Config flow options handler for waterkotte_heatpump."""
+
+    def __init__(self, config_entry):
+        """Initialize HACS options flow."""
+        self.config_entry = config_entry
+        if len(dict(config_entry.options)) == 0:
+            self.options = dict(config_entry.data)
+        else:
+            self.options = dict(config_entry.options)
+
+    async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
+        """Manage the options."""
+        return await self.async_step_user()
+
+    async def async_step_user(self, user_input=None):
+        """Handle a flow initialized by the user."""
+        if user_input is not None:
+            self.options.update(user_input)
+            return await self._update_options()
+
+        dataSchema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_NAME, default=self.options.get(DEFAULT_NAME, DEFAULT_NAME),
+                ): str,
+                vol.Required(
+                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                ): int,  # pylint: disable=line-too-long
+                vol.Required(
+                    CONF_HOST, default=self.options.get(CONF_HOST, DEFAULT_HOST),
+                ): int,  # pylint: disable=line-too-long
+            }
+        )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=dataSchema,
+        )
+
+    async def _update_options(self):
+        """Update config entry options."""
+        return self.async_create_entry(data=self.options)
