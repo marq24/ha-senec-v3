@@ -1,4 +1,20 @@
-# Home Assistant sensor for Senec V3 solar systems
+# Home Assistant sensor for SENEC.Home V3 
+This fork was created from [mchwalisz/home-assistant-senec](https://gitgub.com/mchwalisz/home-assistant-senec) mainly
+because I wanted additional fields and some configuration options (like polling interval). Since I own a
+__SENEC.Home V3 hybrid duo__ I can __only test my adjustments in such a configuration__.
+
+__Use this fork on your own risk!__
+
+## Modifications (compared to the original Fork)
+- Added User accessible configuration option
+- Added _update interval_ to the configuration (I use here locally _5_ seconds without any issues)
+- Integrated variant of _pysenec_ python lib (almost every modification of this Home Assistant integration requires also
+  an adjustment in the lib) - yes of course it would be possible to release also a lib derivative - but right now I am
+  just a python beginner, and __I am lazy!__
+- Added three additional sensors for each MPP1, MPP2, MPP3 (potential, current & power)
+- Modified _battery_charge_power_ & _battery_discharge_power_ so that they will only return data >0 when the system
+  state is matching the CHARGE & DISCHARGE (& variants) state
+- Added German "translation"
 
 ## Installation
 

@@ -11,12 +11,15 @@ from custom_components.senec.pysenec_ha.util import parse
 # 12: "DESULFATATION: CHARGE",
 # 14: "CHARGE",
 # 43: "CAPACITY TEST: CHARGE",
-BAT_STATUS_CHARGE = {4,5,8,10,11,12,14,43}
+# 71: "OFFPEAK-CHARGE",
+BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 43, 71}
 
 # 16: "DISCHARGE",
 # 17: "PV + DISCHARGE",
 # 18: "GRID + DISCHARGE"
-BAT_STATUS_DISCHARGE = {16,17,18}
+# 44: "CAPACITY TEST: DISCHARGE",
+# 97: "SAFETY DISCHARGE",
+BAT_STATUS_DISCHARGE = {16, 17, 18, 44, 97}
 
 class Senec:
     """Senec Home Battery Sensor"""
