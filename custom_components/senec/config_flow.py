@@ -63,11 +63,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._errors[CONF_HOST] = "already_configured"
             else:
                 if await self._test_connection(host_entry):
-                    return self.async_create_entry(title=name, data={CONF_NAME: name, CONF_HOST: host_entry, CONF_SCAN_INTERVAL: scan})
+                    return self.async_create_entry(title=name, data={CONF_HOST: host_entry, CONF_SCAN_INTERVAL: scan})
         else:
             user_input = {}
-            user_input[CONF_NAME] = DEFAULT_NAME
             user_input[CONF_HOST] = DEFAULT_HOST
+            # user_input[CONF_NAME] = DEFAULT_NAME
             user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
 
         return self.async_show_form(
@@ -75,11 +75,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)
-                    ): str,
-                    vol.Required(
                         CONF_HOST, default=user_input.get(CONF_HOST, DEFAULT_HOST)
                     ): str,
+                    # vol.Required(
+                    #    CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)
+                    # ): str,
                     vol.Required(
                         CONF_SCAN_INTERVAL, default=user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
                     ): int,
@@ -107,7 +107,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
-                    vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
+                    # vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
                     vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
                 }
             ),
@@ -140,9 +140,9 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_HOST, default=self.options.get(CONF_HOST, DEFAULT_HOST),
                 ): str,  # pylint: disable=line-too-long
-                vol.Required(
-                    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME),
-                ): str,
+                # vol.Required(
+                #    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME),
+                # ): str,
                 vol.Required(
                     CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                 ): int,  # pylint: disable=line-too-long
