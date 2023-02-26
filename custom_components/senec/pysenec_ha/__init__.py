@@ -3,6 +3,20 @@ import aiohttp
 from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME
 from custom_components.senec.pysenec_ha.util import parse
 
+# 4: "INITIAL CHARGE",
+# 5: "MAINTENANCE CHARGE",
+# 8: "MAN. SAFETY CHARGE",
+# 10: "FULL CHARGE",
+# 11: "EQUALIZATION: CHARGE",
+# 12: "DESULFATATION: CHARGE",
+# 14: "CHARGE",
+# 43: "CAPACITY TEST: CHARGE",
+BAT_STATUS_CHARGE = {4,5,8,10,11,12,14,43}
+
+# 16: "DISCHARGE",
+# 17: "PV + DISCHARGE",
+# 18: "GRID + DISCHARGE"
+BAT_STATUS_DISCHARGE = {16,17,18}
 
 class Senec:
     """Senec Home Battery Sensor"""
@@ -78,7 +92,8 @@ class Senec:
         """
         value = self._raw["ENERGY"]["GUI_BAT_DATA_POWER"]
         if value > 0:
-            return value
+            if self.is_battery_state_charging():
+                return value
         return 0
 
     @property
@@ -89,7 +104,8 @@ class Senec:
         """
         value = self._raw["ENERGY"]["GUI_BAT_DATA_POWER"]
         if value < 0:
-            return abs(value)
+            if self.is_battery_state_discharging():
+                return abs(value)
         return 0
 
     @property
@@ -226,6 +242,17 @@ class Senec:
     def solar_mpp3_power(self) -> float:
         return self._raw["PV1"]["MPP_POWER"][2]
 
+    def is_battery_empty(self) -> bool:
+        # 15: "BATTERY EMPTY",
+        bat_state_is_empty = self._raw["ENERGY"]["STAT_STATE"] == 15
+        bat_percent_is_zero = self._raw["ENERGY"]["GUI_BAT_DATA_FUEL_CHARGE"] == 0
+        return bat_state_is_empty or bat_percent_is_zero
+
+    def is_battery_state_charging(self) -> bool:
+        return self._raw["ENERGY"]["STAT_STATE"] in BAT_STATUS_CHARGE
+
+    def is_battery_state_discharging(self) -> bool:
+        return self._raw["ENERGY"]["STAT_STATE"] in BAT_STATUS_DISCHARGE
 
     async def update(self):
         await self.read_senec_v31()
