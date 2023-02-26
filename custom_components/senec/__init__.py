@@ -108,7 +108,7 @@ class SenecEntity(Entity):
         device = self._name
         return {
             "identifiers": {(DOMAIN, device)},
-            "name": "Senec Home V3 Battery",
+            "name": "SENEC.Home V3 System",
             "model": "Senec",
             "sw_version": None,
             "manufacturer": "Senec",

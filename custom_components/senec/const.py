@@ -22,8 +22,8 @@ DOMAIN = "senec"
 
 """Default config for Senec."""
 DEFAULT_HOST = "Senec"
-DEFAULT_NAME = "senec"
-DEFAULT_SCAN_INTERVAL = 60
+DEFAULT_NAME = "SENEC.Home V3"
+DEFAULT_SCAN_INTERVAL = 30
 
 """Supported sensor types."""
 
