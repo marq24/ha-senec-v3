@@ -5,7 +5,7 @@ __SENEC.Home V3 hybrid duo__ I can __only test my adjustments in such a configur
 
 __Use this fork on your own risk!__
 
-## Modifications (compared to the original Fork)
+## Modifications (compared to the original version) in this fork
 - Added User accessible configuration option
 - Added _update interval_ to the configuration (I use here locally _5_ seconds without any issues)
 - Integrated variant of _pysenec_ python lib (almost every modification of this Home Assistant integration requires also
