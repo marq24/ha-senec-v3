@@ -7,13 +7,13 @@ __Use this fork on your own risk!__
 
 ## Modifications (compared to the original version) in this fork
 - Added User accessible configuration option
-- Added _update interval_ to the configuration (I use here locally _5_ seconds without any issues)
+- Added configurable _update interval_ for the sensor data (I use _5_ seconds, without any issue)
 - Integrated variant of _pysenec_ python lib (almost every modification of this Home Assistant integration requires also
   an adjustment in the lib) - yes of course it would be possible to release also a lib derivative - but right now I am
   just a python beginner, and __I am lazy!__
-- Added three additional sensors for each MPP1, MPP2, MPP3 (potential, current & power)
+- Added three additional sensors for each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
 - Modified _battery_charge_power_ & _battery_discharge_power_ so that they will only return data >0 when the system
-  state is matching the CHARGE & DISCHARGE (& variants) state
+  state is matching the corresponding CHARGE or DISCHARGE state (including state variants)
 - Added German "translation"
 
 ## Installation
