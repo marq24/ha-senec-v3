@@ -12,7 +12,6 @@
                 "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "host": "IP oder Hostname des SENEC.Home V3",
-                    "name": "Ihr System Name",
                     "scan_interval":"Aktualisierungsintervall in Sekunden"
                 }
             }
@@ -24,7 +23,6 @@
                 "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "host": "IP oder Hostname des SENEC.Home V3",
-                    "name": "Ihr System Name",
                     "scan_interval":"Aktualisierungsintervall in Sekunden"
                 }
             }

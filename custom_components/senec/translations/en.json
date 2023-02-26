@@ -12,7 +12,6 @@
                 "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "host": "IP or hostname of the SENEC.Home V3",
-                    "name": "Your System name",
                     "scan_interval":"Polling Interval in seconds"
                 }
             }
@@ -24,7 +23,6 @@
                 "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "host": "IP or hostname of the SENEC.Home V3",
-                    "name": "Your System name",
                     "scan_interval":"Polling Interval in seconds"
                 }
             }
