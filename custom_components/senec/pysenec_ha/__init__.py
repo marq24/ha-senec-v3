@@ -245,6 +245,40 @@ class Senec:
     def solar_mpp3_power(self) -> float:
         return self._raw["PV1"]["MPP_POWER"][2]
 
+    @property
+    def enfluri_net_freq(self) -> float:
+        return self._raw["PM1OBJ1"]["FREQ"]
+    @property
+    def enfluri_net_potential_p1(self) -> float:
+        return self._raw["PM1OBJ1"]["U_AC"][0]
+    @property
+    def enfluri_net_potential_p2(self) -> float:
+        return self._raw["PM1OBJ1"]["U_AC"][1]
+    @property
+    def enfluri_net_potential_p3(self) -> float:
+        return self._raw["PM1OBJ1"]["U_AC"][2]
+    @property
+    def enfluri_net_current_p1(self) -> float:
+        return self._raw["PM1OBJ1"]["I_AC"][0]
+    @property
+    def enfluri_net_current_p2(self) -> float:
+        return self._raw["PM1OBJ1"]["I_AC"][1]
+    @property
+    def enfluri_net_current_p3(self) -> float:
+        return self._raw["PM1OBJ1"]["I_AC"][2]
+    @property
+    def enfluri_net_power_p1(self) -> float:
+        return self._raw["PM1OBJ1"]["P_AC"][0]
+    @property
+    def enfluri_net_power_p2(self) -> float:
+        return self._raw["PM1OBJ1"]["P_AC"][1]
+    @property
+    def enfluri_net_power_p3(self) -> float:
+        return self._raw["PM1OBJ1"]["P_AC"][2]
+    @property
+    def enfluri_net_power_total(self) -> float:
+        return self._raw["PM1OBJ1"]["P_TOTAL"]
+
     def is_battery_empty(self) -> bool:
         # 15: "BATTERY EMPTY",
         bat_state_is_empty = self._raw["ENERGY"]["STAT_STATE"] == 15
