@@ -5,6 +5,10 @@ __SENEC.Home V3 hybrid duo__ I can __only test my adjustments in such a configur
 
 __Use this fork on your own risk!__
 
+__Please note that this integration will _not work_ with Senec V4 systems!__ Senec V4 use a different communication
+layer that is not compatible with previous Senec hardware. So if you are a V4 owner you might be in the uncomfortable
+situation to develop a own integration from the scratch. [IMHO it's impossible to develop such a integration remotely]
+
 ## Modifications (compared to the original version) in this fork
 - Added User accessible configuration option
 - Added configurable _update interval_ for the sensor data (I use _5_ seconds, without any issue)
