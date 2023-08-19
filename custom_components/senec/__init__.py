@@ -6,16 +6,15 @@ from datetime import timedelta
 import async_timeout
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-#from pysenec import Senec
-from custom_components.senec.pysenec_ha import Senec
+from custom_components.senec.pysenec_ha import Senec, Inverter
 
-from .const import DEFAULT_HOST, DEFAULT_NAME, DOMAIN
+from .const import DEFAULT_HOST, DEFAULT_NAME, DOMAIN, MANUFACTURE, CONF_DEV_TYPE, CONF_DEV_NAME, CONF_DEV_SERIAL, CONF_DEV_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
@@ -59,7 +58,12 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, session, entry):
         """Initialize."""
         self._host = entry.data[CONF_HOST]
-        self.senec = Senec(self._host, websession=session)
+
+        if (CONF_TYPE in entry.data and entry.data[CONF_TYPE] == 'inverter'):
+            self.senec = Inverter(self._host, websession=session)
+        else:
+            self.senec = Senec(self._host, websession=session)
+
         self.name = entry.title
         self._entry = entry
 
@@ -99,19 +103,23 @@ class SenecEntity(Entity):
         self.coordinator = coordinator
         self._name = coordinator._entry.title
         self._state = None
-
+        self._entry = coordinator._entry
         self.entity_description = description
 
     @property
     def device_info(self) -> dict:
         """Return info for device registry."""
+        # Setup Device
+        dtype = self._entry.options.get(CONF_DEV_TYPE, self._entry.data.get(CONF_DEV_TYPE))
+        dserial = self._entry.options.get(CONF_DEV_SERIAL, self._entry.data.get(CONF_DEV_SERIAL))
         device = self._name
         return {
             "identifiers": {(DOMAIN, device)},
             "name": "SENEC.Home V3 System",
-            "model": "Senec",
-            "sw_version": None,
-            "manufacturer": "Senec",
+            "model": f"{dtype} [Serial: {dserial}]",
+            "hw_version": self._entry.options.get(CONF_DEV_NAME, self._entry.data.get(CONF_DEV_NAME)),
+            "sw_version": self._entry.options.get(CONF_DEV_VERSION, self._entry.data.get(CONF_DEV_VERSION)),
+            "manufacturer": MANUFACTURE,
         }
 
     @property
@@ -122,7 +130,7 @@ class SenecEntity(Entity):
         try:
             rounded_value = round(float(value), 2)
             return rounded_value
-        except ValueError:
+        except (ValueError, TypeError):
             return value
 
     @property

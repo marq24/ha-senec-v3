@@ -1,6 +1,8 @@
 import aiohttp
+import logging
+import xmltodict
 
-from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME
+from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME, SYSTEM_TYPE_NAME, BATT_TYPE_NAME
 from custom_components.senec.pysenec_ha.util import parse
 
 # 4: "INITIAL CHARGE",
@@ -21,6 +23,9 @@ BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 43, 71}
 # 97: "SAFETY DISCHARGE",
 BAT_STATUS_DISCHARGE = {16, 17, 18, 44, 97}
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class Senec:
     """Senec Home Battery Sensor"""
 
@@ -28,6 +33,65 @@ class Senec:
         self.host = host
         self.websession: aiohttp.websession = websession
         self.url = f"http://{host}/lala.cgi"
+
+    @property
+    def device_id(self) -> str:
+        return self._raw["FACTORY"]["DEVICE_ID"]
+
+    @property
+    def versions(self) -> str:
+        a = self._raw["WIZARD"]["APPLICATION_VERSION"]
+        b = self._raw["WIZARD"]["FIRMWARE_VERSION"]
+        c = self._raw["WIZARD"]["INTERFACE_VERSION"]
+        d = str(self._raw["SYS_UPDATE"]["NPU_VER"])
+        e = str(self._raw["SYS_UPDATE"]["NPU_IMAGE_VERSION"])
+        return 'App:' + a + ' FW:' + b + ' NPU-Image:' + e + '(v' + d + ')'
+
+    @property
+    def device_type(self) -> str:
+        value = self._raw["FACTORY"]["SYS_TYPE"]
+        return SYSTEM_TYPE_NAME.get(value, "UNKNOWN")
+
+    @property
+    def batt_type(self) -> str:
+        value = self._raw["BAT1"]["TYPE"]
+        return BATT_TYPE_NAME.get(value, "UNKNOWN")
+
+    async def update_version(self):
+        await  self.read_version()
+
+    async def read_version(self):
+        form = {
+            "FACTORY": {
+                "SYS_TYPE": "",
+                "COUNTRY": "",
+                "DEVICE_ID": ""
+            },
+            "WIZARD": {
+                "APPLICATION_VERSION": "",
+                "FIRMWARE_VERSION": "",
+                "INTERFACE_VERSION": "",
+                # "SETUP_PM_GRID_ADR": "u8_01",
+                # "SETUP_PM_HOUSE_ADR": "u8_02",
+                # "MASTER_SLAVE_MODE": "u8_00",
+                # "SETUP_NUMBER_WALLBOXES": "u8_00"
+            },
+            "BAT1": {
+                "TYPE": "",
+                # "ISLAND_ENABLE": "u8_00",
+                # "NSP_FW": "u1_0000",
+                # "NSP2_FW": "u1_0000"
+            },
+            "SYS_UPDATE": {
+                "NPU_VER": "",
+                "NPU_IMAGE_VERSION": ""
+            }
+        }
+
+        async with self.websession.post(self.url, json=form) as res:
+            res.raise_for_status()
+            self._raw = parse(await res.json())
+            print(self._raw)
 
     @property
     def system_state(self) -> str:
@@ -248,33 +312,43 @@ class Senec:
     @property
     def enfluri_net_freq(self) -> float:
         return self._raw["PM1OBJ1"]["FREQ"]
+
     @property
     def enfluri_net_potential_p1(self) -> float:
         return self._raw["PM1OBJ1"]["U_AC"][0]
+
     @property
     def enfluri_net_potential_p2(self) -> float:
         return self._raw["PM1OBJ1"]["U_AC"][1]
+
     @property
     def enfluri_net_potential_p3(self) -> float:
         return self._raw["PM1OBJ1"]["U_AC"][2]
+
     @property
     def enfluri_net_current_p1(self) -> float:
         return self._raw["PM1OBJ1"]["I_AC"][0]
+
     @property
     def enfluri_net_current_p2(self) -> float:
         return self._raw["PM1OBJ1"]["I_AC"][1]
+
     @property
     def enfluri_net_current_p3(self) -> float:
         return self._raw["PM1OBJ1"]["I_AC"][2]
+
     @property
     def enfluri_net_power_p1(self) -> float:
         return self._raw["PM1OBJ1"]["P_AC"][0]
+
     @property
     def enfluri_net_power_p2(self) -> float:
         return self._raw["PM1OBJ1"]["P_AC"][1]
+
     @property
     def enfluri_net_power_p3(self) -> float:
         return self._raw["PM1OBJ1"]["P_AC"][2]
+
     @property
     def enfluri_net_power_total(self) -> float:
         return self._raw["PM1OBJ1"]["P_TOTAL"]
@@ -345,74 +419,329 @@ class Senec:
             res.raise_for_status()
             self._raw = parse(await res.json())
 
-        async def read_senec_v21(self):
-            """Read values used by webinterface from Senec Home v2.1
+    async def read_senec_v21(self):
+        """Read values used by webinterface from Senec Home v2.1
 
-            Note: Not all values are "high priority" and reading everything causes problems with Senec device, i.e. no sync with Senec cloud possible.
-            """
-            form = {
-                "ENERGY": {
-                    "STAT_STATE": "",
-                    "GUI_BAT_DATA_POWER": "",
-                    "GUI_INVERTER_POWER": "",
-                    "GUI_HOUSE_POW": "",
-                    "GUI_GRID_POW": "",
-                    "GUI_BAT_DATA_FUEL_CHARGE": "",
-                    "GUI_CHARGING_INFO": "",
-                    "GUI_BOOSTING_INFO": "",
-                    "GUI_BAT_DATA_POWER": "",
-                    "GUI_BAT_DATA_VOLTAGE": "",
-                    "GUI_BAT_DATA_CURRENT": "",
-                    "GUI_BAT_DATA_FUEL_CHARGE": "",
-                    "GUI_BAT_DATA_OA_CHARGING": "",
-                    "STAT_LIMITED_NET_SKEW": "",
-                },
-                "STATISTIC": {
-                    "LIVE_BAT_CHARGE": "",
-                    "LIVE_BAT_DISCHARGE": "",
-                    "LIVE_GRID_EXPORT": "",
-                    "LIVE_GRID_IMPORT": "",
-                    "LIVE_HOUSE_CONS": "",
-                    "LIVE_PV_GEN": "",
-                },
-                "TEMPMEASURE": {
-                    "BATTERY_TEMP": "",
-                    "CASE_TEMP": "",
-                    "MCU_TEMP": "",
-                },
-                "PV1": {"POWER_RATIO": ""},
-                "PWR_UNIT": {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
-                "PM1OBJ1": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-                "PM1OBJ2": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            }
+        Note: Not all values are "high priority" and reading everything causes problems with Senec device, i.e. no sync with Senec cloud possible.
+        """
+        form = {
+            "ENERGY": {
+                "STAT_STATE": "",
+                "GUI_BAT_DATA_POWER": "",
+                "GUI_INVERTER_POWER": "",
+                "GUI_HOUSE_POW": "",
+                "GUI_GRID_POW": "",
+                "GUI_BAT_DATA_FUEL_CHARGE": "",
+                "GUI_CHARGING_INFO": "",
+                "GUI_BOOSTING_INFO": "",
+                "GUI_BAT_DATA_POWER": "",
+                "GUI_BAT_DATA_VOLTAGE": "",
+                "GUI_BAT_DATA_CURRENT": "",
+                "GUI_BAT_DATA_FUEL_CHARGE": "",
+                "GUI_BAT_DATA_OA_CHARGING": "",
+                "STAT_LIMITED_NET_SKEW": "",
+            },
+            "STATISTIC": {
+                "LIVE_BAT_CHARGE": "",
+                "LIVE_BAT_DISCHARGE": "",
+                "LIVE_GRID_EXPORT": "",
+                "LIVE_GRID_IMPORT": "",
+                "LIVE_HOUSE_CONS": "",
+                "LIVE_PV_GEN": "",
+            },
+            "TEMPMEASURE": {
+                "BATTERY_TEMP": "",
+                "CASE_TEMP": "",
+                "MCU_TEMP": "",
+            },
+            "PV1": {"POWER_RATIO": ""},
+            "PWR_UNIT": {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
+            "PM1OBJ1": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+            "PM1OBJ2": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+        }
 
-            async with self.websession.post(self.url, json=form) as res:
-                res.raise_for_status()
-                self._raw = parse(await res.json())
+        async with self.websession.post(self.url, json=form) as res:
+            res.raise_for_status()
+            self._raw = parse(await res.json())
 
-        async def read_senec_v21_all(self):
-            """Read ALL values from Senec Home v2.1
+    async def read_senec_v21_all(self):
+        """Read ALL values from Senec Home v2.1
 
-            Note: This causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
-            """
-            form = {
-                "STATISTIC": {},
-                "ENERGY": {},
-                "FEATURES": {},
-                "LOG": {},
-                "SYS_UPDATE": {},
-                "WIZARD": {},
-                "BMS": {},
-                "BAT1": {},
-                "BAT1OBJ1": {},
-                "BAT1OBJ2": {},
-                "BAT1OBJ2": {},
-                "BAT1OBJ3": {},
-                "BAT1OBJ4": {},
-                "PWR_UNIT": {},
-                "PV1": {},
-            }
+        Note: This causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
+        """
+        form = {
+            "STATISTIC": {},
+            "ENERGY": {},
+            "FEATURES": {},
+            "LOG": {},
+            "SYS_UPDATE": {},
+            "WIZARD": {},
+            "BMS": {},
+            "BAT1": {},
+            "BAT1OBJ1": {},
+            "BAT1OBJ2": {},
+            "BAT1OBJ2": {},
+            "BAT1OBJ3": {},
+            "BAT1OBJ4": {},
+            "PWR_UNIT": {},
+            "PV1": {},
+        }
 
-            async with self.websession.post(self.url, json=form) as res:
-                res.raise_for_status()
-                self._raw = parse(await res.json())
+        async with self.websession.post(self.url, json=form) as res:
+            res.raise_for_status()
+            self._raw = parse(await res.json())
+
+
+class Inverter:
+    """Senec Home Inverter addon"""
+
+    def __init__(self, host, websession):
+        self.host = host
+        self.websession: aiohttp.websession = websession
+        self.url1 = f"http://{host}/all.xml"
+        self.url2 = f"http://{host}/measurements.xml"
+        self.url3 = f"http://{host}/versions.xml"
+        self._version_infos = ''
+        self._has_bdc = False
+
+    async def update_version(self):
+        await self.read_inverter_version()
+
+    async def read_inverter_version(self):
+        async with self.websession.get(self.url3) as res:
+            res.raise_for_status()
+            txt = await res.text()
+            self._raw = xmltodict.parse(txt)
+            lastDev = ''
+            for aEntry in self._raw["root"]["Device"]["Versions"]["Software"]:
+                if '@Name' in aEntry:
+                    aDev = aEntry["@Device"]
+                    if(not self._has_bdc):
+                        self._has_bdc = aDev == 'BDC'
+                    if (aDev != lastDev):
+                        if (len(self._version_infos) > 0):
+                            self._version_infos = self._version_infos + '\n'
+                        self._version_infos = self._version_infos + "[" + aDev + "]:\t"
+                    else:
+                        if (len(self._version_infos) > 0):
+                            self._version_infos = self._version_infos + '|'
+                    self._version_infos = self._version_infos + aEntry["@Name"] + ' v' + aEntry["@Version"]
+                    lastDev = aDev
+
+    async def update(self):
+        await self.read_inverter()
+
+    async def read_inverter(self):
+        async with self.websession.get(self.url2) as res:
+            res.raise_for_status()
+            txt = await res.text()
+            self._raw = xmltodict.parse(txt)
+            for aEntry in self._raw["root"]["Device"]["Measurements"]["Measurement"]:
+                if '@Type' in aEntry:
+                    if aEntry["@Type"] == 'AC_Voltage':
+                        if '@Value' in aEntry:
+                            self._ac_voltage = aEntry["@Value"]
+                    if aEntry["@Type"] == 'AC_Current':
+                        if '@Value' in aEntry:
+                            self._ac_current = aEntry["@Value"]
+                    if aEntry["@Type"] == 'AC_Power':
+                        if '@Value' in aEntry:
+                            self._ac_power = aEntry["@Value"]
+                    if aEntry["@Type"] == 'AC_Power_fast':
+                        if '@Value' in aEntry:
+                            self._ac_power_fast = aEntry["@Value"]
+                    if aEntry["@Type"] == 'AC_Frequency':
+                        if '@Value' in aEntry:
+                            self._ac_frequency = aEntry["@Value"]
+
+                    if aEntry["@Type"] == 'BDC_BAT_Voltage':
+                        if '@Value' in aEntry:
+                            self._bdc_bat_voltage = aEntry["@Value"]
+                    if aEntry["@Type"] == 'BDC_BAT_Current':
+                        if '@Value' in aEntry:
+                            self._bdc_bat_current = aEntry["@Value"]
+                    if aEntry["@Type"] == 'BDC_BAT_Power':
+                        if '@Value' in aEntry:
+                            self._bdc_bat_power = aEntry["@Value"]
+                    if aEntry["@Type"] == 'BDC_LINK_Voltage':
+                        if '@Value' in aEntry:
+                            self._bdc_link_voltage = aEntry["@Value"]
+                    if aEntry["@Type"] == 'BDC_LINK_Current':
+                        if '@Value' in aEntry:
+                            self._bdc_link_current = aEntry["@Value"]
+                    if aEntry["@Type"] == 'BDC_LINK_Power':
+                        if '@Value' in aEntry:
+                            self._bdc_link_power = aEntry["@Value"]
+
+                    if aEntry["@Type"] == 'DC_Voltage1':
+                        if '@Value' in aEntry:
+                            self._dc_voltage1 = aEntry["@Value"]
+                    if aEntry["@Type"] == 'DC_Voltage2':
+                        if '@Value' in aEntry:
+                            self._dc_Voltage2 = aEntry["@Value"]
+                    if aEntry["@Type"] == 'DC_Current1':
+                        if '@Value' in aEntry:
+                            self._dc_current1 = aEntry["@Value"]
+                    if aEntry["@Type"] == 'DC_Current2':
+                        if '@Value' in aEntry:
+                            self._dc_current2 = aEntry["@Value"]
+                    if aEntry["@Type"] == 'LINK_Voltage':
+                        if '@Value' in aEntry:
+                            self._link_voltage = aEntry["@Value"]
+
+                    if aEntry["@Type"] == 'GridPower':
+                        if '@Value' in aEntry:
+                            self._gridpower = aEntry["@Value"]
+                    if aEntry["@Type"] == 'GridConsumedPower':
+                        if '@Value' in aEntry:
+                            self._gridconsumedpower = aEntry["@Value"]
+                    if aEntry["@Type"] == 'GridInjectedPower':
+                        if '@Value' in aEntry:
+                            self._gridinjectedpower = aEntry["@Value"]
+                    if aEntry["@Type"] == 'OwnConsumedPower':
+                        if '@Value' in aEntry:
+                            self._ownconsumedpower = aEntry["@Value"]
+
+                    if aEntry["@Type"] == 'Derating':
+                        if '@Value' in aEntry:
+                            self._derating = float(100.0 - float(aEntry["@Value"]))
+
+    @property
+    def device_versions(self) -> str:
+        return self._version_infos
+
+    @property
+    def has_bdc(self) -> bool:
+        return self._has_bdc
+
+    @property
+    def device_name(self) -> str:
+        return self._raw["root"]["Device"]["@Name"]
+
+    @property
+    def device_serial(self) -> str:
+        return self._raw["root"]["Device"]["@Serial"]
+
+    @property
+    def device_netbiosname(self) -> str:
+        return self._raw["root"]["Device"]["@NetBiosName"]
+
+    @property
+    def measurements(self) -> dict:
+        if('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"]["Measurements"]):
+            return self._raw["root"]["Device"]["Measurements"]["Measurement"]
+
+    @property
+    def versions(self) -> dict:
+        if('Versions' in self._raw["root"]["Device"] and 'Software' in self._raw["root"]["Device"]["Versions"]):
+            return self._raw["root"]["Device"]["Versions"]["Software"]
+
+    @property
+    def ac_voltage(self) -> float:
+        if (hasattr(self, '_ac_voltage')):
+            return self._ac_voltage
+
+    @property
+    def ac_current(self) -> float:
+        if (hasattr(self, '_ac_current')):
+            return self._ac_current
+
+    @property
+    def ac_power(self) -> float:
+        if (hasattr(self, '_ac_power')):
+            return self._ac_power
+
+    @property
+    def ac_power_fast(self) -> float:
+        if (hasattr(self, '_ac_power_fast')):
+            return self._ac_power_fast
+
+    @property
+    def ac_frequency(self) -> float:
+        if (hasattr(self, '_ac_frequency')):
+            return self._ac_frequency
+
+    @property
+    def dc_voltage1(self) -> float:
+        if (hasattr(self, '_dc_voltage1')):
+            return self._dc_voltage1
+
+    @property
+    def dc_voltage2(self) -> float:
+        if (hasattr(self, '_dc_voltage2')):
+            return self._dc_voltage2
+
+    @property
+    def dc_current1(self) -> float:
+        if (hasattr(self, '_dc_current1')):
+            return self._dc_current1
+
+    @property
+    def bdc_bat_voltage(self) -> float:
+        if (hasattr(self, '_bdc_bat_voltage')):
+            return self._bdc_bat_voltage
+
+    @property
+    def bdc_bat_current(self) -> float:
+        if (hasattr(self, '_bdc_bat_current')):
+            return self._bdc_bat_current
+
+    @property
+    def bdc_bat_power(self) -> float:
+        if (hasattr(self, '_bdc_bat_power')):
+            return self._bdc_bat_power
+
+    @property
+    def bdc_link_voltage(self) -> float:
+        if (hasattr(self, '_bdc_link_voltage')):
+            return self._bdc_link_voltage
+
+    @property
+    def bdc_link_current(self) -> float:
+        if (hasattr(self, '_bdc_link_current')):
+            return self._bdc_link_current
+
+    @property
+    def bdc_link_power(self) -> float:
+        if (hasattr(self, '_bdc_link_power')):
+            return self._bdc_link_power
+
+    @property
+    def dc_current1(self) -> float:
+        if (hasattr(self, '_dc_current1')):
+            return self._dc_current1
+
+    @property
+    def dc_current2(self) -> float:
+        if (hasattr(self, '_dc_current2')):
+            return self._dc_current2
+
+    @property
+    def link_voltage(self) -> float:
+        if (hasattr(self, '_link_voltage')):
+            return self._link_voltage
+
+    @property
+    def gridpower(self) -> float:
+        if (hasattr(self, '_gridpower')):
+            return self._gridpower
+
+    @property
+    def gridconsumedpower(self) -> float:
+        if (hasattr(self, '_gridconsumedpower')):
+            return self._gridconsumedpower
+
+    @property
+    def gridinjectedpower(self) -> float:
+        if (hasattr(self, '_gridinjectedpower')):
+            return self._gridinjectedpower
+
+    @property
+    def ownconsumedpower(self) -> float:
+        if (hasattr(self, '_ownconsumedpower')):
+            return self._ownconsumedpower
+
+    @property
+    def derating(self) -> float:
+        if (hasattr(self, '_derating')):
+            return self._derating

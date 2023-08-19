@@ -18,7 +18,12 @@ from homeassistant.const import (
 )
 
 DOMAIN = "senec"
-
+MANUFACTURE = "SENEC GmbH"
+CONF_DEV_TYPE = "dtype"
+CONF_SUPPORT_BDC = "has_bdc_support"
+CONF_DEV_NAME = "dname"
+CONF_DEV_SERIAL = "dserial"
+CONF_DEV_VERSION = "version"
 
 """Default config for Senec."""
 DEFAULT_HOST = "Senec"
@@ -27,7 +32,7 @@ DEFAULT_SCAN_INTERVAL = 30
 
 """Supported sensor types."""
 
-SENSOR_TYPES = [
+MAIN_SENSOR_TYPES = [
     SensorEntityDescription(
         key="system_state",
         name="System State",
@@ -331,6 +336,187 @@ SENSOR_TYPES = [
         native_unit_of_measurement=POWER_WATT,
         icon="mdi:meter-electric",
         device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+]
+
+INVERTER_SENSOR_TYPES = [
+    SensorEntityDescription(
+        key="ac_voltage",
+        name="AC Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        key="ac_current",
+        name="AC current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-ac",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        key="ac_power",
+        name="AC Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:solar-power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        key="ac_power_fast",
+        name="AC Power (fast)",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:solar-power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        key="ac_frequency",
+        name="AC Frequency",
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        icon="mdi:meter-electric",
+        device_class=SensorDeviceClass.FREQUENCY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+
+    SensorEntityDescription(
+        options=("bdc_only"),
+        key="bdc_bat_voltage",
+        name="BDC Battery Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        options=("bdc_only"),
+        key="bdc_bat_current",
+        name="BDC Battery Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        options=("bdc_only"),
+        key="bdc_bat_power",
+        name="BDC Battery Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:battery-charging-100",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        options=("bdc_only"),
+        key="bdc_link_voltage",
+        name="BDC Link Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        options=("bdc_only"),
+        key="bdc_link_current",
+        name="BDC Link Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        options=("bdc_only"),
+        key="bdc_link_power",
+        name="BDC Link Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:power-plug-outline",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        key="dc_voltage1",
+        name="DC Voltage 1",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="dc_voltage2",
+        name="DC Voltage 2",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="dc_current1",
+        name="DC current 1",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="dc_current2",
+        name="DC current 2",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    SensorEntityDescription(
+        key="gridpower",
+        name="Grid Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:transmission-tower",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="gridconsumedpower",
+        name="Grid consumed Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:transmission-tower-import",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="gridinjectedpower",
+        name="Grid injected Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:transmission-tower-export",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="ownconsumedpower",
+        name="Own consumed Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:home-import-outline",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="_derating",
+        name="Derating",
+        native_unit_of_measurement=PERCENTAGE,
+        icon="mdi:arrow-down-thin-circle-outline",
         state_class=SensorStateClass.MEASUREMENT,
     ),
 ]

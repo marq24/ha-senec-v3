@@ -1,3 +1,34 @@
+BATT_TYPE_NAME = {
+    0: "Studer Xtender",
+    1: "SenecBatt",
+    2: "Senec Inverter V2",
+    3: "SENEC.Inverter V2.1",
+    4: "SENEC.Inverter V3 LV"
+};
+
+SYSTEM_TYPE_NAME = {
+    0: "Senec Home 8.0 / Blei",
+    1: "Senec Business 30.0 / Blei",
+    2: "Solarinvert Storage 10.0 / Blei",
+    3: "Senec Home 4.0 / Blei",
+    4: "Senec Home 5.0/7.5/10.0 / Lithium",
+    5: "Senec Home 15.0 / Lithium",
+    6: "Senec Business 25.0 / Lithium",
+    7: "Senec Home 6.0 Pb",
+    8: "Senec Home 10.0 Pb",
+    9: "Senec Home V2 5.0/7.5/10.0",
+    10: "Senec Business V2 30.0 / Blei",
+    11: "Senec Home V2 10.0 / Blei",
+    12: "OEM LG",
+    13: "Senec Business V2_2ph / Lithium",
+    14: "Senec Business V2 3ph / Lithium",
+    15: "Senec Home V2.1 1ph / Lithium",
+    16: "ADS Tec",
+    17: "SENEC.Home V3 hybrid",
+    18: "SENEC.Home V3 hybrid duo",
+    19: "SENEC.Home V3 hybrid",
+};
+
 SYSTEM_STATE_NAME = {
     0: "INITIALSTATE",
     1: "ERROR INVERTER COMMUNICATION",
