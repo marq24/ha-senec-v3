@@ -1,18 +1,16 @@
 """Config flow for senec integration."""
 import logging
-from urllib.parse import ParseResult, urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.util import slugify
-#from pysenec import Senec
 from custom_components.senec.pysenec_ha import Senec
+from custom_components.senec.pysenec_ha import Inverter
 from requests.exceptions import HTTPError, Timeout
+from aiohttp import ClientResponseError
 
-from .const import DOMAIN  # pylint:disable=unused-import
-from .const import DEFAULT_HOST, DEFAULT_NAME, DEFAULT_SCAN_INTERVAL
+from .const import DOMAIN, CONF_SUPPORT_BDC, DEFAULT_HOST, DEFAULT_NAME, DEFAULT_SCAN_INTERVAL, CONF_DEV_TYPE, CONF_DEV_NAME, CONF_DEV_SERIAL, CONF_DEV_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,23 +27,56 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
+    def __init__(self):
+        """Initialize."""
+        self._errors = {}
+        self._device_type = ""
+        self._support_bdc = False
+        self._device_name = ""
+        self._device_serial = ""
+        self._device_version = ""
+
     def _host_in_configuration_exists(self, host) -> bool:
         """Return True if host exists in configuration."""
         if host in senec_entries(self.hass):
             return True
         return False
 
-    async def _test_connection(self, host):
+    async def _test_connection_senec(self, host):
         """Check if we can connect to the Senec device."""
         websession = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
             senec_client = Senec(host, websession)
-            await senec_client.update()
+            await senec_client.update_version()
+            self._device_type = "SENEC Main-Unit"
+            self._device_name = senec_client.device_type + ' | ' + senec_client.batt_type
+            self._device_serial = 'S'+senec_client.device_id
+            self._device_version = senec_client.versions
             return True
-        except (OSError, HTTPError, Timeout):
+        except (OSError, HTTPError, Timeout, ClientResponseError):
             self._errors[CONF_HOST] = "cannot_connect"
-            _LOGGER.error(
+            _LOGGER.info(
                 "Could not connect to Senec device at %s, check host ip address",
+                host,
+            )
+        return False
+
+    async def _test_connection_inverter(self, host):
+        """Check if we can connect to the Senec device."""
+        websession = self.hass.helpers.aiohttp_client.async_get_clientsession()
+        try:
+            inverter_client = Inverter(host, websession)
+            await inverter_client.update_version()
+            self._device_type = "SENEC Inverter Module"
+            self._support_bdc = inverter_client.has_bdc
+            self._device_name = inverter_client.device_name + ' Netbios: ' + inverter_client.device_netbiosname
+            self._device_serial = inverter_client.device_serial
+            self._device_version = inverter_client.device_versions
+            return True
+        except (OSError, HTTPError, Timeout, ClientResponseError):
+            self._errors[CONF_HOST] = "cannot_connect"
+            _LOGGER.info(
+                "Could not connect to build-in Inverter device at %s, check host ip address",
                 host,
             )
         return False
@@ -55,19 +86,44 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
         if user_input is not None:
             # set some defaults in case we need to return to the form
-            name = slugify(user_input.get(CONF_NAME, DEFAULT_NAME))
+            name = user_input.get(CONF_NAME, DEFAULT_NAME)
             host_entry = user_input.get(CONF_HOST, DEFAULT_HOST)
             scan = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
             if self._host_in_configuration_exists(host_entry):
                 self._errors[CONF_HOST] = "already_configured"
             else:
-                if await self._test_connection(host_entry):
-                    return self.async_create_entry(title=name, data={CONF_HOST: host_entry, CONF_SCAN_INTERVAL: scan})
+                if await self._test_connection_senec(host_entry):
+                    return self.async_create_entry(title=name, data={CONF_NAME: name,
+                                                                     CONF_HOST: host_entry,
+                                                                     CONF_SCAN_INTERVAL: scan,
+                                                                     CONF_TYPE: 'senec',
+                                                                     CONF_DEV_TYPE: self._device_type,
+                                                                     CONF_DEV_NAME: self._device_name,
+                                                                     CONF_DEV_SERIAL: self._device_serial,
+                                                                     CONF_DEV_VERSION: self._device_version
+                                                                     })
+                else:
+                    if await self._test_connection_inverter(host_entry):
+                        return self.async_create_entry(title=name, data={CONF_NAME: name,
+                                                                         CONF_HOST: host_entry,
+                                                                         CONF_SCAN_INTERVAL: scan,
+                                                                         CONF_TYPE: 'inverter',
+                                                                         CONF_DEV_TYPE: self._device_type,
+                                                                         CONF_SUPPORT_BDC: self._support_bdc,
+                                                                         CONF_DEV_NAME: self._device_name,
+                                                                         CONF_DEV_SERIAL: self._device_serial,
+                                                                         CONF_DEV_VERSION: self._device_version
+                                                                         })
+                    else:
+                        _LOGGER.error(
+                            "Could not connect to Senec OR build-in Inverter device at %s, check host ip address",
+                            host_entry,
+                        )
         else:
             user_input = {}
+            user_input[CONF_NAME] = DEFAULT_NAME
             user_input[CONF_HOST] = DEFAULT_HOST
-            # user_input[CONF_NAME] = DEFAULT_NAME
             user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
 
         return self.async_show_form(
@@ -75,11 +131,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(
+                        CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)
+                    ): str,
+                    vol.Required(
                         CONF_HOST, default=user_input.get(CONF_HOST, DEFAULT_HOST)
                     ): str,
-                    # vol.Required(
-                    #    CONF_NAME, default=user_input.get(CONF_NAME, DEFAULT_NAME)
-                    # ): str,
                     vol.Required(
                         CONF_SCAN_INTERVAL, default=user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
                     ): int,
@@ -106,13 +162,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
+                    vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
                     vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
-                    # vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
                     vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
                 }
             ),
             errors=self._errors,
         )
+
 
 class SenecOptionsFlowHandler(config_entries.OptionsFlow):
     """Config flow options handler for waterkotte_heatpump."""
@@ -138,11 +195,11 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
         dataSchema = vol.Schema(
             {
                 vol.Required(
+                    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME),
+                ): str,
+                vol.Required(
                     CONF_HOST, default=self.options.get(CONF_HOST, DEFAULT_HOST),
                 ): str,  # pylint: disable=line-too-long
-                # vol.Required(
-                #    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME),
-                # ): str,
                 vol.Required(
                     CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                 ): int,  # pylint: disable=line-too-long
