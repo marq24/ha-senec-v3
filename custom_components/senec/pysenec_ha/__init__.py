@@ -91,7 +91,7 @@ class Senec:
         async with self.websession.post(self.url, json=form) as res:
             res.raise_for_status()
             self._raw = parse(await res.json())
-            print(self._raw)
+            #print(self._raw)
 
     @property
     def system_state(self) -> str:

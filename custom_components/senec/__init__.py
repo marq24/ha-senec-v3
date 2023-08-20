@@ -104,6 +104,7 @@ class SenecEntity(Entity):
         self._name = coordinator._entry.title
         self._state = None
         self._entry = coordinator._entry
+        self._host =  coordinator._host
         self.entity_description = description
 
     @property
@@ -112,12 +113,14 @@ class SenecEntity(Entity):
         # Setup Device
         dtype = self._entry.options.get(CONF_DEV_TYPE, self._entry.data.get(CONF_DEV_TYPE))
         dserial = self._entry.options.get(CONF_DEV_SERIAL, self._entry.data.get(CONF_DEV_SERIAL))
+        dmodel = self._entry.options.get(CONF_DEV_NAME, self._entry.data.get(CONF_DEV_NAME))
         device = self._name
+        host = self._host
+        #"hw_version": self._entry.options.get(CONF_DEV_NAME, self._entry.data.get(CONF_DEV_NAME)),
         return {
-            "identifiers": {(DOMAIN, device)},
-            "name": "SENEC.Home V3 System",
-            "model": f"{dtype} [Serial: {dserial}]",
-            "hw_version": self._entry.options.get(CONF_DEV_NAME, self._entry.data.get(CONF_DEV_NAME)),
+            "identifiers": {(DOMAIN, host, device)},
+            "name": f"{dtype}: {device}",
+            "model": f"{dmodel} [Serial: {dserial}]",
             "sw_version": self._entry.options.get(CONF_DEV_VERSION, self._entry.data.get(CONF_DEV_VERSION)),
             "manufacturer": MANUFACTURE,
         }

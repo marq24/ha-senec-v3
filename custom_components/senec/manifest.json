@@ -1,6 +1,6 @@
 {
   "domain": "senec",
-  "name": "senec",
+  "name": "SENEC.Home",
   "config_flow": true,
   "documentation": "https://github.com/marq24/ha-senec-v3/blob/master/README.md",
   "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
@@ -11,5 +11,5 @@
     "@mchwalisz"
   ],
   "iot_class": "local_polling",
-  "version": "3.0.0"
+  "version": "3.0.1"
 }

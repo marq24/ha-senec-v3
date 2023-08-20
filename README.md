@@ -52,19 +52,18 @@ Add custom integration using the web interface and follow instruction on screen.
 - Provide name for the device, and it's address (hostname or IP)
 - Provide area where the battery is located
 
-## Connecting the internal (build in) Senec Inverter Hardware to your LAN and use it in HA<a id='inv-lnk'></a>
-The __SENEC.Home V3 hybrid duo__ have build in two inverters - called LV and HV. For what ever reason this hardware has
-LAN connectors - but during the installation they have not been connected to my LAN (I assume this is by purpose).
-Nevertheless, when you dismount [__DO THIS ON YOUR OWN RISK!__] the front and the right hand side panels you simply can
-plug in RJ45 LAN cables into both of the inverters LAN connectors and after a short while you should be able to access
-the web frontends of the inverters via your browser.
+<a id='inv-lnk'></a>
+## Connecting the internal (build in) Senec Inverter Hardware to your LAN and use it in HA
+The __SENEC.Home V3 hybrid duo__ have build in two inverters - called LV and HV. This hardware has its own LAN
+connectors, but they have not been connected during the installation process (I guess by purpose).
+
+### __DO THIS ON YOUR OWN RISK!__
+Nevertheless, when you dismount the front and the right hand side panels you simply can plug in RJ45 LAN cables into
+both of the inverters LAN connectors and after a short while you should be able to access the web frontends of the
+inverters via your browser.
 
 _Don't forget to assign fixed IP's to the additional inverter hardware. You can unplug the LAN cable for a short while
 in order to make sure that the inverters will make use of the fixed assigned IP's._
-
-Once you have connected the inverter(s) with your LAN you can add another integration entry to your Senec Integration.
-Specify the new IP of the Inverter (and assign a different name). Repeat this procedure if you have build in two
-inverters into your Senec.HOME.
 
 ### Position of SENEC.Inverter V3 LV LAN connector
 ![img|160x90](images/inv_lv.png)
@@ -73,6 +72,18 @@ On the front of the device
 ### Position of SENEC.Inverter V3 HV LAN connector _(hybrid duo only!)_
 ![img|160x90](images/inv_hv.png)
 On the right hand side of the device
+
+### Adding Inverter(s) to your HA
+Once you have connected the inverter(s) with your LAN you can add another integration entry to your Senec Integration in
+Home Assistant:
+
+1. go to '__Settings__' -> '__Devices & Services__'
+2. select the '__SENEC.Home__' integration.
+3. there you find the '__Add Entry__' button (at the bottom of the '__Integration entries__' list)
+4. specify the IP (or hostname) of the inverter you want to add
+5. __important:__ assign a name (e.g. _INV_LV_).
+ 
+Repeat step 3, 4 & 5 of this procedure, if you have build in two inverters into your Senec.HOME.
 
 ## Home Assistant Energy Dashboard
 
