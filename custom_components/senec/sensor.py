@@ -55,6 +55,7 @@ class SenecSensor(SenecEntity, SensorEntity):
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"
         self._attr_name = f"{title} {name}"
+        self._coordinator = coordinator
         self._enabled_by_default = enabled
 
     @property
