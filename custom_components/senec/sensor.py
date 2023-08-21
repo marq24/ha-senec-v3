@@ -41,7 +41,7 @@ class SenecSensor(SenecEntity, SensorEntity):
             self,
             coordinator: SenecDataUpdateCoordinator,
             description: SensorEntityDescription,
-            enabledByDefault: bool,
+            enabled: bool,
     ):
         """Initialize a singular value sensor."""
         super().__init__(coordinator=coordinator, description=description)
@@ -51,8 +51,18 @@ class SenecSensor(SenecEntity, SensorEntity):
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"
         self._attr_name = f"{title} {name}"
+        self._enabled_by_default = enabled
 
     @property
     def entity_registry_enabled_default(self):
         """Return the entity_registry_enabled_default of the sensor."""
-        return self.enabledByDefault
+        return self._enabled_by_default
+
+    async def async_update(self):
+        """Schedule a custom update via the common entity update service."""
+        await self._coordinator.async_request_refresh()
+
+    @property
+    def should_poll(self) -> bool:
+        """Entities do not individually poll."""
+        return False
