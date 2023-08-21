@@ -472,6 +472,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
+        options=("disabled_by_default"),
         key="dc_current2",
         name="DC current 2",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -481,6 +482,7 @@ INVERTER_SENSOR_TYPES = [
     ),
 
     SensorEntityDescription(
+        options=("disabled_by_default"),
         key="gridpower",
         name="Grid Power",
         native_unit_of_measurement=POWER_WATT,
@@ -489,6 +491,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
+        options=("disabled_by_default"),
         key="gridconsumedpower",
         name="Grid consumed Power",
         native_unit_of_measurement=POWER_WATT,
@@ -497,6 +500,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
+        options=("disabled_by_default"),
         key="gridinjectedpower",
         name="Grid injected Power",
         native_unit_of_measurement=POWER_WATT,
@@ -505,6 +509,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
+        options=("disabled_by_default"),
         key="ownconsumedpower",
         name="Own consumed Power",
         native_unit_of_measurement=POWER_WATT,

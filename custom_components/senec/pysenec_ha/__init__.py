@@ -1,6 +1,7 @@
 import aiohttp
 import logging
 import xmltodict
+from datetime import datetime
 
 from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME, SYSTEM_TYPE_NAME, BATT_TYPE_NAME
 from custom_components.senec.pysenec_ha.util import parse
@@ -532,7 +533,7 @@ class Inverter:
         await self.read_inverter()
 
     async def read_inverter(self):
-        async with self.websession.get(self.url2) as res:
+        async with self.websession.get(self.url2+'?'+str(datetime.now())) as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
@@ -578,7 +579,7 @@ class Inverter:
                             self._dc_voltage1 = aEntry["@Value"]
                     if aEntry["@Type"] == 'DC_Voltage2':
                         if '@Value' in aEntry:
-                            self._dc_Voltage2 = aEntry["@Value"]
+                            self._dc_voltage2 = aEntry["@Value"]
                     if aEntry["@Type"] == 'DC_Current1':
                         if '@Value' in aEntry:
                             self._dc_current1 = aEntry["@Value"]

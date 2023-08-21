@@ -23,11 +23,12 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
                      'bdc_only' in description.options and
                      config_entry.data[CONF_SUPPORT_BDC])
             ):
-                entity = SenecSensor(coordinator, description)
+                enabledByDefault  = description.options is None or 'disabled_by_default' not in description.options
+                entity = SenecSensor(coordinator, description, enabledByDefault)
                 entities.append(entity)
     else:
         for description in MAIN_SENSOR_TYPES:
-            entity = SenecSensor(coordinator, description)
+            entity = SenecSensor(coordinator, description, True)
             entities.append(entity)
 
     async_add_entities(entities)
@@ -40,6 +41,7 @@ class SenecSensor(SenecEntity, SensorEntity):
             self,
             coordinator: SenecDataUpdateCoordinator,
             description: SensorEntityDescription,
+            enabledByDefault: bool,
     ):
         """Initialize a singular value sensor."""
         super().__init__(coordinator=coordinator, description=description)
@@ -49,3 +51,8 @@ class SenecSensor(SenecEntity, SensorEntity):
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"
         self._attr_name = f"{title} {name}"
+
+    @property
+    def entity_registry_enabled_default(self):
+        """Return the entity_registry_enabled_default of the sensor."""
+        return self.enabledByDefault
