@@ -3,10 +3,9 @@ import asyncio
 import logging
 from datetime import timedelta
 
-import async_timeout
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -29,11 +28,10 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-
-    global SCAN_INTERVAL
-    SCAN_INTERVAL = timedelta(seconds=entry.options.get(CONF_SCAN_INTERVAL, 60))
-
     """Set up senec from a config entry."""
+    global SCAN_INTERVAL
+    SCAN_INTERVAL = timedelta(seconds=entry.data.get(CONF_SCAN_INTERVAL, 60))
+
     session = async_get_clientsession(hass)
 
     coordinator = SenecDataUpdateCoordinator(hass, session, entry)
@@ -70,10 +68,11 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
 
     async def _async_update_data(self):
-        """Update data via library."""
-        with async_timeout.timeout(20):
+        try:
             await self.senec.update()
-        return self.senec
+            return self.senec
+        except UpdateFailed as exception:
+            raise UpdateFailed() from exception
 
 
 async def async_unload_entry(hass, entry):
@@ -90,6 +89,10 @@ async def async_unload_entry(hass, entry):
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
 
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
 
 class SenecEntity(Entity):
     """Defines a base Senec entity."""
