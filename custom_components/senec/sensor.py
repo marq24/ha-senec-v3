@@ -18,11 +18,15 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
     entities = []
     if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == 'inverter'):
         for description in INVERTER_SENSOR_TYPES:
-            if (description.options is None or
-                    (description.options is not None and
-                     'bdc_only' in description.options and
-                     config_entry.data[CONF_SUPPORT_BDC])
-            ):
+            addEntity = description.options is None
+            if(not addEntity):
+                if('bdc_only' in description.options):
+                    if(config_entry.data[CONF_SUPPORT_BDC]):
+                        addEntity = True
+                else:
+                    addEntity = True
+
+            if (addEntity):
                 enabledByDefault  = description.options is None or 'disabled_by_default' not in description.options
                 entity = SenecSensor(coordinator, description, enabledByDefault)
                 entities.append(entity)
