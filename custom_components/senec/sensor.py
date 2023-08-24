@@ -32,7 +32,8 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
                 entities.append(entity)
     else:
         for description in MAIN_SENSOR_TYPES:
-            entity = SenecSensor(coordinator, description, True)
+            enabledByDefault  = description.options is None or 'disabled_by_default' not in description.options
+            entity = SenecSensor(coordinator, description, enabledByDefault)
             entities.append(entity)
 
     async_add_entities(entities)

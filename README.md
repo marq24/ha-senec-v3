@@ -16,12 +16,17 @@ situation to develop a own integration from the scratch. [IMHO it's impossible t
 - If you connect the internal Inverter [in the case of the Duo there are even two (LV & HV)] to your LAN (see
   [details below](#inv-lnk)), then you can add these additional instances and directly access the data from the DC-AC
   converters  
+- Added three additional sensors for each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
+- Added BatteryCell Details [mainly disabled by default]
+  - Module [A-D]: Current/Voltage/State of Charge (SoC)/State of Health (SoH)/Cycles
+  - Cell temperature [1-6] per module [A-D]
+  - Voltage per cell [1-14] per module [A-D] 
+- Added Wallbox Details  [disabled by default]
+- Modified _battery_charge_power_ & _battery_discharge_power_ so that they will only return data >0 when the system
+  state is matching the corresponding CHARGE or DISCHARGE state (including state variants)
 - Integrated variant of _pysenec_ python lib (almost every modification of this Home Assistant integration requires also
   an adjustment in the lib) - yes of course it would be possible to release also a lib derivative - but right now I am
   just a python beginner, and __I am lazy!__
-- Added three additional sensors for each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
-- Modified _battery_charge_power_ & _battery_discharge_power_ so that they will only return data >0 when the system
-  state is matching the corresponding CHARGE or DISCHARGE state (including state variants)
 - Added German "translation"
 
 ## Installation
