@@ -5,7 +5,7 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util import slugify
-from homeassistant.const import STATE_ON, STATE_OFF, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 
 from typing import Literal
 from . import SenecDataUpdateCoordinator, SenecEntity
@@ -16,15 +16,14 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    entities = []
-
-    for description in MAIN_SWITCH_TYPES:
-        #enabledByDefault  = description.options is None or 'disabled_by_default' not in description.options
-        entity = SenecSwitch(coordinator, description, True)
-        entities.append(entity)
-
-    async_add_entities(entities)
-
+    if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == 'inverter'):
+        _LOGGER.info("No switches for Inverters...")
+    else:
+        entities = []
+        for description in MAIN_SWITCH_TYPES:
+            entity = SenecSwitch(coordinator, description, True)
+            entities.append(entity)
+        async_add_entities(entities)
 
 class SenecSwitch(SenecEntity, SwitchEntity):
     def __init__(
