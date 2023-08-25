@@ -92,7 +92,7 @@ class Senec:
         async with self.websession.post(self.url, json=form) as res:
             res.raise_for_status()
             self._raw = parse(await res.json())
-            #print(self._raw)
+            # print(self._raw)
 
     @property
     def system_state(self) -> str:
@@ -369,18 +369,23 @@ class Senec:
     @property
     def bms_cell_temp_A1(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][0]
+
     @property
     def bms_cell_temp_A2(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][1]
+
     @property
     def bms_cell_temp_A3(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][2]
+
     @property
     def bms_cell_temp_A4(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][3]
+
     @property
     def bms_cell_temp_A5(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][4]
+
     @property
     def bms_cell_temp_A6(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][5]
@@ -388,18 +393,23 @@ class Senec:
     @property
     def bms_cell_temp_B1(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][0]
+
     @property
     def bms_cell_temp_B2(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][1]
+
     @property
     def bms_cell_temp_B3(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][2]
+
     @property
     def bms_cell_temp_B4(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][3]
+
     @property
     def bms_cell_temp_B5(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][4]
+
     @property
     def bms_cell_temp_B6(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][5]
@@ -407,18 +417,23 @@ class Senec:
     @property
     def bms_cell_temp_C1(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][0]
+
     @property
     def bms_cell_temp_C2(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][1]
+
     @property
     def bms_cell_temp_C3(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][2]
+
     @property
     def bms_cell_temp_C4(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][3]
+
     @property
     def bms_cell_temp_C5(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][4]
+
     @property
     def bms_cell_temp_C6(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][5]
@@ -426,188 +441,247 @@ class Senec:
     @property
     def bms_cell_temp_D1(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][0]
+
     @property
     def bms_cell_temp_D2(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][1]
+
     @property
     def bms_cell_temp_D3(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][2]
+
     @property
     def bms_cell_temp_D4(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][3]
+
     @property
     def bms_cell_temp_D5(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][4]
+
     @property
     def bms_cell_temp_D6(self) -> float:
         return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][5]
 
-
     @property
     def bms_cell_volt_A1(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][0]
+
     @property
     def bms_cell_volt_A2(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][1]
+
     @property
     def bms_cell_volt_A3(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][2]
+
     @property
     def bms_cell_volt_A4(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][3]
+
     @property
     def bms_cell_volt_A5(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][4]
+
     @property
     def bms_cell_volt_A6(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][5]
+
     @property
     def bms_cell_volt_A7(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][6]
+
     @property
     def bms_cell_volt_A8(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][7]
+
     @property
     def bms_cell_volt_A9(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][8]
+
     @property
     def bms_cell_volt_A10(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][9]
+
     @property
     def bms_cell_volt_A11(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][10]
+
     @property
     def bms_cell_volt_A12(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][11]
+
     @property
     def bms_cell_volt_A13(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][12]
+
     @property
     def bms_cell_volt_A14(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][13]
+
     @property
     def bms_cell_volt_B1(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][0]
+
     @property
     def bms_cell_volt_B2(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][1]
+
     @property
     def bms_cell_volt_B3(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][2]
+
     @property
     def bms_cell_volt_B4(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][3]
+
     @property
     def bms_cell_volt_B5(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][4]
+
     @property
     def bms_cell_volt_B6(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][5]
+
     @property
     def bms_cell_volt_B7(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][6]
+
     @property
     def bms_cell_volt_B8(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][7]
+
     @property
     def bms_cell_volt_B9(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][8]
+
     @property
     def bms_cell_volt_B10(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][9]
+
     @property
     def bms_cell_volt_B11(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][10]
+
     @property
     def bms_cell_volt_B12(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][11]
+
     @property
     def bms_cell_volt_B13(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][12]
+
     @property
     def bms_cell_volt_B14(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][13]
+
     @property
     def bms_cell_volt_C1(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][0]
+
     @property
     def bms_cell_volt_C2(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][1]
+
     @property
     def bms_cell_volt_C3(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][2]
+
     @property
     def bms_cell_volt_C4(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][3]
+
     @property
     def bms_cell_volt_C5(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][4]
+
     @property
     def bms_cell_volt_C6(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][5]
+
     @property
     def bms_cell_volt_C7(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][6]
+
     @property
     def bms_cell_volt_C8(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][7]
+
     @property
     def bms_cell_volt_C9(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][8]
+
     @property
     def bms_cell_volt_C10(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][9]
+
     @property
     def bms_cell_volt_C11(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][10]
+
     @property
     def bms_cell_volt_C12(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][11]
+
     @property
     def bms_cell_volt_C13(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][12]
+
     @property
     def bms_cell_volt_C14(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][13]
+
     @property
     def bms_cell_volt_D1(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][0]
+
     @property
     def bms_cell_volt_D2(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][1]
+
     @property
     def bms_cell_volt_D3(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][2]
+
     @property
     def bms_cell_volt_D4(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][3]
+
     @property
     def bms_cell_volt_D5(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][4]
+
     @property
     def bms_cell_volt_D6(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][5]
+
     @property
     def bms_cell_volt_D7(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][6]
+
     @property
     def bms_cell_volt_D8(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][7]
+
     @property
     def bms_cell_volt_D9(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][8]
+
     @property
     def bms_cell_volt_D10(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][9]
+
     @property
     def bms_cell_volt_D11(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][10]
+
     @property
     def bms_cell_volt_D12(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][11]
+
     @property
     def bms_cell_volt_D13(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][12]
+
     @property
     def bms_cell_volt_D14(self) -> float:
         return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
@@ -615,12 +689,15 @@ class Senec:
     @property
     def bms_soc_A(self) -> float:
         return self._raw["BMS"]["SOC"][0]
+
     @property
     def bms_soc_B(self) -> float:
         return self._raw["BMS"]["SOC"][1]
+
     @property
     def bms_soc_C(self) -> float:
         return self._raw["BMS"]["SOC"][2]
+
     @property
     def bms_soc_D(self) -> float:
         return self._raw["BMS"]["SOC"][3]
@@ -628,12 +705,15 @@ class Senec:
     @property
     def bms_soh_A(self) -> float:
         return self._raw["BMS"]["SOH"][0]
+
     @property
     def bms_soh_B(self) -> float:
         return self._raw["BMS"]["SOH"][1]
+
     @property
     def bms_soh_C(self) -> float:
         return self._raw["BMS"]["SOH"][2]
+
     @property
     def bms_soh_D(self) -> float:
         return self._raw["BMS"]["SOH"][3]
@@ -641,12 +721,15 @@ class Senec:
     @property
     def bms_voltage_A(self) -> float:
         return self._raw["BMS"]["VOLTAGE"][0]
+
     @property
     def bms_voltage_B(self) -> float:
         return self._raw["BMS"]["VOLTAGE"][1]
+
     @property
     def bms_voltage_C(self) -> float:
         return self._raw["BMS"]["VOLTAGE"][2]
+
     @property
     def bms_voltage_D(self) -> float:
         return self._raw["BMS"]["VOLTAGE"][3]
@@ -654,12 +737,15 @@ class Senec:
     @property
     def bms_current_A(self) -> float:
         return self._raw["BMS"]["CURRENT"][0]
+
     @property
     def bms_current_B(self) -> float:
         return self._raw["BMS"]["CURRENT"][1]
+
     @property
     def bms_current_C(self) -> float:
         return self._raw["BMS"]["CURRENT"][2]
+
     @property
     def bms_current_D(self) -> float:
         return self._raw["BMS"]["CURRENT"][3]
@@ -667,12 +753,15 @@ class Senec:
     @property
     def bms_cycles_A(self) -> float:
         return self._raw["BMS"]["CYCLES"][0]
+
     @property
     def bms_cycles_B(self) -> float:
         return self._raw["BMS"]["CYCLES"][1]
+
     @property
     def bms_cycles_C(self) -> float:
         return self._raw["BMS"]["CYCLES"][2]
+
     @property
     def bms_cycles_D(self) -> float:
         return self._raw["BMS"]["CYCLES"][3]
@@ -680,12 +769,15 @@ class Senec:
     @property
     def bms_fw_A(self) -> float:
         return self._raw["BMS"]["FW"][0]
+
     @property
     def bms_fw_B(self) -> float:
         return self._raw["BMS"]["FW"][1]
+
     @property
     def bms_fw_C(self) -> float:
         return self._raw["BMS"]["FW"][2]
+
     @property
     def bms_fw_D(self) -> float:
         return self._raw["BMS"]["FW"][3]
@@ -714,6 +806,26 @@ class Senec:
         """
         return self._raw["STATISTIC"]["LIVE_WB_ENERGY"][0]
 
+    ## LADEN...
+    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
+
+    ## Freigeben...
+    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
+
+    # function sendTestPower(e) {
+    #    var t = "[";
+    # for (c = 0; c < 3; c++) t += '"', t += e ? pageObj.castVarValue("fl", -$("#itestpower").val() / 3) : pageObj.castVarValue("fl", $("#itestpower").val() / 3), c < 2 && (t += '",');
+    # t += '"]', pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", t)
+    # }
+
+    # function ChargebtnClickEvent() {
+    #    1 == chargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!0), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
+    # }
+
+    # function DischargebtnClickEvent() {
+    #    1 == dischargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!1), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
+    # }
+
     async def update(self):
         await self.read_senec_v31()
 
@@ -738,6 +850,7 @@ class Senec:
                 "GUI_BAT_DATA_FUEL_CHARGE": "",
                 "GUI_BAT_DATA_OA_CHARGING": "",
                 "STAT_LIMITED_NET_SKEW": "",
+                "SAFE_CHARGE_RUNNING": "",
             },
             "STATISTIC": {
                 "LIVE_BAT_CHARGE": "",
@@ -862,6 +975,35 @@ class Senec:
             res.raise_for_status()
             self._raw = parse(await res.json())
 
+    @property
+    def safe_charge(self) -> bool:
+        if (hasattr(self, '_raw')):
+            return self._raw["ENERGY"]["SAFE_CHARGE_RUNNING"] == 1
+
+    async def switch_safe_charge(self, value):
+        postdata = {}
+        if (value):
+            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
+                                   "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
+                                   "LI_STORAGE_MODE_RUNNING": ""}}
+        else:
+            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01", "SAFE_CHARGE_RUNNING": "",
+                                   "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
+                                   "LI_STORAGE_MODE_RUNNING": ""}}
+
+        await self.write(postdata)
+
+    async def switch(self, switch_key, value):
+        return await getattr(self, 'switch_'+str(switch_key))(value)
+
+    async def write(self, data):
+        await self.write_senec_v31(data)
+
+    async def write_senec_v31(self, data):
+        async with self.websession.post(self.url, json=data) as res:
+            res.raise_for_status()
+            self._raw = parse(await res.json())
+
 
 class Inverter:
     """Senec Home Inverter addon"""
@@ -887,7 +1029,7 @@ class Inverter:
             for aEntry in self._raw["root"]["Device"]["Versions"]["Software"]:
                 if '@Name' in aEntry:
                     aDev = aEntry["@Device"]
-                    if(not self._has_bdc):
+                    if (not self._has_bdc):
                         self._has_bdc = aDev == 'BDC'
                     if (aDev != lastDev):
                         if (len(self._version_infos) > 0):
@@ -903,7 +1045,7 @@ class Inverter:
         await self.read_inverter()
 
     async def read_inverter(self):
-        async with self.websession.get(self.url2+'?'+str(datetime.now())) as res:
+        async with self.websession.get(self.url2 + '?' + str(datetime.now())) as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
@@ -999,12 +1141,13 @@ class Inverter:
 
     @property
     def measurements(self) -> dict:
-        if('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"]["Measurements"]):
+        if ('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"][
+            "Measurements"]):
             return self._raw["root"]["Device"]["Measurements"]["Measurement"]
 
     @property
     def versions(self) -> dict:
-        if('Versions' in self._raw["root"]["Device"] and 'Software' in self._raw["root"]["Device"]["Versions"]):
+        if ('Versions' in self._raw["root"]["Device"] and 'Software' in self._raw["root"]["Device"]["Versions"]):
             return self._raw["root"]["Device"]["Versions"]["Software"]
 
     @property

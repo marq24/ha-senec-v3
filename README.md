@@ -13,15 +13,21 @@ situation to develop a own integration from the scratch. [IMHO it's impossible t
 - Added User accessible configuration option
 - Added configurable _update interval_ for the sensor data (I use _5_ seconds, without any issue)
 - Reading DeviceID, DeviceType, BatteryType & Version information
-- If you connect the internal Inverter [in the case of the Duo there are even two (LV & HV)] to your LAN (see
-  [details below](#inv-lnk)), then you can add these additional instances and directly access the data from the DC-AC
-  converters  
 - Added three additional sensors for each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
+- Added a switch to load the battery (will use additional power from grid)
+  
+  _This might sound very foolish - but if you are not using the (IMHO total overprices) SENEC-Cloud electricity tariff
+  __and__ you have been smart and signed up for a dynamic price model (based on the current stock price) than loading
+  your battery when the price is the lowest during the day might become a smart move. Specially during the winter!_
+ 
 - Added BatteryCell Details [mainly disabled by default]
   - Module [A-D]: Current/Voltage/State of Charge (SoC)/State of Health (SoH)/Cycles
   - Cell temperature [1-6] per module [A-D]
-  - Voltage per cell [1-14] per module [A-D] 
+  - Voltage per cell [1-14] per module [A-D]
 - Added Wallbox Details  [disabled by default]
+- If you connect the internal Inverter [in the case of the Duo there are even two (LV & HV)] to your LAN (see
+  [details below](#inv-lnk)), then you can add these additional instances and directly access the data from the DC-AC
+  converters  
 - Modified _battery_charge_power_ & _battery_discharge_power_ so that they will only return data >0 when the system
   state is matching the corresponding CHARGE or DISCHARGE state (including state variants)
 - Integrated variant of _pysenec_ python lib (almost every modification of this Home Assistant integration requires also

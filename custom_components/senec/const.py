@@ -8,6 +8,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.components.switch import SwitchEntityDescription
 from homeassistant.const import (
     ENERGY_KILO_WATT_HOUR,
     PERCENTAGE,
@@ -31,6 +32,14 @@ DEFAULT_NAME = "senec"
 DEFAULT_SCAN_INTERVAL = 30
 
 """Supported sensor types."""
+
+MAIN_SWITCH_TYPES = [
+    SwitchEntityDescription(
+        key="safe_charge",
+        name="Load Battery",
+        icon="mdi:battery-charging-high",
+    ),
+]
 
 MAIN_SENSOR_TYPES = [
     SensorEntityDescription(
@@ -1419,7 +1428,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
-        key="_derating",
+        key="derating",
         name="Derating",
         native_unit_of_measurement=PERCENTAGE,
         icon="mdi:arrow-down-thin-circle-outline",

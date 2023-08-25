@@ -64,11 +64,16 @@ class SenecSensor(SenecEntity, SensorEntity):
         """Return the entity_registry_enabled_default of the sensor."""
         return self._enabled_by_default
 
-    async def async_update(self):
-        """Schedule a custom update via the common entity update service."""
-        await self._coordinator.async_request_refresh()
-
     @property
-    def should_poll(self) -> bool:
-        """Entities do not individually poll."""
-        return False
+    def state(self):
+        """Return the current state."""
+        sensor = self.entity_description.key
+        value = getattr(self.coordinator.senec, sensor)
+        if type(value) != type(False):
+            try:
+                rounded_value = round(float(value), 2)
+                return rounded_value
+            except (ValueError, TypeError):
+                return value
+        else:
+            return value

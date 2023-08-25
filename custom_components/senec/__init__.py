@@ -9,7 +9,7 @@ from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.entity import Entity, EntityDescription
+from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from custom_components.senec.pysenec_ha import Senec, Inverter
 
@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "switch"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -47,6 +47,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     for platform in PLATFORMS:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, platform))
 
+    entry.add_update_listener(async_reload_entry)
+
     return True
 
 
@@ -70,6 +72,13 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         try:
             await self.senec.update()
+            return self.senec
+        except UpdateFailed as exception:
+            raise UpdateFailed() from exception
+
+    async def _async_switch_to_state(self, switch_key, state):
+        try:
+            await self.senec.switch(switch_key, state)
             return self.senec
         except UpdateFailed as exception:
             raise UpdateFailed() from exception
@@ -129,17 +138,6 @@ class SenecEntity(Entity):
         }
 
     @property
-    def state(self):
-        """Return the current state."""
-        sensor = self.entity_description.key
-        value = getattr(self.coordinator.senec, sensor)
-        try:
-            rounded_value = round(float(value), 2)
-            return rounded_value
-        except (ValueError, TypeError):
-            return value
-
-    @property
     def available(self):
         """Return True if entity is available."""
         return self.coordinator.last_update_success
@@ -157,3 +155,8 @@ class SenecEntity(Entity):
     async def async_update(self):
         """Update entity."""
         await self.coordinator.async_request_refresh()
+
+    @property
+    def should_poll(self) -> bool:
+        """Entities do not individually poll."""
+        return False
