@@ -16,7 +16,7 @@ situation to develop a own integration from the scratch. [IMHO it's impossible t
 - Added three additional sensors for each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
 - Added a switch to load the battery (will use additional power from grid)
   
-  _This might sound very foolish - but if you are not using the (IMHO total overprices) SENEC-Cloud electricity tariff
+  _This might sound very foolish - but if you are not using the (IMHO total overpriced) SENEC-Cloud electricity tariff
   __and__ you have been smart and signed up for a dynamic price model (based on the current stock price) than loading
   your battery when the price is the lowest during the day might become a smart move. Specially during the winter!_
  
