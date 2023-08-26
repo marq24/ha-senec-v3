@@ -1,7 +1,7 @@
 {
   "name": "SENEC.Home V3 sensor",
   "country": [
-    "EN"
+    "ALL"
   ],
   "homeassistant": "2021.12.8",
   "hacs": "1.18.0",

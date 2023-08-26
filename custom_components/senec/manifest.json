@@ -1,15 +1,15 @@
 {
   "domain": "senec",
   "name": "SENEC.Home",
-  "config_flow": true,
-  "documentation": "https://github.com/marq24/ha-senec-v3/blob/master/README.md",
-  "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
-  "requirements": [],
-  "dependencies": [],
   "codeowners": [
     "@marq24",
     "@mchwalisz"
   ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/marq24/ha-senec-v3/blob/master/README.md",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
+  "requirements": [],
   "version": "3.0.3"
 }
