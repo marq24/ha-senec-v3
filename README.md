@@ -14,11 +14,13 @@ situation to develop a own integration from the scratch. [IMHO it's impossible t
 - Added configurable _update interval_ for the sensor data (I use _5_ seconds, without any issue)
 - Reading DeviceID, DeviceType, BatteryType & Version information
 - Added three additional sensors for each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
-- Added a switch to load the battery (will use additional power from grid)
+- Added a switch to manually load the battery [state: 'MAN. SAFETY CHARGE' & 'SAFETY CHARGE READY'] (obviously this will
+  use additional power from grid when your PV inverters will not provide enough power)
   
-  _This might sound very foolish - but if you are not using the (IMHO total overpriced) SENEC-Cloud electricity tariff
-  __and__ you have been smart and signed up for a dynamic price model (based on the current stock price) than loading
-  your battery when the price is the lowest during the day might become a smart move. Specially during the winter!_
+  _This might sound very foolish - but if you are not subscribed to the (IMHO total overpriced) SENEC-Cloud electricity
+  tariff __and__ you have been smart and signed up for a dynamic price model (based on the current stock price) then
+  loading your battery when the price is the lowest during the day might become a smart move (and also disallow battery
+  usage while the price is average). Specially during the winter!_
  
 - Added BatteryCell Details [mainly disabled by default]
   - Module [A-D]: Current/Voltage/State of Charge (SoC)/State of Health (SoH)/Cycles
