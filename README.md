@@ -13,29 +13,46 @@ situation to develop a own integration from the scratch. [IMHO it's impossible t
 - Added User accessible configuration option
 - Added configurable _update interval_ for the sensor data (I use _5_ seconds, without any issue)
 - Reading DeviceID, DeviceType, BatteryType & Version information
-- Added three additional sensors for each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
-- Added a switch to manually load the battery [state: 'MAN. SAFETY CHARGE' & 'SAFETY CHARGE READY'] (obviously this will
-  use additional power from grid when your PV inverters will not provide enough power)
+
+- Additional Sensors: 
+  - For each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
+  - For your EnFluRi-Net (Freq, potential, current, power)
+  - For your EnFluRi-Usage (Freq, potential, current, power) [disabled by default] 
   
-  _This might sound very foolish - but if you are not subscribed to the (IMHO total overpriced) SENEC-Cloud electricity
-  tariff __and__ you have been smart and signed up for a dynamic price model (based on the current stock price) then
-  loading your battery when the price is the lowest during the day might become a smart move (and also disallow battery
-  usage while the price is average). Specially during the winter!_
- 
-- Added BatteryCell Details [mainly disabled by default]
-  - Module [A-D]: Current/Voltage/State of Charge (SoC)/State of Health (SoH)/Cycles
-  - Cell temperature [1-6] per module [A-D]
-  - Voltage per cell [1-14] per module [A-D]
-- Added Wallbox Details  [disabled by default]
-- If you connect the internal Inverter [in the case of the Duo there are even two (LV & HV)] to your LAN (see
-  [details below](#inv-lnk)), then you can add these additional instances and directly access the data from the DC-AC
-  converters  
+  - Added BatteryCell Details [mainly disabled by default]
+    - Module [A-D]: Current/Voltage/State of Charge (SoC)/State of Health (SoH)/Cycles
+    - Cell temperature [1-6] per module [A-D]
+    - Voltage per cell [1-14] per module [A-D]
+   
+  - Added Wallbox Details  [disabled by default]
+  
+  - If you connect the internal Inverter [in the case of the Duo there are even two (LV & HV)] to your LAN (see
+    [details below](#inv-lnk)), then you can add these additional instances and directly access the data from the DC-AC
+    converters
+
+- Added Switch(es):
+  - Added a switch to manually load the battery [state: 'MAN. SAFETY CHARGE' & 'SAFETY CHARGE READY'] (obviously this
+    will use additional power from grid when your PV inverters will not provide enough power)
+
+    _This switche might sound very foolish - but if you are not subscribed to the (IMHO total overpriced) SENEC-Cloud
+    electricity tariff __and__ you have been smart and signed up for a dynamic price model (based on the current stock
+    price) then loading your battery when the price is the lowest during the day might become a smart move (and also
+    disallow battery usage while the price is average). Specially during the winter!_
+  
+  - EXPERIMENTAL: Added a switch to enable 'storage mode' [state: LITHIUM SAFE MODE DONE'] [disabled by default] 
+    
+    The functionality of this switch is currently __not known__ - IMHO this will disable the functionality of the PV!
+    __Please Note, that once enabled and then disable again the system will go into the 'INSULATION TEST' mode__ for a
+    short while (before returning to normal operation)
+
 - Modified _battery_charge_power_ & _battery_discharge_power_ so that they will only return data >0 when the system
   state is matching the corresponding CHARGE or DISCHARGE state (including state variants)
+
 - Integrated variant of _pysenec_ python lib (almost every modification of this Home Assistant integration requires also
   an adjustment in the lib) - yes of course it would be possible to release also a lib derivative - but right now I am
   just a python beginner, and __I am lazy!__
-- Added German "translation"
+
+- Added German Setup/GUI "translation" (not for the sensor's yet)
 
 ## Installation
 

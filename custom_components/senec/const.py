@@ -3,6 +3,8 @@ from collections import namedtuple
 from datetime import timedelta
 from typing import Final
 
+from dataclasses import dataclass
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntityDescription,
@@ -31,41 +33,51 @@ DEFAULT_HOST = "Senec"
 DEFAULT_NAME = "senec"
 DEFAULT_SCAN_INTERVAL = 30
 
-"""Supported sensor types."""
+@dataclass
+class ExtSensorEntityDescription(SensorEntityDescription):
+    controls: list[str] | None = None
 
+"""Supported main unit switch types."""
 MAIN_SWITCH_TYPES = [
     SwitchEntityDescription(
         key="safe_charge",
         name="Load Battery",
         icon="mdi:battery-charging-high",
     ),
+    SwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="li_storage_mode",
+        name="Lithium Storage Mode - PV OFF",
+        icon="mdi:solar-power",
+    ),
 ]
 
+"""Supported main unit sensor types."""
 MAIN_SENSOR_TYPES = [
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="system_state",
         name="System State",
         icon="mdi:solar-power",
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="battery_temp",
         name="Battery Temperature",
         native_unit_of_measurement=TEMP_CELSIUS,
         icon="mdi:thermometer",
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="case_temp",
         name="Case Temperature",
         native_unit_of_measurement=TEMP_CELSIUS,
         icon="mdi:thermometer",
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="mcu_temp",
         name="Controller Temperature",
         native_unit_of_measurement=TEMP_CELSIUS,
         icon="mdi:thermometer",
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_generated_power",
         name="Solar Generated Power",
         native_unit_of_measurement=POWER_WATT,
@@ -73,7 +85,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="house_power",
         name="House Power",
         native_unit_of_measurement=POWER_WATT,
@@ -81,7 +93,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="battery_state_power",
         name="Battery State Power",
         native_unit_of_measurement=POWER_WATT,
@@ -89,7 +101,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="battery_charge_power",
         name="Battery Charge Power",
         native_unit_of_measurement=POWER_WATT,
@@ -97,7 +109,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="battery_discharge_power",
         name="Battery Discharge Power",
         native_unit_of_measurement=POWER_WATT,
@@ -105,7 +117,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="battery_charge_percent",
         name="Battery Charge Percent",
         native_unit_of_measurement=PERCENTAGE,
@@ -113,7 +125,7 @@ MAIN_SENSOR_TYPES = [
         # device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="grid_state_power",
         name="Grid State Power",
         native_unit_of_measurement=POWER_WATT,
@@ -121,7 +133,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="grid_imported_power",
         name="Grid Imported Power",
         native_unit_of_measurement=POWER_WATT,
@@ -129,7 +141,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="grid_exported_power",
         name="Grid Exported Power",
         native_unit_of_measurement=POWER_WATT,
@@ -137,7 +149,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="house_total_consumption",
         name="House consumed",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -145,7 +157,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_total_generated",
         name="Solar generated",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -153,7 +165,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="battery_total_charged",
         name="Battery charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -161,7 +173,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="battery_total_discharged",
         name="Battery discharged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -169,7 +181,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="grid_total_import",
         name="Grid Imported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -177,7 +189,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="grid_total_export",
         name="Grid Exported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -186,7 +198,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp1_potential",
         name="MPP1 Potential",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -194,7 +206,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp1_current",
         name="MPP1 Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -202,7 +214,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp1_power",
         name="MPP1 Power",
         native_unit_of_measurement=POWER_WATT,
@@ -210,7 +222,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp2_potential",
         name="MPP2 Potential",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -218,7 +230,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp2_current",
         name="MPP2 Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -226,7 +238,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp2_power",
         name="MPP2 Power",
         native_unit_of_measurement=POWER_WATT,
@@ -234,7 +246,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp3_potential",
         name="MPP3 Potential",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -242,7 +254,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp3_current",
         name="MPP3 Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -250,7 +262,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="solar_mpp3_power",
         name="MPP3 Power",
         native_unit_of_measurement=POWER_WATT,
@@ -259,7 +271,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_freq",
         name="Enfluri Net Frequency",
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
@@ -267,7 +279,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.FREQUENCY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_power_total",
         name="Enfluri Net Total Power",
         native_unit_of_measurement=POWER_WATT,
@@ -275,7 +287,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_potential_p1",
         name="Enfluri Net Potential Phase 1",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -283,7 +295,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_potential_p2",
         name="Enfluri Net Potential Phase 2",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -291,7 +303,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_potential_p3",
         name="Enfluri Net Potential Phase 3",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -299,7 +311,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_current_p1",
         name="Enfluri Net Current Phase 1",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -307,7 +319,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_current_p2",
         name="Enfluri Net Current Phase 2",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -315,7 +327,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_current_p3",
         name="Enfluri Net Current Phase 3",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -323,7 +335,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_power_p1",
         name="Enfluri Net Power Phase 1",
         native_unit_of_measurement=POWER_WATT,
@@ -331,7 +343,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_power_p2",
         name="Enfluri Net Power Phase 2",
         native_unit_of_measurement=POWER_WATT,
@@ -339,7 +351,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="enfluri_net_power_p3",
         name="Enfluri Net Power Phase 3",
         native_unit_of_measurement=POWER_WATT,
@@ -347,8 +359,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_freq",
         name="Enfluri Usage Frequency",
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
@@ -356,8 +368,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.FREQUENCY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_power_total",
         name="Enfluri Usage Total Power",
         native_unit_of_measurement=POWER_WATT,
@@ -365,8 +377,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p1",
         name="Enfluri Usage Potential Phase 1",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -374,8 +386,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p2",
         name="Enfluri Usage Potential Phase 2",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -383,8 +395,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p3",
         name="Enfluri Usage Potential Phase 3",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -392,8 +404,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_current_p1",
         name="Enfluri Usage Current Phase 1",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -401,8 +413,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_current_p2",
         name="Enfluri Usage Current Phase 2",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -410,8 +422,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_current_p3",
         name="Enfluri Usage Current Phase 3",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -419,8 +431,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_power_p1",
         name="Enfluri Usage Power Phase 1",
         native_unit_of_measurement=POWER_WATT,
@@ -428,8 +440,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_power_p2",
         name="Enfluri Usage Power Phase 2",
         native_unit_of_measurement=POWER_WATT,
@@ -437,8 +449,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="enfluri_usage_power_p3",
         name="Enfluri Usage Power Phase 3",
         native_unit_of_measurement=POWER_WATT,
@@ -446,8 +458,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_A1",
         name="Module A: Cell Temperature A1",
         icon="mdi:thermometer",
@@ -455,8 +467,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_A2",
         name="Module A: Cell Temperature A2",
         icon="mdi:thermometer",
@@ -464,8 +476,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_A3",
         name="Module A: Cell Temperature A3",
         icon="mdi:thermometer",
@@ -473,8 +485,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_A4",
         name="Module A: Cell Temperature A4",
         icon="mdi:thermometer",
@@ -482,8 +494,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_A5",
         name="Module A: Cell Temperature A5",
         icon="mdi:thermometer",
@@ -491,8 +503,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_A6",
         name="Module A: Cell Temperature A6",
         icon="mdi:thermometer",
@@ -500,8 +512,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_B1",
         name="Module B: Cell Temperature B1",
         icon="mdi:thermometer",
@@ -509,8 +521,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_B2",
         name="Module B: Cell Temperature B2",
         icon="mdi:thermometer",
@@ -518,8 +530,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_B3",
         name="Module B: Cell Temperature B3",
         icon="mdi:thermometer",
@@ -527,8 +539,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_B4",
         name="Module B: Cell Temperature B4",
         icon="mdi:thermometer",
@@ -536,8 +548,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_B5",
         name="Module B: Cell Temperature B5",
         icon="mdi:thermometer",
@@ -545,8 +557,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_B6",
         name="Module B: Cell Temperature B6",
         icon="mdi:thermometer",
@@ -554,8 +566,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_C1",
         name="Module C: Cell Temperature C1",
         icon="mdi:thermometer",
@@ -563,8 +575,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_C2",
         name="Module C: Cell Temperature C2",
         icon="mdi:thermometer",
@@ -572,8 +584,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_C3",
         name="Module C: Cell Temperature C3",
         icon="mdi:thermometer",
@@ -581,8 +593,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_C4",
         name="Module C: Cell Temperature C4",
         icon="mdi:thermometer",
@@ -590,8 +602,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_C5",
         name="Module C: Cell Temperature C5",
         icon="mdi:thermometer",
@@ -599,8 +611,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_C6",
         name="Module C: Cell Temperature C6",
         icon="mdi:thermometer",
@@ -608,8 +620,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_D1",
         name="Module D: Cell Temperature D1",
         icon="mdi:thermometer",
@@ -617,8 +629,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_D2",
         name="Module D: Cell Temperature D2",
         icon="mdi:thermometer",
@@ -626,8 +638,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_D3",
         name="Module D: Cell Temperature D3",
         icon="mdi:thermometer",
@@ -635,8 +647,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_D4",
         name="Module D: Cell Temperature D4",
         icon="mdi:thermometer",
@@ -644,8 +656,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_D5",
         name="Module D: Cell Temperature D5",
         icon="mdi:thermometer",
@@ -653,8 +665,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_temp_D6",
         name="Module D: Cell Temperature D6",
         icon="mdi:thermometer",
@@ -663,8 +675,8 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A1",
         name="Module A: Cell Voltage A1",
         icon="mdi:lightning-bolt",
@@ -672,8 +684,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A2",
         name="Module A: Cell Voltage A2",
         icon="mdi:lightning-bolt",
@@ -681,8 +693,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A3",
         name="Module A: Cell Voltage A3",
         icon="mdi:lightning-bolt",
@@ -690,8 +702,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A4",
         name="Module A: Cell Voltage A4",
         icon="mdi:lightning-bolt",
@@ -699,8 +711,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A5",
         name="Module A: Cell Voltage A5",
         icon="mdi:lightning-bolt",
@@ -708,8 +720,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A6",
         name="Module A: Cell Voltage A6",
         icon="mdi:lightning-bolt",
@@ -717,8 +729,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A7",
         name="Module A: Cell Voltage A7",
         icon="mdi:lightning-bolt",
@@ -726,8 +738,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A8",
         name="Module A: Cell Voltage A8",
         icon="mdi:lightning-bolt",
@@ -735,8 +747,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A9",
         name="Module A: Cell Voltage A9",
         icon="mdi:lightning-bolt",
@@ -744,8 +756,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A10",
         name="Module A: Cell Voltage A10",
         icon="mdi:lightning-bolt",
@@ -753,8 +765,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A11",
         name="Module A: Cell Voltage A11",
         icon="mdi:lightning-bolt",
@@ -762,8 +774,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A12",
         name="Module A: Cell Voltage A12",
         icon="mdi:lightning-bolt",
@@ -771,8 +783,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A13",
         name="Module A: Cell Voltage A13",
         icon="mdi:lightning-bolt",
@@ -780,8 +792,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_A14",
         name="Module A: Cell Voltage A14",
         icon="mdi:lightning-bolt",
@@ -789,8 +801,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B1",
         name="Module B: Cell Voltage B1",
         icon="mdi:lightning-bolt",
@@ -798,8 +810,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B2",
         name="Module B: Cell Voltage B2",
         icon="mdi:lightning-bolt",
@@ -807,8 +819,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B3",
         name="Module B: Cell Voltage B3",
         icon="mdi:lightning-bolt",
@@ -816,8 +828,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B4",
         name="Module B: Cell Voltage B4",
         icon="mdi:lightning-bolt",
@@ -825,8 +837,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B5",
         name="Module B: Cell Voltage B5",
         icon="mdi:lightning-bolt",
@@ -834,8 +846,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B6",
         name="Module B: Cell Voltage B6",
         icon="mdi:lightning-bolt",
@@ -843,8 +855,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B7",
         name="Module B: Cell Voltage B7",
         icon="mdi:lightning-bolt",
@@ -852,8 +864,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B8",
         name="Module B: Cell Voltage B8",
         icon="mdi:lightning-bolt",
@@ -861,8 +873,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B9",
         name="Module B: Cell Voltage B9",
         icon="mdi:lightning-bolt",
@@ -870,8 +882,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B10",
         name="Module B: Cell Voltage B10",
         icon="mdi:lightning-bolt",
@@ -879,8 +891,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B11",
         name="Module B: Cell Voltage B11",
         icon="mdi:lightning-bolt",
@@ -888,8 +900,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B12",
         name="Module B: Cell Voltage B12",
         icon="mdi:lightning-bolt",
@@ -897,8 +909,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B13",
         name="Module B: Cell Voltage B13",
         icon="mdi:lightning-bolt",
@@ -906,8 +918,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_B14",
         name="Module B: Cell Voltage B14",
         icon="mdi:lightning-bolt",
@@ -915,8 +927,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C1",
         name="Module C: Cell Voltage C1",
         icon="mdi:lightning-bolt",
@@ -924,8 +936,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C2",
         name="Module C: Cell Voltage C2",
         icon="mdi:lightning-bolt",
@@ -933,8 +945,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C3",
         name="Module C: Cell Voltage C3",
         icon="mdi:lightning-bolt",
@@ -942,8 +954,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C4",
         name="Module C: Cell Voltage C4",
         icon="mdi:lightning-bolt",
@@ -951,8 +963,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C5",
         name="Module C: Cell Voltage C5",
         icon="mdi:lightning-bolt",
@@ -960,8 +972,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C6",
         name="Module C: Cell Voltage C6",
         icon="mdi:lightning-bolt",
@@ -969,8 +981,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C7",
         name="Module C: Cell Voltage C7",
         icon="mdi:lightning-bolt",
@@ -978,8 +990,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C8",
         name="Module C: Cell Voltage C8",
         icon="mdi:lightning-bolt",
@@ -987,8 +999,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C9",
         name="Module C: Cell Voltage C9",
         icon="mdi:lightning-bolt",
@@ -996,8 +1008,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C10",
         name="Module C: Cell Voltage C10",
         icon="mdi:lightning-bolt",
@@ -1005,8 +1017,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C11",
         name="Module C: Cell Voltage C11",
         icon="mdi:lightning-bolt",
@@ -1014,8 +1026,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C12",
         name="Module C: Cell Voltage C12",
         icon="mdi:lightning-bolt",
@@ -1023,8 +1035,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C13",
         name="Module C: Cell Voltage C13",
         icon="mdi:lightning-bolt",
@@ -1032,8 +1044,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_C14",
         name="Module C: Cell Voltage C14",
         icon="mdi:lightning-bolt",
@@ -1041,8 +1053,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D1",
         name="Module D: Cell Voltage D1",
         icon="mdi:lightning-bolt",
@@ -1050,8 +1062,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D2",
         name="Module D: Cell Voltage D2",
         icon="mdi:lightning-bolt",
@@ -1059,8 +1071,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D3",
         name="Module D: Cell Voltage D3",
         icon="mdi:lightning-bolt",
@@ -1068,8 +1080,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D4",
         name="Module D: Cell Voltage D4",
         icon="mdi:lightning-bolt",
@@ -1077,8 +1089,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D5",
         name="Module D: Cell Voltage D5",
         icon="mdi:lightning-bolt",
@@ -1086,8 +1098,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D6",
         name="Module D: Cell Voltage D6",
         icon="mdi:lightning-bolt",
@@ -1095,8 +1107,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D7",
         name="Module D: Cell Voltage D7",
         icon="mdi:lightning-bolt",
@@ -1104,8 +1116,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D8",
         name="Module D: Cell Voltage D8",
         icon="mdi:lightning-bolt",
@@ -1113,8 +1125,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D9",
         name="Module D: Cell Voltage D9",
         icon="mdi:lightning-bolt",
@@ -1122,8 +1134,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D10",
         name="Module D: Cell Voltage D10",
         icon="mdi:lightning-bolt",
@@ -1131,8 +1143,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D11",
         name="Module D: Cell Voltage D11",
         icon="mdi:lightning-bolt",
@@ -1140,8 +1152,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D12",
         name="Module D: Cell Voltage D12",
         icon="mdi:lightning-bolt",
@@ -1149,8 +1161,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D13",
         name="Module D: Cell Voltage D13",
         icon="mdi:lightning-bolt",
@@ -1158,8 +1170,8 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="bms_cell_volt_D14",
         name="Module D: Cell Voltage D14",
         icon="mdi:lightning-bolt",
@@ -1168,7 +1180,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_voltage_A",
         name="Module A: Voltage",
         icon="mdi:lightning-bolt",
@@ -1176,7 +1188,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_voltage_B",
         name="Module B: Voltage",
         icon="mdi:lightning-bolt",
@@ -1184,7 +1196,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_voltage_C",
         name="Module C: Voltage",
         icon="mdi:lightning-bolt",
@@ -1192,7 +1204,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_voltage_D",
         name="Module D: Voltage",
         icon="mdi:lightning-bolt",
@@ -1201,7 +1213,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_current_A",
         name="Module A: Current",
         icon="mdi:current-dc",
@@ -1209,7 +1221,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_current_B",
         name="Module B: Current",
         icon="mdi:current-dc",
@@ -1217,7 +1229,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_current_C",
         name="Module C: Current",
         icon="mdi:current-dc",
@@ -1225,7 +1237,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_current_D",
         name="Module D: Current",
         icon="mdi:current-dc",
@@ -1234,28 +1246,28 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soc_A",
         name="Module A: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soc_B",
         name="Module B: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soc_C",
         name="Module C: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soc_D",
         name="Module D: State of charge",
         icon="mdi:battery-charging-high",
@@ -1263,28 +1275,28 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soh_A",
         name="Module A: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soh_B",
         name="Module B: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soh_C",
         name="Module C: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_soh_D",
         name="Module D: State of Health",
         icon="mdi:battery-heart-variant",
@@ -1292,28 +1304,28 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_cycles_A",
         name="Module A: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_cycles_B",
         name="Module B: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_cycles_C",
         name="Module C: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="bms_cycles_D",
         name="Module D: Cycles",
         icon="mdi:battery-sync",
@@ -1322,8 +1334,8 @@ MAIN_SENSOR_TYPES = [
     ),
 
     # wallbox stuff
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="wallbox_power",
         name="Wallbox Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1331,14 +1343,14 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="wallbox_ev_connected",
         name="Wallbox EV Connected",
         icon="mdi:car-electric",
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="wallbox_energy",
         name="Wallbox charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -1349,7 +1361,7 @@ MAIN_SENSOR_TYPES = [
 ]
 
 INVERTER_SENSOR_TYPES = [
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="ac_voltage",
         name="AC Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1358,7 +1370,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="ac_current",
         name="AC current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1367,7 +1379,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="ac_power",
         name="AC Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1376,7 +1388,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="ac_power_fast",
         name="AC Power (fast)",
         native_unit_of_measurement=POWER_WATT,
@@ -1385,7 +1397,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="ac_frequency",
         name="AC Frequency",
         native_unit_of_measurement=UnitOfFrequency.HERTZ,
@@ -1395,8 +1407,8 @@ INVERTER_SENSOR_TYPES = [
     ),
 
 
-    SensorEntityDescription(
-        options=("bdc_only"),
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
         key="bdc_bat_voltage",
         name="BDC Battery Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1405,8 +1417,8 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
-        options=("bdc_only"),
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
         key="bdc_bat_current",
         name="BDC Battery Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1415,8 +1427,8 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
-        options=("bdc_only"),
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
         key="bdc_bat_power",
         name="BDC Battery Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1425,8 +1437,8 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
-        options=("bdc_only"),
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
         key="bdc_link_voltage",
         name="BDC Link Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1435,8 +1447,8 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
-        options=("bdc_only"),
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
         key="bdc_link_current",
         name="BDC Link Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1445,8 +1457,8 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
-        options=("bdc_only"),
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
         key="bdc_link_power",
         name="BDC Link Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1455,7 +1467,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="dc_voltage1",
         name="DC Voltage 1",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1463,7 +1475,7 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="dc_voltage2",
         name="DC Voltage 2",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1471,7 +1483,7 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="dc_current1",
         name="DC current 1",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1479,8 +1491,8 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="dc_current2",
         name="DC current 2",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1489,8 +1501,8 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="gridpower",
         name="Grid Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1498,8 +1510,8 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="gridconsumedpower",
         name="Grid consumed Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1507,8 +1519,8 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="gridinjectedpower",
         name="Grid injected Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1516,8 +1528,8 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
-        options=("disabled_by_default"),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
         key="ownconsumedpower",
         name="Own consumed Power",
         native_unit_of_measurement=POWER_WATT,
@@ -1525,7 +1537,7 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="derating",
         name="Derating",
         native_unit_of_measurement=PERCENTAGE,

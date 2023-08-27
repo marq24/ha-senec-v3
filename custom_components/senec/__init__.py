@@ -13,7 +13,8 @@ from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from custom_components.senec.pysenec_ha import Senec, Inverter
 
-from .const import DEFAULT_HOST, DEFAULT_NAME, DOMAIN, MANUFACTURE, CONF_DEV_TYPE, CONF_DEV_NAME, CONF_DEV_SERIAL, CONF_DEV_VERSION
+from .const import DEFAULT_HOST, DEFAULT_NAME, DOMAIN, MANUFACTURE, CONF_DEV_TYPE, CONF_DEV_NAME, CONF_DEV_SERIAL, \
+    CONF_DEV_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
@@ -98,10 +99,12 @@ async def async_unload_entry(hass, entry):
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
 
+
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
+
 
 class SenecEntity(Entity):
     """Defines a base Senec entity."""
@@ -109,15 +112,14 @@ class SenecEntity(Entity):
     _attr_should_poll = False
 
     def __init__(
-        self, coordinator: SenecDataUpdateCoordinator, description: EntityDescription
+            self, coordinator: SenecDataUpdateCoordinator, description: EntityDescription
     ) -> None:
-        """Initialize the Atag entity."""
         self.coordinator = coordinator
+        self.entity_description = description
         self._name = coordinator._entry.title
         self._state = None
         self._entry = coordinator._entry
-        self._host =  coordinator._host
-        self.entity_description = description
+        self._host = coordinator._host
 
     @property
     def device_info(self) -> dict:
@@ -128,7 +130,7 @@ class SenecEntity(Entity):
         dmodel = self._entry.options.get(CONF_DEV_NAME, self._entry.data.get(CONF_DEV_NAME))
         device = self._name
         host = self._host
-        #"hw_version": self._entry.options.get(CONF_DEV_NAME, self._entry.data.get(CONF_DEV_NAME)),
+        # "hw_version": self._entry.options.get(CONF_DEV_NAME, self._entry.data.get(CONF_DEV_NAME)),
         return {
             "identifiers": {(DOMAIN, host, device)},
             "name": f"{dtype}: {device}",

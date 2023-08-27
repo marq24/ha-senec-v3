@@ -12,28 +12,27 @@ from homeassistant.const import CONF_TYPE
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
     if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == 'inverter'):
         for description in INVERTER_SENSOR_TYPES:
-            addEntity = description.options is None
-            if(not addEntity):
-                if('bdc_only' in description.options):
-                    if(config_entry.data[CONF_SUPPORT_BDC]):
+            addEntity = description.controls is None
+            if (not addEntity):
+                if ('bdc_only' in description.controls):
+                    if (config_entry.data[CONF_SUPPORT_BDC]):
                         addEntity = True
                 else:
                     addEntity = True
 
             if (addEntity):
-                enabledByDefault  = description.options is None or 'disabled_by_default' not in description.options
-                entity = SenecSensor(coordinator, description, enabledByDefault)
+                entity = SenecSensor(coordinator, description)
                 entities.append(entity)
     else:
         for description in MAIN_SENSOR_TYPES:
-            enabledByDefault  = description.options is None or 'disabled_by_default' not in description.options
-            entity = SenecSensor(coordinator, description, enabledByDefault)
+            entity = SenecSensor(coordinator, description)
             entities.append(entity)
 
     async_add_entities(entities)
@@ -45,24 +44,20 @@ class SenecSensor(SenecEntity, SensorEntity):
     def __init__(
             self,
             coordinator: SenecDataUpdateCoordinator,
-            description: SensorEntityDescription,
-            enabled: bool,
+            description: SensorEntityDescription
     ):
         """Initialize a singular value sensor."""
         super().__init__(coordinator=coordinator, description=description)
+        if (hasattr(self.entity_description, 'entity_registry_enabled_default')):
+            self._attr_entity_registry_enabled_default = self.entity_description.entity_registry_enabled_default
+        else:
+            self._attr_entity_registry_enabled_default = True
 
         title = self.coordinator._entry.title
         key = self.entity_description.key
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"
         self._attr_name = f"{title} {name}"
-        self._coordinator = coordinator
-        self._enabled_by_default = enabled
-
-    @property
-    def entity_registry_enabled_default(self):
-        """Return the entity_registry_enabled_default of the sensor."""
-        return self._enabled_by_default
 
     @property
     def state(self):

@@ -13,6 +13,7 @@ from .const import DOMAIN, MAIN_SWITCH_TYPES
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
@@ -21,32 +22,34 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
     else:
         entities = []
         for description in MAIN_SWITCH_TYPES:
-            entity = SenecSwitch(coordinator, description, True)
+            entity = SenecSwitch(coordinator, description)
             entities.append(entity)
         async_add_entities(entities)
+
 
 class SenecSwitch(SenecEntity, SwitchEntity):
     def __init__(
             self,
             coordinator: SenecDataUpdateCoordinator,
-            description: SwitchEntityDescription,
-            enabled: bool,
+            description: SwitchEntityDescription
     ):
         """Initialize a singular value sensor."""
         super().__init__(coordinator=coordinator, description=description)
+        if (hasattr(self.entity_description, 'entity_registry_enabled_default')):
+            self._attr_entity_registry_enabled_default = self.entity_description.entity_registry_enabled_default
+        else:
+            self._attr_entity_registry_enabled_default = True
 
         title = self.coordinator._entry.title
         key = self.entity_description.key
         name = self.entity_description.name
         self.entity_id = f"switch.{slugify(title)}_{key}"
         self._attr_name = f"{title} {name}"
-        self._coordinator = coordinator
-        self._enabled_by_default = enabled
 
     async def async_turn_on(self, **kwargs):  # pylint: disable=unused-argument
         """Turn on the switch."""
         try:
-            await self._coordinator._async_switch_to_state(self.entity_description.key, True)
+            await self.coordinator._async_switch_to_state(self.entity_description.key, True)
             return getattr(self.coordinator.senec, self.entity_description.key)
         except ValueError:
             return "unavailable"
@@ -55,7 +58,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         """Turn off the switch."""
         try:
             # print(option)
-            await self._coordinator._async_switch_to_state(self.entity_description.key, False)
+            await self.coordinator._async_switch_to_state(self.entity_description.key, False)
             return getattr(self.coordinator.senec, self.entity_description.key)
         except ValueError:
             return "unavailable"
@@ -75,10 +78,6 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         except TypeError:
             return None
         return value
-
-    def entity_registry_enabled_default(self):
-        """Return the entity_registry_enabled_default of the sensor."""
-        return self._enabled_by_default
 
     @property
     def state(self) -> Literal["on", "off"] | None:

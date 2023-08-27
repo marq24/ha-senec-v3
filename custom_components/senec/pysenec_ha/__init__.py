@@ -20,9 +20,10 @@ BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 43, 71}
 # 16: "DISCHARGE",
 # 17: "PV + DISCHARGE",
 # 18: "GRID + DISCHARGE"
+# 21: "OWN CONSUMPTION"
 # 44: "CAPACITY TEST: DISCHARGE",
 # 97: "SAFETY DISCHARGE",
-BAT_STATUS_DISCHARGE = {16, 17, 18, 44, 97}
+BAT_STATUS_DISCHARGE = {16, 17, 18, 21, 44, 97}
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -850,26 +851,6 @@ class Senec:
         """
         return self._raw["STATISTIC"]["LIVE_WB_ENERGY"][0]
 
-    ## LADEN...
-    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
-
-    ## Freigeben...
-    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
-
-    # function sendTestPower(e) {
-    #    var t = "[";
-    # for (c = 0; c < 3; c++) t += '"', t += e ? pageObj.castVarValue("fl", -$("#itestpower").val() / 3) : pageObj.castVarValue("fl", $("#itestpower").val() / 3), c < 2 && (t += '",');
-    # t += '"]', pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", t)
-    # }
-
-    # function ChargebtnClickEvent() {
-    #    1 == chargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!0), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
-    # }
-
-    # function DischargebtnClickEvent() {
-    #    1 == dischargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!1), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
-    # }
-
     async def update(self):
         await self.read_senec_v31()
 
@@ -895,6 +876,7 @@ class Senec:
                 "GUI_BAT_DATA_OA_CHARGING": "",
                 "STAT_LIMITED_NET_SKEW": "",
                 "SAFE_CHARGE_RUNNING": "",
+                "LI_STORAGE_MODE_RUNNING": "",
             },
             "STATISTIC": {
                 "LIVE_BAT_CHARGE": "",
@@ -1019,6 +1001,26 @@ class Senec:
             res.raise_for_status()
             self._raw = parse(await res.json())
 
+    ## LADEN...
+    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
+
+    ## Freigeben...
+    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
+
+    # function sendTestPower(e) {
+    #    var t = "[";
+    # for (c = 0; c < 3; c++) t += '"', t += e ? pageObj.castVarValue("fl", -$("#itestpower").val() / 3) : pageObj.castVarValue("fl", $("#itestpower").val() / 3), c < 2 && (t += '",');
+    # t += '"]', pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", t)
+    # }
+
+    # function ChargebtnClickEvent() {
+    #    1 == chargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!0), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
+    # }
+
+    # function DischargebtnClickEvent() {
+    #    1 == dischargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!1), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
+    # }
+
     @property
     def safe_charge(self) -> bool:
         if (hasattr(self, '_raw')):
@@ -1033,6 +1035,24 @@ class Senec:
         else:
             postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01", "SAFE_CHARGE_RUNNING": "",
                                    "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
+                                   "LI_STORAGE_MODE_RUNNING": ""}}
+
+        await self.write(postdata)
+
+    @property
+    def li_storage_mode(self) -> bool:
+        if (hasattr(self, '_raw')):
+            return self._raw["ENERGY"]["LI_STORAGE_MODE_RUNNING"] == 1
+
+    async def switch_li_storage_mode(self, value):
+        postdata = {}
+        if (value):
+            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
+                                   "LI_STORAGE_MODE_START": "u8_01", "LI_STORAGE_MODE_STOP": "",
+                                   "LI_STORAGE_MODE_RUNNING": ""}}
+        else:
+            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
+                                   "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "u8_01",
                                    "LI_STORAGE_MODE_RUNNING": ""}}
 
         await self.write(postdata)
