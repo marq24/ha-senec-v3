@@ -354,6 +354,50 @@ class Senec:
     def enfluri_net_power_total(self) -> float:
         return self._raw["PM1OBJ1"]["P_TOTAL"]
 
+    @property
+    def enfluri_usage_freq(self) -> float:
+        return self._raw["PM1OBJ2"]["FREQ"]
+
+    @property
+    def enfluri_usage_potential_p1(self) -> float:
+        return self._raw["PM1OBJ2"]["U_AC"][0]
+
+    @property
+    def enfluri_usage_potential_p2(self) -> float:
+        return self._raw["PM1OBJ2"]["U_AC"][1]
+
+    @property
+    def enfluri_usage_potential_p3(self) -> float:
+        return self._raw["PM1OBJ2"]["U_AC"][2]
+
+    @property
+    def enfluri_usage_current_p1(self) -> float:
+        return self._raw["PM1OBJ2"]["I_AC"][0]
+
+    @property
+    def enfluri_usage_current_p2(self) -> float:
+        return self._raw["PM1OBJ2"]["I_AC"][1]
+
+    @property
+    def enfluri_usage_current_p3(self) -> float:
+        return self._raw["PM1OBJ2"]["I_AC"][2]
+
+    @property
+    def enfluri_usage_power_p1(self) -> float:
+        return self._raw["PM1OBJ2"]["P_AC"][0]
+
+    @property
+    def enfluri_usage_power_p2(self) -> float:
+        return self._raw["PM1OBJ2"]["P_AC"][1]
+
+    @property
+    def enfluri_usage_power_p3(self) -> float:
+        return self._raw["PM1OBJ2"]["P_AC"][2]
+
+    @property
+    def enfluri_usage_power_total(self) -> float:
+        return self._raw["PM1OBJ2"]["P_TOTAL"]
+
     def is_battery_empty(self) -> bool:
         # 15: "BATTERY EMPTY",
         bat_state_is_empty = self._raw["ENERGY"]["STAT_STATE"] == 15
@@ -994,7 +1038,7 @@ class Senec:
         await self.write(postdata)
 
     async def switch(self, switch_key, value):
-        return await getattr(self, 'switch_'+str(switch_key))(value)
+        return await getattr(self, 'switch_' + str(switch_key))(value)
 
     async def write(self, data):
         await self.write_senec_v31(data)
