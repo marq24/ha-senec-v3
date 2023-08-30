@@ -5,10 +5,10 @@ from homeassistant.components.sensor import SensorEntity, SensorEntityDescriptio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util import slugify
+from homeassistant.const import CONF_TYPE
 
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_SENSOR_TYPES, INVERTER_SENSOR_TYPES, CONF_SUPPORT_BDC
-from homeassistant.const import CONF_TYPE
+from .const import DOMAIN, MAIN_SENSOR_TYPES, INVERTER_SENSOR_TYPES, CONF_SUPPORT_BDC, CONF_SYSTYPE_INVERTER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,17 +17,17 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
-    if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == 'inverter'):
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         for description in INVERTER_SENSOR_TYPES:
             addEntity = description.controls is None
-            if (not addEntity):
-                if ('bdc_only' in description.controls):
+            if not addEntity:
+                if 'bdc_only' in description.controls:
                     if (config_entry.data[CONF_SUPPORT_BDC]):
                         addEntity = True
                 else:
                     addEntity = True
 
-            if (addEntity):
+            if addEntity:
                 entity = SenecSensor(coordinator, description)
                 entities.append(entity)
     else:

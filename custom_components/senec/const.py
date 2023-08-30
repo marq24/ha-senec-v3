@@ -1,8 +1,5 @@
 """Constants for the Senec integration."""
-from collections import namedtuple
-from datetime import timedelta
 from typing import Final
-
 from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
@@ -20,22 +17,49 @@ from homeassistant.const import (
     UnitOfElectricCurrent, UnitOfFrequency,
 )
 
-DOMAIN = "senec"
-MANUFACTURE = "SENEC GmbH"
-CONF_DEV_TYPE = "dtype"
-CONF_SUPPORT_BDC = "has_bdc_support"
-CONF_DEV_NAME = "dname"
-CONF_DEV_SERIAL = "dserial"
-CONF_DEV_VERSION = "version"
+DOMAIN: Final = "senec"
+MANUFACTURE: Final = "SENEC GmbH"
+SYSTYPE_SENECV4: Final = "systype_senecv4"
+SYSTYPE_SENECV3: Final = "systype_senecv3"
+SYSTYPE_SENECV2: Final = "systype_senecv2"
+SYSTYPE_INVERTV3: Final = "systype_invertv3"
+#SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_INVERTV3]
+SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV2, SYSTYPE_INVERTV3]
+
+MODE_WEB: Final = "mode_web"
+MODE_LOCAL: Final = "mode_local"
+SYSTEM_MODES: Final = [MODE_LOCAL, MODE_WEB]
+
+SETUP_SYS_TYPE: Final = "stype"
+SETUP_SYS_MODE: Final = "smode"
+
+CONF_DEV_TYPE: Final = "dtype"
+CONF_DEV_TYPE_INT: Final = "dtype_int"
+CONF_USE_HTTPS: Final = "use_https"
+CONF_SUPPORT_BDC: Final = "has_bdc_support"
+CONF_DEV_NAME: Final = "dname"
+CONF_DEV_SERIAL: Final = "dserial"
+CONF_DEV_VERSION: Final = "version"
+
+CONF_SYSTYPE_SENEC: Final = "senec"
+CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"
+CONF_SYSTYPE_INVERTER: Final = "inverter"
+CONF_SYSTYPE_WEB: Final = "web"
 
 """Default config for Senec."""
+DEFAULT_SYSTEM = SYSTYPE_SENECV3
+DEFAULT_MODE = MODE_LOCAL
 DEFAULT_HOST = "Senec"
+DEFAULT_HOST_INVERTER = "Inverter"
 DEFAULT_NAME = "senec"
+DEFAULT_NAME_INVERTER = "Inverter"
 DEFAULT_SCAN_INTERVAL = 30
+DEFAULT_SCAN_INTERVAL_SENECV2 = 60
 
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
+
 
 """Supported main unit switch types."""
 MAIN_SWITCH_TYPES = [
@@ -151,6 +175,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="house_total_consumption",
+        controls=("require_stats_fields"),
         name="House consumed",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:home-import-outline",
@@ -159,6 +184,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="solar_total_generated",
+        controls=("require_stats_fields"),
         name="Solar generated",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:solar-power",
@@ -167,6 +193,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="battery_total_charged",
+        controls=("require_stats_fields"),
         name="Battery charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:home-battery",
@@ -175,6 +202,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="battery_total_discharged",
+        controls=("require_stats_fields"),
         name="Battery discharged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:home-battery-outline",
@@ -183,6 +211,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="grid_total_import",
+        controls=("require_stats_fields"),
         name="Grid Imported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:transmission-tower-import",
@@ -191,6 +220,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="grid_total_export",
+        controls=("require_stats_fields"),
         name="Grid Exported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:transmission-tower-export",
@@ -1351,6 +1381,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
+        controls=("require_stats_fields"),
         key="wallbox_energy",
         name="Wallbox charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
@@ -1405,7 +1436,6 @@ INVERTER_SENSOR_TYPES = [
         device_class=SensorDeviceClass.FREQUENCY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
 
     ExtSensorEntityDescription(
         controls=("bdc_only"),

@@ -1,4 +1,20 @@
 {
+    "selector": {
+        "stype": {
+            "options": {
+                "systype_senecv4": "SENEC.Home V4/SENEC.Home V4 hybrid",
+                "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
+                "systype_senecv2": "SENEC.Home V2.1 or older",
+                "systype_invertv3": "Inverter build into SENEC.Home V3 hybrid/hybrid duo"
+            }
+        },
+        "smode": {
+            "options": {
+                "mode_web": "WEB-API: Access via https://mein-senec.de/ web api",
+                "mode_local": "LAN: Access via local LAN (IP of SENEC.Home or Inverter)"
+            }
+        }
+    },
     "config": {
         "abort": {
             "already_configured": "Integration is already configured"
@@ -9,6 +25,18 @@
         },
         "step": {
             "user": {
+                "description": "Please select the version of your SENEC.Home System you would like to add - If you need help with the configuration have a look at: https://github.com/marq24/ha-senec-v3",
+                "data": {
+                    "stype": "Select System type"
+                }
+            },
+            "mode": {
+                "description": "For a Senec.HOME V2.x or V3 you can select between a direct access via LAN or access via the 'mein-senec' web portal",
+                "data": {
+                    "smode": "Select Access mode"
+                }
+            },
+            "system": {
                 "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "name": "Display name",
