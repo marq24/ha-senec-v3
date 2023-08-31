@@ -32,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = ["sensor", "switch"]
+PLATFORMS = ["sensor", "binary_sensor", "switch"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):

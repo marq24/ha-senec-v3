@@ -2,6 +2,7 @@
 from typing import Final
 from dataclasses import dataclass
 
+from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntityDescription,
@@ -16,6 +17,7 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfElectricCurrent, UnitOfFrequency,
 )
+from homeassistant.helpers.entity import EntityCategory
 
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
@@ -60,6 +62,9 @@ DEFAULT_SCAN_INTERVAL_SENECV2 = 60
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
 
+@dataclass
+class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
+    icon_off: str | None = None
 
 """Supported main unit switch types."""
 MAIN_SWITCH_TYPES = [
@@ -76,6 +81,25 @@ MAIN_SWITCH_TYPES = [
     ),
 ]
 
+"""Supported main unit binary_sensor types."""
+MAIN_BIN_SENSOR_TYPES = [
+    ExtBinarySensorEntityDescription(
+        key="fan_inv_lv",
+        name="Fan LV-Inverter",
+        icon="mdi:fan",
+        icon_off="mdi:fan-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="fan_inv_hv",
+        name="Fan HV-Inverter",
+        icon="mdi:fan",
+        icon_off="mdi:fan-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+]
+
 """Supported main unit sensor types."""
 MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
@@ -88,18 +112,21 @@ MAIN_SENSOR_TYPES = [
         name="Battery Temperature",
         native_unit_of_measurement=TEMP_CELSIUS,
         icon="mdi:thermometer",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         key="case_temp",
         name="Case Temperature",
         native_unit_of_measurement=TEMP_CELSIUS,
         icon="mdi:thermometer",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         key="mcu_temp",
         name="Controller Temperature",
         native_unit_of_measurement=TEMP_CELSIUS,
         icon="mdi:thermometer",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         key="solar_generated_power",
@@ -496,6 +523,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -505,6 +533,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -514,6 +543,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -523,6 +553,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -532,6 +563,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -541,6 +573,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -550,6 +583,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -559,6 +593,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -568,6 +603,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -577,6 +613,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -586,6 +623,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -595,6 +633,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -604,6 +643,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -613,6 +653,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -622,6 +663,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -631,6 +673,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -640,6 +683,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -649,6 +693,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -658,6 +703,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -667,6 +713,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -676,6 +723,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -685,6 +733,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -694,6 +743,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -703,6 +753,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=TEMP_CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 
     ExtSensorEntityDescription(

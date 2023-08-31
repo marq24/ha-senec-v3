@@ -848,6 +848,16 @@ class Senec:
         if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_WB_ENERGY" in self._raw["STATISTIC"]:
             return self._raw["STATISTIC"]["LIVE_WB_ENERGY"][0]
 
+    @property
+    def fan_inv_lv(self) -> bool:
+        if hasattr(self, '_raw') and "FAN_SPEED" in self._raw and "INV_LV" in self._raw["FAN_SPEED"]:
+            return self._raw["FAN_SPEED"]["INV_LV"]
+    @property
+    def fan_inv_hv(self) -> bool:
+        if hasattr(self, '_raw') and "FAN_SPEED" in self._raw and "INV_HV" in self._raw["FAN_SPEED"]:
+            return self._raw["FAN_SPEED"]["INV_HV"]
+
+
     async def update(self):
         await self.read_senec_v31()
 
@@ -919,6 +929,7 @@ class Senec:
                 "L3_CHARGING_CURRENT": "",
                 "EV_CONNECTED": ""
             },
+            "FAN_SPEED":{},
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
