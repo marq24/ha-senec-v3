@@ -9,7 +9,7 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 
 from typing import Literal
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_SWITCH_TYPES, CONF_SYSTYPE_INVERTER
+from .const import DOMAIN, MAIN_SWITCH_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +19,8 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER):
         _LOGGER.info("No switches for Inverters...")
+    if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB):
+        _LOGGER.info("No switches for WebPortal...")
     else:
         entities = []
         for description in MAIN_SWITCH_TYPES:

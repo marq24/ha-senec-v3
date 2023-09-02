@@ -8,7 +8,16 @@ from homeassistant.util import slugify
 from homeassistant.const import CONF_TYPE
 
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_SENSOR_TYPES, INVERTER_SENSOR_TYPES, CONF_SUPPORT_BDC, CONF_SYSTYPE_INVERTER
+from .const import (
+    DOMAIN,
+    MAIN_SENSOR_TYPES,
+    INVERTER_SENSOR_TYPES,
+    WEB_SENSOR_TYPES,
+    CONF_SUPPORT_BDC,
+    CONF_SUPPORT_STATS,
+    CONF_SYSTYPE_INVERTER,
+    CONF_SYSTYPE_WEB
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,10 +39,22 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
             if addEntity:
                 entity = SenecSensor(coordinator, description)
                 entities.append(entity)
-    else:
-        for description in MAIN_SENSOR_TYPES:
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+        for description in WEB_SENSOR_TYPES:
             entity = SenecSensor(coordinator, description)
             entities.append(entity)
+    else:
+        for description in MAIN_SENSOR_TYPES:
+            addEntity = description.controls is None
+            if not addEntity:
+                if 'require_stats_fields' in description.controls:
+                    if CONF_SUPPORT_STATS not in config_entry.data or config_entry.data[CONF_SUPPORT_STATS]:
+                        addEntity = True
+                else:
+                    addEntity = True
+            if addEntity:
+                entity = SenecSensor(coordinator, description)
+                entities.append(entity)
 
     async_add_entities(entities)
 
@@ -64,6 +85,7 @@ class SenecSensor(SenecEntity, SensorEntity):
         """Return the current state."""
         sensor = self.entity_description.key
         value = getattr(self.coordinator.senec, sensor)
+        #_LOGGER.debug( str(sensor)+' '+ str(type(value)) +' '+str(value))
         if type(value) != type(False):
             try:
                 rounded_value = round(float(value), 2)

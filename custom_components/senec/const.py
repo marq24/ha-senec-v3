@@ -22,11 +22,11 @@ from homeassistant.helpers.entity import EntityCategory
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
 SYSTYPE_SENECV4: Final = "systype_senecv4"
+SYSTYPE_WEBAPI: Final = "systype_webapi"
 SYSTYPE_SENECV3: Final = "systype_senecv3"
 SYSTYPE_SENECV2: Final = "systype_senecv2"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
-#SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_INVERTV3]
-SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV2, SYSTYPE_INVERTV3]
+SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
 
 MODE_WEB: Final = "mode_web"
 MODE_LOCAL: Final = "mode_local"
@@ -39,6 +39,7 @@ CONF_DEV_TYPE: Final = "dtype"
 CONF_DEV_TYPE_INT: Final = "dtype_int"
 CONF_USE_HTTPS: Final = "use_https"
 CONF_SUPPORT_BDC: Final = "has_bdc_support"
+CONF_SUPPORT_STATS: Final = "has_statistics"
 CONF_DEV_NAME: Final = "dname"
 CONF_DEV_SERIAL: Final = "dserial"
 CONF_DEV_VERSION: Final = "version"
@@ -53,10 +54,14 @@ DEFAULT_SYSTEM = SYSTYPE_SENECV3
 DEFAULT_MODE = MODE_LOCAL
 DEFAULT_HOST = "Senec"
 DEFAULT_HOST_INVERTER = "Inverter"
+DEFAULT_USERNAME = "E-Mail"
 DEFAULT_NAME = "senec"
 DEFAULT_NAME_INVERTER = "Inverter"
+DEFAULT_NAME_WEB = "senec_WEBAPI"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_SCAN_INTERVAL_SENECV2 = 60
+# 5 minutes... [do not spam mein-senec.de]
+DEFAULT_SCAN_INTERVAL_WEB = 300
 
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
@@ -98,6 +103,122 @@ MAIN_BIN_SENSOR_TYPES = [
         icon_off="mdi:fan-off",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+]
+
+WEB_SENSOR_TYPES = [
+
+    SensorEntityDescription(
+       key="consumption_total",
+       name="House consumed",
+       native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+       icon="mdi:home-import-outline",
+       device_class=SensorDeviceClass.ENERGY,
+       state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+       key="powergenerated_total",
+       name="Solar generated",
+       native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+       icon="mdi:solar-power",
+       device_class=SensorDeviceClass.ENERGY,
+       state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+       key="accuimport_total",
+       name="Battery charged",
+       native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+       icon="mdi:home-battery",
+       device_class=SensorDeviceClass.ENERGY,
+       state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+       key="accuexport_total",
+       name="Battery discharged",
+       native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+       icon="mdi:home-battery-outline",
+       device_class=SensorDeviceClass.ENERGY,
+       state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+       key="gridimport_total",
+       name="Grid Imported",
+       native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+       icon="mdi:transmission-tower-import",
+       device_class=SensorDeviceClass.ENERGY,
+       state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    SensorEntityDescription(
+       key="gridexport_total",
+       name="Grid Exported",
+       native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+       icon="mdi:transmission-tower-export",
+       device_class=SensorDeviceClass.ENERGY,
+       state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+
+    #accuimport_today
+    #accuexport_today
+    #gridimport_today
+    #gridexport_today
+    #powergenerated_today
+    #consumption_today
+
+    SensorEntityDescription(
+       key="powergenerated_now",
+       name="Solar Generated Power",
+       native_unit_of_measurement=POWER_WATT,
+       icon="mdi:solar-power",
+       device_class=SensorDeviceClass.POWER,
+       state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+       key="consumption_now",
+       name="House Power",
+       native_unit_of_measurement=POWER_WATT,
+       icon="mdi:home-import-outline",
+       device_class=SensorDeviceClass.POWER,
+       state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+       key="accuimport_now",
+       name="Battery Charge Power",
+       native_unit_of_measurement=POWER_WATT,
+       icon="mdi:home-battery",
+       device_class=SensorDeviceClass.POWER,
+       state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+       key="accuexport_now",
+       name="Battery Discharge Power",
+       native_unit_of_measurement=POWER_WATT,
+       icon="mdi:home-battery-outline",
+       device_class=SensorDeviceClass.POWER,
+       state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+       key="acculevel_now",
+       name="Battery Charge Percent",
+       native_unit_of_measurement=PERCENTAGE,
+       icon="mdi:home-battery",
+       # device_class=SensorDeviceClass.BATTERY,
+       state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+       key="gridimport_now",
+       name="Grid Imported Power",
+       native_unit_of_measurement=POWER_WATT,
+       icon="mdi:transmission-tower-import",
+       device_class=SensorDeviceClass.POWER,
+       state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+       key="gridexport_now",
+       name="Grid Exported Power",
+       native_unit_of_measurement=POWER_WATT,
+       icon="mdi:transmission-tower-export",
+       device_class=SensorDeviceClass.POWER,
+       state_class=SensorStateClass.MEASUREMENT,
+    )
 ]
 
 """Supported main unit sensor types."""

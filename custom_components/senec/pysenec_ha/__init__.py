@@ -6,6 +6,13 @@ from datetime import datetime
 from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME, SYSTEM_TYPE_NAME, BATT_TYPE_NAME
 from custom_components.senec.pysenec_ha.util import parse
 
+# required to patch the CookieJar of aiohttp - thanks for nothing!
+import contextlib
+from http.cookies import BaseCookie, SimpleCookie
+from aiohttp.helpers import is_ip_address
+from yarl import URL
+from typing import Union
+
 # 4: "INITIAL CHARGE",
 # 5: "MAINTENANCE CHARGE",
 # 8: "MAN. SAFETY CHARGE",
@@ -26,6 +33,7 @@ BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 43, 71}
 BAT_STATUS_DISCHARGE = {16, 17, 18, 21, 44, 97}
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class Senec:
     """Senec Home Battery Sensor"""
@@ -93,13 +101,13 @@ class Senec:
             "SYS_UPDATE": {
                 "NPU_VER": "",
                 "NPU_IMAGE_VERSION": ""
-            }
+            },
+            "STATISTIC": {}
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
             self._raw = parse(await res.json())
-            # print(self._raw)
 
     @property
     def system_state(self) -> str:
@@ -852,11 +860,11 @@ class Senec:
     def fan_inv_lv(self) -> bool:
         if hasattr(self, '_raw') and "FAN_SPEED" in self._raw and "INV_LV" in self._raw["FAN_SPEED"]:
             return self._raw["FAN_SPEED"]["INV_LV"]
+
     @property
     def fan_inv_hv(self) -> bool:
         if hasattr(self, '_raw') and "FAN_SPEED" in self._raw and "INV_HV" in self._raw["FAN_SPEED"]:
             return self._raw["FAN_SPEED"]["INV_HV"]
-
 
     async def update(self):
         await self.read_senec_v31()
@@ -929,7 +937,7 @@ class Senec:
                 "L3_CHARGING_CURRENT": "",
                 "EV_CONNECTED": ""
             },
-            "FAN_SPEED":{},
+            "FAN_SPEED": {},
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
@@ -1329,3 +1337,393 @@ class Inverter:
     def derating(self) -> float:
         if (hasattr(self, '_derating')):
             return self._derating
+
+
+class MySenecWebPortal:
+
+    def __init__(self, user, pwd, websession):
+        loop = aiohttp.helpers.get_running_loop(websession.loop)
+        senec_jar = MySenecCookieJar(loop=loop);
+        if hasattr(websession, "_cookie_jar"):
+            oldJar = getattr(websession, "_cookie_jar")
+            senec_jar.update_cookies(oldJar._host_only_cookies)
+
+        self.websession: aiohttp.websession = websession
+        setattr(self.websession, "_cookie_jar", senec_jar)
+
+        # SENEC API
+        self._SENEC_USERNAME = user
+        self._SENEC_PASSWORD = pwd
+
+        # https://documenter.getpostman.com/view/10329335/UVCB9ihW#17e2c6c6-fe5e-4ca9-bc2f-dca997adaf90
+        self._SENEC_CLASSIC_AUTH_URL = "https://app-gateway-prod.senecops.com/v1/senec/login"
+        self._SENEC_CLASSIC_API_OVERVIEW_URL = "https://app-gateway-prod.senecops.com/v1/senec/anlagen"
+
+        self._SENEC_AUTH_URL = "https://mein-senec.de/auth/login"
+        self._SENEC_API_CONTEXT1_URL = "https://mein-senec.de/endkunde/api/context/getEndkunde"
+        self._SENEC_API_CONTEXT2_URL = "https://mein-senec.de/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=0"
+        self._SENEC_API_OVERVIEW_URL = "https://mein-senec.de/endkunde/api/status/getstatusoverview.php?anlageNummer=0"
+        self._SENEC_API_URL_START = "https://mein-senec.de/endkunde/api/status/getstatus.php?type="
+        self._SENEC_API_URL_END = "&period=all&anlageNummer=0"
+
+        # can be used in all api calls, names come from senec website
+        self._API_KEYS = [
+            "accuimport",  # what comes OUT OF the accu
+            "accuexport",  # what goes INTO the accu
+            "gridimport",  # what comes OUT OF the grid
+            "gridexport",  # what goes INTO the grid
+            "powergenerated",  # power produced
+            "consumption"  # power used
+        ]
+
+        # can only be used in some api calls, names come from senec website
+        self._API_KEYS_EXTRA = [
+            "acculevel"  # accu level
+        ]
+
+        # WEBDATA STORAGE
+        self._energy_entities = {}
+        self._power_entities = {}
+        self._battery_entities = {}
+        self._isAuthenticated = False
+
+    async def authenticateClassic(self, doUpdate: bool):
+        auth_payload = {
+            "username": self._SENEC_USERNAME,
+            "password": self._SENEC_PASSWORD
+        }
+        async with self.websession.post(self._SENEC_CLASSIC_AUTH_URL, json=auth_payload) as res:
+            res.raise_for_status()
+            if res.status == 200:
+                r_json = await res.json()
+                if "token" in r_json:
+                    self._token = r_json["token"]
+                    self._isAuthenticated = True
+                    _LOGGER.info("Login successful")
+                    if doUpdate:
+                        self.updateClassic()
+            else:
+                _LOGGER.warning("Login failed with Code " + str(res.status))
+
+    async def updateClassic(self):
+        _LOGGER.debug("***** updateClassic(self) ********")
+        if self._isAuthenticated:
+            await self.getSystemOverviewClassic()
+        else:
+            await self.authenticateClassic(True)
+
+    async def getSystemOverviewClassic(self):
+        headers = {"Authorization": self._token}
+        async with self.websession.get(self._SENEC_CLASSIC_API_OVERVIEW_URL, headers=headers) as res:
+            res.raise_for_status()
+            if res.status == 200:
+                r_json = await res.json()
+            else:
+                self._isAuthenticated = False
+                await self.update()
+
+    async def authenticate(self, doUpdate: bool):
+        _LOGGER.info("***** authenticate(self) ********")
+        auth_payload = {
+            "username": self._SENEC_USERNAME,
+            "password": self._SENEC_PASSWORD
+        }
+        async with self.websession.post(self._SENEC_AUTH_URL, data=auth_payload, max_redirects=20) as res:
+            res.raise_for_status()
+            if res.status == 200:
+                # be gentle reading the complete response...
+                r_json = await res.text()
+                self._isAuthenticated = True
+                _LOGGER.info("Login successful")
+                if doUpdate:
+                    await self.update()
+            else:
+                _LOGGER.warning("Login failed with Code " + str(res.status))
+
+    async def update(self):
+        if self._isAuthenticated:
+            _LOGGER.info("***** update(self) ********")
+            await self.update_now_kW_stats()
+            await self.update_full_kWh_stats()
+        else:
+            await self.authenticate(doUpdate=True)
+
+    async def update_now_kW_stats(self):
+        _LOGGER.debug("***** update_now_kW_stats(self) ********")
+
+        # grab NOW and TODAY stats
+        async with self.websession.get(self._SENEC_API_OVERVIEW_URL) as res:
+            res.raise_for_status()
+            if res.status == 200:
+                r_json = await res.json()
+                self._raw = parse(r_json)
+                for key in (self._API_KEYS + self._API_KEYS_EXTRA):
+                    if (key != "acculevel"):
+                        value_now = r_json[key]["now"]
+                        entity_now_name = str(key + "_now")
+                        self._power_entities[entity_now_name] = value_now
+
+                        value_today = r_json[key]["today"]
+                        entity_today_name = str(key + "_today")
+                        self._energy_entities[entity_today_name] = value_today
+                    else:
+                        value_now = r_json[key]["now"]
+                        entity_now_name = str(key + "_now")
+                        self._battery_entities[entity_now_name] = value_now
+                        # value_today = r_json[key]["today"]
+                        # entity_today_name = str(key + "_today")
+                        # self._battery_entities[entity_today_name]=value_today
+            else:
+                self._isAuthenticated = False
+                await self.update()
+
+    async def update_full_kWh_stats(self):
+        # grab TOTAL stats
+        for key in self._API_KEYS:
+            api_url = self._SENEC_API_URL_START + key + self._SENEC_API_URL_END
+            async with self.websession.get(api_url) as res:
+                res.raise_for_status()
+                if res.status == 200:
+                    r_json = await res.json()
+                    value = r_json["fullkwh"]
+                    entity_name = str(key + "_total")
+                    self._energy_entities[entity_name] = value
+                else:
+                    self._isAuthenticated = False
+                    await self.update()
+
+    async def update_context(self):
+        _LOGGER.debug("***** update_context(self) ********")
+        if self._isAuthenticated:
+            await self.update_context_1()
+            await self.update_context_2()
+        else:
+            await self.authenticate(doUpdate=False)
+
+    async def update_context_1(self):
+        _LOGGER.debug("***** update_context_1(self) ********")
+
+        # grab NOW and TODAY stats
+        async with self.websession.get(self._SENEC_API_CONTEXT1_URL) as res:
+            res.raise_for_status()
+            if res.status == 200:
+                r_json = await res.json()
+                # self._raw = parse(r_json)
+                self._dev_number = r_json["devNumber"]
+                # anzahlAnlagen
+                # language
+                # emailAdresse
+                # meterReadingVisible
+                # vorname
+                # nachname
+            else:
+                self._isAuthenticated = False
+                await self.authenticate(doUpdate=False)
+
+    async def update_context_2(self):
+        _LOGGER.debug("***** update_context_2(self) ********")
+
+        # grab NOW and TODAY stats
+        async with self.websession.get(self._SENEC_API_CONTEXT2_URL) as res:
+            res.raise_for_status()
+            if res.status == 200:
+                r_json = await res.json()
+                self._serial_number = r_json["steuereinheitnummer"]
+                self._product_name = r_json["produktName"]
+                self._zone_id = r_json["zoneId"]
+            else:
+                self._isAuthenticated = False
+                await self.authenticate(doUpdate=False)
+
+    @property
+    def senec_num(self) -> str:
+        if hasattr(self, '_dev_number'):
+            return str(self._dev_number)
+
+    @property
+    def serial_number(self) -> str:
+        if hasattr(self, '_serial_number'):
+            return str(self._serial_number)
+
+    @property
+    def product_name(self) -> str:
+        if hasattr(self, '_product_name'):
+            return str(self._product_name)
+
+    @property
+    def zone_id(self) -> str:
+        if hasattr(self, '_zone_id'):
+            return str(self._zone_id)
+
+    @property
+    def firmwareVersion(self) -> str:
+        if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
+            return str(self._raw["firmwareVersion"])
+
+    @property
+    def accuimport_today(self) -> float:
+        if hasattr(self, '_energy_entities') and "accuimport_today" in self._energy_entities:
+            return self._energy_entities["accuimport_today"]
+
+    @property
+    def accuexport_today(self) -> float:
+        if hasattr(self, '_energy_entities') and "accuexport_today" in self._energy_entities:
+            return self._energy_entities["accuexport_today"]
+
+    @property
+    def gridimport_today(self) -> float:
+        if hasattr(self, '_energy_entities') and "gridimport_today" in self._energy_entities:
+            return self._energy_entities["gridimport_today"]
+
+    @property
+    def gridexport_today(self) -> float:
+        if hasattr(self, '_energy_entities') and "gridexport_today" in self._energy_entities:
+            return self._energy_entities["gridexport_today"]
+
+    @property
+    def powergenerated_today(self) -> float:
+        if hasattr(self, '_energy_entities') and "powergenerated_today" in self._energy_entities:
+            return self._energy_entities["powergenerated_today"]
+
+    @property
+    def consumption_today(self) -> float:
+        if hasattr(self, '_energy_entities') and "consumption_today" in self._energy_entities:
+            return self._energy_entities["consumption_today"]
+
+    @property
+    def accuimport_total(self) -> float:
+        if hasattr(self, '_energy_entities') and "accuimport_total" in self._energy_entities:
+            return self._energy_entities["accuimport_total"]
+
+    @property
+    def accuexport_total(self) -> float:
+        if hasattr(self, '_energy_entities') and "accuexport_total" in self._energy_entities:
+            return self._energy_entities["accuexport_total"]
+
+    @property
+    def gridimport_total(self) -> float:
+        if hasattr(self, '_energy_entities') and "gridimport_total" in self._energy_entities:
+            return self._energy_entities["gridimport_total"]
+
+    @property
+    def gridexport_total(self) -> float:
+        if hasattr(self, '_energy_entities') and "gridexport_total" in self._energy_entities:
+            return self._energy_entities["gridexport_total"]
+
+    @property
+    def powergenerated_total(self) -> float:
+        if hasattr(self, '_energy_entities') and "powergenerated_total" in self._energy_entities:
+            return self._energy_entities["powergenerated_total"]
+
+    @property
+    def consumption_total(self) -> float:
+        if hasattr(self, '_energy_entities') and "consumption_total" in self._energy_entities:
+            return self._energy_entities["consumption_total"]
+
+    @property
+    def accuimport_now(self) -> float:
+        if hasattr(self, "_power_entities") and "accuimport_now" in self._power_entities:
+            return self._power_entities["accuimport_now"]
+
+    @property
+    def accuexport_now(self) -> float:
+        if hasattr(self, "_power_entities") and "accuexport_now" in self._power_entities:
+            return self._power_entities["accuexport_now"]
+
+    @property
+    def gridimport_now(self) -> float:
+        if hasattr(self, "_power_entities") and "gridimport_now" in self._power_entities:
+            return self._power_entities["gridimport_now"]
+
+    @property
+    def gridexport_now(self) -> float:
+        if hasattr(self, "_power_entities") and "gridexport_now" in self._power_entities:
+            return self._power_entities["gridexport_now"]
+
+    @property
+    def powergenerated_now(self) -> float:
+        if hasattr(self, "_power_entities") and "powergenerated_now" in self._power_entities:
+            return self._power_entities["powergenerated_now"]
+
+    @property
+    def consumption_now(self) -> float:
+        if hasattr(self, "_power_entities") and "consumption_now" in self._power_entities:
+            return self._power_entities["consumption_now"]
+
+    @property
+    def acculevel_now(self) -> int:
+        if hasattr(self, "_battery_entities") and "acculevel_now" in self._battery_entities:
+            return self._battery_entities["acculevel_now"]
+
+
+class MySenecCookieJar(aiohttp.CookieJar):
+    # Overwriting the default 'filter_cookies' impl - since the original will always return the last stored
+    # matching path... [but we need the 'best' path-matching cookie of our jar!]
+    def filter_cookies(self, request_url: URL = URL()) -> Union["BaseCookie[str]", "SimpleCookie[str]"]:
+        """Returns this jar's cookies filtered by their attributes."""
+        self._do_expiration()
+        request_url = URL(request_url)
+        filtered: Union["SimpleCookie[str]", "BaseCookie[str]"] = (
+            SimpleCookie() if self._quote_cookie else BaseCookie()
+        )
+        hostname = request_url.raw_host or ""
+        request_origin = URL()
+        with contextlib.suppress(ValueError):
+            request_origin = request_url.origin()
+
+        is_not_secure = (
+                request_url.scheme not in ("https", "wss")
+                and request_origin not in self._treat_as_secure_origin
+        )
+
+        for cookie in self:
+            name = cookie.key
+            domain = cookie["domain"]
+
+            # Send shared cookies
+            if not domain:
+                filtered[name] = cookie.value
+                continue
+
+            if not self._unsafe and is_ip_address(hostname):
+                continue
+
+            if (domain, name) in self._host_only_cookies:
+                if domain != hostname:
+                    continue
+            elif not self._is_domain_match(domain, hostname):
+                continue
+
+            if not self._is_path_match(request_url.path, cookie["path"]):
+                continue
+
+            if is_not_secure and cookie["secure"]:
+                continue
+
+            # MARQ24: Removed - since we need to keep the ORIGINAL COOKIE because we need access to the
+            # path...
+
+            # It's critical we use the Morsel so the coded_value
+            # (based on cookie version) is preserved
+            # mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
+            # mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+            # filtered[name] = mrsl_val
+
+            # we need to check, if the found cookie is a better match then the
+            # already existing...
+            if name in filtered:
+                existing_cookie = filtered[name]
+                if len(existing_cookie.get('path')) < len(cookie.get('path')):
+                    filtered[name] = cookie
+            else:
+                filtered[name] = cookie
+
+        # MARQ24:
+        # do we need to convert the cookie finally back into a Morsel...?
+        # if "JSESSIONID" in filtered:
+        #    cookie = filtered["JSESSIONID"]
+        #    mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
+        #    mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+        #    filtered["JSESSIONID"] = mrsl_val
+
+        return filtered

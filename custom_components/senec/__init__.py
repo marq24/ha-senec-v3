@@ -6,14 +6,14 @@ import voluptuous as vol
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from custom_components.senec.pysenec_ha import Senec, Inverter
+from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal
 
 from .const import (
     DOMAIN,
@@ -25,7 +25,8 @@ from .const import (
     CONF_DEV_NAME,
     CONF_DEV_SERIAL,
     CONF_DEV_VERSION,
-    CONF_SYSTYPE_INVERTER
+    CONF_SYSTYPE_INVERTER,
+    CONF_SYSTYPE_WEB
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +62,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, platform))
 
     entry.add_update_listener(async_reload_entry)
-
     return True
 
 
@@ -70,10 +70,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass, session, entry):
         """Initialize."""
-        self._host = entry.data[CONF_HOST]
         if CONF_TYPE in entry.data and entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
+            self._host = entry.data[CONF_HOST]
             self.senec = Inverter(self._host, websession=session)
+        if CONF_TYPE in entry.data and entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+            self._host = "mein-senec.de"
+            self.senec = MySenecWebPortal(user=entry.data[CONF_USERNAME], pwd=entry.data[CONF_PASSWORD], websession=session)
         else:
+            self._host = entry.data[CONF_HOST]
             if CONF_USE_HTTPS in entry.data:
                 self._use_https = entry.data[CONF_USE_HTTPS]
             else:
