@@ -22,7 +22,7 @@ support this repro in the future with possible enhancements for the WEB-API__.
 - Added configurable _update interval_ for the sensor data (I use _5_ seconds, without any issue)
 - Reading DeviceID, DeviceType, BatteryType & Version information
 - Added WebAPI access in order to support SENEC.Home V4
-  Systems - [thanks too @mstuettgen for the initial work!](https://github.com/mstuettgen/homeassistant-addons/tree/main/senecweb2mqtt)
+  Systems - [kudos @mstuettgen for the initial work!](https://github.com/mstuettgen/homeassistant-addons/tree/main/senecweb2mqtt)
   
   This WebAPI access is also usable for all other SENEC.Home Systems where the total-statistics data have been removed
   with the latest update by SENEC
