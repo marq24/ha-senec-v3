@@ -125,7 +125,7 @@ WEB_SENSOR_TYPES = [
     ),
     SensorEntityDescription(
        key="accuimport_total",
-       name="Battery charged",
+       name="Battery discharged",
        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
        icon="mdi:home-battery",
        device_class=SensorDeviceClass.ENERGY,
@@ -133,7 +133,7 @@ WEB_SENSOR_TYPES = [
     ),
     SensorEntityDescription(
        key="accuexport_total",
-       name="Battery discharged",
+       name="Battery charged",
        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
        icon="mdi:home-battery-outline",
        device_class=SensorDeviceClass.ENERGY,
@@ -181,7 +181,7 @@ WEB_SENSOR_TYPES = [
     ),
     SensorEntityDescription(
        key="accuimport_now",
-       name="Battery Charge Power",
+       name="Battery Discharge Power",
        native_unit_of_measurement=POWER_WATT,
        icon="mdi:home-battery",
        device_class=SensorDeviceClass.POWER,
@@ -189,7 +189,7 @@ WEB_SENSOR_TYPES = [
     ),
     SensorEntityDescription(
        key="accuexport_now",
-       name="Battery Discharge Power",
+       name="Battery Charge Power",
        native_unit_of_measurement=POWER_WATT,
        icon="mdi:home-battery-outline",
        device_class=SensorDeviceClass.POWER,
