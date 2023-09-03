@@ -9,10 +9,10 @@ multiple SENEC.Home Systems based on local `lala.cgi` calls.
 
 Have that said - the __SENEC.Home V4__ will not come with a build-in web server that can be polled from your LAN. So
 in order to support V4 this integration is polling (a limited amount of) data from the mein-senec.de web portal. The
-__available data is__ (currently) __limited__ (only 13 sensor entities) and will be polled with an interval of 5 minutes. 
+__available data is__ (currently) __limited__ (only 13 sensor entities) and will be polled with a fix interval of 5 minutes. 
 
 __Thanks to [@mstuettgen](https://github.com/mstuettgen) developing the initial SENEC.Home V4 web-access! I hope you
-support this repro in the future with possible enhancements for the WEB-API__.
+support this repo in the future with possible enhancements for the WEB-API__.
 
 ## __Use this fork on your own risk!__
 
