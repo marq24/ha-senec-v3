@@ -426,7 +426,10 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the options."""
-        return await self.async_step_user()
+        if CONF_TYPE in self.options and self.options[CONF_TYPE] == CONF_SYSTYPE_WEB:
+            return await self.async_step_websetup()
+        else:
+            return await self.async_step_user()
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -434,42 +437,47 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
             self.options.update(user_input)
             return await self._update_options()
 
-        if CONF_TYPE in self.options and self.options[CONF_TYPE] == CONF_SYSTYPE_WEB:
-            dataSchema = vol.Schema(
-                {
-                    vol.Required(
-                        CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME_WEB)
-                    ): str,
-                    vol.Required(
-                        CONF_USERNAME, default=self.options.get(CONF_USERNAME, DEFAULT_USERNAME)
-                    ): str,
-                    vol.Required(
-                        CONF_PASSWORD, default=self.options.get(CONF_PASSWORD, "")
-                    ): str
-                }
-            )
-            return self.async_show_form(
-                step_id="websetup",
-                data_schema=dataSchema,
-            )
-        else:
-            dataSchema = vol.Schema(
-                {
-                    vol.Required(
-                        CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME),
-                    ): str,
-                    vol.Required(
-                        CONF_HOST, default=self.options.get(CONF_HOST, DEFAULT_HOST),
-                    ): str,  # pylint: disable=line-too-long
-                    vol.Required(
-                        CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                    ): int,  # pylint: disable=line-too-long
-                }
-            )
-            return self.async_show_form(
-                step_id="user",
-                data_schema=dataSchema,
-            )
+        dataSchema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME),
+                ): str,
+                vol.Required(
+                    CONF_HOST, default=self.options.get(CONF_HOST, DEFAULT_HOST),
+                ): str,  # pylint: disable=line-too-long
+                vol.Required(
+                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                ): int,  # pylint: disable=line-too-long
+            }
+        )
+        return self.async_show_form(
+            step_id="user",
+            data_schema=dataSchema,
+        )
+
+    async def async_step_websetup(self, user_input=None):
+        """Handle a flow initialized by the user."""
+        if user_input is not None:
+            self.options.update(user_input)
+            return await self._update_options()
+
+        dataSchema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME_WEB)
+                ): str,
+                vol.Required(
+                    CONF_USERNAME, default=self.options.get(CONF_USERNAME, DEFAULT_USERNAME)
+                ): str,
+                vol.Required(
+                    CONF_PASSWORD, default=self.options.get(CONF_PASSWORD, "")
+                ): str
+            }
+        )
+        return self.async_show_form(
+            step_id="websetup",
+            data_schema=dataSchema,
+        )
 
     async def _update_options(self):
         """Update config entry options."""
