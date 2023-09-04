@@ -1545,14 +1545,6 @@ class MySenecWebPortal:
             res.raise_for_status()
             if res.status == 200:
                 r_json = await res.json()
-                if "slave" in r_json:
-                    if not hasattr(self, "_serial_number_slave"):
-                        self._serial_number_slave = []
-                        self._product_name_slave = []
-                    self._serial_number_slave.append(r_json["steuereinheitnummer"])
-                    self._product_name_slave.append(r_json["produktName"])
-                    a_plant_number += 1
-                    await self.update_get_systems(a_plant_number)
 
                 if "master" in r_json:
                     # we are cool that's a master-system... so we store our counter...
@@ -1560,6 +1552,15 @@ class MySenecWebPortal:
                     self._product_name = r_json["produktName"]
                     self._zone_id = r_json["zoneId"]
                     self._master_plant_number = a_plant_number
+                else:
+                #if "slave" in r_json:
+                    if not hasattr(self, "_serial_number_slave"):
+                        self._serial_number_slave = []
+                        self._product_name_slave = []
+                    self._serial_number_slave.append(r_json["steuereinheitnummer"])
+                    self._product_name_slave.append(r_json["produktName"])
+                    a_plant_number += 1
+                    await self.update_get_systems(a_plant_number)
 
             else:
                 self._isAuthenticated = False
