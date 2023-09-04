@@ -44,6 +44,7 @@ CONF_SUPPORT_STATS: Final = "has_statistics"
 CONF_DEV_NAME: Final = "dname"
 CONF_DEV_SERIAL: Final = "dserial"
 CONF_DEV_VERSION: Final = "version"
+CONF_DEV_MASTER_NUM: Final = "master_plant_number"
 
 CONF_SYSTYPE_SENEC: Final = "senec"
 CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"

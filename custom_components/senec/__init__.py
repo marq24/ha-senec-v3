@@ -26,7 +26,8 @@ from .const import (
     CONF_DEV_SERIAL,
     CONF_DEV_VERSION,
     CONF_SYSTYPE_INVERTER,
-    CONF_SYSTYPE_WEB
+    CONF_SYSTYPE_WEB,
+    CONF_DEV_MASTER_NUM
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,7 +76,11 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             self.senec = Inverter(self._host, websession=session)
         if CONF_TYPE in entry.data and entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
             self._host = "mein-senec.de"
-            self.senec = MySenecWebPortal(user=entry.data[CONF_USERNAME], pwd=entry.data[CONF_PASSWORD], websession=session)
+            a_master_plant_number = 0
+            if CONF_DEV_MASTER_NUM in entry.data:
+                a_master_plant_number = entry.data[CONF_DEV_MASTER_NUM]
+            self.senec = MySenecWebPortal(user=entry.data[CONF_USERNAME], pwd=entry.data[CONF_PASSWORD],
+                                          websession=session, master_plant_number=a_master_plant_number)
         else:
             self._host = entry.data[CONF_HOST]
             if CONF_USE_HTTPS in entry.data:

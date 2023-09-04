@@ -8,10 +8,10 @@ from custom_components.senec.pysenec_ha.util import parse
 
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
-from http.cookies import BaseCookie, SimpleCookie
+from http.cookies import BaseCookie, SimpleCookie, Morsel
 from aiohttp.helpers import is_ip_address
 from yarl import URL
-from typing import Union
+from typing import Union, cast
 
 # 4: "INITIAL CHARGE",
 # 5: "MAINTENANCE CHARGE",
@@ -1341,7 +1341,7 @@ class Inverter:
 
 class MySenecWebPortal:
 
-    def __init__(self, user, pwd, websession):
+    def __init__(self, user, pwd, websession, master_plant_number: int = 0):
         loop = aiohttp.helpers.get_running_loop(websession.loop)
         senec_jar = MySenecCookieJar(loop=loop);
         if hasattr(websession, "_cookie_jar"):
@@ -1350,6 +1350,8 @@ class MySenecWebPortal:
 
         self.websession: aiohttp.websession = websession
         setattr(self.websession, "_cookie_jar", senec_jar)
+
+        self._master_plant_number = master_plant_number
 
         # SENEC API
         self._SENEC_USERNAME = user
@@ -1360,11 +1362,12 @@ class MySenecWebPortal:
         self._SENEC_CLASSIC_API_OVERVIEW_URL = "https://app-gateway-prod.senecops.com/v1/senec/anlagen"
 
         self._SENEC_AUTH_URL = "https://mein-senec.de/auth/login"
-        self._SENEC_API_CONTEXT1_URL = "https://mein-senec.de/endkunde/api/context/getEndkunde"
-        self._SENEC_API_CONTEXT2_URL = "https://mein-senec.de/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=0"
-        self._SENEC_API_OVERVIEW_URL = "https://mein-senec.de/endkunde/api/status/getstatusoverview.php?anlageNummer=0"
+        self._SENEC_API_GET_CUSTOMER_URL = "https://mein-senec.de/endkunde/api/context/getEndkunde"
+        self._SENEC_API_GET_SYSTEM_URL = "https://mein-senec.de/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=%s"
+
+        self._SENEC_API_OVERVIEW_URL = "https://mein-senec.de/endkunde/api/status/getstatusoverview.php?anlageNummer=%s"
         self._SENEC_API_URL_START = "https://mein-senec.de/endkunde/api/status/getstatus.php?type="
-        self._SENEC_API_URL_END = "&period=all&anlageNummer=0"
+        self._SENEC_API_URL_END = "&period=all&anlageNummer=%s"
 
         # can be used in all api calls, names come from senec website
         self._API_KEYS = [
@@ -1386,6 +1389,16 @@ class MySenecWebPortal:
         self._power_entities = {}
         self._battery_entities = {}
         self._isAuthenticated = False
+
+    def checkCookieJarType(self):
+        if hasattr(self.websession, "_cookie_jar"):
+            oldJar = getattr(self.websession, "_cookie_jar")
+            if type(oldJar) is not MySenecCookieJar:
+                _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
+                loop = aiohttp.helpers.get_running_loop(self.websession.loop)
+                new_senec_jar = MySenecCookieJar(loop=loop);
+                new_senec_jar.update_cookies(oldJar._host_only_cookies)
+                setattr(self.websession, "_cookie_jar", new_senec_jar)
 
     async def authenticateClassic(self, doUpdate: bool):
         auth_payload = {
@@ -1424,6 +1437,7 @@ class MySenecWebPortal:
 
     async def authenticate(self, doUpdate: bool):
         _LOGGER.info("***** authenticate(self) ********")
+        self.checkCookieJarType()
         auth_payload = {
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
@@ -1443,6 +1457,7 @@ class MySenecWebPortal:
     async def update(self):
         if self._isAuthenticated:
             _LOGGER.info("***** update(self) ********")
+            self.checkCookieJarType()
             await self.update_now_kW_stats()
             await self.update_full_kWh_stats()
         else:
@@ -1452,7 +1467,8 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_now_kW_stats(self) ********")
 
         # grab NOW and TODAY stats
-        async with self.websession.get(self._SENEC_API_OVERVIEW_URL) as res:
+        a_url = f"{self._SENEC_API_OVERVIEW_URL}" % str(self._master_plant_number)
+        async with self.websession.get(a_url) as res:
             res.raise_for_status()
             if res.status == 200:
                 r_json = await res.json()
@@ -1479,8 +1495,9 @@ class MySenecWebPortal:
 
     async def update_full_kWh_stats(self):
         # grab TOTAL stats
+        a_url = f"{self._SENEC_API_URL_END}" % str(self._master_plant_number)
         for key in self._API_KEYS:
-            api_url = self._SENEC_API_URL_START + key + self._SENEC_API_URL_END
+            api_url = self._SENEC_API_URL_START + key + a_url
             async with self.websession.get(api_url) as res:
                 res.raise_for_status()
                 if res.status == 200:
@@ -1495,16 +1512,16 @@ class MySenecWebPortal:
     async def update_context(self):
         _LOGGER.debug("***** update_context(self) ********")
         if self._isAuthenticated:
-            await self.update_context_1()
-            await self.update_context_2()
+            await self.update_get_customer()
+            await self.update_get_systems(self._master_plant_number)
         else:
             await self.authenticate(doUpdate=False)
 
-    async def update_context_1(self):
-        _LOGGER.debug("***** update_context_1(self) ********")
+    async def update_get_customer(self):
+        _LOGGER.debug("***** update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
-        async with self.websession.get(self._SENEC_API_CONTEXT1_URL) as res:
+        async with self.websession.get(self._SENEC_API_GET_CUSTOMER_URL) as res:
             res.raise_for_status()
             if res.status == 200:
                 r_json = await res.json()
@@ -1520,17 +1537,30 @@ class MySenecWebPortal:
                 self._isAuthenticated = False
                 await self.authenticate(doUpdate=False)
 
-    async def update_context_2(self):
-        _LOGGER.debug("***** update_context_2(self) ********")
+    async def update_get_systems(self, a_plant_number: int):
+        _LOGGER.debug("***** update_get_systems(self) ********")
 
-        # grab NOW and TODAY stats
-        async with self.websession.get(self._SENEC_API_CONTEXT2_URL) as res:
+        a_url = f"{self._SENEC_API_GET_SYSTEM_URL}" % str(a_plant_number)
+        async with self.websession.get(a_url) as res:
             res.raise_for_status()
             if res.status == 200:
                 r_json = await res.json()
-                self._serial_number = r_json["steuereinheitnummer"]
-                self._product_name = r_json["produktName"]
-                self._zone_id = r_json["zoneId"]
+                if "slave" in r_json:
+                    if not hasattr(self, "_serial_number_slave"):
+                        self._serial_number_slave = []
+                        self._product_name_slave = []
+                    self._serial_number_slave.append(r_json["steuereinheitnummer"])
+                    self._product_name_slave.append(r_json["produktName"])
+                    a_plant_number += 1
+                    await self.update_get_systems(a_plant_number)
+
+                if "master" in r_json:
+                    # we are cool that's a master-system... so we store our counter...
+                    self._serial_number = r_json["steuereinheitnummer"]
+                    self._product_name = r_json["produktName"]
+                    self._zone_id = r_json["zoneId"]
+                    self._master_plant_number = a_plant_number
+
             else:
                 self._isAuthenticated = False
                 await self.authenticate(doUpdate=False)
@@ -1559,6 +1589,11 @@ class MySenecWebPortal:
     def firmwareVersion(self) -> str:
         if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
             return str(self._raw["firmwareVersion"])
+
+    @property
+    def masterPlantNumber(self) -> int:
+        if hasattr(self, '_master_plant_number'):
+            return str(self._master_plant_number)
 
     @property
     def accuimport_today(self) -> float:
@@ -1719,11 +1754,13 @@ class MySenecCookieJar(aiohttp.CookieJar):
                 filtered[name] = cookie
 
         # MARQ24:
-        # do we need to convert the cookie finally back into a Morsel...?
-        # if "JSESSIONID" in filtered:
-        #    cookie = filtered["JSESSIONID"]
-        #    mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-        #    mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
-        #    filtered["JSESSIONID"] = mrsl_val
+        # finally convert the filtered cookie into Morsel's...
+        # It's critical we use the Morsel so the coded_value
+        # (based on cookie version) is preserved
+        for name in filtered:
+            filtered_cookie = filtered[name]
+            mrsl_val = cast("Morsel[str]", filtered_cookie.get(filtered_cookie.key, Morsel()))
+            mrsl_val.set(filtered_cookie.key, filtered_cookie.value, filtered_cookie.coded_value)
+            filtered[name] = mrsl_val
 
         return filtered

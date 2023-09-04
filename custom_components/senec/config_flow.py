@@ -22,8 +22,10 @@ from .const import (
     DEFAULT_NAME,
     DEFAULT_NAME_INVERTER,
     DEFAULT_NAME_WEB,
+    DEFAULT_USERNAME,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL_SENECV2,
+    DEFAULT_SCAN_INTERVAL_WEB,
 
     SYSTEM_TYPES,
     SYSTYPE_SENECV2,
@@ -46,7 +48,8 @@ from .const import (
     CONF_SYSTYPE_SENEC,
     CONF_SYSTYPE_SENEC_V2,
     CONF_SYSTYPE_INVERTER,
-    CONF_SYSTYPE_WEB, DEFAULT_SCAN_INTERVAL_WEB, DEFAULT_USERNAME
+    CONF_SYSTYPE_WEB,
+    CONF_DEV_MASTER_NUM,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -73,6 +76,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._device_name = ""
         self._device_serial = ""
         self._device_version = ""
+        self._device_master_plant_number = -1
         self._selected_system = None
         self._use_https = False
 
@@ -155,6 +159,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._device_name = 'SENEC.Num: ' + senec_web_client.senec_num
             self._device_serial = senec_web_client.serial_number
             self._device_version = senec_web_client.firmwareVersion
+            self._device_master_plant_number = senec_web_client.masterPlantNumber
             _LOGGER.info("Successfully connect to mein-senec.de with '%s'", user)
             return True
         except (OSError, HTTPError, Timeout, ClientResponseError):
@@ -360,7 +365,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                                                      CONF_DEV_TYPE: self._device_type,
                                                                      CONF_DEV_NAME: self._device_name,
                                                                      CONF_DEV_SERIAL: self._device_serial,
-                                                                     CONF_DEV_VERSION: self._device_version
+                                                                     CONF_DEV_VERSION: self._device_version,
+                                                                     CONF_DEV_MASTER_NUM: self._device_master_plant_number
                                                                      })
                 else:
                     _LOGGER.error("Could not connect to mein-senec.de with User '%s', check credentials", user)
