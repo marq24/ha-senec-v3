@@ -100,6 +100,7 @@ Add custom integration using the web interface and follow instruction on screen.
 
 - Go to `Configuration -> Integrations` and add "Senec" integration
 - Provide name for the device, and it's address (hostname or IP)
+- Provide the update intervall
 - Provide area where the battery is located
 
 <a id='inv-lnk'></a>
