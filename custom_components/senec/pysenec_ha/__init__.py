@@ -1546,14 +1546,13 @@ class MySenecWebPortal:
             if res.status == 200:
                 r_json = await res.json()
 
-                if "master" in r_json:
+                if "master" in r_json and r_json["master"]:
                     # we are cool that's a master-system... so we store our counter...
                     self._serial_number = r_json["steuereinheitnummer"]
                     self._product_name = r_json["produktName"]
                     self._zone_id = r_json["zoneId"]
                     self._master_plant_number = a_plant_number
                 else:
-                #if "slave" in r_json:
                     if not hasattr(self, "_serial_number_slave"):
                         self._serial_number_slave = []
                         self._product_name_slave = []
@@ -1736,23 +1735,13 @@ class MySenecCookieJar(aiohttp.CookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            # MARQ24: Removed - since we need to keep the ORIGINAL COOKIE because we need access to the
-            # path...
-
-            # It's critical we use the Morsel so the coded_value
-            # (based on cookie version) is preserved
-            # mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-            # mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
-            # filtered[name] = mrsl_val
-
+            # MARQ24:
             # we need to check, if the found cookie is a better match then the
             # already existing...
-            if name in filtered:
-                existing_cookie = filtered[name]
-                if len(existing_cookie.get('path')) < len(cookie.get('path')):
-                    filtered[name] = cookie
-            else:
-                filtered[name] = cookie
+            if name in filtered and len(cookie["path"]) < len(filtered[name]["path"]):
+                continue
+
+            filtered[name] = cookie
 
         # MARQ24:
         # finally convert the filtered cookie into Morsel's...
