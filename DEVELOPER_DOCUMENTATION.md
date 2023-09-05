@@ -861,12 +861,14 @@ Information represented by the FAN_TEST-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
 |INV_LV|0||
+|INV_HV|0||
 
 ### Category FAN_SPEED
 Information represented by the FAN_SPEED-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
 |INV_LV|0||
+|INV_HV|0||
 
 ### Category V_BatInterface
 Information represented by the V_BatInterface-Object:
