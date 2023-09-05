@@ -7,11 +7,10 @@ The following information are provided by the device. Since no open acceccible A
 - As response a JSON String is returned
 
 ### Request Example
-
+- to be added
 ### Response Example
 
-
-
+- to be added
 
 ### Category "STATISTIC"
 
