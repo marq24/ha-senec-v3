@@ -1400,6 +1400,12 @@ class MySenecWebPortal:
                 new_senec_jar.update_cookies(oldJar._host_only_cookies)
                 setattr(self.websession, "_cookie_jar", new_senec_jar)
 
+    def purgeSenecCookies(self):
+        if hasattr(self.websession, "_cookie_jar"):
+            theJar = getattr(self.websession, "_cookie_jar")
+            theJar.clear_domain("mein-senec.de")
+
+
     async def authenticateClassic(self, doUpdate: bool):
         auth_payload = {
             "username": self._SENEC_USERNAME,
@@ -1452,7 +1458,8 @@ class MySenecWebPortal:
                 if doUpdate:
                     await self.update()
             else:
-                _LOGGER.warning("Login failed with Code " + str(res.status))
+                _LOGGER.error("Login failed with Code " + str(res.status))
+                self.purgeSenecCookies()
 
     async def update(self):
         if self._isAuthenticated:
@@ -1490,6 +1497,8 @@ class MySenecWebPortal:
                         # entity_today_name = str(key + "_today")
                         # self._battery_entities[entity_today_name]=value_today
             else:
+                if res.status == 401:
+                    self.purgeSenecCookies()
                 self._isAuthenticated = False
                 await self.update()
 
@@ -1506,6 +1515,8 @@ class MySenecWebPortal:
                     entity_name = str(key + "_total")
                     self._energy_entities[entity_name] = value
                 else:
+                    if res.status == 401:
+                        self.purgeSenecCookies()
                     self._isAuthenticated = False
                     await self.update()
 
