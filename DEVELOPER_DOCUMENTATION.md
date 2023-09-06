@@ -1,25 +1,151 @@
 # Development Documentation
 This document should give an overview regarding the used APIs and the possible data that can be queried.
 
-## Data that can be accessed in the local network from a Senec V3 device - Firmvare Version 825 (to be verified)
+## Data that can be accessed in the local network from a Senec V3 device 
+Basis for this documentation is the firmware Version 825.
 The following information are provided by the device. Since no open acceccible API documentation exists, the following description is an assumption. 
 - The following information can be accessed sending a post request with a JSON-Payload to https://[IP of the senec device]/lala.cgi
 - As response a JSON String is returned
 
 ### Request Example
-- to be added
+To gather data we have to send a POST-Request to the Senec device ("lala.cgi"), that has a JSON-String as payload.
+Here an request example with all objects that can be requested. Many of the objects have sub-objects:
+```
+POST https://[my-ip]/lala.cgi HTTP/1.1
+content-type: application/json
+
+{
+"DEBUG":{},
+"BAT1":{},
+"BAT1OBJ1":{},
+"BMS":{},
+"BMS_PARA":{},
+"CASC":{},
+"DISPLAY":{},
+"ENERGY":{},
+"FACTORY":{},
+"FEATURES":{},
+"FILE":{},
+"GRIDCONFIG":{},
+"LOG":{},
+"PM1":{},
+"PM1OBJ1":{},
+"PM1OBJ2":{},
+"PV1":{},
+"PWR_UNIT":{},
+"RTC":{},
+"SELFTEST_RESULTS":{},
+"SOCKETS":{},
+"STATISTIC":{},
+"STECA":{},
+"SYS_UPDATE":{},
+"TEMPMEASURE":{},
+"TEST":{},
+"UPDATE":{},
+"WALLBOX":{},
+"WIZARD":{},
+"CURRENT_IMBALANCE_CONTROL":{},
+"BMZ_CURRENT_LIMITS":{},
+"CELL_DEVIATION_ROC":{},
+"SENEC_IO_INPUT":{},
+"SENEC_IO_OUTPUT":{},
+"IPU":{},
+"FAN_TEST":{},
+"FAN_SPEED":{}
+}
+```
 ### Response Example
+The response returns a JSON-String for the requested object.
+In this example the "ENERGY" was used.
+The values are in hex format and have to be decoded in dec, int or float.
+```
+{
+    "ENERGY": {
+        "STAT_STATE": "u8_0D",
+        "GUI_BAT_DATA_POWER": "fl_BF08E2C1",
+        "GUI_INVERTER_POWER": "fl_4599AD17",
+        "GUI_HOUSE_POW": "fl_442047C0",
+        "GUI_GRID_POW": "fl_C585A866",
+        "GUI_BAT_DATA_FUEL_CHARGE": "fl_428C0000",
+        "GUI_CHARGING_INFO": "u8_00",
+        "GUI_BOOSTING_INFO": "u8_00"
+    }
+}
+```
 
-- to be added
-
-### Category "STATISTIC"
+### Category DEBUG
+Information from the DEBUG-Object:
 
 |Object|Example value|Description|
 |------|-------------|-----------|
-|CURRENT_STATE|16|Current system state (see ENUMS)|x|
+|CHARGE_TARGET||
+|DC_TARGET||
+|FEED_TARGET||
+|PU_AVAIL||
+|SECTIONS|Assumption: Could be a (not complete) list of objects that contain data.|
 
-#### Translation of System State Name Enums to Text
-Representations of STATISTIC->CURRENT_STATE
+### Category "ENERGY"
+Information from the ENERGY-Object:
+
+|Object|Example value|Description|
+|------|-------------|-----------|
+|CAPTESTMODULE|[0.0, 0.0, 0.0, 0.0 ]||
+|GUI_BAT_DATA_COLLECTED|1||
+|GUI_BAT_DATA_CURRENT|-6.849999904632568||
+|GUI_BAT_DATA_FUEL_CHARGE|82.82827758789062|Battery fuel charge in percent, as shown in the gui, wenn accessing the device via browser.|
+|GUI_BAT_DATA_MAX_CELL_VOLTAGE|3929|||
+|GUI_BAT_DATA_MIN_CELL_VOLTAGE|3923|||
+|GUI_BAT_DATA_POWER|-376.57867431640625|Positive: Watt with which the battery is charged; Negative: Watts with which the battery is discharged|
+|GUI_BAT_DATA_VOLTAGE|54.974998474121094||
+|GUI_BOOSTING_INFO|1||
+|GUI_CAP_TEST_STATE|0||
+|GUI_CHARGING_INFO|0||
+|GUI_GRID_POW|-6.079999923706055|A positive value corresponds to a mains reference, a negative value to a net feed-in. This is the same data shown in the gui, when accessing the device via browser. |
+|GUI_HOUSE_POW|370.4986877441406||
+|GUI_INIT_CHARGE_START|0||
+|GUI_INIT_CHARGE_STOP|0||
+|GUI_INVERTER_POWER|-0.0|Sum of currently generated PV electricity in watts|
+|GUI_TEST_CHARGE_STAT|0||
+|GUI_TEST_DISCHARGE_STAT|0||
+|INIT_CHARGE_ACK|0||
+|INIT_CHARGE_DIFF_VOLTAGE|0.0||
+|INIT_CHARGE_MAX_CURRENT|0.0||
+|INIT_CHARGE_MAX_VOLTAGE|0.0||
+|INIT_CHARGE_MIN_VOLTAGE|0.0||
+|INIT_CHARGE_RERUN|0||
+|INIT_CHARGE_RUNNING|0||
+|INIT_CHARGE_STATE|0||
+|INIT_CHARGE_TIMER|0||
+|INIT_DISCHARGE_MAX_CURRENT|0.0||
+|LI_STORAGE_MODE_RUNNING|0||
+|LI_STORAGE_MODE_START|0||
+|LI_STORAGE_MODE_STOP|0||
+|OFFPEAK_DURATION|0||
+|OFFPEAK_POWER|0.0||
+|OFFPEAK_RUNNING|0||
+|OFFPEAK_TARGET|100||
+|SAFE_CHARGE_FORCE|0||
+|SAFE_CHARGE_PROHIBIT|0||
+|SAFE_CHARGE_RUNNING|0||
+|STAT_HOURS_OF_OPERATION|9993|Number of hours since the system was activated|
+|STAT_LIMITED_NET_SKEW|0||
+|STAT_STATE|16|Status of the system, see detailed definition in section "Translation of System State Name Enums to Text" |
+|VPP_ACTIVATE_EXPORT_LIMIT|0||
+|VPP_ACTIVATE_TARGET_POWER|0||
+|VPP_DAILY_PARAMETER_RESET|1||
+|VPP_ENDTIME_HOUR|0||
+|VPP_ENDTIME_MINUTE|0||
+|VPP_EXPORT_LIMIT|0||
+|VPP_IGNORE_COUNTRY_TYPE|0||
+|VPP_IS_ACTIVE|0||
+|VPP_LAST_CHANGE_UTC|0||
+|VPP_STARTTIME_HOUR|0||
+|VPP_STARTTIME_MINUTE|0||
+|VPP_TARGET_POWER|0.0||
+|ZERO_EXPORT|0||
+
+#### Translation of ENERGY STAT_STATE Name ENUMS to Text
+Representations of STAT_STATE
 
 |ENUM|Description|
 |----|-----------|
@@ -123,89 +249,30 @@ Representations of STATISTIC->CURRENT_STATE
 |97|SICHERHEITSENTLADUNG|
 |98|BMS FEHLER - MODULUNGLEICHGEWICHT|
 
-
-### Category "ENERGY"
-Information from the ENERGY-Object:
-
-|Object|Example value|Description|
-|------|-------------|-----------|
-|CAPTESTMODULE|[0.0, 0.0, 0.0, 0.0 ]||
-|GUI_BAT_DATA_COLLECTED|1||
-|GUI_BAT_DATA_CURRENT|-6.849999904632568||
-|GUI_BAT_DATA_FUEL_CHARGE|82.82827758789062|Battery fuel charge in percent, as shown in the gui, wenn accessing the device via browser.|
-|GUI_BAT_DATA_MAX_CELL_VOLTAGE|3929|||
-|GUI_BAT_DATA_MIN_CELL_VOLTAGE|3923|||
-|GUI_BAT_DATA_POWER|-376.57867431640625|Positive: Watt with which the battery is charged; Negative: Watts with which the battery is discharged|
-|GUI_BAT_DATA_VOLTAGE|54.974998474121094||
-|GUI_BOOSTING_INFO|1||
-|GUI_CAP_TEST_STATE|0||
-|GUI_CHARGING_INFO|0||
-|GUI_GRID_POW|-6.079999923706055|A positive value corresponds to a mains reference, a negative value to a net feed-in. This is the same data shown in the gui, when accessing the device via browser. |
-|GUI_HOUSE_POW|370.4986877441406||
-|GUI_INIT_CHARGE_START|0||
-|GUI_INIT_CHARGE_STOP|0||
-|GUI_INVERTER_POWER|-0.0|Sum of currently generated PV electricity in watts|
-|GUI_TEST_CHARGE_STAT|0||
-|GUI_TEST_DISCHARGE_STAT|0||
-|INIT_CHARGE_ACK|0||
-|INIT_CHARGE_DIFF_VOLTAGE|0.0||
-|INIT_CHARGE_MAX_CURRENT|0.0||
-|INIT_CHARGE_MAX_VOLTAGE|0.0||
-|INIT_CHARGE_MIN_VOLTAGE|0.0||
-|INIT_CHARGE_RERUN|0||
-|INIT_CHARGE_RUNNING|0||
-|INIT_CHARGE_STATE|0||
-|INIT_CHARGE_TIMER|0||
-|INIT_DISCHARGE_MAX_CURRENT|0.0||
-|LI_STORAGE_MODE_RUNNING|0||
-|LI_STORAGE_MODE_START|0||
-|LI_STORAGE_MODE_STOP|0||
-|OFFPEAK_DURATION|0||
-|OFFPEAK_POWER|0.0||
-|OFFPEAK_RUNNING|0||
-|OFFPEAK_TARGET|100||
-|SAFE_CHARGE_FORCE|0||
-|SAFE_CHARGE_PROHIBIT|0||
-|SAFE_CHARGE_RUNNING|0||
-|STAT_HOURS_OF_OPERATION|9993|Number of hours since the system was activated|
-|STAT_LIMITED_NET_SKEW|0||
-|STAT_STATE|16|Status of the system, see detailed definition in section "Translation of System State Name Enums to Text" |
-|VPP_ACTIVATE_EXPORT_LIMIT|0||
-|VPP_ACTIVATE_TARGET_POWER|0||
-|VPP_DAILY_PARAMETER_RESET|1||
-|VPP_ENDTIME_HOUR|0||
-|VPP_ENDTIME_MINUTE|0||
-|VPP_EXPORT_LIMIT|0||
-|VPP_IGNORE_COUNTRY_TYPE|0||
-|VPP_IS_ACTIVE|0||
-|VPP_LAST_CHANGE_UTC|0||
-|VPP_STARTTIME_HOUR|0||
-|VPP_STARTTIME_MINUTE|0||
-|VPP_TARGET_POWER|0.0||
-|ZERO_EXPORT|0||
-
-
 ### Category FEATURES
 Features of Senec device, represented in the FEATURES-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
-|CAR|1||
+|CAR|1|installation of wallbox possible?|
 |CLOUDREADY|1||
 |ECOGRIDREADY|1||
-|HEAT|1||
-|ISLAND|1||
-|ISLAND_PRO|1||
-|PEAKSHAVING|1||
-|SGREADY|1||
+|HEAT|1|Connection to heat module like asko heat possible?|
+|ISLAND|1|module backup power installed?|
+|ISLAND_PRO|1|module backup power pro installed?|
+|PEAKSHAVING|1|peak shaving is possible|
+|SGREADY|1|Smart grid ready|
 |SHKW|0||
 |SOCKETS|0||
 
+### Category FILE
+Returns an empty object
 
 ### Category LOG
 Information represented bei the LOG-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
 |LOG_IN_BUTT|0||
+|LOG_IN_NOK_COUNT|0|Number of wrong login attempts|
 |LOG_OUT_BUTT|0||
 |PASSWORD|||||
 |USERNAME|||||
@@ -357,6 +424,41 @@ Information represented by the BMS-Object:
 |WIZARD_START|0||
 |WIZARD_STATE|0||
 
+#### Translation of the BMS_STATUS ENUMS
+|ENUM|Description|
+|---|---|
+| 1 | Warning: cell overvoltage |
+| 2 | Alarm: cell overvoltage |
+| 3 | Error: cell overvoltage |
+| 4 | Warning: cell undervoltage |
+| 5 | Alarm: cell undervoltage |
+| 6 | Error: cell undervoltage |
+| 7 | Alarm: module overvoltage |
+| 8 | Alarm: module undervoltage |
+| 9 | Error: cell overtemperature |
+| 10 | Error: cell undertemperature |
+| 11 | Warning: cell overtemperature charging |
+| 12 | Alarm: cell overtemperature charging |
+| 13 | Warning: cell undertemperature charging |
+| 14 | Alarm: cell undertemperature charging |
+| 15 | Warning: cell overtemperature discharging |
+| 16 | Alarm: cell overtemperature discharging |
+| 17 | Warning: cell undertemperature discharging |
+| 18 | Alarm: cell undertemperature discharging |
+| 19 | Warning: charging current |
+| 20 | Alarm: charging current |
+| 21 | Warning: discharging current |
+| 22 | Alarm: discharging current |
+| 23 | Warning: cells imbalanced |
+| 24 | Alarm: cells imbalanced |
+| 25 | Warning: board temperature too high |
+| 26 | Alarm: board temperature too high |
+| 27 | Warning: checking temperature difference |
+| 28 | Alarm: checking temperature difference |
+| 29 | Warning: checking current difference |
+| 30 | Alarm: checking current difference |
+| 31 | Selftest SCP failed |
+
 ### Category BAT1
 Information represented by the BAT1-Object:
 |Object|Example value|Description|
@@ -378,6 +480,28 @@ Information represented by the BAT1-Object:
 |SPARE_CAPACITY|15|Set reserve capacity for emergency power supply|
 |TRIG_ITALY_SELF|0||
 |TYPE|4|Battery type|
+
+#### Translation of the Selftest result ENUMs
+|ENUM|Description|
+|---|---|
+|0|Undefined|
+|1|Running|
+|2|Success|
+|3|Failed|
+|4|Never Runned|
+|5|Not Started|
+
+#### Translation of the Selftest step ENUMs
+|ENUM|Description|
+|---|---|
+| 0 | Upper Voltage Limit L1 |
+| 1 | Lower Voltage Limit L1 |
+| 2 | Upper Freq Limit L1 |
+| 3 | Lower Freq Limit L1 |
+| 4 | Upper 10 Min Avg Limit L1 |
+| 5 | Ext Upper Freq Limit L1 |
+| 6 | Ext Lower Freq Limit L1 |
+| 7 | Lower Voltage Limit 2 L1 |
 
 ### Category BAT1OBJ1
 Information represented by the BAT1OBJ1-Object:
@@ -448,6 +572,13 @@ Information represented by the PWR_UNIT-Object:
 |TYPE|[0, 0, 0, 0, 0, 0]||
 |WATERVOL|[0, 0, 0, 0, 0, 0]||
 
+#### Translation of the PWR_UNIT TYPE ENUM
+| ENUM | Description |
+|---|---|
+| 0 | N/A |
+| 1 | Solarinvert SHKW |
+| 2 | SENEC.Heat |
+
 ### Category PV1
 Information represented by the PV1-Object:
 |Object|Example value|Description|
@@ -505,14 +636,7 @@ Information represented by the CASC-Object:
 |TARGET|[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]||
   
 ### Category DISPLAY
-Information represented by the DISPLAY-Object:
-|Object|Example value|Description|
-|------|-------------|-----------|
-|CURRENT_MESSAGE|"No message active"||
-|CURRENT_MESSAGE_OWNER|"None"||
-|CURRENT_MESSAGE_PRIO|0||
-|IMAGE|["Info:Assuming SVG-Information to create image that is shown on display"]||
-|LEDS|68||
+Returns an empty object
 
 ### Category FACTORY
 Information represented by the FACTORY-Object:
@@ -523,128 +647,64 @@ Information represented by the FACTORY-Object:
 |COUNTRY|0||
 |DESIGN_CAPACITY|7500.0|Capacity of available batteries|
 |DEVICE_ID|"2525866113258324220991834"||
+|EPA_GRID_FILTER|0||
 |FAC_SANITY|1||
 |MAX_CHARGE_POWER_DC|1875.0|Sum of power the available batteries can be charged|
 |MAX_DISCHARGE_POWER_DC|3750.0|Sum of power the available batteries can be discharged|
 |PM_TYPE|1||
 |SYS_TYPE|17||
 
+#### Translation of the FACTORY BAT_TYPE ENUM
+| ENUM | Description |
+|---|---|
+| 0 | Studer Xtender |
+| 1 | SenecBatt |
+| 2 | Senec.Inverter V2 |
+| 3 | SENEC.Inverter V2.1 |
+| 4 | SENEC.Inverter V3 LV |
+
 ### Category GRIDCONFIG
 Information represented by the GRIDCONFIG-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
-|AU2020_ACTIVE_REGISTER|0||
-|AU2020_COSPHIMODE|0||
-|AU2020_FIXEDFACTOR|1.0||
-|AU2020_FLLCO|49.75||
-|AU2020_FLLCO_MAX|49.900001525878906||
-|AU2020_FLLCO_MIN|49.5||
-|AU2020_FPMAX|48.0||
-|AU2020_FPMAX_MAX|49.0||
-|AU2020_FPMAX_MIN|47.0||
-|AU2020_FPMIN|52.0||
-|AU2020_FPMIN_MAX|53.0||
-|AU2020_FPMIN_MIN|51.0||
-|AU2020_FSTOPCH|49.0||
-|AU2020_FSTOPCH_MAX|49.5||
-|AU2020_FSTOPCH_MIN|48.0||
-|AU2020_FTRANSITION|50.75||
-|AU2020_FTRANSITION_MAX|52.0||
-|AU2020_FTRANSITION_MIN|50.5||
-|AU2020_FULCO|50.25||
-|AU2020_FULCO_MAX|50.5||
-|AU2020_FULCO_MIN|50.099998474121094||
-|AU2020_HEXPORT|0||
-|AU2020_HEXPORT_ENABLED|0||
-|AU2020_NOT_DEFAULT|0||
-|AU2020_REACTIVEPOWER|0.0||
-|AU2020_REACTIVEPOWER_MAX|60.0||
-|AU2020_REACTIVEPOWER_MIN|60.0||
-|AU2020_RESPONSE_MODES|19||
-|AU2020_SELECTED_REGION|0||
-|AU2020_VNOMMAX_MAX|258||
-|AU2020_VNOMMAX_MIN|244||
-|AU2020_VNOMMAX_RANGE|258||
-|AU2020_VVAR_PERCENT|[44, 0, 0, 196]||
-|AU2020_VVAR_PMAX|[60, 0, 0, 226]||
-|AU2020_VVAR_PMIN|[30, 0, 0, 196]||
-|AU2020_VVAR_VMAX|[230, 230, 265, 265]||
-|AU2020_VVAR_VMIN|[180, 180, 230, 230]||
-|AU2020_VVAR_VOLTAGE|[207, 220, 240, 258]||
-|AU2020_VWC_PERCENT|[20, 100]||
-|AU2020_VWC_PMAX|[20, 100]||
-|AU2020_VWC_PMIN|[0, 100]||
-|AU2020_VWC_VMAX|[230, 230]||
-|AU2020_VWC_VMIN|[180, 180]||
-|AU2020_VWC_VOLTAGE|[207, 215]||
-|AU2020_VWD_PERCENT|[100, 20]||
-|AU2020_VWD_PMAX|[100, 20]||
-|AU2020_VWD_PMIN|[100, 0]||
-|AU2020_VWD_VMAX|[255, 265]||
-|AU2020_VWD_VMIN|[235, 240]||
-|AU2020_VWD_VOLTAGE|[253, 260]||
-|AU2020_WGRA|16.700000762939453||
-|AU2020_WGRA_MAX|100.0||
-|AU2020_WGRA_MIN|5.0||
-|AU_FIXED_FAC|1.0||
-|AU_GRID_CODE|4||
-|AU_P_RAMP_CH|16.65999984741211||
-|AU_P_RAMP_DI|16.65999984741211||
-|AU_RESP_MODE|15||
-|AU_SOFT_RAMP_EN|1||
-|AU_TARGET_TY|0||
-|AU_VRR_MAX|[207, 230, 255, 265]||
-|AU_VRR_MIN|[207, 216, 235, 244]||
-|AU_VVAR_PERCENTAGE|[30, 0, 0, 226]||
-|AU_VVAR_P_MAX|[60, 0, 0, 0]||
-|AU_VVAR_P_MIN|[0, 0, 0, 196]||
-|AU_VVAR_VOLTAGE|[207, 220, 250, 265]||
-|AU_VWC_VOLTAGE|[207, 220, 250, 265]||
-|AU_VWD_VOLTAGE|[207, 220, 250, 265]||
-|CEI_COS_PHI|1.0||
-|CEI_COS_PHI_ENABLE|0||
-|CEI_CPHI_LOIN|105||
-|CEI_CPHI_LOUT|100||
-|CEI_FREQ_MAX|50100||
-|CEI_FREQ_MIN|49900||
-|CEI_REC_TIME|300||
-|CEI_RED_DROP|24||
-|CEI_SEGNALE_ESTERNO|0||
-|CEI_STAB_AC_DE|0||
-|CEI_STAB_LO_CO|47500||
-|CEI_STAB_LO_TH|49800||
-|CEI_STAB_UP_CO|51500||
-|CEI_STAB_UP_TH|50200||
-|CEI_STAB_VOL_TH|110||
-|PWRCFG_COS_POINT1|1.0||
-|PWRCFG_COS_POINT3|0.949999988079071||
-|PWRCFG_COS_POINT_2A|1.0||
-|PWRCFG_COS_POINT_2B|50.0||
-|PWRCFG_USE_MAX_PWR_SKEW|1||
-|VDECOSPHITIME|10||
-|VDEFIXEDFAC|0.8999999761581421||
-|VDEOVERFREQDROOP|5||
-|VDEOVERFREQLIMIT|50.19999694824219||
-|VDERECOVERTIME|10||
-|VDETARGETTY|1||
-|VDEUNDERFREQDROOP|2||
-|VDE_FREQDROPPROT|47.5||
-|VDE_FREQDROPPROTDELAY|0.10000000149011612||
-|VDE_FREQRISEPROT|51.5||
-|VDE_FREQRISEPROTDELAY|0.10000000149011612||
-|VDE_UNDERFREQLIMIT|49.79999923706055||
-|VDE_VOLTDROPPROT|45.0||
-|VDE_VOLTDROPPROTAVG|80.0||
-|VDE_VOLTDROPPROTAVGDELAY|3.0||
-|VDE_VOLTDROPPROTDELAY|0.30000001192092896||
-|VDE_VOLTRISEPROT|125.0||
-|VDE_VOLTRISEPROTAVG|110.0||
-|VDE_VOLTRISEPROTAVGDELAY|0.10000000149011612||
-|VDE_VOLTRISEPROTDELAY|0.10000000149011612||
+| PWRCFG_COS_POINT1 | 1 | |
+| PWRCFG_COS_POINT3 | 0.95 | |
+| PWRCFG_COS_POINT_2A | 1 | |
+| PWRCFG_COS_POINT_2B | 50 | |
+| PWRCFG_USE_MAX_PWR_SKEW | 1 | |
+| VDECOSPHITIME | 10 | |
+| VDEFIXEDFAC | 0.9 | |
+| VDEOVERFREQDROOP | 5 | |
+| VDEOVERFREQLIMIT | 50.2 | |
+| VDEPT1RESPONSETIME | 0 | |
+| VDERECOVERTIME | 10 | |
+| VDETARGETTY | 1 | |
+| VDEUNDERFREQDROOP | 2 | |
+| VDE_FREQDROPPROT | 47.5 | |
+| VDE_FREQDROPPROTDELAY | 0.1 | |
+| VDE_FREQRISEPROT | 51.5 | |
+| VDE_FREQRISEPROTDELAY | 0.1 | |
+| VDE_UNDERFREQLIMIT | 49.8 | |
+| VDE_VOLTDROPPROT | 45 | |
+| VDE_VOLTDROPPROTAVG | 80 | |
+| VDE_VOLTDROPPROTAVGDELAY | 3 | |
+| VDE_VOLTDROPPROTDELAY | 0.3 | |
+| VDE_VOLTRISEPROT | 125 | |
+| VDE_VOLTRISEPROTAVG | 110 | |
+| VDE_VOLTRISEPROTAVGDELAY | 0.1 | |
+| VDE_VOLTRISEPROTDELAY | 0.1 | |
 
+### Category PM1
+Information represented by the PM1-Object:
+|Object|Example value|Description|
+|------|-------------|-----------|
+| MB_SL2MA_CONN | 0 | |
+| MB_SLAVES_COUNT | 0 ||
+| PWR_METERS_MISSING | 0 ||
+| TYPE | 1 ||
 
 ### Category PM1OBJ1
-Information represented by the PM1OBJ1-Object:
+Information represented by the PM1OBJ1-Object - ENFLURI 1:
 |Object|Example value|Description|
 |------|-------------|-----------|
 |ADR|1||
@@ -657,7 +717,7 @@ Information represented by the PM1OBJ1-Object:
 
 
 ### Category PM1OBJ2
-Information represented by the PM1OBJ2-Object:
+Information represented by the PM1OBJ2-Object - ENFLURI 2:
 |Object|Example value|Description|
 |------|-------------|-----------|
 |ADR|2||
@@ -707,6 +767,10 @@ Information represented by the SOCKETS-Object:
 |UPPER_LIMIT|[0, 0]||
 |USE_TIME|[0, 0]||
 
+### Category "STATISTIC"
+
+Returns an empty object.
+
 ### Category STECA
 Information represented by the STECA-Object:
 |Object|Example value|Description|
@@ -721,10 +785,50 @@ Information represented by the STECA-Object:
 |PV|1||
 |PVSS|4||
 |PV_CONFIG_POSSIBLE|[1, 1, 1, 2, 16, 1, 1, 16, 16, 16]||
-|PV_INPUTS|2||
+|PV_INPUTS|2|Number of MPPs provided|
 |RELAYS|15||
-|STARTUP|272||
+|STARTUP|272|See tranlation of ENUMS below - 272=Run Grid|
 |STARTUP_ADD|4294967295||
+
+#### Translation of the ENUMS for the STARTUP Variable
+|ENUM|Description|
+|----|-----------|
+| 0 | StabilizeMcuSupply |
+| 16 | StartHighSidePwm |
+| 32 | StartAuxSupply |
+| 48 | StartMonitoring |
+| 64 | ThermalManagement |
+| 80 | StartProtection |
+| 88 | CheckIslanding |
+| 96 | DegaussRCD |
+| 112 | GetAcOffset |
+| 128 | SwitchOnRelaisSupply |
+| 136 | CheckStrings |
+| 140 | EstablishLink |
+| 141 | BlackStart |
+| 144 | TestAcRelais |
+| 160 | TestDcRelais |
+| 176 | SwitchOnDcRelais |
+| 184 | CheckDcShortcircuitAndPolarity |
+| 192 | GetDcOffset |
+| 208 | TestRcd |
+| 224 | IsolationCheck |
+| 228 | SwitchOnENS |
+| 232 | ReestablishLink |
+| 236 | RecheckIslanding |
+| 237 | EstablishIslandingLink |
+| 238 | ConfirmIslanding |
+| 240 | WaitEnsClearance |
+| 256 | EstablishAcVoltage |
+| 264 | RunIslanding |
+| 272 | RunGrid |
+| 280 | CheckShortFault |
+| 288 | SafeState |
+| 304 | Sleep |
+| 312 | SleepAfterIslanding |
+| 320 | ShutdownForSleep |
+| 336 | SystemReset |
+| 352 | WaitForReset |
 
 ### Category SYS_UPDATE
 Information represented by the SYS_UPDATE-Object:
@@ -738,6 +842,7 @@ Information represented by the SYS_UPDATE-Object:
 |USER_REBOOT_DEVICE|0||
 |USER_REQ_UPDATE|0||
 
+
 ### Category TEMPMEASURE
 Information represented by the TEMPMEASURE-Object:
 |Object|Example value|Description|
@@ -746,6 +851,12 @@ Information represented by the TEMPMEASURE-Object:
 |CASE_TEMP|39.308067321777344|Temperature of the case in °C|
 |MCU_TEMP|49.744564056396484|Temperature of the MCU in °C|
 |TEMP_DATA_COLLECTED|1||
+
+### Category TEST
+Returns an empty object.
+
+### Category UPDATE
+Returns an empty object.
 
 ### Category WALLBOX
 Information represented by the WALLBOX-Object:
@@ -791,11 +902,35 @@ Information represented by the WALLBOX-Object:
 |UID|[0, 0, 0, 0]||
 |UTMP|[0, 0, 0, 0]||
 
+#### Translation of Wallbox STATE ENUM
+| ENUM | Description |
+|---|---|
+| 0x00 | invalid state |
+| 0xA1 | not connected |
+| 0xA2 | not connected |
+| 0xB1 | connected |
+| 0xB2 | ready |
+| 0xC2 | charging |
+| 0xC3 | charging with reduced power (high temperature) |
+| 0xC4 | charging with reduced power (unbalanced load limitation) |
+| 0xE0 | deactivated (enabling contact) |
+| 0xF1 | contact error |
+| 0xF2 | internal error |
+| 0xF3 | fault current detected |
+| 0xF4 | EV charger communication error |
+| 0xF5 | locking error |
+| 0xF6 | cable error |
+| 0xF7 | vehicle overtemperature |
+| 0xF8 | vehicle communication error |
+| 0xF9 | power supply error |
+| 0xFA | temperature too high |
+| 0xFB | contact error |
+
 ### Category CURRENT_IMBALANCE_CONTROL
 Information represented by the Current_IMBALANCE_CONTROL-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
-|THRESHOLD_mA|8000||
+|THRESHOLD_mA|8000| Threadshold |
 
 ### Category BMZ_CURRENT_LIMITS
 Information represented by the BMZ_CURRENT_LIMITS-Object:
@@ -836,8 +971,8 @@ Information represented by the SENEC_IO_INPUT-Object:
 Information represented by the SENEC_IO_OUTPUT-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
-|BAT_MODULE_ENABLE_SAMSUNG_IPU_V5|0||
-|BAT_MODULE_ENABLE_BMZ|1||
+|BAT_MODULE_ENABLE_SAMSUNG_IPU_V5|0|1 =Samsung Modules are used  |
+|BAT_MODULE_ENABLE_BMZ|1|1 = BMZ Modules are used|
 |KILLSWITCH|0||
 |Relay_4|0||
 |Relay_3|0||
@@ -868,22 +1003,6 @@ Information represented by the FAN_SPEED-Object:
 |------|-------------|-----------|
 |INV_LV|0||
 
-### Category V_BatInterface
-Information represented by the V_BatInterface-Object:
-|Object|Example value|Description|
-|------|-------------|-----------|
-|meanPowerLoss5Min#v|0.0||
-|meanPowerLoss5Min#vf|0.0||
-|meanPowerLoss5Min#f|0||
-|meanPowerLoss2Min#v|0.0||
-|meanPowerLoss2Min#vf|0.0||
-|meanPowerLoss2Min#f|0||
-|meanPowerLoss#v|0.0||
-|meanPowerLoss#vf|0.0||
-|meanPowerLoss#f|0||
-|DcOffset#v|0.061597444117069244||
-|DcOffset#vf|0.0||
-|DcOffset#f|0||
 
 ### Category V_STECA
 Information represented by the V_STECA-Object:
