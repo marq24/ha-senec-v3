@@ -9,6 +9,7 @@ from custom_components.senec.pysenec_ha.util import parse
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
 from http.cookies import BaseCookie, SimpleCookie, Morsel
+from aiohttp import ClientResponseError
 from aiohttp.helpers import is_ip_address
 from yarl import URL
 from typing import Union, cast
@@ -1405,7 +1406,6 @@ class MySenecWebPortal:
             theJar = getattr(self.websession, "_cookie_jar")
             theJar.clear_domain("mein-senec.de")
 
-
     async def authenticateClassic(self, doUpdate: bool):
         auth_payload = {
             "username": self._SENEC_USERNAME,
@@ -1449,17 +1449,25 @@ class MySenecWebPortal:
             "password": self._SENEC_PASSWORD
         }
         async with self.websession.post(self._SENEC_AUTH_URL, data=auth_payload, max_redirects=20) as res:
-            res.raise_for_status()
-            if res.status == 200:
-                # be gentle reading the complete response...
-                r_json = await res.text()
-                self._isAuthenticated = True
-                _LOGGER.info("Login successful")
-                if doUpdate:
-                    await self.update()
-            else:
-                _LOGGER.error("Login failed with Code " + str(res.status))
-                self.purgeSenecCookies()
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    # be gentle reading the complete response...
+                    r_json = await res.text()
+                    self._isAuthenticated = True
+                    _LOGGER.info("Login successful")
+                    if doUpdate:
+                        await self.update()
+                else:
+                    _LOGGER.error("Login failed with Code " + str(res.status))
+                    self.purgeSenecCookies()
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purgeSenecCookies()
+                    self._isAuthenticated = False
+                else:
+                    _LOGGER.error("Login exception with Code " + str(exc.status))
+                    self.purgeSenecCookies()
 
     async def update(self):
         if self._isAuthenticated:
@@ -1476,29 +1484,35 @@ class MySenecWebPortal:
         # grab NOW and TODAY stats
         a_url = f"{self._SENEC_API_OVERVIEW_URL}" % str(self._master_plant_number)
         async with self.websession.get(a_url) as res:
-            res.raise_for_status()
-            if res.status == 200:
-                r_json = await res.json()
-                self._raw = parse(r_json)
-                for key in (self._API_KEYS + self._API_KEYS_EXTRA):
-                    if (key != "acculevel"):
-                        value_now = r_json[key]["now"]
-                        entity_now_name = str(key + "_now")
-                        self._power_entities[entity_now_name] = value_now
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    r_json = await res.json()
+                    self._raw = parse(r_json)
+                    for key in (self._API_KEYS + self._API_KEYS_EXTRA):
+                        if (key != "acculevel"):
+                            value_now = r_json[key]["now"]
+                            entity_now_name = str(key + "_now")
+                            self._power_entities[entity_now_name] = value_now
 
-                        value_today = r_json[key]["today"]
-                        entity_today_name = str(key + "_today")
-                        self._energy_entities[entity_today_name] = value_today
-                    else:
-                        value_now = r_json[key]["now"]
-                        entity_now_name = str(key + "_now")
-                        self._battery_entities[entity_now_name] = value_now
-                        # value_today = r_json[key]["today"]
-                        # entity_today_name = str(key + "_today")
-                        # self._battery_entities[entity_today_name]=value_today
-            else:
-                if res.status == 401:
+                            value_today = r_json[key]["today"]
+                            entity_today_name = str(key + "_today")
+                            self._energy_entities[entity_today_name] = value_today
+                        else:
+                            value_now = r_json[key]["now"]
+                            entity_now_name = str(key + "_now")
+                            self._battery_entities[entity_now_name] = value_now
+                            # value_today = r_json[key]["today"]
+                            # entity_today_name = str(key + "_today")
+                            # self._battery_entities[entity_today_name]=value_today
+                else:
+                    self._isAuthenticated = False
+                    await self.update()
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
                     self.purgeSenecCookies()
+
                 self._isAuthenticated = False
                 await self.update()
 
@@ -1508,15 +1522,21 @@ class MySenecWebPortal:
         for key in self._API_KEYS:
             api_url = self._SENEC_API_URL_START + key + a_url
             async with self.websession.get(api_url) as res:
-                res.raise_for_status()
-                if res.status == 200:
-                    r_json = await res.json()
-                    value = r_json["fullkwh"]
-                    entity_name = str(key + "_total")
-                    self._energy_entities[entity_name] = value
-                else:
-                    if res.status == 401:
+                try:
+                    res.raise_for_status()
+                    if res.status == 200:
+                        r_json = await res.json()
+                        value = r_json["fullkwh"]
+                        entity_name = str(key + "_total")
+                        self._energy_entities[entity_name] = value
+                    else:
+                        self._isAuthenticated = False
+                        await self.update()
+
+                except ClientResponseError as exc:
+                    if exc.status == 401:
                         self.purgeSenecCookies()
+
                     self._isAuthenticated = False
                     await self.update()
 
@@ -1722,7 +1742,7 @@ class MySenecCookieJar(aiohttp.CookieJar):
                 and request_origin not in self._treat_as_secure_origin
         )
 
-        for cookie in self:
+        for cookie in sorted(self, key=lambda c: len(c["path"])):
             name = cookie.key
             domain = cookie["domain"]
 
@@ -1746,22 +1766,8 @@ class MySenecCookieJar(aiohttp.CookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            # MARQ24:
-            # we need to check, if the found cookie is a better match then the
-            # already existing...
-            if name in filtered and len(cookie["path"]) < len(filtered[name]["path"]):
-                continue
-
-            filtered[name] = cookie
-
-        # MARQ24:
-        # finally convert the filtered cookie into Morsel's...
-        # It's critical we use the Morsel so the coded_value
-        # (based on cookie version) is preserved
-        for name in filtered:
-            filtered_cookie = filtered[name]
-            mrsl_val = cast("Morsel[str]", filtered_cookie.get(filtered_cookie.key, Morsel()))
-            mrsl_val.set(filtered_cookie.key, filtered_cookie.value, filtered_cookie.coded_value)
+            mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
+            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
             filtered[name] = mrsl_val
 
         return filtered
