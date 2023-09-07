@@ -64,6 +64,7 @@ DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_SCAN_INTERVAL_SENECV2 = 60
 # 5 minutes... [do not spam mein-senec.de]
 DEFAULT_SCAN_INTERVAL_WEB = 300
+DEFAULT_SCAN_INTERVAL_WEB_SENECV4 = 60
 
 
 @dataclass
@@ -132,7 +133,7 @@ WEB_SENSOR_TYPES = [
         key="accuimport_total",
         name="Battery discharged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-        icon="mdi:home-battery",
+        icon="mdi:home-battery-outline",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
@@ -140,7 +141,7 @@ WEB_SENSOR_TYPES = [
         key="accuexport_total",
         name="Battery charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-        icon="mdi:home-battery-outline",
+        icon="mdi:home-battery",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
@@ -148,7 +149,7 @@ WEB_SENSOR_TYPES = [
         key="gridimport_total",
         name="Grid Imported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-        icon="mdi:transmission-tower-import",
+        icon="mdi:transmission-tower-export",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
@@ -156,7 +157,7 @@ WEB_SENSOR_TYPES = [
         key="gridexport_total",
         name="Grid Exported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-        icon="mdi:transmission-tower-export",
+        icon="mdi:transmission-tower-import",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
@@ -320,7 +321,7 @@ MAIN_SENSOR_TYPES = [
         key="grid_imported_power",
         name="Grid Imported Power",
         native_unit_of_measurement=POWER_WATT,
-        icon="mdi:transmission-tower-import",
+        icon="mdi:transmission-tower-export",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -328,7 +329,7 @@ MAIN_SENSOR_TYPES = [
         key="grid_exported_power",
         name="Grid Exported Power",
         native_unit_of_measurement=POWER_WATT,
-        icon="mdi:transmission-tower-export",
+        icon="mdi:transmission-tower-import",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -373,7 +374,7 @@ MAIN_SENSOR_TYPES = [
         controls=("require_stats_fields"),
         name="Grid Imported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-        icon="mdi:transmission-tower-import",
+        icon="mdi:transmission-tower-export",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
@@ -382,7 +383,7 @@ MAIN_SENSOR_TYPES = [
         controls=("require_stats_fields"),
         name="Grid Exported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
-        icon="mdi:transmission-tower-export",
+        icon="mdi:transmission-tower-import",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
