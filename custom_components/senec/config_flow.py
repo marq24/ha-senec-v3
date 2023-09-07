@@ -26,6 +26,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL_SENECV2,
     DEFAULT_SCAN_INTERVAL_WEB,
+    DEFAULT_SCAN_INTERVAL_WEB_SENECV4,
 
     SYSTEM_TYPES,
     SYSTYPE_SENECV2,
@@ -347,7 +348,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             # set some defaults in case we need to return to the form
             name = user_input.get(CONF_NAME, DEFAULT_NAME_WEB)
-            scan = DEFAULT_SCAN_INTERVAL_WEB
+            # this is an extremely lousy check!
+            if "ome V4 " in self._device_type:
+                scan = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
+            else:
+                scan = DEFAULT_SCAN_INTERVAL_WEB
             user = user_input.get(CONF_USERNAME, DEFAULT_USERNAME)
             pwd = user_input.get(CONF_PASSWORD, "")
 

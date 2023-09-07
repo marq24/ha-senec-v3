@@ -9,7 +9,8 @@ multiple SENEC.Home Systems based on local `lala.cgi` calls.
 
 Have that said - the __SENEC.Home V4__ will not come with a build-in web server that can be polled from your LAN. So
 in order to support V4 this integration is polling (a limited amount of) data from the mein-senec.de web portal. The
-__available data is__ (currently) __limited__ (only 13 sensor entities) and will be polled with a fix interval of 5 minutes. 
+__available data is__ (currently) __limited__ (only 13 sensor entities) and will be polled with a fix interval of 5
+minutes.
 
 __Thanks to [@mstuettgen](https://github.com/mstuettgen) developing the initial SENEC.Home V4 web-access! I hope you
 support this repo in the future with possible enhancements for the WEB-API__.
@@ -23,7 +24,7 @@ support this repo in the future with possible enhancements for the WEB-API__.
 - Reading DeviceID, DeviceType, BatteryType & Version information
 - Added WebAPI access in order to support SENEC.Home V4
   Systems - [kudos @mstuettgen for the initial work!](https://github.com/mstuettgen/homeassistant-addons/tree/main/senecweb2mqtt)
-  
+
   This WebAPI access is also usable for all other SENEC.Home Systems where the total-statistics data have been removed
   with the latest update by SENEC
 
@@ -153,3 +154,9 @@ Example setup:
 Resulting energy distribution card:
 
 ![Energy Distribution](images/energy_distribution.png)
+
+# Developer information
+
+If you are interested in some details about this implementation and the current known fields you might like to take a
+look into the [current developer documentation section](./DEVELOPER_DOCUMENTATION.md) that was kindly provided
+by [@io-debug](https://github.com/io-debug)
