@@ -1644,7 +1644,7 @@ class MySenecWebPortal:
     @property
     def masterPlantNumber(self) -> int:
         if hasattr(self, '_master_plant_number'):
-            return str(self._master_plant_number)
+            return int(self._master_plant_number)
 
     @property
     def accuimport_today(self) -> float:
