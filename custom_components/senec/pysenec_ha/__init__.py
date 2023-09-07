@@ -1480,7 +1480,7 @@ class MySenecWebPortal:
 
     async def update_now_kW_stats(self):
         _LOGGER.debug("***** update_now_kW_stats(self) ********")
-        for plant_number in range (0, self._master_plant_number + 1):
+        for plant_number in range (0, int(self._master_plant_number) + 1 ):
             # grab NOW and TODAY stats
             a_url = f"{self._SENEC_API_OVERVIEW_URL}" % str(plant_number)
             async with self.websession.get(a_url) as res:
@@ -1529,12 +1529,12 @@ class MySenecWebPortal:
 
         # at the end we have to check, if we need to divide the 'acculevel'
         # sum be the number of systems...
-        if "acculevel_now" in self._battery_entities and self._master_plant_number > 0:
-            self._battery_entities["acculevel_now"] = self._battery_entities["acculevel_now"] / (self._master_plant_number + 1)
+        if "acculevel_now" in self._battery_entities and int(self._master_plant_number) > 0:
+            self._battery_entities["acculevel_now"] = self._battery_entities["acculevel_now"] / (int(self._master_plant_number) + 1)
 
     async def update_full_kWh_stats(self):
         # grab TOTAL stats
-        for plant_number in range (0, self._master_plant_number + 1):
+        for plant_number in range (0, int(self._master_plant_number) + 1 ):
             a_url = f"{self._SENEC_API_URL_END}" % str(plant_number)
             for key in self._API_KEYS:
                 api_url = self._SENEC_API_URL_START + key + a_url
