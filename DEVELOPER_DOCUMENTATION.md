@@ -6,6 +6,7 @@ Basis for this documentation is the firmware Version 825.
 The following information are provided by the device. Since no open acceccible API documentation exists, the following description is an assumption. 
 - The following information can be accessed sending a post request with a JSON-Payload to https://[IP of the senec device]/lala.cgi
 - As response a JSON String is returned
+- Please note: Depending on the firmware version the Request has to be via http or https. (https starting with the firmware version 825)
 
 ### Request Example
 To gather data we have to send a POST-Request to the Senec device ("lala.cgi"), that has a JSON-String as payload.
@@ -996,12 +997,14 @@ Information represented by the FAN_TEST-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
 |INV_LV|0||
+|INV_HV|0||
 
 ### Category FAN_SPEED
 Information represented by the FAN_SPEED-Object:
 |Object|Example value|Description|
 |------|-------------|-----------|
 |INV_LV|0||
+|INV_HV|0||
 
 
 ### Category V_STECA
