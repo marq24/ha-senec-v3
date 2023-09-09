@@ -8,6 +8,11 @@ The following information are provided by the device. Since no open acceccible A
 - As response a JSON String is returned
 - Please note: Depending on the firmware version the Request has to be via http or https. (https starting with the firmware version 825)
 
+### Logfile
+The logfile of the device can be accessed via URL and shows a raw text file.
+The URL has the following format: https://[IP of the device]/Log/[year]/[month]/[day].log 
+Example: https://192.168.1.115/Log/2023/09/08.log
+
 ### Request Example
 To gather data we have to send a POST-Request to the Senec device ("lala.cgi"), that has a JSON-String as payload.
 Here an request example with all objects that can be requested. Many of the objects have sub-objects:
