@@ -21,7 +21,7 @@
             "already_configured": "Integration ist bereits eingereichtet"
         },
         "error": {
-            "login_failed": "Login failed",
+            "login_failed": "Login fehlgeschlagen - bitte Benutzername und/oder Passwort prüfen",
             "cannot_connect": "Keine Verbindung möglich",
             "unknown": "Unbekannter Fehler"
         },

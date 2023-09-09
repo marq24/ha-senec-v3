@@ -248,7 +248,8 @@ class Senec:
         """
         Total energy exported to grid export (kWh)
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_GRID_EXPORT" in self._raw["STATISTIC"]:
+        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_GRID_EXPORT" in self._raw["STATISTIC"] and \
+                self._raw["STATISTIC"]["LIVE_GRID_EXPORT"] != "VARIABLE_NOT_FOUND":
             return self._raw["STATISTIC"]["LIVE_GRID_EXPORT"]
 
     @property
@@ -1441,7 +1442,7 @@ class MySenecWebPortal:
                 self._isAuthenticated = False
                 await self.update()
 
-    async def authenticate(self, doUpdate: bool):
+    async def authenticate(self, doUpdate: bool, throw401: bool):
         _LOGGER.info("***** authenticate(self) ********")
         self.checkCookieJarType()
         auth_payload = {
@@ -1462,12 +1463,16 @@ class MySenecWebPortal:
                     _LOGGER.error("Login failed with Code " + str(res.status))
                     self.purgeSenecCookies()
             except ClientResponseError as exc:
-                if exc.status == 401:
-                    self.purgeSenecCookies()
-                    self._isAuthenticated = False
+                #_LOGGER.error(str(exc))
+                if throw401:
+                    raise exc
                 else:
-                    _LOGGER.error("Login exception with Code " + str(exc.status))
-                    self.purgeSenecCookies()
+                    if exc.status == 401:
+                        self.purgeSenecCookies()
+                        self._isAuthenticated = False
+                    else:
+                        _LOGGER.error("Login exception with Code " + str(exc.status))
+                        self.purgeSenecCookies()
 
     async def update(self):
         if self._isAuthenticated:
@@ -1476,7 +1481,7 @@ class MySenecWebPortal:
             await self.update_now_kW_stats()
             await self.update_full_kWh_stats()
         else:
-            await self.authenticate(doUpdate=True)
+            await self.authenticate(doUpdate=True, throw401=False)
 
     async def update_now_kW_stats(self):
         _LOGGER.debug("***** update_now_kW_stats(self) ********")
@@ -1517,7 +1522,6 @@ class MySenecWebPortal:
                 self._isAuthenticated = False
                 await self.update()
 
-
     async def update_full_kWh_stats(self):
         # grab TOTAL stats
         a_url = f"{self._SENEC_API_URL_END}" % str(self._master_plant_number)
@@ -1548,7 +1552,7 @@ class MySenecWebPortal:
             await self.update_get_customer()
             await self.update_get_systems(self._master_plant_number)
         else:
-            await self.authenticate(doUpdate=False)
+            await self.authenticate(doUpdate=False, throw401=False)
 
     async def update_get_customer(self):
         _LOGGER.debug("***** update_get_customer(self) ********")
@@ -1568,7 +1572,7 @@ class MySenecWebPortal:
                 # nachname
             else:
                 self._isAuthenticated = False
-                await self.authenticate(doUpdate=False)
+                await self.authenticate(doUpdate=False, throw401=False)
 
     async def update_get_systems(self, a_plant_number: int):
         _LOGGER.debug("***** update_get_systems(self) ********")
@@ -1596,7 +1600,7 @@ class MySenecWebPortal:
 
             else:
                 self._isAuthenticated = False
-                await self.authenticate(doUpdate=False)
+                await self.authenticate(doUpdate=False, throw401=False)
 
     @property
     def senec_num(self) -> str:

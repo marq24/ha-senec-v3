@@ -41,7 +41,6 @@ from .const import (
     CONF_DEV_TYPE,
     CONF_DEV_TYPE_INT,
     CONF_USE_HTTPS,
-    CONF_SUPPORT_STATS,
     CONF_SUPPORT_BDC,
     CONF_DEV_NAME,
     CONF_DEV_SERIAL,
@@ -102,9 +101,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._use_https = use_https
             self._stats_available = senec_client.grid_total_export is not None
 
-            # just for local testing...
-            #self._stats_available = False
-
             _LOGGER.info(
                 "Successfully connect to SENEC.Home (using https? %s) at %s",
                 use_https, host,
@@ -150,21 +146,25 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         websession = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
             senec_web_client = MySenecWebPortal(user=user, pwd=pwd, websession=websession)
-            await senec_web_client.authenticate(doUpdate=True)
-            await senec_web_client.update_context()
-
-            # TODO: fetch VERSION and other Info from WebApi...
-            self._device_type = "SENEC WebAPI"
-            # self._device_type_internal = senec_client.device_type_internal
-            self._device_type = senec_web_client.product_name
-            self._device_name = 'SENEC.Num: ' + senec_web_client.senec_num
-            self._device_serial = senec_web_client.serial_number
-            self._device_version = senec_web_client.firmwareVersion
-            self._device_master_plant_number = senec_web_client.masterPlantNumber
-            _LOGGER.info("Successfully connect to mein-senec.de with '%s'", user)
-            return True
+            await senec_web_client.authenticate(doUpdate=False, throw401=True)
+            if senec_web_client._isAuthenticated:
+                await senec_web_client.update_context()
+                self._device_type = "SENEC WebAPI"
+                # self._device_type_internal = senec_client.device_type_internal
+                self._device_type = senec_web_client.product_name
+                self._device_name = 'SENEC.Num: ' + senec_web_client.senec_num
+                self._device_serial = senec_web_client.serial_number
+                self._device_version = senec_web_client.firmwareVersion
+                self._device_master_plant_number = senec_web_client.masterPlantNumber
+                _LOGGER.info("Successfully connect to mein-senec.de with '%s'", user)
+                return True
+            else:
+                self._errors[CONF_USERNAME] = "login_failed"
+                self._errors[CONF_PASSWORD] = "login_failed"
+                _LOGGER.warning("Could not connect to mein-senec.de with '%s', check credentials", user)
         except (OSError, HTTPError, Timeout, ClientResponseError):
             self._errors[CONF_USERNAME] = "login_failed"
+            self._errors[CONF_PASSWORD] = "login_failed"
             _LOGGER.warning("Could not connect to mein-senec.de with '%s', check credentials", user)
         return False
 
@@ -283,7 +283,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                   CONF_USE_HTTPS: self._use_https,
                                   CONF_SCAN_INTERVAL: scan,
                                   CONF_TYPE: CONF_SYSTYPE_SENEC,
-                                  CONF_SUPPORT_STATS: self._stats_available,
                                   CONF_DEV_TYPE_INT: self._device_type_internal,
                                   CONF_DEV_TYPE: self._device_type,
                                   CONF_DEV_NAME: self._device_name,
@@ -376,6 +375,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     _LOGGER.error("Could not connect to mein-senec.de with User '%s', check credentials", user)
                     self._errors[CONF_USERNAME]
+                    self._errors[CONF_PASSWORD]
 
         else:
             user_input = {}

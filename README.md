@@ -71,6 +71,11 @@ support this repo in the future with possible enhancements for the WEB-API__.
 
 - Added German Setup/GUI "translation" (not for the sensor's yet)
 
+## Switching to this fork...
+
+Please find in all information you need to know
+when [Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14) here in this overview
+
 ## Installation
 
 ### Hacs
@@ -79,7 +84,7 @@ support this repo in the future with possible enhancements for the WEB-API__.
 
 - Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
 - Add custom repository https://github.com/marq24/ha-senec-v3 to HACS
-- Add integration repository (search for "Senec" in "Explore & Download Repositories")
+- Add integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
     - Select latest version or `master`
 - Restart Home Assistant to install all dependencies
 
@@ -99,10 +104,19 @@ support this repo in the future with possible enhancements for the WEB-API__.
 
 Add custom integration using the web interface and follow instruction on screen.
 
-- Go to `Configuration -> Integrations` and add "Senec" integration
-- Provide name for the device, and it's address (hostname or IP)
-- Provide the update intervall
-- Provide area where the battery is located
+- Go to `Configuration -> Integrations` and add "SENEC.Home" integration
+- Select the Integration Type (basically LAN ot WebApi)
+- LAN: (`SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older`
+  or `Internal inverter build into SENEC.Home V3 hybrid/hybrid duo`)
+    - Provide display name for the device, and it's address (hostname or IP)
+    - Provide the update intervall
+    - Provide area where the battery is located
+- WebAPI (`WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)`
+  or `SENEC.Home V4/SENEC.Home V4 hybrid`):
+    - Provide display name for the device
+    - Provide your mein-senec.de login credentials
+
+You can repreat this to add additional Integration entries (e.g. LAN + WebAPI)
 
 <a id='inv-lnk'></a>
 

@@ -40,7 +40,7 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
         else:
             self._attr_entity_registry_enabled_default = True
 
-        title = self.coordinator._entry.title
+        title = self.coordinator._config_entry.title
         key = self.entity_description.key
         name = self.entity_description.name
         self.entity_id = f"binary_sensor.{slugify(title)}_{key}"

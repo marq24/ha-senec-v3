@@ -14,7 +14,6 @@ from .const import (
     INVERTER_SENSOR_TYPES,
     WEB_SENSOR_TYPES,
     CONF_SUPPORT_BDC,
-    CONF_SUPPORT_STATS,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB
 )
@@ -39,19 +38,22 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
             if addEntity:
                 entity = SenecSensor(coordinator, description)
                 entities.append(entity)
+
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SENSOR_TYPES:
             entity = SenecSensor(coordinator, description)
             entities.append(entity)
+
     else:
         for description in MAIN_SENSOR_TYPES:
             addEntity = description.controls is None
             if not addEntity:
                 if 'require_stats_fields' in description.controls:
-                    if CONF_SUPPORT_STATS not in config_entry.data or config_entry.data[CONF_SUPPORT_STATS]:
+                    if coordinator._statistics_available:
                         addEntity = True
                 else:
                     addEntity = True
+
             if addEntity:
                 entity = SenecSensor(coordinator, description)
                 entities.append(entity)
@@ -74,7 +76,7 @@ class SenecSensor(SenecEntity, SensorEntity):
         else:
             self._attr_entity_registry_enabled_default = True
 
-        title = self.coordinator._entry.title
+        title = self.coordinator._config_entry.title
         key = self.entity_description.key
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"

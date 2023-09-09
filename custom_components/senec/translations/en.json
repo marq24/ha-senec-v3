@@ -21,7 +21,7 @@
             "already_configured": "Integration is already configured"
         },
         "error": {
-            "login_failed": "Login failed",
+            "login_failed": "Login failed - please check username and/or password",
             "cannot_connect": "Failed to connect",
             "unknown": "Unknown error"
         },
