@@ -32,12 +32,6 @@
                     "stype": "Select System type"
                 }
             },
-            "mode": {
-                "description": "For a Senec.HOME V2.x or V3 you can select between a direct access via LAN or access via the 'mein-senec' web portal",
-                "data": {
-                    "smode": "Select Access mode"
-                }
-            },
             "system": {
                 "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
                 "data": {
@@ -63,7 +57,7 @@
     },
     "options": {
         "step": {
-            "user": {
+            "system": {
                 "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "name": "Display name",

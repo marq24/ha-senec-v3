@@ -61,7 +61,7 @@ def senec_entries(hass: HomeAssistant):
     return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for senec."""
 
     VERSION = 1
@@ -429,40 +429,40 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry):
         """Initialize HACS options flow."""
-        self.config_entry = config_entry
+        self.data = dict(config_entry.data);
         if len(dict(config_entry.options)) == 0:
-            self.options = dict(config_entry.data)
+            self.options = {}
         else:
             self.options = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the options."""
-        if CONF_TYPE in self.options and self.options[CONF_TYPE] == CONF_SYSTYPE_WEB:
+        if CONF_TYPE in self.data and self.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
             return await self.async_step_websetup()
         else:
-            return await self.async_step_user()
+            return await self.async_step_system()
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_system(self, user_input=None):
         """Handle a flow initialized by the user."""
         if user_input is not None:
             self.options.update(user_input)
-            return await self._update_options()
+            return self._update_options()
 
         dataSchema = vol.Schema(
             {
                 vol.Required(
-                    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME),
+                    CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME)),
                 ): str,
                 vol.Required(
-                    CONF_HOST, default=self.options.get(CONF_HOST, DEFAULT_HOST),
+                    CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
                 ): str,  # pylint: disable=line-too-long
                 vol.Required(
-                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
                 ): int,  # pylint: disable=line-too-long
             }
         )
         return self.async_show_form(
-            step_id="user",
+            step_id="system",
             data_schema=dataSchema,
         )
 
@@ -470,18 +470,18 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
         """Handle a flow initialized by the user."""
         if user_input is not None:
             self.options.update(user_input)
-            return await self._update_options()
+            return self._update_options()
 
         dataSchema = vol.Schema(
             {
                 vol.Required(
-                    CONF_NAME, default=self.options.get(CONF_NAME, DEFAULT_NAME_WEB)
+                    CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME_WEB))
                 ): str,
                 vol.Required(
-                    CONF_USERNAME, default=self.options.get(CONF_USERNAME, DEFAULT_USERNAME)
+                    CONF_USERNAME, default=self.options.get(CONF_USERNAME,  self.data.get(CONF_USERNAME, DEFAULT_USERNAME))
                 ): str,
                 vol.Required(
-                    CONF_PASSWORD, default=self.options.get(CONF_PASSWORD, "")
+                    CONF_PASSWORD, default=self.options.get(CONF_PASSWORD,  self.data.get(CONF_PASSWORD, ""))
                 ): str
             }
         )
@@ -490,6 +490,6 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=dataSchema,
         )
 
-    async def _update_options(self):
+    def _update_options(self):
         """Update config entry options."""
         return self.async_create_entry(data=self.options)

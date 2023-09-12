@@ -3,15 +3,17 @@
     "step": {
       "user": {
         "data": {
-          "system": "[%key:common::config_flow::data::system%]"
-        }
-      },
-      "mode": {
-        "data": {
-          "mode": "[%key:common::config_flow::data::mode%]"
+          "stype": "[%key:common::config_flow::data::stype%]"
         }
       },
       "system": {
+        "data": {
+          "name": "[%key:common::config_flow::data::name%]",
+          "host": "[%key:common::config_flow::data::host%]",
+          "scan_interval": "[%key:common::config_flow::data::scan_interval%]"
+        }
+      },
+      "websetup": {
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",

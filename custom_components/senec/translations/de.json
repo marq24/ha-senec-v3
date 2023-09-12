@@ -32,12 +32,6 @@
                     "stype": "System Version wählen"
                 }
             },
-            "mode": {
-                "description": "Für Dein Senec.HOME V2.x oder V3 kannst Du zwischen zwei Zugriffs-Modi auswählen",
-                "data": {
-                    "smode": "Zugriffsmodus wählen"
-                }
-            },
             "system": {
                 "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
                 "data": {
@@ -63,7 +57,7 @@
     },
     "options": {
         "step": {
-            "user": {
+            "system": {
                 "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "name": "Anzeige Name",

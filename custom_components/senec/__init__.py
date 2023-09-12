@@ -6,7 +6,7 @@ import voluptuous as vol
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -48,7 +48,13 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
     global SCAN_INTERVAL
-    SCAN_INTERVAL = timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
+
+    # update_interval can be adjusted in the options (not for WebAPI)
+    SCAN_INTERVAL = timedelta(seconds=config_entry.options.get(CONF_SCAN_INTERVAL,
+                                                               config_entry.data.get(CONF_SCAN_INTERVAL,
+                                                                                     DEFAULT_SCAN_INTERVAL_SENECV2)))
+
+    _LOGGER.info("Starting "+str(config_entry.data.get(CONF_NAME))+" with interval: "+str(SCAN_INTERVAL))
 
     session = async_get_clientsession(hass)
 
@@ -61,7 +67,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     # after the refresh we should know if the lala.cgi return STATISTIC data
     # or not...
-    if CONF_TYPE not in config_entry.data or config_entry.data[CONF_TYPE] in (CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2):
+    if CONF_TYPE not in config_entry.data or config_entry.data[CONF_TYPE] in (
+            CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2):
         coordinator._statistics_available = coordinator.senec.grid_total_export is not None
 
     hass.data.setdefault(DOMAIN, {})
@@ -82,7 +89,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Build-In INVERTER
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-            self._host = config_entry.data[CONF_HOST]
+            # host can be changed in the options...
+            self._host = config_entry.options.get(CONF_HOST, config_entry.data[CONF_HOST])
             self.senec = Inverter(self._host, websession=session)
 
         # WEB-API Version...
@@ -93,11 +101,15 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             if CONF_DEV_MASTER_NUM in config_entry.data:
                 a_master_plant_number = config_entry.data[CONF_DEV_MASTER_NUM]
 
-            self.senec = MySenecWebPortal(user=config_entry.data[CONF_USERNAME], pwd=config_entry.data[CONF_PASSWORD],
-                                          websession=session, master_plant_number=a_master_plant_number)
+            # user & pwd can be changed via the options...
+            user = config_entry.options.get(CONF_USERNAME, config_entry.data[CONF_USERNAME])
+            pwd = config_entry.options.get(CONF_PASSWORD, config_entry.data[CONF_PASSWORD])
+            self.senec = MySenecWebPortal(user=user, pwd=pwd, websession=session,
+                                          master_plant_number=a_master_plant_number)
         # lala.cgi Version...
         else:
-            self._host = config_entry.data[CONF_HOST]
+            # host can be changed in the options...
+            self._host = config_entry.options.get(CONF_HOST, config_entry.data[CONF_HOST])
             if CONF_USE_HTTPS in config_entry.data:
                 self._use_https = config_entry.data[CONF_USE_HTTPS]
             else:
@@ -163,16 +175,21 @@ class SenecEntity(Entity):
     def device_info(self) -> dict:
         """Return info for device registry."""
         # Setup Device
-        dtype = self.coordinator._config_entry.options.get(CONF_DEV_TYPE, self.coordinator._config_entry.data.get(CONF_DEV_TYPE))
-        dserial = self.coordinator._config_entry.options.get(CONF_DEV_SERIAL, self.coordinator._config_entry.data.get(CONF_DEV_SERIAL))
-        dmodel = self.coordinator._config_entry.options.get(CONF_DEV_NAME, self.coordinator._config_entry.data.get(CONF_DEV_NAME))
+        dtype = self.coordinator._config_entry.options.get(CONF_DEV_TYPE,
+                                                           self.coordinator._config_entry.data.get(CONF_DEV_TYPE))
+        dserial = self.coordinator._config_entry.options.get(CONF_DEV_SERIAL,
+                                                             self.coordinator._config_entry.data.get(CONF_DEV_SERIAL))
+        dmodel = self.coordinator._config_entry.options.get(CONF_DEV_NAME,
+                                                            self.coordinator._config_entry.data.get(CONF_DEV_NAME))
         device = self._name
         # "hw_version": self.coordinator._config_entry.options.get(CONF_DEV_NAME, self.coordinator._config_entry.data.get(CONF_DEV_NAME)),
         return {
             "identifiers": {(DOMAIN, self.coordinator._host, device)},
             "name": f"{dtype}: {device}",
             "model": f"{dmodel} [Serial: {dserial}]",
-            "sw_version": self.coordinator._config_entry.options.get(CONF_DEV_VERSION, self.coordinator._config_entry.data.get(CONF_DEV_VERSION)),
+            "sw_version": self.coordinator._config_entry.options.get(CONF_DEV_VERSION,
+                                                                     self.coordinator._config_entry.data.get(
+                                                                         CONF_DEV_VERSION)),
             "manufacturer": MANUFACTURE,
         }
 
