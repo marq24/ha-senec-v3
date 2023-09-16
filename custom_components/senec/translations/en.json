@@ -46,7 +46,7 @@
                     "name": "Display name",
                     "username": "Your 'mein-senec.de' username",
                     "password": "Your 'mein-senec.de' password",
-                    "scan_interval":"Polling Interval in seconds"
+                    "scan_interval":"Polling Interval in seconds [> 60 seconds (30 seconds for SENEC.Home V4)]"
                 }
             },
             "optional_websetup_required_info": {
@@ -66,12 +66,12 @@
                 }
             },
             "websetup": {
-                "description": "MEIN-SENEC.DE WebAccess",
+                "description": "MEIN-SENEC.DE WebAccess\n\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "name": "Display name",
                     "username": "Your 'mein-senec.de' username",
                     "password": "Your 'mein-senec.de' password",
-                    "scan_interval":"Polling Interval in seconds"
+                    "scan_interval":"Polling Interval in seconds [minimum 60 seconds (30 seconds for SENEC.Home V4)]"
                 }
             }
         }

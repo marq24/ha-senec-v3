@@ -469,6 +469,12 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_websetup(self, user_input=None):
         """Handle a flow initialized by the user."""
         if user_input is not None:
+            # we need to check the scan_interval (configured by the user)... we hard code a limit of 1 minute for all
+            # SENEC.Home V2 & V3 Systems - only V4 can set it to 30 seconds
+            if "ome V4" in self.data.get(CONF_DEV_TYPE):
+                user_input[CONF_SCAN_INTERVAL] = max(user_input.get(CONF_SCAN_INTERVAL), 30)
+            else:
+                user_input[CONF_SCAN_INTERVAL] = max(user_input.get(CONF_SCAN_INTERVAL), 60)
             self.options.update(user_input)
             return self._update_options()
 
@@ -482,7 +488,10 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
                 ): str,
                 vol.Required(
                     CONF_PASSWORD, default=self.options.get(CONF_PASSWORD,  self.data.get(CONF_PASSWORD, ""))
-                ): str
+                ): str,
+                vol.Required(
+                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                ): int  # pylint: disable=line-too-long
             }
         )
         return self.async_show_form(
