@@ -72,7 +72,7 @@ support this repo in the future with possible enhancements for the WEB-API__.
 - Added German Setup/GUI "translation" (not for the sensor's yet)
 
 - Added support to read and update the spare capacity ("Notstromreserve")
-    - When you are using "SENEC Backup Power pro" and you are able to see and update the spare capacity at mein-senec.de, than you can read and update the spare capacity.
+    - When you are using "SENEC Backup Power pro" and you are able to see and update the spare capacity at mein-senec.de, than you can read and update the spare capacity with this integration.
     - Precondition: You are using the Web Api
     - Since the functionallity is disabled by default, navigate to Settings -> Devices & Services, select the Senec Integration and click on the entities of the Web API.
     Here you can activate the "Spare Capacity". 
