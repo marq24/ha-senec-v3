@@ -1659,9 +1659,9 @@ class MySenecWebPortal:
                 await self.authenticate(doUpdate=False, throw401=False)
 
     @property
-    def spare_capacity(self) -> float:
+    def spare_capacity(self) -> int:
         if hasattr(self, '_spare_capacity'):
-            return str(self._spare_capacity)
+            return int(self._spare_capacity)
 
     @property
     def senec_num(self) -> str:

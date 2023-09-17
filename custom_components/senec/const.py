@@ -80,7 +80,7 @@ class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
 
 """Supported number implementations"""
-NUMBER_SENSOR_TYPES = [
+WEB_NUMBER_SENYOR_TYPES = [
     NumberEntityDescription(
         entity_registry_enabled_default=False,
         key="spare_capacity",
