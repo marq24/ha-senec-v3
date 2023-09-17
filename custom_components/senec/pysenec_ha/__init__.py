@@ -1371,6 +1371,13 @@ class MySenecWebPortal:
         self._SENEC_API_URL_START = "https://mein-senec.de/endkunde/api/status/getstatus.php?type="
         self._SENEC_API_URL_END = "&period=all&anlageNummer=%s"
 
+        # Calls for spare capacity - Base URL has to be followed by master plant number
+        self._SENEC_API_SPARE_CAPACITY_BASE_URL = "https://mein-senec.de/endkunde/api/senec/"
+        # Call the following URL (GET-Request) in order to get the spare capacity as int in the response body
+        self._SENEC_API_GET_SPARE_CAPACITY = "/emergencypower/reserve-in-percent"
+        # Call the following URL (Post Request) in order to set the spare capacity
+        self._SENEC_API_SET_SPARE_CAPACITY = "/emergencypower?reserve-in-percent="
+
         # can be used in all api calls, names come from senec website
         self._API_KEYS = [
             "accuimport",  # what comes OUT OF the accu
@@ -1390,6 +1397,7 @@ class MySenecWebPortal:
         self._energy_entities = {}
         self._power_entities = {}
         self._battery_entities = {}
+        self._spare_capacity = 0 #initialize the spare_capacity with 0
         self._isAuthenticated = False
 
     def checkCookieJarType(self):
@@ -1480,8 +1488,56 @@ class MySenecWebPortal:
             self.checkCookieJarType()
             await self.update_now_kW_stats()
             await self.update_full_kWh_stats()
+            await self.update_spare_capacity()
         else:
             await self.authenticate(doUpdate=True, throw401=False)
+
+    """This function will update the spare capacity over the web api"""
+    async def update_spare_capacity(self):
+        _LOGGER.debug("***** update_spare_capacity(self) ********")
+        a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
+        async with self.websession.get(a_url) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    self._spare_capacity = await res.text()
+                else:
+                    self._isAuthenticated = False
+                    await self.update()
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purgeSenecCookies()
+
+                self._isAuthenticated = False
+                await self.update()
+    """This function will set the spare capacity over the web api"""
+    async def set_spare_capacity(self,new_spare_capacity: int):
+         _LOGGER.debug("***** set_spare_capacity(self) ********")
+         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
+         #payload = f"reserve-in-percent={new_spare_capacity}"
+         async with self.websession.post(a_url, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    _LOGGER.debug("***** Set Spare Capacity successfully ********")
+                    #res_body = await res.text()
+                    #if res_body == "true":
+                    #await self.update()
+                else:
+                    self._isAuthenticated = False
+                    await self.authenticate(doUpdate=False, throw401=False)
+                    await self.set_spare_capacity(new_spare_capacity)
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purgeSenecCookies()
+
+                self._isAuthenticated = False
+                await self.authenticate(doUpdate=False, throw401=True)
+                await self.set_spare_capacity(new_spare_capacity)
+
+
 
     async def update_now_kW_stats(self):
         _LOGGER.debug("***** update_now_kW_stats(self) ********")
@@ -1601,6 +1657,11 @@ class MySenecWebPortal:
             else:
                 self._isAuthenticated = False
                 await self.authenticate(doUpdate=False, throw401=False)
+
+    @property
+    def spare_capacity(self) -> int:
+        if hasattr(self, '_spare_capacity'):
+            return int(self._spare_capacity)
 
     @property
     def senec_num(self) -> str:

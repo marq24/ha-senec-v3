@@ -9,6 +9,10 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.components.switch import SwitchEntityDescription
+from homeassistant.components.number import (
+    NumberEntityDescription,
+    NumberDeviceClass
+)
 from homeassistant.const import (
     ENERGY_KILO_WATT_HOUR,
     PERCENTAGE,
@@ -75,6 +79,21 @@ class ExtSensorEntityDescription(SensorEntityDescription):
 class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
 
+"""Supported number implementations"""
+WEB_NUMBER_SENYOR_TYPES = [
+    NumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="spare_capacity",
+        name="Spare Capacity",
+        device_class = NumberDeviceClass.BATTERY,
+        mode = "slider",
+        native_max_value = 100,
+        native_min_value = 0,
+        native_step = 1,
+        native_unit_of_measurement = PERCENTAGE,
+        icon="mdi:battery-lock",
+    ),
+]
 
 """Supported main unit switch types."""
 MAIN_SWITCH_TYPES = [
@@ -386,7 +405,6 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
-
     ExtSensorEntityDescription(
         key="solar_mpp1_potential",
         name="MPP1 Potential",
@@ -459,7 +477,6 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     ExtSensorEntityDescription(
         key="enfluri_net_freq",
         name="Enfluri Net Frequency",

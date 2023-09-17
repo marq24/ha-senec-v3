@@ -4,7 +4,8 @@
   "codeowners": [
     "@marq24",
     "@mchwalisz",
-    "@mstuettgen"
+    "@mstuettgen",
+    "@io-debug"
   ],
   "config_flow": true,
   "dependencies": [],
@@ -12,5 +13,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
   "requirements": [],
-  "version": "3.0.6"
+  "version": "3.0.7"
 }
