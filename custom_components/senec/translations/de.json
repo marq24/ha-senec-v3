@@ -46,7 +46,7 @@
                     "name": "Anzeige Name",
                     "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
                     "password": "Dein 'mein-senec.de' Passwort",
-                    "scan_interval":"Aktualisierungsintervall in Sekunden"
+                    "scan_interval":"Aktualisierungsintervall in Sekunden [> 60 Sekunden (30 Sekunden für SENEC.Home V4)]"
                 }
             },
             "optional_websetup_required_info": {
@@ -66,12 +66,12 @@
                 }
             },
             "websetup": {
-                "description": "MEIN-SENEC.DE Webzugang",
+                "description": "MEIN-SENEC.DE Webzugang\n\n\nWenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
                 "data": {
                     "name": "Anzeige Name",
                     "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
                     "password": "Dein 'mein-senec.de' Passwort",
-                    "scan_interval":"Aktualisierungsintervall in Sekunden"
+                    "scan_interval":"Aktualisierungsintervall in Sekunden [Minimum 60 Sekunden (30 Sekunden für SENEC.Home V4)]"
                 }
             }
         }
