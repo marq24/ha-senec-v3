@@ -1532,17 +1532,15 @@ class MySenecWebPortal:
     """This function will set the spare capacity over the web api"""
     async def set_spare_capacity(self, new_spare_capacity: int):
         _LOGGER.debug("***** set_spare_capacity(self) ********")
-        self._QUERY_SPARE_CAPACITY_TS = 0
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
-        # payload = f"reserve-in-percent={new_spare_capacity}"
+
         async with self.websession.post(a_url, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
                     _LOGGER.debug("***** Set Spare Capacity successfully ********")
-                    # res_body = await res.text()
-                    # if res_body == "true":
-                    # await self.update()
+                    # Reset the timer in order that the Spare Capacity is updated immediately after the change
+                    self._QUERY_SPARE_CAPACITY_TS = 0
                 else:
                     self._isAuthenticated = False
                     await self.authenticate(doUpdate=False, throw401=False)
