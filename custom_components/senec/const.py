@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
 from homeassistant.components.switch import SwitchEntityDescription
 from homeassistant.components.number import (
     NumberEntityDescription,
-    NumberDeviceClass
+    NumberDeviceClass, NumberMode
 )
 from homeassistant.const import (
     ENERGY_KILO_WATT_HOUR,
@@ -87,7 +87,7 @@ WEB_NUMBER_SENYOR_TYPES = [
         key="spare_capacity",
         name="Spare Capacity",
         device_class = NumberDeviceClass.BATTERY,
-        mode = "slider",
+        mode = NumberMode.SLIDER,
         native_max_value = 100,
         native_min_value = 0,
         native_step = 1,
