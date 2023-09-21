@@ -12,7 +12,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers import entity_registry
+from homeassistant.helpers import entity_registry, event
 from homeassistant.util import slugify
 
 
@@ -113,9 +113,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             opt = {QUERY_SPARE_CAPACITY_KEY: False}
             if hass is not None and config_entry.title is not None:
                 sce_id = f"number.{slugify(config_entry.title)}_spare_capacity"
+
                 # we do not need to listen to changed to the entity - since the integration will be automatically
-                # restarted when an Entity of the integration will be disabled/enabled via the GUI (cool!)
-                # event.async_track_entity_registry_updated_event(hass=hass, entity_ids=sce_id, action=self)
+                # restarted when an Entity of the integration will be disabled/enabled via the GUI (cool!) - but for
+                # now I keep this for debugging why during initial setup of the integration the control 'spare_capacity'
+                # will not be added [only 13 Entities - after restart there are 14!]
+                event.async_track_entity_registry_updated_event(hass=hass, entity_ids=sce_id, action=self)
+
+                # this is enough to check the current enabled/disabled status of the 'spare_capacity' control
                 registry = entity_registry.async_get(hass)
                 if registry is not None:
                     spare_capacity_entity = registry.async_get(sce_id)

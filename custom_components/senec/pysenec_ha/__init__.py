@@ -2,6 +2,7 @@ import aiohttp
 import logging
 
 import xmltodict
+from time import time
 from datetime import datetime
 
 from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME, SYSTEM_TYPE_NAME, BATT_TYPE_NAME
@@ -16,7 +17,7 @@ from yarl import URL
 from typing import Union, cast
 
 
-from ..const import (
+from custom_components.senec.const import (
     QUERY_SPARE_CAPACITY_KEY,
 )
 
@@ -1350,9 +1351,11 @@ class Inverter:
 class MySenecWebPortal:
 
     def __init__(self, user, pwd, websession, master_plant_number: int = 0, options: dict = None):
-        #_LOGGER.error("restarting... "+str(options))
+        _LOGGER.info("restarting... with options: "+str(options))
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
             self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
+
+        self._QUERY_SPARE_CAPACITY_TS = 0
 
         loop = aiohttp.helpers.get_running_loop(websession.loop)
         senec_jar = MySenecCookieJar(loop=loop);
@@ -1499,20 +1502,22 @@ class MySenecWebPortal:
             await self.update_now_kW_stats()
             await self.update_full_kWh_stats()
             if self._QUERY_SPARE_CAPACITY:
-                await self.update_spare_capacity()
+                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                if self._QUERY_SPARE_CAPACITY_TS + 86400 < time():
+                    await self.update_spare_capacity()
         else:
             await self.authenticate(doUpdate=True, throw401=False)
 
     """This function will update the spare capacity over the web api"""
-
     async def update_spare_capacity(self):
-        _LOGGER.debug("***** update_spare_capacity(self) ********")
+        _LOGGER.info("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
         async with self.websession.get(a_url) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
                     self._spare_capacity = await res.text()
+                    self._QUERY_SPARE_CAPACITY_TS = time()
                 else:
                     self._isAuthenticated = False
                     await self.update()
@@ -1525,9 +1530,9 @@ class MySenecWebPortal:
                 await self.update()
 
     """This function will set the spare capacity over the web api"""
-
     async def set_spare_capacity(self, new_spare_capacity: int):
         _LOGGER.debug("***** set_spare_capacity(self) ********")
+        self._QUERY_SPARE_CAPACITY_TS = 0
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
         # payload = f"reserve-in-percent={new_spare_capacity}"
         async with self.websession.post(a_url, ssl=False) as res:
