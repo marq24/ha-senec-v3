@@ -52,16 +52,15 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         """Turn on the switch."""
         try:
             await self.coordinator._async_switch_to_state(self.entity_description.key, True)
-            return getattr(self.coordinator.senec, self.entity_description.key)
+            self.async_schedule_update_ha_state(force_refresh=True)
         except ValueError:
             return "unavailable"
 
     async def async_turn_off(self, **kwargs):  # pylint: disable=unused-argument
         """Turn off the switch."""
         try:
-            # print(option)
             await self.coordinator._async_switch_to_state(self.entity_description.key, False)
-            return getattr(self.coordinator.senec, self.entity_description.key)
+            self.async_schedule_update_ha_state(force_refresh=True)
         except ValueError:
             return "unavailable"
 

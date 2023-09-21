@@ -1,5 +1,6 @@
 import aiohttp
 import logging
+
 import xmltodict
 from datetime import datetime
 
@@ -13,6 +14,11 @@ from aiohttp import ClientResponseError
 from aiohttp.helpers import is_ip_address
 from yarl import URL
 from typing import Union, cast
+
+
+from ..const import (
+    QUERY_SPARE_CAPACITY_KEY,
+)
 
 # 4: "INITIAL CHARGE",
 # 5: "MAINTENANCE CHARGE",
@@ -1343,7 +1349,11 @@ class Inverter:
 
 class MySenecWebPortal:
 
-    def __init__(self, user, pwd, websession, master_plant_number: int = 0):
+    def __init__(self, user, pwd, websession, master_plant_number: int = 0, options: dict = None):
+        #_LOGGER.error("restarting... "+str(options))
+        if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
+            self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
+
         loop = aiohttp.helpers.get_running_loop(websession.loop)
         senec_jar = MySenecCookieJar(loop=loop);
         if hasattr(websession, "_cookie_jar"):
@@ -1397,7 +1407,7 @@ class MySenecWebPortal:
         self._energy_entities = {}
         self._power_entities = {}
         self._battery_entities = {}
-        self._spare_capacity = 0 #initialize the spare_capacity with 0
+        self._spare_capacity = 0  # initialize the spare_capacity with 0
         self._isAuthenticated = False
 
     def checkCookieJarType(self):
@@ -1471,7 +1481,7 @@ class MySenecWebPortal:
                     _LOGGER.error("Login failed with Code " + str(res.status))
                     self.purgeSenecCookies()
             except ClientResponseError as exc:
-                #_LOGGER.error(str(exc))
+                # _LOGGER.error(str(exc))
                 if throw401:
                     raise exc
                 else:
@@ -1488,11 +1498,13 @@ class MySenecWebPortal:
             self.checkCookieJarType()
             await self.update_now_kW_stats()
             await self.update_full_kWh_stats()
-            await self.update_spare_capacity()
+            if self._QUERY_SPARE_CAPACITY:
+                await self.update_spare_capacity()
         else:
             await self.authenticate(doUpdate=True, throw401=False)
 
     """This function will update the spare capacity over the web api"""
+
     async def update_spare_capacity(self):
         _LOGGER.debug("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
@@ -1511,19 +1523,21 @@ class MySenecWebPortal:
 
                 self._isAuthenticated = False
                 await self.update()
+
     """This function will set the spare capacity over the web api"""
-    async def set_spare_capacity(self,new_spare_capacity: int):
-         _LOGGER.debug("***** set_spare_capacity(self) ********")
-         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
-         #payload = f"reserve-in-percent={new_spare_capacity}"
-         async with self.websession.post(a_url, ssl=False) as res:
+
+    async def set_spare_capacity(self, new_spare_capacity: int):
+        _LOGGER.debug("***** set_spare_capacity(self) ********")
+        a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
+        # payload = f"reserve-in-percent={new_spare_capacity}"
+        async with self.websession.post(a_url, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
                     _LOGGER.debug("***** Set Spare Capacity successfully ********")
-                    #res_body = await res.text()
-                    #if res_body == "true":
-                    #await self.update()
+                    # res_body = await res.text()
+                    # if res_body == "true":
+                    # await self.update()
                 else:
                     self._isAuthenticated = False
                     await self.authenticate(doUpdate=False, throw401=False)
@@ -1536,8 +1550,6 @@ class MySenecWebPortal:
                 self._isAuthenticated = False
                 await self.authenticate(doUpdate=False, throw401=True)
                 await self.set_spare_capacity(new_spare_capacity)
-
-
 
     async def update_now_kW_stats(self):
         _LOGGER.debug("***** update_now_kW_stats(self) ********")

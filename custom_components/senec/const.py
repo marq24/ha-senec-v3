@@ -69,6 +69,7 @@ DEFAULT_SCAN_INTERVAL_SENECV2 = 60
 DEFAULT_SCAN_INTERVAL_WEB = 300
 DEFAULT_SCAN_INTERVAL_WEB_SENECV4 = 60
 
+QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
