@@ -54,15 +54,26 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+#@callback
+#def senec_entries_data(hass: HomeAssistant):
+#    """Return the hosts already configured."""
+#    return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
+
+#@callback
+#def senec_entries_options(hass: HomeAssistant):
+#    """Return the hosts already configured."""
+#    return {entry.options[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
 
 @callback
-def senec_entries_data(hass: HomeAssistant):
+def senec_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
-    return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
-
-def senec_entries_options(hass: HomeAssistant):
-    """Return the hosts already configured."""
-    return {entry.options[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
+    conf_hosts = []
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if hasattr(entry, 'options') and CONF_HOST in entry.options:
+            conf_hosts.append(entry.options[CONF_HOST])
+        else:
+            conf_hosts.append(entry.data[CONF_HOST])
+    return conf_hosts
 
 class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for senec."""
@@ -85,7 +96,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _host_in_configuration_exists(self, host) -> bool:
         """Return True if host exists in configuration."""
-        if host in senec_entries_data(self.hass) or host in senec_entries_options(self.hass):
+        if host in senec_entries(self.hass):
             return True
         return False
 
