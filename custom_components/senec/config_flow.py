@@ -56,10 +56,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @callback
-def senec_entries(hass: HomeAssistant):
+def senec_entries_data(hass: HomeAssistant):
     """Return the hosts already configured."""
     return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
 
+def senec_entries_options(hass: HomeAssistant):
+    """Return the hosts already configured."""
+    return {entry.options[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
 
 class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for senec."""
@@ -82,7 +85,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _host_in_configuration_exists(self, host) -> bool:
         """Return True if host exists in configuration."""
-        if host in senec_entries(self.hass):
+        if host in senec_entries_data(self.hass) or host in senec_entries_options(self.hass):
             return True
         return False
 
@@ -444,9 +447,29 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_system(self, user_input=None):
         """Handle a flow initialized by the user."""
+        self._errors = {}
         if user_input is not None:
+
+            # verify the entered host...
+            host_entry = user_input.get(CONF_HOST, DEFAULT_HOST).lower()
+            # make sure we just handle host/ip's - removing http/https
+            if host_entry.startswith("http://"):
+                host_entry = host_entry.replace("http://", "")
+            if host_entry.startswith('https://'):
+                host_entry = host_entry.replace("https://", "")
+
+            user_input[CONF_HOST] = host_entry
+
             self.options.update(user_input)
-            return self._update_options()
+            if self.data.get(CONF_HOST) != self.options.get(CONF_HOST):
+                # ok looks like the host has been changed... we need to do some things...
+                if self._host_in_configuration_exists(host_entry):
+                    self._errors[CONF_HOST] = "already_configured"
+                else:
+                    return self._update_options()
+            else:
+                # host did not change...
+                return self._update_options()
 
         dataSchema = vol.Schema(
             {
