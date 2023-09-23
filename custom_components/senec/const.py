@@ -69,6 +69,7 @@ DEFAULT_SCAN_INTERVAL_SENECV2 = 60
 DEFAULT_SCAN_INTERVAL_WEB = 300
 DEFAULT_SCAN_INTERVAL_WEB_SENECV4 = 60
 
+QUERY_WALLBOX_KEY = "query_wallbox_data"
 QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 
 @dataclass
@@ -1585,6 +1586,31 @@ MAIN_SENSOR_TYPES = [
         controls=("require_stats_fields"),
         key="wallbox_energy",
         name="Wallbox charged",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        icon="mdi:ev-station",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_power",
+        name="Wallbox II Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:car-arrow-left",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_ev_connected",
+        name="Wallbox II EV Connected",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        controls=("require_stats_fields"),
+        key="wallbox_2_energy",
+        name="Wallbox II charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:ev-station",
         device_class=SensorDeviceClass.ENERGY,

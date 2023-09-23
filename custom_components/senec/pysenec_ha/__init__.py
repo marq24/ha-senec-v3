@@ -16,8 +16,8 @@ from aiohttp.helpers import is_ip_address
 from yarl import URL
 from typing import Union, cast
 
-
 from custom_components.senec.const import (
+    QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
 )
 
@@ -46,7 +46,16 @@ _LOGGER = logging.getLogger(__name__)
 class Senec:
     """Senec Home Battery Sensor"""
 
-    def __init__(self, host, use_https, websession):
+    def __init__(self, host, use_https, websession, options: dict = None):
+        _LOGGER.info("restarting Senec... with options: " + str(options))
+
+        self._QUERY_BMS = True
+        self._QUERY_STATS = True
+        if options is not None and QUERY_WALLBOX_KEY in options:
+            self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
+        else:
+            self._QUERY_WALLBOX = False
+
         self.host = host
         self.websession: aiohttp.websession = websession
         if use_https:
@@ -426,419 +435,523 @@ class Senec:
 
     @property
     def bms_cell_temp_A1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][0]
 
     @property
     def bms_cell_temp_A2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][1]
 
     @property
     def bms_cell_temp_A3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][2]
 
     @property
     def bms_cell_temp_A4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][3]
 
     @property
     def bms_cell_temp_A5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][4]
 
     @property
     def bms_cell_temp_A6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][5]
 
     @property
     def bms_cell_temp_B1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][0]
 
     @property
     def bms_cell_temp_B2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][1]
 
     @property
     def bms_cell_temp_B3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][2]
 
     @property
     def bms_cell_temp_B4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][3]
 
     @property
     def bms_cell_temp_B5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][4]
 
     @property
     def bms_cell_temp_B6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][5]
 
     @property
     def bms_cell_temp_C1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][0]
 
     @property
     def bms_cell_temp_C2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][1]
 
     @property
     def bms_cell_temp_C3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][2]
 
     @property
     def bms_cell_temp_C4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][3]
 
     @property
     def bms_cell_temp_C5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][4]
 
     @property
     def bms_cell_temp_C6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][5]
 
     @property
     def bms_cell_temp_D1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][0]
 
     @property
     def bms_cell_temp_D2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][1]
 
     @property
     def bms_cell_temp_D3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][2]
 
     @property
     def bms_cell_temp_D4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][3]
 
     @property
     def bms_cell_temp_D5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][4]
 
     @property
     def bms_cell_temp_D6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][5]
 
     @property
     def bms_cell_volt_A1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][0]
 
     @property
     def bms_cell_volt_A2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][1]
 
     @property
     def bms_cell_volt_A3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][2]
 
     @property
     def bms_cell_volt_A4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][3]
 
     @property
     def bms_cell_volt_A5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][4]
 
     @property
     def bms_cell_volt_A6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][5]
 
     @property
     def bms_cell_volt_A7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][6]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][6]
 
     @property
     def bms_cell_volt_A8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][7]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][7]
 
     @property
     def bms_cell_volt_A9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][8]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][8]
 
     @property
     def bms_cell_volt_A10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][9]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][9]
 
     @property
     def bms_cell_volt_A11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][10]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][10]
 
     @property
     def bms_cell_volt_A12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][11]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][11]
 
     @property
     def bms_cell_volt_A13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][12]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][12]
 
     @property
     def bms_cell_volt_A14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][13]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][13]
 
     @property
     def bms_cell_volt_B1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][0]
 
     @property
     def bms_cell_volt_B2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][1]
 
     @property
     def bms_cell_volt_B3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][2]
 
     @property
     def bms_cell_volt_B4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][3]
 
     @property
     def bms_cell_volt_B5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][4]
 
     @property
     def bms_cell_volt_B6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][5]
 
     @property
     def bms_cell_volt_B7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][6]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][6]
 
     @property
     def bms_cell_volt_B8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][7]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][7]
 
     @property
     def bms_cell_volt_B9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][8]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][8]
 
     @property
     def bms_cell_volt_B10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][9]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][9]
 
     @property
     def bms_cell_volt_B11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][10]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][10]
 
     @property
     def bms_cell_volt_B12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][11]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][11]
 
     @property
     def bms_cell_volt_B13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][12]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][12]
 
     @property
     def bms_cell_volt_B14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][13]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][13]
 
     @property
     def bms_cell_volt_C1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][0]
 
     @property
     def bms_cell_volt_C2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][1]
 
     @property
     def bms_cell_volt_C3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][2]
 
     @property
     def bms_cell_volt_C4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][3]
 
     @property
     def bms_cell_volt_C5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][4]
 
     @property
     def bms_cell_volt_C6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][5]
 
     @property
     def bms_cell_volt_C7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][6]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][6]
 
     @property
     def bms_cell_volt_C8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][7]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][7]
 
     @property
     def bms_cell_volt_C9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][8]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][8]
 
     @property
     def bms_cell_volt_C10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][9]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][9]
 
     @property
     def bms_cell_volt_C11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][10]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][10]
 
     @property
     def bms_cell_volt_C12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][11]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][11]
 
     @property
     def bms_cell_volt_C13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][12]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][12]
 
     @property
     def bms_cell_volt_C14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][13]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][13]
 
     @property
     def bms_cell_volt_D1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][0]
 
     @property
     def bms_cell_volt_D2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][1]
 
     @property
     def bms_cell_volt_D3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][2]
 
     @property
     def bms_cell_volt_D4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][3]
 
     @property
     def bms_cell_volt_D5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][4]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][4]
 
     @property
     def bms_cell_volt_D6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][5]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][5]
 
     @property
     def bms_cell_volt_D7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][6]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][6]
 
     @property
     def bms_cell_volt_D8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][7]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][7]
 
     @property
     def bms_cell_volt_D9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][8]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][8]
 
     @property
     def bms_cell_volt_D10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][9]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][9]
 
     @property
     def bms_cell_volt_D11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][10]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][10]
 
     @property
     def bms_cell_volt_D12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][11]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][11]
 
     @property
     def bms_cell_volt_D13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][12]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][12]
 
     @property
     def bms_cell_volt_D14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
 
     @property
     def bms_soc_A(self) -> float:
-        return self._raw["BMS"]["SOC"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][0]
 
     @property
     def bms_soc_B(self) -> float:
-        return self._raw["BMS"]["SOC"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][1]
 
     @property
     def bms_soc_C(self) -> float:
-        return self._raw["BMS"]["SOC"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][2]
 
     @property
     def bms_soc_D(self) -> float:
-        return self._raw["BMS"]["SOC"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][3]
 
     @property
     def bms_soh_A(self) -> float:
-        return self._raw["BMS"]["SOH"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][0]
 
     @property
     def bms_soh_B(self) -> float:
-        return self._raw["BMS"]["SOH"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][1]
 
     @property
     def bms_soh_C(self) -> float:
-        return self._raw["BMS"]["SOH"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][2]
 
     @property
     def bms_soh_D(self) -> float:
-        return self._raw["BMS"]["SOH"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][3]
 
     @property
     def bms_voltage_A(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][0]
 
     @property
     def bms_voltage_B(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][1]
 
     @property
     def bms_voltage_C(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][2]
 
     @property
     def bms_voltage_D(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][3]
 
     @property
     def bms_current_A(self) -> float:
-        return self._raw["BMS"]["CURRENT"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][0]
 
     @property
     def bms_current_B(self) -> float:
-        return self._raw["BMS"]["CURRENT"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][1]
 
     @property
     def bms_current_C(self) -> float:
-        return self._raw["BMS"]["CURRENT"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][2]
 
     @property
     def bms_current_D(self) -> float:
-        return self._raw["BMS"]["CURRENT"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][3]
 
     @property
     def bms_cycles_A(self) -> float:
-        return self._raw["BMS"]["CYCLES"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][0]
 
     @property
     def bms_cycles_B(self) -> float:
-        return self._raw["BMS"]["CYCLES"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][1]
 
     @property
     def bms_cycles_C(self) -> float:
-        return self._raw["BMS"]["CYCLES"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][2]
 
     @property
     def bms_cycles_D(self) -> float:
-        return self._raw["BMS"]["CYCLES"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][3]
 
     @property
     def bms_fw_A(self) -> float:
-        return self._raw["BMS"]["FW"][0]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][0]
 
     @property
     def bms_fw_B(self) -> float:
-        return self._raw["BMS"]["FW"][1]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][1]
 
     @property
     def bms_fw_C(self) -> float:
-        return self._raw["BMS"]["FW"][2]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][2]
 
     @property
     def bms_fw_D(self) -> float:
-        return self._raw["BMS"]["FW"][3]
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][3]
 
     @property
     def wallbox_power(self) -> float:
@@ -846,16 +959,20 @@ class Senec:
         Wallbox Total Charging Power (W)
         Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
         """
-        return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][0] + \
-            self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][1] + \
-            self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][2]
+        if hasattr(self, '_raw') and "WALLBOX" in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            "WALLBOX"] and "L2_CHARGING_CURRENT" in self._raw["WALLBOX"] and "L3_CHARGING_CURRENT" in self._raw[
+            "WALLBOX"]:
+            return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][0] + \
+                self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][1] + \
+                self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][2]
 
     @property
     def wallbox_ev_connected(self) -> bool:
         """
         Wallbox EV Connected
         """
-        return self._raw["WALLBOX"]["EV_CONNECTED"][0]
+        if hasattr(self, '_raw') and "WALLBOX" in self._raw and "EV_CONNECTED" in self._raw["WALLBOX"]:
+            return self._raw["WALLBOX"]["EV_CONNECTED"][0]
 
     @property
     def wallbox_energy(self) -> float:
@@ -864,6 +981,35 @@ class Senec:
         """
         if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_WB_ENERGY" in self._raw["STATISTIC"]:
             return self._raw["STATISTIC"]["LIVE_WB_ENERGY"][0]
+
+    @property
+    def wallbox_2_power(self) -> float:
+        """
+        Wallbox Total Charging Power (W)
+        Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
+        """
+        if hasattr(self, '_raw') and "WALLBOX" in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            "WALLBOX"] and "L2_CHARGING_CURRENT" in self._raw["WALLBOX"] and "L3_CHARGING_CURRENT" in self._raw[
+            "WALLBOX"]:
+            return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][1] * self._raw["PM1OBJ1"]["U_AC"][0] + \
+                self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][1] * self._raw["PM1OBJ1"]["U_AC"][1] + \
+                self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][1] * self._raw["PM1OBJ1"]["U_AC"][2]
+
+    @property
+    def wallbox_2_ev_connected(self) -> bool:
+        """
+        Wallbox EV Connected
+        """
+        if hasattr(self, '_raw') and "WALLBOX" in self._raw and "EV_CONNECTED" in self._raw["WALLBOX"]:
+            return self._raw["WALLBOX"]["EV_CONNECTED"][1]
+
+    @property
+    def wallbox_2_energy(self) -> float:
+        """
+        Wallbox Total Energy
+        """
+        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_WB_ENERGY" in self._raw["STATISTIC"]:
+            return self._raw["STATISTIC"]["LIVE_WB_ENERGY"][1]
 
     @property
     def fan_inv_lv(self) -> bool:
@@ -901,15 +1047,15 @@ class Senec:
                 "SAFE_CHARGE_RUNNING": "",
                 "LI_STORAGE_MODE_RUNNING": "",
             },
-            "STATISTIC": {
-                "LIVE_BAT_CHARGE": "",
-                "LIVE_BAT_DISCHARGE": "",
-                "LIVE_GRID_EXPORT": "",
-                "LIVE_GRID_IMPORT": "",
-                "LIVE_HOUSE_CONS": "",
-                "LIVE_PV_GEN": "",
-                "LIVE_WB_ENERGY": "",
-            },
+            # "STATISTIC": {
+            #    "LIVE_BAT_CHARGE": "",
+            #    "LIVE_BAT_DISCHARGE": "",
+            #    "LIVE_GRID_EXPORT": "",
+            #    "LIVE_GRID_IMPORT": "",
+            #    "LIVE_HOUSE_CONS": "",
+            #    "LIVE_PV_GEN": "",
+            #    "LIVE_WB_ENERGY": "",
+            # },
             "TEMPMEASURE": {
                 "BATTERY_TEMP": "",
                 "CASE_TEMP": "",
@@ -925,29 +1071,35 @@ class Senec:
             "PWR_UNIT": {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
             "PM1OBJ1": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
             "PM1OBJ2": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            "BMS": {
-                "CELL_TEMPERATURES_MODULE_A": "",
-                "CELL_TEMPERATURES_MODULE_B": "",
-                "CELL_TEMPERATURES_MODULE_C": "",
-                "CELL_TEMPERATURES_MODULE_D": "",
-                "CELL_VOLTAGES_MODULE_A": "",
-                "CELL_VOLTAGES_MODULE_B": "",
-                "CELL_VOLTAGES_MODULE_C": "",
-                "CELL_VOLTAGES_MODULE_D": "",
-                "CURRENT": "",
-                "VOLTAGE": "",
-                "SOC": "",
-                "SOH": "",
-                "CYCLES": "",
-            },
-            "WALLBOX": {
-                "L1_CHARGING_CURRENT": "",
-                "L2_CHARGING_CURRENT": "",
-                "L3_CHARGING_CURRENT": "",
-                "EV_CONNECTED": ""
-            },
+            # "BMS": {
+            #    "CELL_TEMPERATURES_MODULE_A": "",
+            #    "CELL_TEMPERATURES_MODULE_B": "",
+            #    "CELL_TEMPERATURES_MODULE_C": "",
+            #    "CELL_TEMPERATURES_MODULE_D": "",
+            #    "CELL_VOLTAGES_MODULE_A": "",
+            #    "CELL_VOLTAGES_MODULE_B": "",
+            #    "CELL_VOLTAGES_MODULE_C": "",
+            #    "CELL_VOLTAGES_MODULE_D": "",
+            #    "CURRENT": "",
+            #    "VOLTAGE": "",
+            #    "SOC": "",
+            #    "SOH": "",
+            #    "CYCLES": "",
+            # },
+            # "WALLBOX": {
+            #    "L1_CHARGING_CURRENT": "",
+            #    "L2_CHARGING_CURRENT": "",
+            #    "L3_CHARGING_CURRENT": "",
+            #    "EV_CONNECTED": ""
+            # },
             "FAN_SPEED": {},
         }
+        if self._QUERY_BMS:
+            form.update({"BMS": {}})
+        if self._QUERY_STATS:
+            form.update({"STATISTIC": {}})
+        if self._QUERY_WALLBOX:
+            form.update({"WALLBOX": {}})
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
@@ -1012,7 +1164,6 @@ class Senec:
             "BMS": {},
             "BAT1": {},
             "BAT1OBJ1": {},
-            "BAT1OBJ2": {},
             "BAT1OBJ2": {},
             "BAT1OBJ3": {},
             "BAT1OBJ4": {},
@@ -1351,7 +1502,7 @@ class Inverter:
 class MySenecWebPortal:
 
     def __init__(self, user, pwd, websession, master_plant_number: int = 0, options: dict = None):
-        _LOGGER.info("restarting... with options: "+str(options))
+        _LOGGER.info("restarting MySenecWebPortal... with options: " + str(options))
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
             self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
 

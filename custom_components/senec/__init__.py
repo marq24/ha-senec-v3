@@ -34,6 +34,8 @@ from .const import (
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
+    MAIN_SENSOR_TYPES,
+    QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
 )
 
@@ -141,7 +143,22 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             else:
                 self._use_https = False
 
-            self.senec = Senec(host=self._host, use_https=self._use_https, websession=session)
+            # check if any of the wallbox-sensors is enabled... and only THEN
+            # we will include the 'WALLBOX' in our POST to the lala.cgi
+            opt = {QUERY_WALLBOX_KEY: False}
+            if hass is not None and config_entry.title is not None:
+                registry = entity_registry.async_get(hass)
+                if registry is not None:
+                    sluged_title = slugify(config_entry.title)
+                    for description in MAIN_SENSOR_TYPES:
+                        if not opt[QUERY_WALLBOX_KEY] and 'wallbox_' in description.key:
+                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_entity = registry.async_get(a_sensor_id)
+                            if a_entity is not None and a_entity.disabled_by is None:
+                                _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
+                                opt[QUERY_WALLBOX_KEY] = True
+
+            self.senec = Senec(host=self._host, use_https=self._use_https, websession=session, options=opt)
 
         self.name = config_entry.title
         self._config_entry = config_entry
