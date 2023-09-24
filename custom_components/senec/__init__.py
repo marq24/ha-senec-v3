@@ -17,6 +17,18 @@ from homeassistant.util import slugify
 
 
 from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal
+from custom_components.senec.pysenec_ha.constants import (
+    SENEC_SECTION_BMS,
+    SENEC_SECTION_ENERGY,
+    SENEC_SECTION_FAN_SPEED,
+    SENEC_SECTION_STATISTIC,
+    SENEC_SECTION_PM1OBJ1,
+    SENEC_SECTION_PM1OBJ2,
+    SENEC_SECTION_PV1,
+    SENEC_SECTION_PWR_UNIT,
+    SENEC_SECTION_TEMPMEASURE,
+    SENEC_SECTION_WALLBOX
+)
 
 from .const import (
     DOMAIN,
@@ -35,6 +47,9 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
     MAIN_SENSOR_TYPES,
+    MAIN_BIN_SENSOR_TYPES,
+    QUERY_BMS_KEY,
+    QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
 )
@@ -145,18 +160,42 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             # check if any of the wallbox-sensors is enabled... and only THEN
             # we will include the 'WALLBOX' in our POST to the lala.cgi
-            opt = {QUERY_WALLBOX_KEY: False}
+            opt = {QUERY_WALLBOX_KEY: False, QUERY_BMS_KEY: False, QUERY_FANDATA_KEY: False}
             if hass is not None and config_entry.title is not None:
                 registry = entity_registry.async_get(hass)
                 if registry is not None:
                     sluged_title = slugify(config_entry.title)
                     for description in MAIN_SENSOR_TYPES:
-                        if not opt[QUERY_WALLBOX_KEY] and 'wallbox_' in description.key:
+                        if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
                             a_sensor_id = f"sensor.{sluged_title}_{description.key}"
                             a_entity = registry.async_get(a_sensor_id)
                             if a_entity is not None and a_entity.disabled_by is None:
                                 _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
                                 opt[QUERY_WALLBOX_KEY] = True
+
+                        if not opt[QUERY_BMS_KEY] and SENEC_SECTION_BMS == description.senec_lala_section:
+                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_entity = registry.async_get(a_sensor_id)
+                            if a_entity is not None and a_entity.disabled_by is None:
+                                _LOGGER.info("***** QUERY_BMS-DATA ********")
+                                opt[QUERY_BMS_KEY] = True
+
+                        # yes - currently only the 'MAIN_BIN_SENSOR's will contain the SENEC_SECTION_FAN_SPEED but
+                        # I want to have here the complete code/overview 'what should be checked'
+                        if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
+                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_entity = registry.async_get(a_sensor_id)
+                            if a_entity is not None and a_entity.disabled_by is None:
+                                _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
+                                opt[QUERY_FANDATA_KEY] = True
+
+                    for description in MAIN_BIN_SENSOR_TYPES:
+                        if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
+                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_entity = registry.async_get(a_sensor_id)
+                            if a_entity is not None and a_entity.disabled_by is None:
+                                _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
+                                opt[QUERY_FANDATA_KEY] = True
 
             self.senec = Senec(host=self._host, use_https=self._use_https, websession=session, options=opt)
 
