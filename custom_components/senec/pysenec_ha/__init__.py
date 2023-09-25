@@ -5,9 +5,6 @@ import xmltodict
 from time import time
 from datetime import datetime
 
-from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME, SYSTEM_TYPE_NAME, BATT_TYPE_NAME
-from custom_components.senec.pysenec_ha.util import parse
-
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
 from http.cookies import BaseCookie, SimpleCookie, Morsel
@@ -23,7 +20,12 @@ from custom_components.senec.const import (
     QUERY_SPARE_CAPACITY_KEY,
 )
 
-from constants import (
+from custom_components.senec.pysenec_ha.util import parse
+from custom_components.senec.pysenec_ha.constants import (
+    SYSTEM_STATE_NAME,
+    SYSTEM_TYPE_NAME,
+    BATT_TYPE_NAME,
+
     SENEC_SECTION_BMS,
     SENEC_SECTION_ENERGY,
     SENEC_SECTION_FAN_SPEED,
@@ -40,7 +42,6 @@ from constants import (
     SENEC_SECTION_BAT1,
     SENEC_SECTION_WIZARD,
 )
-
 
 # 4: "INITIAL CHARGE",
 # 5: "MAINTENANCE CHARGE",
@@ -993,9 +994,14 @@ class Senec:
         if hasattr(self, '_raw') and "WALLBOX" in self._raw and "L1_CHARGING_CURRENT" in self._raw[
             "WALLBOX"] and "L2_CHARGING_CURRENT" in self._raw["WALLBOX"] and "L3_CHARGING_CURRENT" in self._raw[
             "WALLBOX"]:
-            return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][0] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0] + \
-                self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][0] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1] + \
-                self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][0] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            total = 0
+            if self._raw["WALLBOX"]["L1_USED"][0] == 1:
+                total += self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][0] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw["WALLBOX"]["L2_USED"][0] == 1:
+                total += self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][0] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw["WALLBOX"]["L3_USED"][0] == 1:
+                total += self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][0] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
 
     @property
     def wallbox_ev_connected(self) -> bool:
@@ -1022,9 +1028,14 @@ class Senec:
         if hasattr(self, '_raw') and "WALLBOX" in self._raw and "L1_CHARGING_CURRENT" in self._raw[
             "WALLBOX"] and "L2_CHARGING_CURRENT" in self._raw["WALLBOX"] and "L3_CHARGING_CURRENT" in self._raw[
             "WALLBOX"]:
-            return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][1] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0] + \
-                self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][1] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1] + \
-                self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][1] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            total = 0
+            if self._raw["WALLBOX"]["L1_USED"][1] == 1:
+                total += self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][1] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw["WALLBOX"]["L2_USED"][1] == 1:
+                total += self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][1] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw["WALLBOX"]["L3_USED"][1] == 1:
+                total += self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][1] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
 
     @property
     def wallbox_2_ev_connected(self) -> bool:
@@ -1051,9 +1062,14 @@ class Senec:
         if hasattr(self, '_raw') and "WALLBOX" in self._raw and "L1_CHARGING_CURRENT" in self._raw[
             "WALLBOX"] and "L2_CHARGING_CURRENT" in self._raw["WALLBOX"] and "L3_CHARGING_CURRENT" in self._raw[
             "WALLBOX"]:
-            return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][2] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0] + \
-                self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][2] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1] + \
-                self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][2] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            total = 0
+            if self._raw["WALLBOX"]["L1_USED"][2] == 1:
+                total += self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][2] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw["WALLBOX"]["L2_USED"][2] == 1:
+                total += self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][2] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw["WALLBOX"]["L3_USED"][2] == 1:
+                total += self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][2] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
 
     @property
     def wallbox_3_ev_connected(self) -> bool:
@@ -1079,9 +1095,14 @@ class Senec:
         if hasattr(self, '_raw') and "WALLBOX" in self._raw and "L1_CHARGING_CURRENT" in self._raw[
             "WALLBOX"] and "L2_CHARGING_CURRENT" in self._raw["WALLBOX"] and "L3_CHARGING_CURRENT" in self._raw[
             "WALLBOX"]:
-            return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][3] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0] + \
-                self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][3] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1] + \
-                self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][3] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            total = 0
+            if self._raw["WALLBOX"]["L1_USED"][3] == 1:
+                total += self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][3] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw["WALLBOX"]["L2_USED"][3] == 1:
+                total += self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][3] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw["WALLBOX"]["L3_USED"][3] == 1:
+                total += self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][3] * self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
 
     @property
     def wallbox_4_ev_connected(self) -> bool:
@@ -1209,8 +1230,11 @@ class Senec:
         if self._QUERY_WALLBOX:
             form.update({SENEC_SECTION_WALLBOX: {
                 "L1_CHARGING_CURRENT": "",
+                "L1_USED": "",
                 "L2_CHARGING_CURRENT": "",
+                "L2_USED": "",
                 "L3_CHARGING_CURRENT": "",
+                "L3_USED": "",
                 "EV_CONNECTED": ""}
             })
 
