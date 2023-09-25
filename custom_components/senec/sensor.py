@@ -77,7 +77,7 @@ class SenecSensor(SenecEntity, SensorEntity):
             self._attr_entity_registry_enabled_default = True
 
         title = self.coordinator._config_entry.title
-        key = self.entity_description.key
+        key = self.entity_description.key.lower()
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"
         self._attr_name = f"{title} {name}"

@@ -129,13 +129,13 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # we need to know if the 'spare_capacity' code should be called or not?!
             opt = {QUERY_SPARE_CAPACITY_KEY: False}
             if hass is not None and config_entry.title is not None:
-                sce_id = f"number.{slugify(config_entry.title)}_spare_capacity"
+                sce_id = f"number.{slugify(config_entry.title)}_spare_capacity".lower()
 
                 # we do not need to listen to changed to the entity - since the integration will be automatically
                 # restarted when an Entity of the integration will be disabled/enabled via the GUI (cool!) - but for
                 # now I keep this for debugging why during initial setup of the integration the control 'spare_capacity'
                 # will not be added [only 13 Entities - after restart there are 14!]
-                event.async_track_entity_registry_updated_event(hass=hass, entity_ids=sce_id, action=self)
+                # event.async_track_entity_registry_updated_event(hass=hass, entity_ids=sce_id, action=self)
 
                 # this is enough to check the current enabled/disabled status of the 'spare_capacity' control
                 registry = entity_registry.async_get(hass)
@@ -167,14 +167,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                     sluged_title = slugify(config_entry.title)
                     for description in MAIN_SENSOR_TYPES:
                         if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
-                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_sensor_id = f"sensor.{sluged_title}_{description.key}".lower()
                             a_entity = registry.async_get(a_sensor_id)
                             if a_entity is not None and a_entity.disabled_by is None:
                                 _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
                                 opt[QUERY_WALLBOX_KEY] = True
 
                         if not opt[QUERY_BMS_KEY] and SENEC_SECTION_BMS == description.senec_lala_section:
-                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_sensor_id = f"sensor.{sluged_title}_{description.key}".lower()
                             a_entity = registry.async_get(a_sensor_id)
                             if a_entity is not None and a_entity.disabled_by is None:
                                 _LOGGER.info("***** QUERY_BMS-DATA ********")
@@ -183,7 +183,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                         # yes - currently only the 'MAIN_BIN_SENSOR's will contain the SENEC_SECTION_FAN_SPEED but
                         # I want to have here the complete code/overview 'what should be checked'
                         if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
-                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_sensor_id = f"sensor.{sluged_title}_{description.key}".lower()
                             a_entity = registry.async_get(a_sensor_id)
                             if a_entity is not None and a_entity.disabled_by is None:
                                 _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
@@ -191,7 +191,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
                     for description in MAIN_BIN_SENSOR_TYPES:
                         if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
-                            a_sensor_id = f"sensor.{sluged_title}_{description.key}"
+                            a_sensor_id = f"binary_sensor.{sluged_title}_{description.key}".lower()
                             a_entity = registry.async_get(a_sensor_id)
                             if a_entity is not None and a_entity.disabled_by is None:
                                 _LOGGER.info("***** QUERY_FANSPEED-DATA ********")

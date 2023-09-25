@@ -131,7 +131,7 @@ MAIN_SWITCH_TYPES = [
 """Supported main unit binary_sensor types."""
 MAIN_BIN_SENSOR_TYPES = [
     ExtBinarySensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_FAN_SPEED,
+        senec_lala_section=SENEC_SECTION_FAN_SPEED,
         key="fan_inv_lv",
         name="Fan LV-Inverter",
         icon="mdi:fan",
@@ -139,7 +139,7 @@ MAIN_BIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtBinarySensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_FAN_SPEED,
+        senec_lala_section=SENEC_SECTION_FAN_SPEED,
         entity_registry_enabled_default=False,
         key="fan_inv_hv",
         name="Fan HV-Inverter",
@@ -685,7 +685,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_A1",
         name="Module A: Cell Temperature A1",
@@ -696,7 +696,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_A2",
         name="Module A: Cell Temperature A2",
@@ -707,7 +707,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_A3",
         name="Module A: Cell Temperature A3",
@@ -718,7 +718,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_A4",
         name="Module A: Cell Temperature A4",
@@ -729,7 +729,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_A5",
         name="Module A: Cell Temperature A5",
@@ -740,7 +740,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_A6",
         name="Module A: Cell Temperature A6",
@@ -751,7 +751,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_B1",
         name="Module B: Cell Temperature B1",
@@ -762,7 +762,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_B2",
         name="Module B: Cell Temperature B2",
@@ -773,7 +773,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_B3",
         name="Module B: Cell Temperature B3",
@@ -784,7 +784,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_B4",
         name="Module B: Cell Temperature B4",
@@ -795,7 +795,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_B5",
         name="Module B: Cell Temperature B5",
@@ -806,7 +806,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_B6",
         name="Module B: Cell Temperature B6",
@@ -817,7 +817,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_C1",
         name="Module C: Cell Temperature C1",
@@ -828,7 +828,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_C2",
         name="Module C: Cell Temperature C2",
@@ -839,7 +839,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_C3",
         name="Module C: Cell Temperature C3",
@@ -850,7 +850,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_C4",
         name="Module C: Cell Temperature C4",
@@ -861,7 +861,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_C5",
         name="Module C: Cell Temperature C5",
@@ -872,7 +872,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_C6",
         name="Module C: Cell Temperature C6",
@@ -883,7 +883,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_D1",
         name="Module D: Cell Temperature D1",
@@ -894,7 +894,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_D2",
         name="Module D: Cell Temperature D2",
@@ -905,7 +905,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_D3",
         name="Module D: Cell Temperature D3",
@@ -916,7 +916,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_D4",
         name="Module D: Cell Temperature D4",
@@ -927,7 +927,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_D5",
         name="Module D: Cell Temperature D5",
@@ -938,7 +938,7 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_temp_D6",
         name="Module D: Cell Temperature D6",
@@ -950,7 +950,7 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A1",
         name="Module A: Cell Voltage A1",
@@ -960,7 +960,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A2",
         name="Module A: Cell Voltage A2",
@@ -970,7 +970,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A3",
         name="Module A: Cell Voltage A3",
@@ -980,7 +980,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A4",
         name="Module A: Cell Voltage A4",
@@ -990,7 +990,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A5",
         name="Module A: Cell Voltage A5",
@@ -1000,7 +1000,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A6",
         name="Module A: Cell Voltage A6",
@@ -1010,7 +1010,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A7",
         name="Module A: Cell Voltage A7",
@@ -1020,7 +1020,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A8",
         name="Module A: Cell Voltage A8",
@@ -1030,7 +1030,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A9",
         name="Module A: Cell Voltage A9",
@@ -1040,7 +1040,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A10",
         name="Module A: Cell Voltage A10",
@@ -1050,7 +1050,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A11",
         name="Module A: Cell Voltage A11",
@@ -1060,7 +1060,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A12",
         name="Module A: Cell Voltage A12",
@@ -1070,7 +1070,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A13",
         name="Module A: Cell Voltage A13",
@@ -1080,7 +1080,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_A14",
         name="Module A: Cell Voltage A14",
@@ -1090,7 +1090,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B1",
         name="Module B: Cell Voltage B1",
@@ -1100,7 +1100,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B2",
         name="Module B: Cell Voltage B2",
@@ -1110,7 +1110,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B3",
         name="Module B: Cell Voltage B3",
@@ -1120,7 +1120,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B4",
         name="Module B: Cell Voltage B4",
@@ -1130,7 +1130,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B5",
         name="Module B: Cell Voltage B5",
@@ -1140,7 +1140,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B6",
         name="Module B: Cell Voltage B6",
@@ -1150,7 +1150,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B7",
         name="Module B: Cell Voltage B7",
@@ -1160,7 +1160,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B8",
         name="Module B: Cell Voltage B8",
@@ -1170,7 +1170,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B9",
         name="Module B: Cell Voltage B9",
@@ -1180,7 +1180,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B10",
         name="Module B: Cell Voltage B10",
@@ -1190,7 +1190,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B11",
         name="Module B: Cell Voltage B11",
@@ -1200,7 +1200,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B12",
         name="Module B: Cell Voltage B12",
@@ -1210,7 +1210,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B13",
         name="Module B: Cell Voltage B13",
@@ -1220,7 +1220,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_B14",
         name="Module B: Cell Voltage B14",
@@ -1230,7 +1230,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C1",
         name="Module C: Cell Voltage C1",
@@ -1240,7 +1240,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C2",
         name="Module C: Cell Voltage C2",
@@ -1250,7 +1250,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C3",
         name="Module C: Cell Voltage C3",
@@ -1260,7 +1260,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C4",
         name="Module C: Cell Voltage C4",
@@ -1270,7 +1270,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C5",
         name="Module C: Cell Voltage C5",
@@ -1280,7 +1280,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C6",
         name="Module C: Cell Voltage C6",
@@ -1290,7 +1290,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C7",
         name="Module C: Cell Voltage C7",
@@ -1300,7 +1300,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C8",
         name="Module C: Cell Voltage C8",
@@ -1310,7 +1310,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C9",
         name="Module C: Cell Voltage C9",
@@ -1320,7 +1320,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C10",
         name="Module C: Cell Voltage C10",
@@ -1330,7 +1330,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C11",
         name="Module C: Cell Voltage C11",
@@ -1340,7 +1340,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C12",
         name="Module C: Cell Voltage C12",
@@ -1350,7 +1350,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C13",
         name="Module C: Cell Voltage C13",
@@ -1360,7 +1360,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_C14",
         name="Module C: Cell Voltage C14",
@@ -1370,7 +1370,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D1",
         name="Module D: Cell Voltage D1",
@@ -1380,7 +1380,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D2",
         name="Module D: Cell Voltage D2",
@@ -1390,7 +1390,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D3",
         name="Module D: Cell Voltage D3",
@@ -1400,7 +1400,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D4",
         name="Module D: Cell Voltage D4",
@@ -1410,7 +1410,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D5",
         name="Module D: Cell Voltage D5",
@@ -1420,7 +1420,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D6",
         name="Module D: Cell Voltage D6",
@@ -1430,7 +1430,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D7",
         name="Module D: Cell Voltage D7",
@@ -1440,7 +1440,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D8",
         name="Module D: Cell Voltage D8",
@@ -1450,7 +1450,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D9",
         name="Module D: Cell Voltage D9",
@@ -1460,7 +1460,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D10",
         name="Module D: Cell Voltage D10",
@@ -1470,7 +1470,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D11",
         name="Module D: Cell Voltage D11",
@@ -1480,7 +1480,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D12",
         name="Module D: Cell Voltage D12",
@@ -1490,7 +1490,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D13",
         name="Module D: Cell Voltage D13",
@@ -1500,7 +1500,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cell_volt_D14",
         name="Module D: Cell Voltage D14",
@@ -1511,7 +1511,7 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_voltage_A",
         name="Module A: Voltage",
         icon="mdi:lightning-bolt",
@@ -1520,7 +1520,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_voltage_B",
         name="Module B: Voltage",
         icon="mdi:lightning-bolt",
@@ -1529,7 +1529,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_voltage_C",
         name="Module C: Voltage",
         icon="mdi:lightning-bolt",
@@ -1538,7 +1538,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_voltage_D",
         name="Module D: Voltage",
         icon="mdi:lightning-bolt",
@@ -1548,7 +1548,7 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_current_A",
         name="Module A: Current",
         icon="mdi:current-dc",
@@ -1557,7 +1557,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_current_B",
         name="Module B: Current",
         icon="mdi:current-dc",
@@ -1566,7 +1566,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_current_C",
         name="Module C: Current",
         icon="mdi:current-dc",
@@ -1575,7 +1575,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_current_D",
         name="Module D: Current",
         icon="mdi:current-dc",
@@ -1585,7 +1585,7 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_soc_A",
         name="Module A: State of charge",
         icon="mdi:battery-charging-high",
@@ -1593,7 +1593,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_soc_B",
         name="Module B: State of charge",
         icon="mdi:battery-charging-high",
@@ -1601,7 +1601,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_soc_C",
         name="Module C: State of charge",
         icon="mdi:battery-charging-high",
@@ -1609,7 +1609,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         key="bms_soc_D",
         name="Module D: State of charge",
         icon="mdi:battery-charging-high",
@@ -1618,7 +1618,7 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_soh_A",
         name="Module A: State of Health",
@@ -1627,7 +1627,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_soh_B",
         name="Module B: State of Health",
@@ -1636,7 +1636,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_soh_C",
         name="Module C: State of Health",
@@ -1645,7 +1645,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_soh_D",
         name="Module D: State of Health",
@@ -1655,7 +1655,7 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cycles_A",
         name="Module A: Cycles",
@@ -1664,7 +1664,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cycles_B",
         name="Module B: Cycles",
@@ -1673,7 +1673,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cycles_C",
         name="Module C: Cycles",
@@ -1682,7 +1682,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_BMS,
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
         key="bms_cycles_D",
         name="Module D: Cycles",
@@ -1693,7 +1693,7 @@ MAIN_SENSOR_TYPES = [
 
     # wallbox stuff
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_power",
         name="Wallbox Power",
@@ -1703,14 +1703,14 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_ev_connected",
         name="Wallbox EV Connected",
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_energy",
@@ -1721,7 +1721,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_2_power",
         name="Wallbox II Power",
@@ -1731,14 +1731,14 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_2_ev_connected",
         name="Wallbox II EV Connected",
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_2_energy",
@@ -1749,7 +1749,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_3_power",
         name="Wallbox III Power",
@@ -1759,14 +1759,14 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_3_ev_connected",
         name="Wallbox III EV Connected",
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_3_energy",
@@ -1777,7 +1777,7 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_4_power",
         name="Wallbox VI Power",
@@ -1787,14 +1787,14 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_4_ev_connected",
         name="Wallbox IV EV Connected",
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section = SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_4_energy",
