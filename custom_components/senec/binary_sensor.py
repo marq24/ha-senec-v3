@@ -74,7 +74,7 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
     @ property
     def icon(self):
         """Return the icon of the sensor."""
-        if self.state == STATE_ON:
-            return self._attr_icon
-        else:
+        if self._attr_icon_off is not None and self.state == STATE_OFF:
             return self._attr_icon_off
+        else:
+            return self._attr_icon

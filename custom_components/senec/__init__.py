@@ -190,6 +190,13 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                 opt[QUERY_FANDATA_KEY] = True
 
                     for description in MAIN_BIN_SENSOR_TYPES:
+                        if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
+                            a_sensor_id = f"binary_sensor.{sluged_title}_{description.key}".lower()
+                            a_entity = registry.async_get(a_sensor_id)
+                            if a_entity is not None and a_entity.disabled_by is None:
+                                _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
+                                opt[QUERY_WALLBOX_KEY] = True
+
                         if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
                             a_sensor_id = f"binary_sensor.{sluged_title}_{description.key}".lower()
                             a_entity = registry.async_get(a_sensor_id)
