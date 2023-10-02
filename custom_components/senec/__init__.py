@@ -115,7 +115,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             self.senec = Inverter(self._host, websession=session)
 
         # WEB-API Version...
-        if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+        elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
             self._host = "mein-senec.de"
 
             a_master_plant_number = 0

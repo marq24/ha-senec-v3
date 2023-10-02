@@ -39,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
                 entity = SenecSensor(coordinator, description)
                 entities.append(entity)
 
-    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SENSOR_TYPES:
             entity = SenecSensor(coordinator, description)
             entities.append(entity)

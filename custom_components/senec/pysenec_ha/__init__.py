@@ -1067,6 +1067,18 @@ class Senec:
             return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][0]
 
     @property
+    def wallbox_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][0]
+
+    @property
+    def wallbox_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][0]
+
+    @property
     def wallbox_2_power(self) -> float:
         """
         Wallbox Total Charging Power (W)
@@ -1141,6 +1153,18 @@ class Senec:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L3_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][1]
+
+    @property
+    def wallbox_2_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][1]
+
+    @property
+    def wallbox_2_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][1]
 
     @property
     def wallbox_3_power(self) -> float:
@@ -1219,6 +1243,18 @@ class Senec:
             return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][2]
 
     @property
+    def wallbox_3_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][2]
+
+    @property
+    def wallbox_3_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][2]
+
+    @property
     def wallbox_4_power(self) -> float:
         """
         Wallbox Total Charging Power (W)
@@ -1293,6 +1329,18 @@ class Senec:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L3_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][3]
+
+    @property
+    def wallbox_4_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][3]
+
+    @property
+    def wallbox_4_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][3]
 
     @property
     def fan_inv_lv(self) -> bool:
@@ -1411,7 +1459,9 @@ class Senec:
                 "L2_USED": "",
                 "L3_CHARGING_CURRENT": "",
                 "L3_USED": "",
-                "EV_CONNECTED": ""}
+                "EV_CONNECTED": "",
+                "MIN_CHARGING_CURRENT": "",
+                "SET_ICMAX": ""}
             })
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:

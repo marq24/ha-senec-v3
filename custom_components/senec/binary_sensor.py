@@ -15,9 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER):
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No binary_sensors for Inverters...")
-    if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB):
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         _LOGGER.info("No binary_sensors for WebPortal...")
     else:
         entities = []
