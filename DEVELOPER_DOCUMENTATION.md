@@ -2,7 +2,8 @@
 This document should give an overview regarding the used APIs and the possible data that can be queried.
 
 ## Data that can be accessed in the local network from a Senec V3 device 
-Basis for this documentation is the firmware Version 825.
+Basis for this documentation is the firmware version 0826.
+
 The following information are provided by the device. Since no open acceccible API documentation exists, the following description is an assumption. 
 - The following information can be accessed sending a post request with a JSON-Payload to https://[IP of the senec device]/lala.cgi
 - As response a JSON String is returned
@@ -10,10 +11,24 @@ The following information are provided by the device. Since no open acceccible A
 
 ### Logfile
 The logfile of the device can be accessed via URL and shows a raw text file.
-The URL has the following format: https://[IP of the device]/Log/[year]/[month]/[day].log 
-Example: https://192.168.1.115/Log/2023/09/08.log
+The URL has the following format: `https://[IP of the device]//log/[year]/[month]/[day].log` (and __YES__ there are two
+`/` behind the ip-address since v0826)
 
-### Request Example
+Example: https://192.168.1.115//log/2023/10/05.log
+
+### VarMon & Chart
+It is possible to get a list of all variables and their values of the device, even if Senec claimed that this data is
+only accessible by themselves (since 0826) - the access is still possible for every owner without any kind of hacks.
+
+| version      | url                                     |
+|--------------|-----------------------------------------|
+| before v0825 | `https://[IP of the device]/vars.html`  |
+| v0825        | `https://[IP of the device]/Vars.html`  |
+| v0826        | `https://[IP of the device]//vars.html` |
+
+Example: https://192.168.1.115//vars.html
+
+### lala.cgi Request Example
 To gather data we have to send a POST-Request to the Senec device ("lala.cgi"), that has a JSON-String as payload.
 Here an request example with all objects that can be requested. Many of the objects have sub-objects:
 ```
@@ -60,6 +75,7 @@ content-type: application/json
 "FAN_SPEED":{}
 }
 ```
+
 ### Response Example
 The response returns a JSON-String for the requested object.
 In this example the "ENERGY" was used.
