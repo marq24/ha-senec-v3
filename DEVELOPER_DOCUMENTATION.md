@@ -12,7 +12,7 @@ The following information are provided by the device. Since no open acceccible A
 ### Logfile
 The logfile of the device can be accessed via URL and shows a raw text file.
 The URL has the following format: `https://[IP of the device]//log/[year]/[month]/[day].log` (and __YES__ there are two
-`/`) behind the ip-address since v0826)
+`/` behind the ip-address since v0826)
 
 Example: https://192.168.1.115//log/2023/10/05.log
 
