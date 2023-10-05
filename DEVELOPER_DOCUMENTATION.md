@@ -12,13 +12,13 @@ The following information are provided by the device. Since no open acceccible A
 ### Logfile
 The logfile of the device can be accessed via URL and shows a raw text file.
 The URL has the following format: `https://[IP of the device]//log/[year]/[month]/[day].log` (and __YES__ there are two
-`/`) behind the IP - in previous firmware versions (like the 0825 one `/` was enough - now it's _pretected_)
+`/`) behind the ip-address since v0826)
 
 Example: https://192.168.1.115//log/2023/10/05.log
 
 ### VarMon & Chart
-It is possible to get a list of all current variables and their values - even if Senec claimed that this data is only
-accessible by themselves (since 0826).
+It is possible to get a list of all variables and their values of the device, even if Senec claimed that this data is
+only accessible by themselves (since 0826) - the access is still possible for every owner without any kind of hacks.
 
 | version      | url                                     |
 |--------------|-----------------------------------------|
