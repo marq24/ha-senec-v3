@@ -15,18 +15,23 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LANG = None
+
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    entities = []
+    global _LANG
+    _LANG = coordinator._langDict
 
-    #Take care that CONF_TYPE = CONF_SYSTEYPE_WEB, since the implementation works with the web API
+    entities = []
+    # Take care that CONF_TYPE = CONF_SYSTEYPE_WEB, since the implementation works with the web API
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_NUMBER_SENYOR_TYPES:
             entity = SenecNumber(coordinator, description)
             entities.append(entity)
     async_add_entities(entities)
+
 
 """Implementation for the spare capacity of the senec device"""
 class SenecNumber(SenecEntity, NumberEntity):
@@ -46,7 +51,11 @@ class SenecNumber(SenecEntity, NumberEntity):
         key = self.entity_description.key.lower()
         name = self.entity_description.name
         self.entity_id = f"number.{slugify(title)}_{key}"
-        self._attr_name = f"{title} {name}"
+        if key in _LANG:
+            self._attr_name = _LANG[key]
+        else:
+            _LOGGER.info(str(key)+" Number not found in translation")
+            self._attr_name = f"{title} {name}"
 
     @property
     def state(self) -> int:
@@ -60,4 +69,3 @@ class SenecNumber(SenecEntity, NumberEntity):
         api = self.coordinator.senec
         await api.set_spare_capacity(updated_spare_capacity)
         self.async_schedule_update_ha_state(force_refresh=True)
-       

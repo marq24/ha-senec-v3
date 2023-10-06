@@ -46,6 +46,11 @@ SYSTYPE_SENECV2: Final = "systype_senecv2"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
 SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
 
+# the display names of the 3 different implemented backend-types
+SYSTYPE_NAME_SENEC = "SENEC Main-Unit"
+SYSTYPE_NAME_INVERTER = "SENEC Inverter Module"
+SYSTYPE_NAME_WEBAPI = "SENEC WebAPI"
+
 MODE_WEB: Final = "mode_web"
 MODE_LOCAL: Final = "mode_local"
 SYSTEM_MODES: Final = [MODE_LOCAL, MODE_WEB]
@@ -53,14 +58,15 @@ SYSTEM_MODES: Final = [MODE_LOCAL, MODE_WEB]
 SETUP_SYS_TYPE: Final = "stype"
 SETUP_SYS_MODE: Final = "smode"
 
-CONF_DEV_TYPE: Final = "dtype"
 CONF_DEV_TYPE_INT: Final = "dtype_int"
 CONF_USE_HTTPS: Final = "use_https"
 CONF_SUPPORT_BDC: Final = "has_bdc_support"
-CONF_DEV_NAME: Final = "dname"
+CONF_DEV_MASTER_NUM: Final = "master_plant_number"
+
+CONF_DEV_TYPE: Final = "dtype"
+CONF_DEV_MODEL: Final = "dname"
 CONF_DEV_SERIAL: Final = "dserial"
 CONF_DEV_VERSION: Final = "version"
-CONF_DEV_MASTER_NUM: Final = "master_plant_number"
 
 CONF_SYSTYPE_SENEC: Final = "senec"
 CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"
@@ -421,6 +427,22 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        key="battery_state_current",
+        name="Battery State Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="battery_state_voltage",
+        name="Battery State Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:home-battery",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
         key="battery_charge_power",
         name="Battery Charge Power",
         native_unit_of_measurement=POWER_WATT,
@@ -524,7 +546,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="solar_mpp1_potential",
-        name="MPP1 Potential",
+        name="MPP1 Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -548,7 +570,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="solar_mpp2_potential",
-        name="MPP2 Potential",
+        name="MPP2 Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -572,7 +594,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="solar_mpp3_potential",
-        name="MPP3 Potential",
+        name="MPP3 Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -612,7 +634,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="enfluri_net_potential_p1",
-        name="Enfluri Net Potential Phase 1",
+        name="Enfluri Net Voltage Phase 1",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -620,7 +642,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="enfluri_net_potential_p2",
-        name="Enfluri Net Potential Phase 2",
+        name="Enfluri Net Voltage Phase 2",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -628,7 +650,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="enfluri_net_potential_p3",
-        name="Enfluri Net Potential Phase 3",
+        name="Enfluri Net Voltage Phase 3",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -703,7 +725,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p1",
-        name="Enfluri Usage Potential Phase 1",
+        name="Enfluri Usage Voltage Phase 1",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -712,7 +734,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p2",
-        name="Enfluri Usage Potential Phase 2",
+        name="Enfluri Usage Voltage Phase 2",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -721,7 +743,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p3",
-        name="Enfluri Usage Potential Phase 3",
+        name="Enfluri Usage Voltage Phase 3",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -1609,7 +1631,7 @@ MAIN_SENSOR_TYPES = [
 
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_voltage_A",
+        key="bms_voltage_a",
         name="Module A: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1618,7 +1640,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_voltage_B",
+        key="bms_voltage_b",
         name="Module B: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1627,7 +1649,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_voltage_C",
+        key="bms_voltage_c",
         name="Module C: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1636,7 +1658,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_voltage_D",
+        key="bms_voltage_d",
         name="Module D: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1646,7 +1668,7 @@ MAIN_SENSOR_TYPES = [
 
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_current_A",
+        key="bms_current_a",
         name="Module A: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1655,7 +1677,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_current_B",
+        key="bms_current_b",
         name="Module B: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1664,7 +1686,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_current_C",
+        key="bms_current_c",
         name="Module C: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1673,7 +1695,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_current_D",
+        key="bms_current_d",
         name="Module D: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1683,7 +1705,7 @@ MAIN_SENSOR_TYPES = [
 
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_soc_A",
+        key="bms_soc_a",
         name="Module A: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
@@ -1691,7 +1713,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_soc_B",
+        key="bms_soc_b",
         name="Module B: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
@@ -1699,7 +1721,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_soc_C",
+        key="bms_soc_c",
         name="Module C: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
@@ -1707,7 +1729,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
-        key="bms_soc_D",
+        key="bms_soc_d",
         name="Module D: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
@@ -1717,7 +1739,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_soh_A",
+        key="bms_soh_a",
         name="Module A: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
@@ -1726,7 +1748,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_soh_B",
+        key="bms_soh_b",
         name="Module B: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
@@ -1735,7 +1757,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_soh_C",
+        key="bms_soh_c",
         name="Module C: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
@@ -1744,7 +1766,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_soh_D",
+        key="bms_soh_d",
         name="Module D: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
@@ -1754,7 +1776,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cycles_A",
+        key="bms_cycles_a",
         name="Module A: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
@@ -1763,7 +1785,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cycles_B",
+        key="bms_cycles_b",
         name="Module B: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
@@ -1772,7 +1794,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cycles_C",
+        key="bms_cycles_c",
         name="Module C: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
@@ -1781,7 +1803,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cycles_D",
+        key="bms_cycles_d",
         name="Module D: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
@@ -1821,7 +1843,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_l1_charging_current",
-        name="Wallbox L1 charging current",
+        name="Wallbox L1 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1831,7 +1853,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_l2_charging_current",
-        name="Wallbox L2 charging current",
+        name="Wallbox L2 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1841,7 +1863,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_l3_charging_current",
-        name="Wallbox L3 charging current",
+        name="Wallbox L3 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1851,7 +1873,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_min_charging_current",
-        name="Wallbox MIN charging current",
+        name="Wallbox MIN charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1900,7 +1922,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_2_l1_charging_current",
-        name="Wallbox II L1 charging current",
+        name="Wallbox II L1 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1910,7 +1932,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_2_l2_charging_current",
-        name="Wallbox II L2 charging current",
+        name="Wallbox II L2 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1920,7 +1942,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_2_l3_charging_current",
-        name="Wallbox II L3 charging current",
+        name="Wallbox II L3 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1930,7 +1952,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_2_min_charging_current",
-        name="Wallbox II MIN charging current",
+        name="Wallbox II MIN charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1979,7 +2001,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_3_l1_charging_current",
-        name="Wallbox III L1 charging current",
+        name="Wallbox III L1 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1989,7 +2011,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_3_l2_charging_current",
-        name="Wallbox III L2 charging current",
+        name="Wallbox III L2 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1999,7 +2021,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_3_l3_charging_current",
-        name="Wallbox III L3 charging current",
+        name="Wallbox III L3 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2009,7 +2031,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_3_min_charging_current",
-        name="Wallbox III MIN charging current",
+        name="Wallbox III MIN charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2058,7 +2080,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_4_l1_charging_current",
-        name="Wallbox IV L1 charging current",
+        name="Wallbox IV L1 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2068,7 +2090,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_4_l2_charging_current",
-        name="Wallbox IV L2 charging current",
+        name="Wallbox IV L2 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2078,7 +2100,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_4_l3_charging_current",
-        name="Wallbox IV L3 charging current",
+        name="Wallbox IV L3 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2088,7 +2110,7 @@ MAIN_SENSOR_TYPES = [
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_4_min_charging_current",
-        name="Wallbox IV MIN charging current",
+        name="Wallbox IV MIN charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2118,7 +2140,7 @@ INVERTER_SENSOR_TYPES = [
 
     ExtSensorEntityDescription(
         key="ac_current",
-        name="AC current",
+        name="AC Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-ac",
         device_class=SensorDeviceClass.ENERGY,
@@ -2230,7 +2252,7 @@ INVERTER_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="dc_current1",
-        name="DC current 1",
+        name="DC Current 1",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2239,7 +2261,7 @@ INVERTER_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="dc_current2",
-        name="DC current 2",
+        name="DC Current 2",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,

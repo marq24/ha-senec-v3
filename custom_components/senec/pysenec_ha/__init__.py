@@ -68,9 +68,9 @@ _LOGGER = logging.getLogger(__name__)
 class Senec:
     """Senec Home Battery Sensor"""
 
-    def __init__(self, host, use_https, websession, options: dict = None):
+    def __init__(self, host, use_https, websession, lang: str = "en", options: dict = None):
         _LOGGER.info(f"restarting Senec lala.cgi integration... for host: '{host}' with options: {options}")
-
+        self._lang = lang
         self._QUERY_STATS = True
         if options is not None and QUERY_BMS_KEY in options:
             self._QUERY_BMS = options[QUERY_BMS_KEY]
@@ -96,29 +96,29 @@ class Senec:
 
     @property
     def device_id(self) -> str:
-        return self._raw[SENEC_SECTION_FACTORY]["DEVICE_ID"]
+        return self._rawVer[SENEC_SECTION_FACTORY]["DEVICE_ID"]
 
     @property
     def versions(self) -> str:
-        a = self._raw[SENEC_SECTION_WIZARD]["APPLICATION_VERSION"]
-        b = self._raw[SENEC_SECTION_WIZARD]["FIRMWARE_VERSION"]
-        c = self._raw[SENEC_SECTION_WIZARD]["INTERFACE_VERSION"]
-        d = str(self._raw[SENEC_SECTION_SYS_UPDATE]["NPU_VER"])
-        e = str(self._raw[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"])
+        a = self._rawVer[SENEC_SECTION_WIZARD]["APPLICATION_VERSION"]
+        b = self._rawVer[SENEC_SECTION_WIZARD]["FIRMWARE_VERSION"]
+        c = self._rawVer[SENEC_SECTION_WIZARD]["INTERFACE_VERSION"]
+        d = str(self._rawVer[SENEC_SECTION_SYS_UPDATE]["NPU_VER"])
+        e = str(self._rawVer[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"])
         return f"App:{a} FW:{b} NPU-Image:{e}(v{d})"
 
     @property
     def device_type(self) -> str:
-        value = self._raw[SENEC_SECTION_FACTORY]["SYS_TYPE"]
+        value = self._rawVer[SENEC_SECTION_FACTORY]["SYS_TYPE"]
         return SYSTEM_TYPE_NAME.get(value, "UNKNOWN")
 
     @property
     def device_type_internal(self) -> str:
-        return self._raw[SENEC_SECTION_FACTORY]["SYS_TYPE"]
+        return self._rawVer[SENEC_SECTION_FACTORY]["SYS_TYPE"]
 
     @property
     def batt_type(self) -> str:
-        value = self._raw[SENEC_SECTION_BAT1]["TYPE"]
+        value = self._rawVer[SENEC_SECTION_BAT1]["TYPE"]
         return BATT_TYPE_NAME.get(value, "UNKNOWN")
 
     async def update_version(self):
@@ -155,7 +155,7 @@ class Senec:
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
-            self._raw = parse(await res.json())
+            self._rawVer = parse(await res.json())
 
     @property
     def system_state(self) -> str:
@@ -164,7 +164,10 @@ class Senec:
 
         """
         value = self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"]
-        return SYSTEM_STATE_NAME.get(value, "UNKNOWN")
+        if self._lang in SYSTEM_STATE_NAME:
+            return SYSTEM_STATE_NAME[self._lang].get(value, "UNKNOWN")
+        else:
+            return SYSTEM_STATE_NAME["en"].get(value, "UNKNOWN")
 
     @property
     def raw_status(self) -> dict:
@@ -245,6 +248,14 @@ class Senec:
         Value is negative when battery is discharging.
         """
         return self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_POWER"]
+
+    @property
+    def battery_state_current(self) -> float:
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_CURRENT"]
+
+    @property
+    def battery_state_voltage(self) -> float:
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_VOLTAGE"]
 
     @property
     def battery_total_charged(self) -> float:
@@ -871,122 +882,122 @@ class Senec:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
 
     @property
-    def bms_soc_A(self) -> float:
+    def bms_soc_a(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
             return self._raw["BMS"]["SOC"][0]
 
     @property
-    def bms_soc_B(self) -> float:
+    def bms_soc_b(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
             return self._raw["BMS"]["SOC"][1]
 
     @property
-    def bms_soc_C(self) -> float:
+    def bms_soc_c(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
             return self._raw["BMS"]["SOC"][2]
 
     @property
-    def bms_soc_D(self) -> float:
+    def bms_soc_d(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
             return self._raw["BMS"]["SOC"][3]
 
     @property
-    def bms_soh_A(self) -> float:
+    def bms_soh_a(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
             return self._raw["BMS"]["SOH"][0]
 
     @property
-    def bms_soh_B(self) -> float:
+    def bms_soh_b(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
             return self._raw["BMS"]["SOH"][1]
 
     @property
-    def bms_soh_C(self) -> float:
+    def bms_soh_c(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
             return self._raw["BMS"]["SOH"][2]
 
     @property
-    def bms_soh_D(self) -> float:
+    def bms_soh_d(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
             return self._raw["BMS"]["SOH"][3]
 
     @property
-    def bms_voltage_A(self) -> float:
+    def bms_voltage_a(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
             return self._raw["BMS"]["VOLTAGE"][0]
 
     @property
-    def bms_voltage_B(self) -> float:
+    def bms_voltage_b(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
             return self._raw["BMS"]["VOLTAGE"][1]
 
     @property
-    def bms_voltage_C(self) -> float:
+    def bms_voltage_c(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
             return self._raw["BMS"]["VOLTAGE"][2]
 
     @property
-    def bms_voltage_D(self) -> float:
+    def bms_voltage_d(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
             return self._raw["BMS"]["VOLTAGE"][3]
 
     @property
-    def bms_current_A(self) -> float:
+    def bms_current_a(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
             return self._raw["BMS"]["CURRENT"][0]
 
     @property
-    def bms_current_B(self) -> float:
+    def bms_current_b(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
             return self._raw["BMS"]["CURRENT"][1]
 
     @property
-    def bms_current_C(self) -> float:
+    def bms_current_c(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
             return self._raw["BMS"]["CURRENT"][2]
 
     @property
-    def bms_current_D(self) -> float:
+    def bms_current_d(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
             return self._raw["BMS"]["CURRENT"][3]
 
     @property
-    def bms_cycles_A(self) -> float:
+    def bms_cycles_a(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
             return self._raw["BMS"]["CYCLES"][0]
 
     @property
-    def bms_cycles_B(self) -> float:
+    def bms_cycles_b(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
             return self._raw["BMS"]["CYCLES"][1]
 
     @property
-    def bms_cycles_C(self) -> float:
+    def bms_cycles_c(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
             return self._raw["BMS"]["CYCLES"][2]
 
     @property
-    def bms_cycles_D(self) -> float:
+    def bms_cycles_d(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
             return self._raw["BMS"]["CYCLES"][3]
 
     @property
-    def bms_fw_A(self) -> float:
+    def bms_fw_a(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
             return self._raw["BMS"]["FW"][0]
 
     @property
-    def bms_fw_B(self) -> float:
+    def bms_fw_b(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
             return self._raw["BMS"]["FW"][1]
 
     @property
-    def bms_fw_C(self) -> float:
+    def bms_fw_c(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
             return self._raw["BMS"]["FW"][2]
 
     @property
-    def bms_fw_D(self) -> float:
+    def bms_fw_d(self) -> float:
         if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
             return self._raw["BMS"]["FW"][3]
 
@@ -1355,30 +1366,21 @@ class Senec:
             return self._raw[SENEC_SECTION_FAN_SPEED]["INV_HV"] == 1
 
     async def update(self):
-        await self.read_senec_v31()
+        await self.read_senec_lala()
 
-    async def read_senec_v31(self):
-        """Read values used by webinterface from Senec Home v2.1
-
-        Note: Not all values are "high priority" and reading everything causes problems with Senec device, i.e. no sync with Senec cloud possible.
-        """
+    async def read_senec_lala(self):
         form = {
             SENEC_SECTION_ENERGY: {
                 "STAT_STATE": "",
-                "GUI_BAT_DATA_POWER": "",
-                "GUI_INVERTER_POWER": "",
-                "GUI_HOUSE_POW": "",
                 "GUI_GRID_POW": "",
+                "GUI_HOUSE_POW": "",
+                "GUI_INVERTER_POWER": "",
                 "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "GUI_CHARGING_INFO": "",
-                "GUI_BOOSTING_INFO": "",
                 "GUI_BAT_DATA_POWER": "",
                 "GUI_BAT_DATA_VOLTAGE": "",
                 "GUI_BAT_DATA_CURRENT": "",
-                "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "STAT_LIMITED_NET_SKEW": "",
                 "SAFE_CHARGE_RUNNING": "",
-                "LI_STORAGE_MODE_RUNNING": "",
+                "LI_STORAGE_MODE_RUNNING": ""
             },
             # SENEC_SECTION_STATISTIC: {
             #    "LIVE_BAT_CHARGE": "",
@@ -1468,75 +1470,22 @@ class Senec:
             res.raise_for_status()
             self._raw = parse(await res.json())
 
-    async def read_senec_v21(self):
-        """Read values used by webinterface from Senec Home v2.1
-
-        Note: Not all values are "high priority" and reading everything causes problems with Senec device, i.e. no sync with Senec cloud possible.
-        """
+    async def read_senec_energy(self):
         form = {
-            "ENERGY": {
+            SENEC_SECTION_ENERGY: {
                 "STAT_STATE": "",
-                "GUI_BAT_DATA_POWER": "",
-                "GUI_INVERTER_POWER": "",
-                "GUI_HOUSE_POW": "",
                 "GUI_GRID_POW": "",
-                "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "GUI_CHARGING_INFO": "",
-                "GUI_BOOSTING_INFO": "",
+                "GUI_HOUSE_POW": "",
+                "GUI_INVERTER_POWER": "",
                 "GUI_BAT_DATA_POWER": "",
                 "GUI_BAT_DATA_VOLTAGE": "",
-                "GUI_BAT_DATA_CURRENT": "",
-                "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "STAT_LIMITED_NET_SKEW": "",
-            },
-            "STATISTIC": {
-                "LIVE_BAT_CHARGE": "",
-                "LIVE_BAT_DISCHARGE": "",
-                "LIVE_GRID_EXPORT": "",
-                "LIVE_GRID_IMPORT": "",
-                "LIVE_HOUSE_CONS": "",
-                "LIVE_PV_GEN": "",
-            },
-            "TEMPMEASURE": {
-                "BATTERY_TEMP": "",
-                "CASE_TEMP": "",
-                "MCU_TEMP": "",
-            },
-            "PV1": {"POWER_RATIO": ""},
-            "PWR_UNIT": {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
-            "PM1OBJ1": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            "PM1OBJ2": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+                "GUI_BAT_DATA_CURRENT": ""
+            }
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
-            self._raw = parse(await res.json())
-
-    async def read_senec_v21_all(self):
-        """Read ALL values from Senec Home v2.1
-
-        Note: This causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
-        """
-        form = {
-            "STATISTIC": {},
-            "ENERGY": {},
-            "FEATURES": {},
-            "LOG": {},
-            "SYS_UPDATE": {},
-            "WIZARD": {},
-            "BMS": {},
-            "BAT1": {},
-            "BAT1OBJ1": {},
-            "BAT1OBJ2": {},
-            "BAT1OBJ3": {},
-            "BAT1OBJ4": {},
-            "PWR_UNIT": {},
-            "PV1": {},
-        }
-
-        async with self.websession.post(self.url, json=form, ssl=False) as res:
-            res.raise_for_status()
-            self._raw = parse(await res.json())
+            self._energy_raw = parse(await res.json())
 
     ## LADEN...
     ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
@@ -1629,9 +1578,9 @@ class Inverter:
         async with self.websession.get(self.url3) as res:
             res.raise_for_status()
             txt = await res.text()
-            self._raw = xmltodict.parse(txt)
+            self._rawVer = xmltodict.parse(txt)
             lastDev = ''
-            for aEntry in self._raw["root"]["Device"]["Versions"]["Software"]:
+            for aEntry in self._rawVer["root"]["Device"]["Versions"]["Software"]:
                 if '@Name' in aEntry:
                     aDev = aEntry["@Device"]
                     if (not self._has_bdc):
@@ -1734,26 +1683,26 @@ class Inverter:
 
     @property
     def device_name(self) -> str:
-        return self._raw["root"]["Device"]["@Name"]
+        return self._rawVer["root"]["Device"]["@Name"]
 
     @property
     def device_serial(self) -> str:
-        return self._raw["root"]["Device"]["@Serial"]
+        return self._rawVer["root"]["Device"]["@Serial"]
 
     @property
     def device_netbiosname(self) -> str:
-        return self._raw["root"]["Device"]["@NetBiosName"]
+        return self._rawVer["root"]["Device"]["@NetBiosName"]
 
-    @property
-    def measurements(self) -> dict:
-        if ('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"][
-            "Measurements"]):
-            return self._raw["root"]["Device"]["Measurements"]["Measurement"]
+    #@property
+    #def measurements(self) -> dict:
+    #    if ('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"][
+    #        "Measurements"]):
+    #        return self._raw["root"]["Device"]["Measurements"]["Measurement"]
 
-    @property
-    def versions(self) -> dict:
-        if ('Versions' in self._raw["root"]["Device"] and 'Software' in self._raw["root"]["Device"]["Versions"]):
-            return self._raw["root"]["Device"]["Versions"]["Software"]
+    #@property
+    #def versions(self) -> dict:
+    #    if ('Versions' in self._rawVer["root"]["Device"] and 'Software' in self._rawVer["root"]["Device"]["Versions"]):
+    #        return self._rawVer["root"]["Device"]["Versions"]["Software"]
 
     @property
     def ac_voltage(self) -> float:
@@ -2216,10 +2165,10 @@ class MySenecWebPortal:
         if hasattr(self, '_zone_id'):
             return str(self._zone_id)
 
-    @property
-    def firmwareVersion(self) -> str:
-        if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
-            return str(self._raw["firmwareVersion"])
+    #@property
+    #def firmwareVersion(self) -> str:
+    #    if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
+    #        return str(self._raw["firmwareVersion"])
 
     @property
     def masterPlantNumber(self) -> int:

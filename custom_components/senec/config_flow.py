@@ -36,13 +36,17 @@ from .const import (
     SYSTEM_MODES,
     MODE_WEB,
 
+    SYSTYPE_NAME_SENEC,
+    SYSTYPE_NAME_INVERTER,
+    SYSTYPE_NAME_WEBAPI,
+
     SETUP_SYS_TYPE,
     SETUP_SYS_MODE,
     CONF_DEV_TYPE,
     CONF_DEV_TYPE_INT,
     CONF_USE_HTTPS,
     CONF_SUPPORT_BDC,
-    CONF_DEV_NAME,
+    CONF_DEV_MODEL,
     CONF_DEV_SERIAL,
     CONF_DEV_VERSION,
     CONF_SYSTYPE_SENEC,
@@ -84,15 +88,18 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         """Initialize."""
         self._errors = {}
-        self._device_type = ""
+        self._selected_system = None
+
+        self._use_https = False
         self._device_type_internal = ""
         self._support_bdc = False
-        self._device_name = ""
+        self._device_master_plant_number = -1
+
+        self._device_type = ""
+        self._device_model = ""
         self._device_serial = ""
         self._device_version = ""
-        self._device_master_plant_number = -1
-        self._selected_system = None
-        self._use_https = False
+        self._stats_available = False
 
     def _host_in_configuration_exists(self, host) -> bool:
         """Return True if host exists in configuration."""
@@ -107,12 +114,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             senec_client = Senec(host=host, use_https=use_https, websession=websession)
             await senec_client.update_version()
-            self._device_type = "SENEC Main-Unit"
+            self._use_https = use_https
             self._device_type_internal = senec_client.device_type_internal
-            self._device_name = senec_client.device_type + ' | ' + senec_client.batt_type
+
+            # these values will also read with every restart...
+            self._device_type = SYSTYPE_NAME_SENEC
+            self._device_model = senec_client.device_type + ' | ' + senec_client.batt_type
             self._device_serial = 'S' + senec_client.device_id
             self._device_version = senec_client.versions
-            self._use_https = use_https
             self._stats_available = senec_client.grid_total_export is not None
 
             _LOGGER.info(
@@ -136,11 +145,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             inverter_client = Inverter(host=host, websession=websession)
             await inverter_client.update_version()
-            self._device_type = "SENEC Inverter Module"
             self._support_bdc = inverter_client.has_bdc
-            self._device_name = inverter_client.device_name + ' Netbios: ' + inverter_client.device_netbiosname
+
+            # these values will also read with every restart...
+            self._device_type = SYSTYPE_NAME_INVERTER
+            self._device_model = inverter_client.device_name + ' Netbios: ' + inverter_client.device_netbiosname
             self._device_serial = inverter_client.device_serial
             self._device_version = inverter_client.device_versions
+
             _LOGGER.info(
                 "Successfully connect to build-in Inverter device at %s",
                 host,
@@ -163,13 +175,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await senec_web_client.authenticate(doUpdate=False, throw401=True)
             if senec_web_client._isAuthenticated:
                 await senec_web_client.update_context()
-                self._device_type = "SENEC WebAPI"
-                # self._device_type_internal = senec_client.device_type_internal
-                self._device_type = senec_web_client.product_name
-                self._device_name = 'SENEC.Num: ' + senec_web_client.senec_num
-                self._device_serial = senec_web_client.serial_number
-                self._device_version = senec_web_client.firmwareVersion
                 self._device_master_plant_number = senec_web_client.masterPlantNumber
+
+                # these values will also read with every restart...
+                self._device_type = SYSTYPE_NAME_WEBAPI
+                self._device_model = senec_web_client.product_name + ' | SENEC.Num: ' + senec_web_client.senec_num
+                self._device_serial = senec_web_client.serial_number
+                self._device_version = None # senec_web_client.firmwareVersion
+
                 _LOGGER.info("Successfully connect to mein-senec.de with '%s'", user)
                 return True
             else:
@@ -221,34 +234,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=self._errors,
         )
 
-    # async def async_step_mode(self, user_input=None):
-    #     self._errors = {}
-    #     if user_input is not None:
-    #         if self._selected_system.get(SETUP_SYS_MODE) == MODE_WEB:
-    #             return await self.async_step_websetup()
-    #         else:
-    #             return await self.async_step_system()
-    #     else:
-    #         user_input = {}
-    #         user_input[SETUP_SYS_MODE] = DEFAULT_MODE
-    #
-    #     return self.async_show_form(
-    #         step_id="mode",
-    #         data_schema=vol.Schema(
-    #             {
-    #                 vol.Required(SETUP_SYS_MODE, default=user_input.get(SETUP_SYS_MODE, DEFAULT_MODE)):
-    #                     selector.SelectSelector(
-    #                         selector.SelectSelectorConfig(
-    #                             options=SYSTEM_MODES,
-    #                             mode=selector.SelectSelectorMode.DROPDOWN,
-    #                             translation_key=SETUP_SYS_MODE,
-    #                         )
-    #                     )
-    #             }
-    #         ),
-    #         errors=self._errors,
-    #     )
-
     async def async_step_system(self, user_input=None):
         """Step when user initializes a integration."""
         self._errors = {}
@@ -277,7 +262,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                                                          CONF_TYPE: CONF_SYSTYPE_INVERTER,
                                                                          CONF_DEV_TYPE: self._device_type,
                                                                          CONF_SUPPORT_BDC: self._support_bdc,
-                                                                         CONF_DEV_NAME: self._device_name,
+                                                                         CONF_DEV_MODEL: self._device_model,
                                                                          CONF_DEV_SERIAL: self._device_serial,
                                                                          CONF_DEV_VERSION: self._device_version
                                                                          })
@@ -299,7 +284,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                   CONF_TYPE: CONF_SYSTYPE_SENEC,
                                   CONF_DEV_TYPE_INT: self._device_type_internal,
                                   CONF_DEV_TYPE: self._device_type,
-                                  CONF_DEV_NAME: self._device_name,
+                                  CONF_DEV_MODEL: self._device_model,
                                   CONF_DEV_SERIAL: self._device_serial,
                                   CONF_DEV_VERSION: self._device_version
                                   }
@@ -381,7 +366,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                                                      CONF_TYPE: CONF_SYSTYPE_WEB,
                                                                      CONF_DEV_TYPE_INT: self._device_type_internal,
                                                                      CONF_DEV_TYPE: self._device_type,
-                                                                     CONF_DEV_NAME: self._device_name,
+                                                                     CONF_DEV_MODEL: self._device_model,
                                                                      CONF_DEV_SERIAL: self._device_serial,
                                                                      CONF_DEV_VERSION: self._device_version,
                                                                      CONF_DEV_MASTER_NUM: self._device_master_plant_number
@@ -423,19 +408,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         return SenecOptionsFlowHandler(config_entry)
-
-    # async def _show_config_form(self, user_input):  # pylint: disable=unused-argument
-    #     return self.async_show_form(
-    #         step_id="user",
-    #         data_schema=vol.Schema(
-    #             {
-    #                 vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
-    #                 vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
-    #                 vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
-    #             }
-    #         ),
-    #         errors=self._errors,
-    #     )
 
 
 class SenecOptionsFlowHandler(config_entries.OptionsFlow):
