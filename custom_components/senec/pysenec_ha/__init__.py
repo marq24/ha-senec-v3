@@ -2032,22 +2032,34 @@ class MySenecWebPortal:
                     r_json = await res.json()
                     self._raw = parse(r_json)
                     for key in (self._API_KEYS + self._API_KEYS_EXTRA):
-                        if (key != "acculevel"):
-                            value_now = r_json[key]["now"]
-                            entity_now_name = str(key + "_now")
-                            self._power_entities[entity_now_name] = value_now
+                        if key in r_json:
+                            if (key != "acculevel"):
+                                if "now" in r_json[key]:
+                                    value_now = r_json[key]["now"]
+                                    entity_now_name = str(key + "_now")
+                                    self._power_entities[entity_now_name] = value_now
+                                else:
+                                    _LOGGER.info(f"No 'now' in json: {r_json} when requesting: {a_url}")
 
-                            value_today = r_json[key]["today"]
-                            entity_today_name = str(key + "_today")
-                            self._energy_entities[entity_today_name] = value_today
+                                if "today" in r_json[key]:
+                                    value_today = r_json[key]["today"]
+                                    entity_today_name = str(key + "_today")
+                                    self._energy_entities[entity_today_name] = value_today
+                                else:
+                                    _LOGGER.info(f"No 'today' in json: {r_json} when requesting: {a_url}")
+                            else:
+                                if "now" in r_json[key]:
+                                    value_now = r_json[key]["now"]
+                                    entity_now_name = str(key + "_now")
+                                    self._battery_entities[entity_now_name] = value_now
+                                else:
+                                    _LOGGER.info(f"No 'now' in json: {r_json} when requesting: {a_url}")
+
+                                # value_today = r_json[key]["today"]
+                                # entity_today_name = str(key + "_today")
+                                # self._battery_entities[entity_today_name]=value_today
                         else:
-                            value_now = r_json[key]["now"]
-                            entity_now_name = str(key + "_now")
-                            self._battery_entities[entity_now_name] = value_now
-
-                            # value_today = r_json[key]["today"]
-                            # entity_today_name = str(key + "_today")
-                            # self._battery_entities[entity_today_name]=value_today
+                            _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
 
                 else:
                     self._isAuthenticated = False
@@ -2070,9 +2082,12 @@ class MySenecWebPortal:
                     res.raise_for_status()
                     if res.status == 200:
                         r_json = await res.json()
-                        value = r_json["fullkwh"]
-                        entity_name = str(key + "_total")
-                        self._energy_entities[entity_name] = value
+                        if "fullkwh" in r_json:
+                            value = r_json["fullkwh"]
+                            entity_name = str(key + "_total")
+                            self._energy_entities[entity_name] = value
+                        else:
+                            _LOGGER.info(f"No 'fullkwh' in json: {r_json} when requesting: {api_url}")
                     else:
                         self._isAuthenticated = False
                         await self.update()
@@ -2088,7 +2103,15 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_context(self) ********")
         if self._isAuthenticated:
             await self.update_get_customer()
-            await self.update_get_systems(self._master_plant_number)
+
+            # in autodetect-mode the initial self._master_plant_number = -1
+            if self._master_plant_number == -1:
+                self._master_plant_number = 0
+                is_autodetect = True
+            else:
+                is_autodetect = False
+
+            await self.update_get_systems(a_plant_number=self._master_plant_number, autodetect_mode=is_autodetect)
         else:
             await self.authenticate(doUpdate=False, throw401=False)
 
@@ -2112,7 +2135,7 @@ class MySenecWebPortal:
                 self._isAuthenticated = False
                 await self.authenticate(doUpdate=False, throw401=False)
 
-    async def update_get_systems(self, a_plant_number: int):
+    async def update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
         _LOGGER.debug("***** update_get_systems(self) ********")
 
         a_url = f"{self._SENEC_API_GET_SYSTEM_URL}" % str(a_plant_number)
@@ -2120,21 +2143,32 @@ class MySenecWebPortal:
             res.raise_for_status()
             if res.status == 200:
                 r_json = await res.json()
-
-                if "master" in r_json and r_json["master"]:
-                    # we are cool that's a master-system... so we store our counter...
+                if autodetect_mode:
+                    if "master" in r_json and r_json["master"]:
+                        # we are cool that's a master-system... so we store our counter...
+                        self._serial_number = r_json["steuereinheitnummer"]
+                        self._product_name = r_json["produktName"]
+                        if "zoneId" in r_json:
+                            self._zone_id = r_json["zoneId"]
+                        else:
+                            self._zone_id = "UNKNOWN"
+                        self._master_plant_number = a_plant_number
+                    else:
+                        if not hasattr(self, "_serial_number_slave"):
+                            self._serial_number_slave = []
+                            self._product_name_slave = []
+                        self._serial_number_slave.append(r_json["steuereinheitnummer"])
+                        self._product_name_slave.append(r_json["produktName"])
+                        a_plant_number += 1
+                        await self.update_get_systems(a_plant_number, autodetect_mode)
+                else:
                     self._serial_number = r_json["steuereinheitnummer"]
                     self._product_name = r_json["produktName"]
-                    self._zone_id = r_json["zoneId"]
+                    if "zoneId" in r_json:
+                        self._zone_id = r_json["zoneId"]
+                    else:
+                        self._zone_id = "UNKNOWN"
                     self._master_plant_number = a_plant_number
-                else:
-                    if not hasattr(self, "_serial_number_slave"):
-                        self._serial_number_slave = []
-                        self._product_name_slave = []
-                    self._serial_number_slave.append(r_json["steuereinheitnummer"])
-                    self._product_name_slave.append(r_json["produktName"])
-                    a_plant_number += 1
-                    await self.update_get_systems(a_plant_number)
 
             else:
                 self._isAuthenticated = False

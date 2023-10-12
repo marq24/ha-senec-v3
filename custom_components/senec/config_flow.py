@@ -36,6 +36,8 @@ from .const import (
     SYSTEM_MODES,
     MODE_WEB,
 
+    MASTER_PLANT_NUMBERS,
+
     SYSTYPE_NAME_SENEC,
     SYSTYPE_NAME_INVERTER,
     SYSTYPE_NAME_WEBAPI,
@@ -166,12 +168,12 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         return False
 
-    async def _test_connection_webapi(self, user, pwd):
+    async def _test_connection_webapi(self, user: str, pwd: str, master_plant:int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
         websession = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
-            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, websession=websession)
+            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, websession=websession, master_plant_number=master_plant)
             await senec_web_client.authenticate(doUpdate=False, throw401=True)
             if senec_web_client._isAuthenticated:
                 await senec_web_client.update_context()
@@ -344,7 +346,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_websetup(self, user_input=None):
         self._errors = {}
         if user_input is not None:
-            # set some defaults in case we need to return to the form
             name = user_input.get(CONF_NAME, DEFAULT_NAME_WEB)
             # this is an extremely lousy check!
             if "ome V4 " in self._device_type:
@@ -354,10 +355,20 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user = user_input.get(CONF_USERNAME, DEFAULT_USERNAME)
             pwd = user_input.get(CONF_PASSWORD, "")
 
-            if self._host_in_configuration_exists(user):
+            # when the user has multiple masters, the auto-detect does
+            # not work - so we allow the specification of the AnlagenNummer
+            master_plant_val = user_input.get(CONF_DEV_MASTER_NUM, "auto")
+            if master_plant_val == 'auto':
+                already_exist_ident = user
+                master_plant_num = -1
+            else:
+                already_exist_ident = f"{user}_{master_plant_val}"
+                master_plant_num = int(master_plant_val)
+
+            if self._host_in_configuration_exists(already_exist_ident):
                 self._errors[CONF_USERNAME] = "already_configured"
             else:
-                if await self._test_connection_webapi(user, pwd):
+                if await self._test_connection_webapi(user, pwd, master_plant_num):
                     return self.async_create_entry(title=name, data={CONF_NAME: name,
                                                                      CONF_HOST: user,
                                                                      CONF_USERNAME: user,
@@ -394,7 +405,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ): str,
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                    ): str
+                    ): str,
+                    vol.Required(CONF_DEV_MASTER_NUM, default=user_input.get(CONF_DEV_MASTER_NUM, "auto")):
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=MASTER_PLANT_NUMBERS,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                                translation_key=CONF_DEV_MASTER_NUM,
+                            )
+                        )
                 }
             ),
             last_step=True,

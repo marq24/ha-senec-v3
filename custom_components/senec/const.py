@@ -46,6 +46,8 @@ SYSTYPE_SENECV2: Final = "systype_senecv2"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
 SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
 
+MASTER_PLANT_NUMBERS: Final = ["auto", "0", "1", "2", "3", "4", "5", "6", "7"]
+
 # the display names of the 3 different implemented backend-types
 SYSTYPE_NAME_SENEC = "SENEC Main-Unit"
 SYSTYPE_NAME_INVERTER = "SENEC Inverter Module"
