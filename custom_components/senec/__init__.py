@@ -136,7 +136,7 @@ def load_translation(hass):
         with open(file) as f:  # pylint: disable=unspecified-encoding,invalid-name
             _LANG = json.load(f)
     except:  # pylint: disable=unspecified-encoding,bare-except,invalid-name
-        with open(f"{basepath}translations/local.en.json") as f:
+        with open(f"{basepath}translations/senec.en.json") as f:
             _LANG = json.load(f)
 
 
