@@ -2033,20 +2033,28 @@ class MySenecWebPortal:
                     self._raw = parse(r_json)
                     for key in (self._API_KEYS + self._API_KEYS_EXTRA):
                         if key in r_json:
-                            if "now" in r_json[key]:
-                                value_now = r_json[key]["now"]
-                                entity_now_name = str(key + "_now")
-                                self._power_entities[entity_now_name] = value_now
+                            if key == "acculevel":
+                                if "now" in r_json[key]:
+                                    value_now = r_json[key]["now"]
+                                    entity_now_name = str(key + "_now")
+                                    self._battery_entities[entity_now_name] = value_now
+                                else:
+                                    _LOGGER.info(f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
                             else:
-                                _LOGGER.info(f"No 'now' in json: {r_json} when requesting: {a_url}")
+                                if "now" in r_json[key]:
+                                    value_now = r_json[key]["now"]
+                                    entity_now_name = str(key + "_now")
+                                    self._power_entities[entity_now_name] = value_now
+                                else:
+                                    _LOGGER.info(f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
-                            if key != "acculevel":
                                 if "today" in r_json[key]:
                                     value_today = r_json[key]["today"]
                                     entity_today_name = str(key + "_today")
                                     self._energy_entities[entity_today_name] = value_today
                                 else:
-                                    _LOGGER.info(f"No 'today' in json: {r_json} when requesting: {a_url}")
+                                    _LOGGER.info(f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+
                         else:
                             _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
 
