@@ -6,6 +6,40 @@ In addition and where possible functions are provided to control the system.
 Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee.
 Therefore use this integration at your own risk.
 
+## Supported features and sensors
+
+### Devices
+The following devices are currently supported:
+
+|Device|Description|
+|---|---|
+|SENEC.HOME V2.x|You can use the features and sensors provided by your device via the local API (via lala.cgi) and the Web API (via mein-senec.de)| 
+|SENEC.HOME V3|You can use the features and sensors provided by your device via the local API (via lala.cgi) and the Web API (via mein-senec.de)| 
+|SENEC.HOME V4|Since the device does not provice a local access, you can just use the features and sensors provided via the Web API (via mein-senec.de).| 
+|SENEC.Inverter V3| | 
+
+
+### Local API
+
+#### Features
+
+The following features are provided by the local API.
+|Feature|Description|
+|---|---|
+|Load Battery|With this switch you can load the battery manually|
+
+#### Sensors
+
+The following Sensors are provided by the local API. Since this is a long list, not all sensors are enabled by default.
+To enable a disabled sensor navigate to Settings -> Devices and Services, select the integration and click "configuration" of the device. In the list you can see the status of the sensors and enable/disable themen.
+|Sensor|Description|Enabled by Default|
+|---|---|---|
+
+
+### Web API
+-Feature Notstromreserve
+-Infos Lesen
+
 ## Setup / Installation
 
 ### HACS
@@ -27,12 +61,12 @@ Therefore use this integration at your own risk.
 #### My Home Assistant (2021.3+)
 
 Just click the following Button to start the configuration automatically:
+
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=senec)
 
 #### Manual
 
-Use the following steps for a manual configuration:
-Add custom integration using the web interface and follow instruction on screen.
+Use the following steps for a manual configuration by adding the custom integration using the web interface and follow instruction on screen:
 
 - Go to `Configuration -> Integrations` and add "SENEC.Home" integration
 - Select the Integration Type (basically LAN ot WebApi)
@@ -51,6 +85,9 @@ You can repreat this to add additional Integration entries (e.g. LAN + WebAPI)
 <a id='inv-lnk'></a>
 
 
+## Switching to this fork
+
+If you used the original integration by [@mchwalisz](https://github.com/mchwalisz), please look at "[Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)", before using this integration.
 
 
 
@@ -116,10 +153,7 @@ You can repreat this to add additional Integration entries (e.g. LAN + WebAPI)
     Once activated you can add the entity to your dashboard. When you click on the shown spare capacity on your dashboard a slider will be shown. With this slider you can change the spare capacity. The chance will automatically be synchronized with mein-senec.de
 
 
-## Switching to this fork...
 
-Please find in all information you need to know
-when [Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14) here in this overview
 
 ## Installation
 
