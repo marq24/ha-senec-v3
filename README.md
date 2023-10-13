@@ -155,7 +155,9 @@ Repeat step 3, 4 & 5 of this procedure, if you have build in two inverters into 
 
 ## Home Assistant Energy Dashboard
 
-This integration supports Home Assistant's [Energy Management](https://www.home-assistant.io/docs/energy/)
+This integration supports Home Assistant's [Energy Management](https://www.home-assistant.io/docs/energy/).
+To use the Energy Dashboard please set up the Web API first.
+In the description of the Web API you will see which sensors you can use for the Energy Dashboard.
 
 Example setup:
 
