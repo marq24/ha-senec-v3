@@ -72,15 +72,13 @@ The following Features and Sensors are provided by the local API: Since this is 
 To enable a disabled function or sensor navigate to Settings -> Devices and Services, select the integration and click "configuration" of the device. In the list you can see the status and enable/disable themen.
 
 #### Features
-
 The following features are provided by the local API:
-|Feature|Description|
-|---|---|
-|Load Battery|With this switch you can load the battery manually|
-|Enable "Storage Mode | EXPERIMENTAL: Switch to enable 'storage mode' [state: LITHIUM SAFE MODE DONE'] [disabled by default]. The functionality of this switch is currently __not known__ - IMHO this will disable the functionality of the PV! __Please Note, that once enabled and then disable again the system will go into the 'INSULATION TEST' mode__ for a short while (before returning to normal operation)|
+|Feature|Description|Enabled by Default|
+|---|---|---|
+|Load Battery|With this switch you can load the battery manually|yes|
+|Lithium Storage Mode| EXPERIMENTAL: Switch to enable 'storage mode' [state: LITHIUM SAFE MODE DONE'] [disabled by default]. The functionality of this switch is currently __not known__ - IMHO this will disable the functionality of the PV! __Please Note, that once enabled and then disable again the system will go into the 'INSULATION TEST' mode__ for a short while (before returning to normal operation)|no|
 
 #### Sensors
-
 The following Sensors are provided by the local API:
 |Sensor|Description|Enabled by Default|
 |---|---|---|
