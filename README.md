@@ -8,22 +8,51 @@ Therefore use this integration at your own risk.
 
 ## Setup / Installation
 
-This fork was created from [mchwalisz/home-assistant-senec](https://gitgub.com/mchwalisz/home-assistant-senec) mainly
-because I wanted additional fields and some configuration options (like polling interval). Since I own a
-__SENEC.Home V3 hybrid duo__ I can __only test my adjustments in such a configuration__.
+### HACS
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
-But this does not imply, that this Integration is working only with V3 systems. The Integration should work with
-multiple SENEC.Home Systems based on local `lala.cgi` calls.
+- Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
+- Add custom repository https://github.com/marq24/ha-senec-v3 to HACS
+- Add integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
+    - Select latest version or `master`
+- Restart Home Assistant to install all dependencies
 
-Have that said - the __SENEC.Home V4__ will not come with a build-in web server that can be polled from your LAN. So
-in order to support V4 this integration is polling (a limited amount of) data from the mein-senec.de web portal. The
-__available data is__ (currently) __limited__ (only 13 sensor entities) and will be polled with a fix interval of 5
-minutes.
+### Manual
+- Copy all files from `custom_components/senec/` to `custom_components/senec/` inside your config Home Assistant
+  directory.
+- Restart Home Assistant to install all dependencies
 
-__Thanks to [@mstuettgen](https://github.com/mstuettgen) developing the initial SENEC.Home V4 web-access! I hope you
-support this repo in the future with possible enhancements for the WEB-API__.
+## Adding or enabling integration
 
-## __Use this fork on your own risk!__
+#### My Home Assistant (2021.3+)
+
+Just click the following Button to start the configuration automatically:
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=senec)
+
+#### Manual
+
+Use the following steps for a manual configuration:
+Add custom integration using the web interface and follow instruction on screen.
+
+- Go to `Configuration -> Integrations` and add "SENEC.Home" integration
+- Select the Integration Type (basically LAN ot WebApi)
+- LAN: (`SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older`
+  or `Internal inverter build into SENEC.Home V3 hybrid/hybrid duo`)
+    - Provide display name for the device, and it's address (hostname or IP)
+    - Provide the update intervall
+    - Provide area where the battery is located
+- WebAPI (`WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)`
+  or `SENEC.Home V4/SENEC.Home V4 hybrid`):
+    - Provide display name for the device
+    - Provide your mein-senec.de login credentials
+
+You can repreat this to add additional Integration entries (e.g. LAN + WebAPI)
+
+<a id='inv-lnk'></a>
+
+
+
+
 
 ## Modifications (compared to the original version) in this fork
 
@@ -94,47 +123,10 @@ when [Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)
 
 ## Installation
 
-### Hacs
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
-- Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
-- Add custom repository https://github.com/marq24/ha-senec-v3 to HACS
-- Add integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
-    - Select latest version or `master`
-- Restart Home Assistant to install all dependencies
 
-### Manual
 
-- Copy all files from `custom_components/senec/` to `custom_components/senec/` inside your config Home Assistant
-  directory.
-- Restart Home Assistant to install all dependencies
-
-### Adding or enabling integration
-
-#### My Home Assistant (2021.3+)
-
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=senec)
-
-#### Manual
-
-Add custom integration using the web interface and follow instruction on screen.
-
-- Go to `Configuration -> Integrations` and add "SENEC.Home" integration
-- Select the Integration Type (basically LAN ot WebApi)
-- LAN: (`SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older`
-  or `Internal inverter build into SENEC.Home V3 hybrid/hybrid duo`)
-    - Provide display name for the device, and it's address (hostname or IP)
-    - Provide the update intervall
-    - Provide area where the battery is located
-- WebAPI (`WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)`
-  or `SENEC.Home V4/SENEC.Home V4 hybrid`):
-    - Provide display name for the device
-    - Provide your mein-senec.de login credentials
-
-You can repreat this to add additional Integration entries (e.g. LAN + WebAPI)
-
-<a id='inv-lnk'></a>
 
 ## Connecting the internal (build in) Senec Inverter Hardware to your LAN and use it in HA
 
@@ -185,8 +177,20 @@ Resulting energy distribution card:
 
 ![Energy Distribution](images/energy_distribution.png)
 
+# Credentials
+
+|Who|Description|
+|---|---|
+|[@mchwalisz](https://github.com/mchwalisz)| This fork was created from [mchwalisz/home-assistant-senec](https://gitgub.com/mchwalisz/home-assistant-senec) since we needed more detailed information and configuration options|
+|[@marq24](https://github.com/marq24)|@marq24 created this fork, e.g. added several sensors and functions and is maintaining the integration.|
+|[@mstuettgen](https://github.com/mstuettgen)|Provided the initial WEB-API for SENEC.Home V4 web access.|
+|[@io-debug](https://github.com/io-debug)|E.g. provided the initial developer documentation and added functionality like the spare capacity management.|
+
+
+
+
+
 # Developer information
 
 If you are interested in some details about this implementation and the current known fields you might like to take a
-look into the [current developer documentation section](./DEVELOPER_DOCUMENTATION.md) that was kindly provided
-by [@io-debug](https://github.com/io-debug)
+look into the [current developer documentation section](./DEVELOPER_DOCUMENTATION.md).
