@@ -6,7 +6,7 @@ In addition and where possible functions are provided to control the system.
 Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee.
 Therefore use this integration at your own risk.
 
-## Supported features and sensors
+## Supported devices, features and sensors
 
 ### Devices
 The following devices are currently supported:
@@ -16,7 +16,7 @@ The following devices are currently supported:
 |SENEC.HOME V2.x|You can use the features and sensors provided by your device via the local API (via lala.cgi) and the Web API (via mein-senec.de)| 
 |SENEC.HOME V3|You can use the features and sensors provided by your device via the local API (via lala.cgi) and the Web API (via mein-senec.de)| 
 |SENEC.HOME V4|Since the device does not provice a local access, you can just use the features and sensors provided via the Web API (via mein-senec.de).| 
-|SENEC.Inverter V3| | 
+|SENEC.Inverter V3|If you have an internal inverter that is connected to your LAN, you will be able to access information via the Local API. Please see: "Connecting the internal (build in) Senec Inverter Hardware to your LAN and use it in HA" for further information.| 
 
 
 ### Local API
@@ -27,6 +27,7 @@ The following features are provided by the local API.
 |Feature|Description|
 |---|---|
 |Load Battery|With this switch you can load the battery manually|
+|Enable "Storage Mode | EXPERIMENTAL: Switch to enable 'storage mode' [state: LITHIUM SAFE MODE DONE'] [disabled by default]. The functionality of this switch is currently __not known__ - IMHO this will disable the functionality of the PV! __Please Note, that once enabled and then disable again the system will go into the 'INSULATION TEST' mode__ for a short while (before returning to normal operation)|
 
 #### Sensors
 
@@ -91,59 +92,7 @@ If you used the original integration by [@mchwalisz](https://github.com/mchwalis
 
 
 
-## Modifications (compared to the original version) in this fork
 
-- Added User accessible configuration option
-- Added configurable _update interval_ for the sensor data (I use _5_ seconds, without any issue)
-- Reading DeviceID, DeviceType, BatteryType & Version information
-- Added WebAPI access in order to support SENEC.Home V4
-  Systems - [kudos @mstuettgen for the initial work!](https://github.com/mstuettgen/homeassistant-addons/tree/main/senecweb2mqtt)
-
-  This WebAPI access is also usable for all other SENEC.Home Systems where the total-statistics data have been removed
-  with the latest update by SENEC
-
-  Please note, that currently the polling interval of 5 minutes is hardcoded!
-
-- Additional Sensors:
-    - For each MPP1, MPP2, MPP3 [potential (V), current (A) & power (W)]
-    - For your EnFluRi-Net (Freq, potential, current, power)
-    - For your EnFluRi-Usage (Freq, potential, current, power) [disabled by default]
-
-    - Added BatteryCell Details [mainly disabled by default]
-        - Module [A-D]: Current/Voltage/State of Charge (SoC)/State of Health (SoH)/Cycles
-        - Cell temperature [1-6] per module [A-D]
-        - Voltage per cell [1-14] per module [A-D]
-
-    - Added Wallbox Details  [disabled by default]
-
-    - If you connect the internal Inverter [in the case of the Duo there are even two (LV & HV)] to your LAN (see
-      [details below](#inv-lnk)), then you can add these additional instances and directly access the data from the
-      DC-AC
-      converters
-
-- Added Switch(es):
-    - Added a switch to manually load the battery [state: 'MAN. SAFETY CHARGE' & 'SAFETY CHARGE READY'] (obviously this
-      will use additional power from grid when your PV inverters will not provide enough power)
-
-      _This switche might sound very foolish - but if you are not subscribed to the (IMHO total overpriced) SENEC-Cloud
-      electricity tariff __and__ you have been smart and signed up for a dynamic price model (based on the current stock
-      price) then loading your battery when the price is the lowest during the day might become a smart move (and also
-      disallow battery usage while the price is average). Specially during the winter!_
-
-    - EXPERIMENTAL: Added a switch to enable 'storage mode' [state: LITHIUM SAFE MODE DONE'] [disabled by default]
-
-      The functionality of this switch is currently __not known__ - IMHO this will disable the functionality of the PV!
-      __Please Note, that once enabled and then disable again the system will go into the 'INSULATION TEST' mode__ for a
-      short while (before returning to normal operation)
-
-- Modified _battery_charge_power_ & _battery_discharge_power_ so that they will only return data >0 when the system
-  state is matching the corresponding CHARGE or DISCHARGE state (including state variants)
-
-- Integrated variant of _pysenec_ python lib (almost every modification of this Home Assistant integration requires also
-  an adjustment in the lib) - yes of course it would be possible to release also a lib derivative - but right now I am
-  just a python beginner, and __I am lazy!__
-
-- Added German Setup/GUI "translation" (not for the sensor's yet)
 
 - Added support to read and update the spare capacity ("Notstromreserve")
     - When you are using "SENEC Backup Power pro" and you are able to see and update the spare capacity at mein-senec.de, than you can read and update the spare capacity with this integration.
@@ -155,12 +104,8 @@ If you used the original integration by [@mchwalisz](https://github.com/mchwalis
 
 
 
-## Installation
-
-
-
-
-
+# User guide for setup and installation
+Here you will find additional information regarding setup and configuration.
 
 ## Connecting the internal (build in) Senec Inverter Hardware to your LAN and use it in HA
 
