@@ -6,7 +6,55 @@ In addition and where possible functions are provided to control the system.
 Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee.
 Therefore use this integration at your own risk.
 
-## Supported devices, features and sensors
+## Setup / Installation
+
+### HACS
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+
+- Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
+- Add custom repository https://github.com/marq24/ha-senec-v3 to HACS
+- Add integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
+    - Select latest version or `master`
+- Restart Home Assistant to install all dependencies
+
+### Manual
+- Copy all files from `custom_components/senec/` to `custom_components/senec/` inside your config Home Assistant
+  directory.
+- Restart Home Assistant to install all dependencies
+
+## Adding or enabling the integration
+
+#### My Home Assistant (2021.3+)
+
+Just click the following Button to start the configuration automatically:
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=senec)
+
+#### Manual
+
+Use the following steps for a manual configuration by adding the custom integration using the web interface and follow instruction on screen:
+
+- Go to `Configuration -> Integrations` and add "SENEC.Home" integration
+- Select the Integration Type (basically LAN ot WebApi)
+- LAN: (`SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older`
+  or `Internal inverter build into SENEC.Home V3 hybrid/hybrid duo`)
+    - Provide display name for the device, and it's address (hostname or IP)
+    - Provide the update intervall
+    - Provide area where the battery is located
+- WebAPI (`WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)`
+  or `SENEC.Home V4/SENEC.Home V4 hybrid`):
+    - Provide display name for the device
+    - Provide your mein-senec.de login credentials
+
+You can repreat this to add additional Integration entries (e.g. LAN + WebAPI)
+
+<a id='inv-lnk'></a>
+
+### Switching to this fork
+
+If you used the original integration by [@mchwalisz](https://github.com/mchwalisz), please look at "[Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)", before using this integration.
+
+## Supported Devices, Features and Sensors
 
 ### Devices
 The following devices are currently supported:
@@ -38,59 +86,14 @@ To enable a disabled sensor navigate to Settings -> Devices and Services, select
 
 
 ### Web API
--Feature Notstromreserve
--Infos Lesen
 
-## Setup / Installation
+#### Features
+The following features are provided by the Web API.
+|Feature|Description|
+|---|---|
+|Spare Capacity|Read and Update the spare capacity. This feature is disabled by default, since you need SENEC Backup Power Pro to use this functionality.|
 
-### HACS
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-
-- Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
-- Add custom repository https://github.com/marq24/ha-senec-v3 to HACS
-- Add integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
-    - Select latest version or `master`
-- Restart Home Assistant to install all dependencies
-
-### Manual
-- Copy all files from `custom_components/senec/` to `custom_components/senec/` inside your config Home Assistant
-  directory.
-- Restart Home Assistant to install all dependencies
-
-## Adding or enabling integration
-
-#### My Home Assistant (2021.3+)
-
-Just click the following Button to start the configuration automatically:
-
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=senec)
-
-#### Manual
-
-Use the following steps for a manual configuration by adding the custom integration using the web interface and follow instruction on screen:
-
-- Go to `Configuration -> Integrations` and add "SENEC.Home" integration
-- Select the Integration Type (basically LAN ot WebApi)
-- LAN: (`SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older`
-  or `Internal inverter build into SENEC.Home V3 hybrid/hybrid duo`)
-    - Provide display name for the device, and it's address (hostname or IP)
-    - Provide the update intervall
-    - Provide area where the battery is located
-- WebAPI (`WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)`
-  or `SENEC.Home V4/SENEC.Home V4 hybrid`):
-    - Provide display name for the device
-    - Provide your mein-senec.de login credentials
-
-You can repreat this to add additional Integration entries (e.g. LAN + WebAPI)
-
-<a id='inv-lnk'></a>
-
-
-## Switching to this fork
-
-If you used the original integration by [@mchwalisz](https://github.com/mchwalisz), please look at "[Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)", before using this integration.
-
-
+#### Sensors
 
 
 
