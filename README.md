@@ -1,5 +1,13 @@
 # Home Assistant Integration for SENEC.Home V2.x/V3/V4 Systems
 
+This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4 Systems.
+In addition and where possible functions are provided to control the system. 
+
+Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee.
+Therefore use this integration at your own risk.
+
+## Setup / Installation
+
 This fork was created from [mchwalisz/home-assistant-senec](https://gitgub.com/mchwalisz/home-assistant-senec) mainly
 because I wanted additional fields and some configuration options (like polling interval). Since I own a
 __SENEC.Home V3 hybrid duo__ I can __only test my adjustments in such a configuration__.
