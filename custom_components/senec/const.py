@@ -24,6 +24,19 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.entity import EntityCategory
 
+from custom_components.senec.pysenec_ha.constants import (
+    SENEC_SECTION_BMS,
+    SENEC_SECTION_ENERGY,
+    SENEC_SECTION_FAN_SPEED,
+    SENEC_SECTION_STATISTIC,
+    SENEC_SECTION_PM1OBJ1,
+    SENEC_SECTION_PM1OBJ2,
+    SENEC_SECTION_PV1,
+    SENEC_SECTION_PWR_UNIT,
+    SENEC_SECTION_TEMPMEASURE,
+    SENEC_SECTION_WALLBOX
+)
+
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
 SYSTYPE_SENECV4: Final = "systype_senecv4"
@@ -33,6 +46,13 @@ SYSTYPE_SENECV2: Final = "systype_senecv2"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
 SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
 
+MASTER_PLANT_NUMBERS: Final = ["auto", "0", "1", "2", "3", "4", "5", "6", "7"]
+
+# the display names of the 3 different implemented backend-types
+SYSTYPE_NAME_SENEC = "SENEC Main-Unit"
+SYSTYPE_NAME_INVERTER = "SENEC Inverter Module"
+SYSTYPE_NAME_WEBAPI = "SENEC WebAPI"
+
 MODE_WEB: Final = "mode_web"
 MODE_LOCAL: Final = "mode_local"
 SYSTEM_MODES: Final = [MODE_LOCAL, MODE_WEB]
@@ -40,14 +60,15 @@ SYSTEM_MODES: Final = [MODE_LOCAL, MODE_WEB]
 SETUP_SYS_TYPE: Final = "stype"
 SETUP_SYS_MODE: Final = "smode"
 
-CONF_DEV_TYPE: Final = "dtype"
 CONF_DEV_TYPE_INT: Final = "dtype_int"
 CONF_USE_HTTPS: Final = "use_https"
 CONF_SUPPORT_BDC: Final = "has_bdc_support"
-CONF_DEV_NAME: Final = "dname"
+CONF_DEV_MASTER_NUM: Final = "master_plant_number"
+
+CONF_DEV_TYPE: Final = "dtype"
+CONF_DEV_MODEL: Final = "dname"
 CONF_DEV_SERIAL: Final = "dserial"
 CONF_DEV_VERSION: Final = "version"
-CONF_DEV_MASTER_NUM: Final = "master_plant_number"
 
 CONF_SYSTYPE_SENEC: Final = "senec"
 CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"
@@ -69,16 +90,20 @@ DEFAULT_SCAN_INTERVAL_SENECV2 = 60
 DEFAULT_SCAN_INTERVAL_WEB = 300
 DEFAULT_SCAN_INTERVAL_WEB_SENECV4 = 60
 
+QUERY_BMS_KEY = "query_bms_data"
+QUERY_FANDATA_KEY = "query_fan_data"
+QUERY_WALLBOX_KEY = "query_wallbox_data"
 QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
-
+    senec_lala_section: str | None = None
 
 @dataclass
 class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
+    senec_lala_section: str | None = None
 
 """Supported number implementations"""
 WEB_NUMBER_SENYOR_TYPES = [
@@ -114,6 +139,104 @@ MAIN_SWITCH_TYPES = [
 """Supported main unit binary_sensor types."""
 MAIN_BIN_SENSOR_TYPES = [
     ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l1_used",
+        name="Wallbox L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l2_used",
+        name="Wallbox L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l3_used",
+        name="Wallbox L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l1_used",
+        name="Wallbox II L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l2_used",
+        name="Wallbox II L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l3_used",
+        name="Wallbox II L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l1_used",
+        name="Wallbox III L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l2_used",
+        name="Wallbox III L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l3_used",
+        name="Wallbox III L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l1_used",
+        name="Wallbox IV L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l2_used",
+        name="Wallbox IV L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l3_used",
+        name="Wallbox IV L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_FAN_SPEED,
         key="fan_inv_lv",
         name="Fan LV-Inverter",
         icon="mdi:fan",
@@ -121,6 +244,7 @@ MAIN_BIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_FAN_SPEED,
         entity_registry_enabled_default=False,
         key="fan_inv_hv",
         name="Fan HV-Inverter",
@@ -305,6 +429,22 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        key="battery_state_current",
+        name="Battery State Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="battery_state_voltage",
+        name="Battery State Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:home-battery",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
         key="battery_charge_power",
         name="Battery Charge Power",
         native_unit_of_measurement=POWER_WATT,
@@ -408,7 +548,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="solar_mpp1_potential",
-        name="MPP1 Potential",
+        name="MPP1 Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -432,7 +572,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="solar_mpp2_potential",
-        name="MPP2 Potential",
+        name="MPP2 Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -456,7 +596,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="solar_mpp3_potential",
-        name="MPP3 Potential",
+        name="MPP3 Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -496,7 +636,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="enfluri_net_potential_p1",
-        name="Enfluri Net Potential Phase 1",
+        name="Enfluri Net Voltage Phase 1",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -504,7 +644,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="enfluri_net_potential_p2",
-        name="Enfluri Net Potential Phase 2",
+        name="Enfluri Net Voltage Phase 2",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -512,7 +652,7 @@ MAIN_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="enfluri_net_potential_p3",
-        name="Enfluri Net Potential Phase 3",
+        name="Enfluri Net Voltage Phase 3",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -587,7 +727,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p1",
-        name="Enfluri Usage Potential Phase 1",
+        name="Enfluri Usage Voltage Phase 1",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -596,7 +736,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p2",
-        name="Enfluri Usage Potential Phase 2",
+        name="Enfluri Usage Voltage Phase 2",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -605,7 +745,7 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="enfluri_usage_potential_p3",
-        name="Enfluri Usage Potential Phase 3",
+        name="Enfluri Usage Voltage Phase 3",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         icon="mdi:lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
@@ -666,8 +806,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_A1",
+        key="bms_cell_temp_a1",
         name="Module A: Cell Temperature A1",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -676,8 +817,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_A2",
+        key="bms_cell_temp_a2",
         name="Module A: Cell Temperature A2",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -686,8 +828,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_A3",
+        key="bms_cell_temp_a3",
         name="Module A: Cell Temperature A3",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -696,8 +839,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_A4",
+        key="bms_cell_temp_a4",
         name="Module A: Cell Temperature A4",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -706,8 +850,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_A5",
+        key="bms_cell_temp_a5",
         name="Module A: Cell Temperature A5",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -716,8 +861,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_A6",
+        key="bms_cell_temp_a6",
         name="Module A: Cell Temperature A6",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -726,8 +872,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_B1",
+        key="bms_cell_temp_b1",
         name="Module B: Cell Temperature B1",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -736,8 +883,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_B2",
+        key="bms_cell_temp_b2",
         name="Module B: Cell Temperature B2",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -746,8 +894,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_B3",
+        key="bms_cell_temp_b3",
         name="Module B: Cell Temperature B3",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -756,8 +905,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_B4",
+        key="bms_cell_temp_b4",
         name="Module B: Cell Temperature B4",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -766,8 +916,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_B5",
+        key="bms_cell_temp_b5",
         name="Module B: Cell Temperature B5",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -776,8 +927,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_B6",
+        key="bms_cell_temp_b6",
         name="Module B: Cell Temperature B6",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -786,8 +938,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_C1",
+        key="bms_cell_temp_c1",
         name="Module C: Cell Temperature C1",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -796,8 +949,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_C2",
+        key="bms_cell_temp_c2",
         name="Module C: Cell Temperature C2",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -806,8 +960,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_C3",
+        key="bms_cell_temp_c3",
         name="Module C: Cell Temperature C3",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -816,8 +971,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_C4",
+        key="bms_cell_temp_c4",
         name="Module C: Cell Temperature C4",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -826,8 +982,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_C5",
+        key="bms_cell_temp_c5",
         name="Module C: Cell Temperature C5",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -836,8 +993,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_C6",
+        key="bms_cell_temp_c6",
         name="Module C: Cell Temperature C6",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -846,8 +1004,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_D1",
+        key="bms_cell_temp_d1",
         name="Module D: Cell Temperature D1",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -856,8 +1015,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_D2",
+        key="bms_cell_temp_d2",
         name="Module D: Cell Temperature D2",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -866,8 +1026,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_D3",
+        key="bms_cell_temp_d3",
         name="Module D: Cell Temperature D3",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -876,8 +1037,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_D4",
+        key="bms_cell_temp_d4",
         name="Module D: Cell Temperature D4",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -886,8 +1048,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_D5",
+        key="bms_cell_temp_d5",
         name="Module D: Cell Temperature D5",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -896,8 +1059,9 @@ MAIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_temp_D6",
+        key="bms_cell_temp_d6",
         name="Module D: Cell Temperature D6",
         icon="mdi:thermometer",
         native_unit_of_measurement=TEMP_CELSIUS,
@@ -907,8 +1071,9 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A1",
+        key="bms_cell_volt_a1",
         name="Module A: Cell Voltage A1",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -916,8 +1081,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A2",
+        key="bms_cell_volt_a2",
         name="Module A: Cell Voltage A2",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -925,8 +1091,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A3",
+        key="bms_cell_volt_a3",
         name="Module A: Cell Voltage A3",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -934,8 +1101,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A4",
+        key="bms_cell_volt_a4",
         name="Module A: Cell Voltage A4",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -943,8 +1111,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A5",
+        key="bms_cell_volt_a5",
         name="Module A: Cell Voltage A5",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -952,8 +1121,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A6",
+        key="bms_cell_volt_a6",
         name="Module A: Cell Voltage A6",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -961,8 +1131,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A7",
+        key="bms_cell_volt_a7",
         name="Module A: Cell Voltage A7",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -970,8 +1141,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A8",
+        key="bms_cell_volt_a8",
         name="Module A: Cell Voltage A8",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -979,8 +1151,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A9",
+        key="bms_cell_volt_a9",
         name="Module A: Cell Voltage A9",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -988,8 +1161,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A10",
+        key="bms_cell_volt_a10",
         name="Module A: Cell Voltage A10",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -997,8 +1171,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A11",
+        key="bms_cell_volt_a11",
         name="Module A: Cell Voltage A11",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1006,8 +1181,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A12",
+        key="bms_cell_volt_a12",
         name="Module A: Cell Voltage A12",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1015,8 +1191,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A13",
+        key="bms_cell_volt_a13",
         name="Module A: Cell Voltage A13",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1024,8 +1201,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_A14",
+        key="bms_cell_volt_a14",
         name="Module A: Cell Voltage A14",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1033,8 +1211,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B1",
+        key="bms_cell_volt_b1",
         name="Module B: Cell Voltage B1",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1042,8 +1221,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B2",
+        key="bms_cell_volt_b2",
         name="Module B: Cell Voltage B2",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1051,8 +1231,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B3",
+        key="bms_cell_volt_b3",
         name="Module B: Cell Voltage B3",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1060,8 +1241,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B4",
+        key="bms_cell_volt_b4",
         name="Module B: Cell Voltage B4",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1069,8 +1251,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B5",
+        key="bms_cell_volt_b5",
         name="Module B: Cell Voltage B5",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1078,8 +1261,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B6",
+        key="bms_cell_volt_b6",
         name="Module B: Cell Voltage B6",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1087,8 +1271,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B7",
+        key="bms_cell_volt_b7",
         name="Module B: Cell Voltage B7",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1096,8 +1281,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B8",
+        key="bms_cell_volt_b8",
         name="Module B: Cell Voltage B8",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1105,8 +1291,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B9",
+        key="bms_cell_volt_b9",
         name="Module B: Cell Voltage B9",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1114,8 +1301,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B10",
+        key="bms_cell_volt_b10",
         name="Module B: Cell Voltage B10",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1123,8 +1311,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B11",
+        key="bms_cell_volt_b11",
         name="Module B: Cell Voltage B11",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1132,8 +1321,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B12",
+        key="bms_cell_volt_b12",
         name="Module B: Cell Voltage B12",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1141,8 +1331,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B13",
+        key="bms_cell_volt_b13",
         name="Module B: Cell Voltage B13",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1150,8 +1341,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_B14",
+        key="bms_cell_volt_b14",
         name="Module B: Cell Voltage B14",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1159,8 +1351,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C1",
+        key="bms_cell_volt_c1",
         name="Module C: Cell Voltage C1",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1168,8 +1361,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C2",
+        key="bms_cell_volt_c2",
         name="Module C: Cell Voltage C2",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1177,8 +1371,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C3",
+        key="bms_cell_volt_c3",
         name="Module C: Cell Voltage C3",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1186,8 +1381,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C4",
+        key="bms_cell_volt_c4",
         name="Module C: Cell Voltage C4",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1195,8 +1391,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C5",
+        key="bms_cell_volt_c5",
         name="Module C: Cell Voltage C5",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1204,8 +1401,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C6",
+        key="bms_cell_volt_c6",
         name="Module C: Cell Voltage C6",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1213,8 +1411,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C7",
+        key="bms_cell_volt_c7",
         name="Module C: Cell Voltage C7",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1222,8 +1421,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C8",
+        key="bms_cell_volt_c8",
         name="Module C: Cell Voltage C8",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1231,8 +1431,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C9",
+        key="bms_cell_volt_c9",
         name="Module C: Cell Voltage C9",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1240,8 +1441,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C10",
+        key="bms_cell_volt_c10",
         name="Module C: Cell Voltage C10",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1249,8 +1451,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C11",
+        key="bms_cell_volt_c11",
         name="Module C: Cell Voltage C11",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1258,8 +1461,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C12",
+        key="bms_cell_volt_c12",
         name="Module C: Cell Voltage C12",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1267,8 +1471,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C13",
+        key="bms_cell_volt_c13",
         name="Module C: Cell Voltage C13",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1276,8 +1481,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_C14",
+        key="bms_cell_volt_c14",
         name="Module C: Cell Voltage C14",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1285,8 +1491,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D1",
+        key="bms_cell_volt_d1",
         name="Module D: Cell Voltage D1",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1294,8 +1501,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D2",
+        key="bms_cell_volt_d2",
         name="Module D: Cell Voltage D2",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1303,8 +1511,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D3",
+        key="bms_cell_volt_d3",
         name="Module D: Cell Voltage D3",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1312,8 +1521,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D4",
+        key="bms_cell_volt_d4",
         name="Module D: Cell Voltage D4",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1321,8 +1531,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D5",
+        key="bms_cell_volt_d5",
         name="Module D: Cell Voltage D5",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1330,8 +1541,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D6",
+        key="bms_cell_volt_d6",
         name="Module D: Cell Voltage D6",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1339,8 +1551,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D7",
+        key="bms_cell_volt_d7",
         name="Module D: Cell Voltage D7",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1348,8 +1561,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D8",
+        key="bms_cell_volt_d8",
         name="Module D: Cell Voltage D8",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1357,8 +1571,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D9",
+        key="bms_cell_volt_d9",
         name="Module D: Cell Voltage D9",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1366,8 +1581,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D10",
+        key="bms_cell_volt_d10",
         name="Module D: Cell Voltage D10",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1375,8 +1591,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D11",
+        key="bms_cell_volt_d11",
         name="Module D: Cell Voltage D11",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1384,8 +1601,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D12",
+        key="bms_cell_volt_d12",
         name="Module D: Cell Voltage D12",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1393,8 +1611,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D13",
+        key="bms_cell_volt_d13",
         name="Module D: Cell Voltage D13",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1402,8 +1621,9 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BMS,
         entity_registry_enabled_default=False,
-        key="bms_cell_volt_D14",
+        key="bms_cell_volt_d14",
         name="Module D: Cell Voltage D14",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.MILLIVOLT,
@@ -1412,7 +1632,8 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        key="bms_voltage_A",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_voltage_a",
         name="Module A: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1420,7 +1641,8 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_voltage_B",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_voltage_b",
         name="Module B: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1428,7 +1650,8 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_voltage_C",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_voltage_c",
         name="Module C: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1436,7 +1659,8 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_voltage_D",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_voltage_d",
         name="Module D: Voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -1445,7 +1669,8 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        key="bms_current_A",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_current_a",
         name="Module A: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1453,7 +1678,8 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_current_B",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_current_b",
         name="Module B: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1461,7 +1687,8 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_current_C",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_current_c",
         name="Module C: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1469,7 +1696,8 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_current_D",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_current_d",
         name="Module D: Current",
         icon="mdi:current-dc",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1478,28 +1706,32 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        key="bms_soc_A",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_soc_a",
         name="Module A: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_soc_B",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_soc_b",
         name="Module B: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_soc_C",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_soc_c",
         name="Module C: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_soc_D",
+        senec_lala_section=SENEC_SECTION_BMS,
+        key="bms_soc_d",
         name="Module D: State of charge",
         icon="mdi:battery-charging-high",
         native_unit_of_measurement=PERCENTAGE,
@@ -1507,28 +1739,36 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        key="bms_soh_A",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_soh_a",
         name="Module A: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_soh_B",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_soh_b",
         name="Module B: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_soh_C",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_soh_c",
         name="Module C: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
-        key="bms_soh_D",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_soh_d",
         name="Module D: State of Health",
         icon="mdi:battery-heart-variant",
         native_unit_of_measurement=PERCENTAGE,
@@ -1536,28 +1776,36 @@ MAIN_SENSOR_TYPES = [
     ),
 
     ExtSensorEntityDescription(
-        key="bms_cycles_A",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_cycles_a",
         name="Module A: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        key="bms_cycles_B",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_cycles_b",
         name="Module B: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        key="bms_cycles_C",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_cycles_c",
         name="Module C: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
-        key="bms_cycles_D",
+        senec_lala_section=SENEC_SECTION_BMS,
+        entity_registry_enabled_default=False,
+        key="bms_cycles_d",
         name="Module D: Cycles",
         icon="mdi:battery-sync",
         suggested_display_precision=0,
@@ -1566,6 +1814,7 @@ MAIN_SENSOR_TYPES = [
 
     # wallbox stuff
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_power",
         name="Wallbox Power",
@@ -1575,12 +1824,14 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_ev_connected",
         name="Wallbox EV Connected",
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_energy",
@@ -1589,6 +1840,293 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:ev-station",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l1_charging_current",
+        name="Wallbox L1 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l2_charging_current",
+        name="Wallbox L2 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l3_charging_current",
+        name="Wallbox L3 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_min_charging_current",
+        name="Wallbox MIN charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_set_icmax",
+        name="Wallbox set ICMAX",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_power",
+        name="Wallbox II Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:car-arrow-left",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_ev_connected",
+        name="Wallbox II EV Connected",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        controls=("require_stats_fields"),
+        key="wallbox_2_energy",
+        name="Wallbox II charged",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        icon="mdi:ev-station",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l1_charging_current",
+        name="Wallbox II L1 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l2_charging_current",
+        name="Wallbox II L2 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l3_charging_current",
+        name="Wallbox II L3 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_min_charging_current",
+        name="Wallbox II MIN charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_set_icmax",
+        name="Wallbox II set ICMAX",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_power",
+        name="Wallbox III Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:car-arrow-left",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_ev_connected",
+        name="Wallbox III EV Connected",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        controls=("require_stats_fields"),
+        key="wallbox_3_energy",
+        name="Wallbox III charged",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        icon="mdi:ev-station",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l1_charging_current",
+        name="Wallbox III L1 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l2_charging_current",
+        name="Wallbox III L2 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l3_charging_current",
+        name="Wallbox III L3 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_min_charging_current",
+        name="Wallbox III MIN charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_set_icmax",
+        name="Wallbox III set ICMAX",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_power",
+        name="Wallbox VI Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:car-arrow-left",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_ev_connected",
+        name="Wallbox IV EV Connected",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        controls=("require_stats_fields"),
+        key="wallbox_4_energy",
+        name="Wallbox IV charged",
+        native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
+        icon="mdi:ev-station",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l1_charging_current",
+        name="Wallbox IV L1 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l2_charging_current",
+        name="Wallbox IV L2 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l3_charging_current",
+        name="Wallbox IV L3 charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_min_charging_current",
+        name="Wallbox IV MIN charging Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_set_icmax",
+        name="Wallbox IV set ICMAX",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
 ]
 
@@ -1604,7 +2142,7 @@ INVERTER_SENSOR_TYPES = [
 
     ExtSensorEntityDescription(
         key="ac_current",
-        name="AC current",
+        name="AC Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-ac",
         device_class=SensorDeviceClass.ENERGY,
@@ -1716,7 +2254,7 @@ INVERTER_SENSOR_TYPES = [
     ),
     ExtSensorEntityDescription(
         key="dc_current1",
-        name="DC current 1",
+        name="DC Current 1",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -1725,7 +2263,7 @@ INVERTER_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="dc_current2",
-        name="DC current 2",
+        name="DC Current 2",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,

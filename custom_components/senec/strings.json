@@ -18,7 +18,8 @@
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "scan_interval": "[%key:common::config_flow::data::scan_interval%]"
+          "scan_interval": "[%key:common::config_flow::data::scan_interval%]",
+          "master_plant_number": "[%key:common::config_flow::data::master_plant_number%]"
         }
       }
     },

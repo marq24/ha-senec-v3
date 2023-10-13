@@ -12,16 +12,20 @@ from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SWITCH_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB
 
 _LOGGER = logging.getLogger(__name__)
+_LANG = None
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER):
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No switches for Inverters...")
-    if (CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB):
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         _LOGGER.info("No switches for WebPortal...")
     else:
+        global _LANG
+        _LANG = coordinator._langDict
+
         entities = []
         for description in MAIN_SWITCH_TYPES:
             entity = SenecSwitch(coordinator, description)
@@ -43,10 +47,14 @@ class SenecSwitch(SenecEntity, SwitchEntity):
             self._attr_entity_registry_enabled_default = True
 
         title = self.coordinator._config_entry.title
-        key = self.entity_description.key
+        key = self.entity_description.key.lower()
         name = self.entity_description.name
         self.entity_id = f"switch.{slugify(title)}_{key}"
-        self._attr_name = f"{title} {name}"
+        if key in _LANG:
+            self._attr_name = _LANG[key]
+        else:
+            _LOGGER.info(str(key)+" Switch not found in translation")
+            self._attr_name = f"{title} {name}"
 
     async def async_turn_on(self, **kwargs):  # pylint: disable=unused-argument
         """Turn on the switch."""

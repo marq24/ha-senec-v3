@@ -14,6 +14,19 @@
                 "mode_web": "WEB-API: Access via https://mein-senec.de/ web api",
                 "mode_local": "LAN: Access via local LAN (IP of SENEC.Home or Inverter)"
             }
+        },
+        "master_plant_number":{
+            "options": {
+                "auto": "Autodetect (default)",
+                "0": "System number 0 (AnlagenNummer)",
+                "1": "System number 1 (AnlagenNummer)",
+                "2": "System number 2 (AnlagenNummer)",
+                "3": "System number 3 (AnlagenNummer)",
+                "4": "System number 4 (AnlagenNummer)",
+                "5": "System number 5 (AnlagenNummer)",
+                "6": "System number 6 (AnlagenNummer)",
+                "7": "System number 7 (AnlagenNummer)"
+            }
         }
     },
     "config": {
@@ -71,7 +84,8 @@
                     "name": "Display name",
                     "username": "Your 'mein-senec.de' username",
                     "password": "Your 'mein-senec.de' password",
-                    "scan_interval":"Polling Interval in seconds [minimum 60 seconds (30 seconds for SENEC.Home V4)]"
+                    "scan_interval":"Polling Interval in seconds [minimum 60 seconds (30 seconds for SENEC.Home V4)]",
+                    "master_plant_number": "System number (expert setting: only when using multiple master instances - otherwise use 'Autodetect')"
                 }
             }
         }

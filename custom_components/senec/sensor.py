@@ -19,11 +19,15 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_LANG = None
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    global _LANG
+    _LANG = coordinator._langDict
+
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         for description in INVERTER_SENSOR_TYPES:
@@ -39,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
                 entity = SenecSensor(coordinator, description)
                 entities.append(entity)
 
-    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SENSOR_TYPES:
             entity = SenecSensor(coordinator, description)
             entities.append(entity)
@@ -60,7 +64,6 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
 
     async_add_entities(entities)
 
-
 class SenecSensor(SenecEntity, SensorEntity):
     """Sensor for the single values (e.g. pv power, ac power)."""
 
@@ -77,10 +80,14 @@ class SenecSensor(SenecEntity, SensorEntity):
             self._attr_entity_registry_enabled_default = True
 
         title = self.coordinator._config_entry.title
-        key = self.entity_description.key
+        key = self.entity_description.key.lower()
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"
-        self._attr_name = f"{title} {name}"
+        if key in _LANG:
+            self._attr_name = _LANG[key]
+        else:
+            _LOGGER.info(str(key)+" Sensor not found in translation")
+            self._attr_name = f"{title} {name}"
 
     @property
     def state(self):

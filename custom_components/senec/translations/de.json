@@ -14,6 +14,19 @@
                 "mode_web": "WEB-API: Zugriff über die https://mein-senec.de/ WebAPI",
                 "mode_local": "LAN: direkter Zugriff über das LAN (IP deines SENEC.Home oder des Wechselrichters)"
             }
+        },
+        "master_plant_number":{
+            "options": {
+                "auto": "Automatische Erkennung (default)",
+                "0": "Anlagennummer 0",
+                "1": "Anlagennummer 1",
+                "2": "Anlagennummer 2",
+                "3": "Anlagennummer 3",
+                "4": "Anlagennummer 4",
+                "5": "Anlagennummer 5",
+                "6": "Anlagennummer 6",
+                "7": "Anlagennummer 7"
+            }
         }
     },
     "config": {
@@ -46,7 +59,8 @@
                     "name": "Anzeige Name",
                     "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
                     "password": "Dein 'mein-senec.de' Passwort",
-                    "scan_interval":"Aktualisierungsintervall in Sekunden [> 60 Sekunden (30 Sekunden für SENEC.Home V4)]"
+                    "scan_interval":"Aktualisierungsintervall in Sekunden [> 60 Sekunden (30 Sekunden für SENEC.Home V4)]",
+                    "master_plant_number": "Anlagennummer (Experten Einstellung: Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden)"
                 }
             },
             "optional_websetup_required_info": {
