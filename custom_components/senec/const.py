@@ -237,6 +237,7 @@ MAIN_BIN_SENSOR_TYPES = [
 
     ExtBinarySensorEntityDescription(
         senec_lala_section=SENEC_SECTION_FAN_SPEED,
+        entity_registry_enabled_default=False,
         key="fan_inv_lv",
         name="Fan LV-Inverter",
         icon="mdi:fan",
@@ -1831,7 +1832,7 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_STATISTIC,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_energy",
@@ -1910,7 +1911,7 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_STATISTIC,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_2_energy",
@@ -1989,7 +1990,7 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_STATISTIC,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_3_energy",
@@ -2068,7 +2069,7 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
+        senec_lala_section=SENEC_SECTION_STATISTIC,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
         key="wallbox_4_energy",
