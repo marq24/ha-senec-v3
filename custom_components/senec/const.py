@@ -105,6 +105,10 @@ class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
     senec_lala_section: str | None = None
 
+@dataclass
+class ExtSwitchEntityDescription(SwitchEntityDescription):
+    update_after_switch_delay_in_sec: int = 0
+
 """Supported number implementations"""
 WEB_NUMBER_SENYOR_TYPES = [
     NumberEntityDescription(
@@ -123,16 +127,18 @@ WEB_NUMBER_SENYOR_TYPES = [
 
 """Supported main unit switch types."""
 MAIN_SWITCH_TYPES = [
-    SwitchEntityDescription(
+    ExtSwitchEntityDescription(
         key="safe_charge",
         name="Load Battery",
         icon="mdi:battery-charging-high",
+        update_after_switch_delay_in_sec=2,
     ),
-    SwitchEntityDescription(
+    ExtSwitchEntityDescription(
         entity_registry_enabled_default=False,
         key="li_storage_mode",
         name="Lithium Storage Mode - PV OFF",
         icon="mdi:solar-power",
+        update_after_switch_delay_in_sec=2,
     ),
 ]
 

@@ -1,7 +1,8 @@
 """Platform for Senec Switches."""
+import asyncio
 import logging
 
-from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util import slugify
@@ -9,7 +10,7 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 
 from typing import Literal
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_SWITCH_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB
+from .const import DOMAIN, MAIN_SWITCH_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, ExtSwitchEntityDescription
 
 _LOGGER = logging.getLogger(__name__)
 _LANG = None
@@ -37,7 +38,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
     def __init__(
             self,
             coordinator: SenecDataUpdateCoordinator,
-            description: SwitchEntityDescription
+            description: ExtSwitchEntityDescription
     ):
         """Initialize a singular value sensor."""
         super().__init__(coordinator=coordinator, description=description)
@@ -61,6 +62,11 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         try:
             await self.coordinator._async_switch_to_state(self.entity_description.key, True)
             self.async_schedule_update_ha_state(force_refresh=True)
+            if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+                await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
+                self.async_schedule_update_ha_state(force_refresh=True)
+
+
         except ValueError:
             return "unavailable"
 
@@ -69,6 +75,10 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         try:
             await self.coordinator._async_switch_to_state(self.entity_description.key, False)
             self.async_schedule_update_ha_state(force_refresh=True)
+            if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+                await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
+                self.async_schedule_update_ha_state(force_refresh=True)
+
         except ValueError:
             return "unavailable"
 

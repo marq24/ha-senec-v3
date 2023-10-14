@@ -94,6 +94,12 @@ class Senec:
         else:
             self.url = f"http://{host}/lala.cgi"
 
+        # evil HACK - since SENEC does not switch the property fast enough...
+        # so for five seconds after the switch take place we will return
+        # the 'faked' value
+        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS = 0
+        self._SAFE_CHARGE_RUNNING_OVERWRITE_TS = 0
+
     @property
     def device_id(self) -> str:
         return self._rawVer[SENEC_SECTION_FACTORY]["DEVICE_ID"]
@@ -1510,16 +1516,25 @@ class Senec:
     @property
     def safe_charge(self) -> bool:
         if hasattr(self, '_raw'):
-            return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
+            # if it just has been switched on/off we provide a FAKE value for 5 sec...
+            # since senec unit do not react 'instant' on some requests...
+            if self._SAFE_CHARGE_RUNNING_OVERWRITE_TS + 5 > time():
+                return self._SAFE_CHARGE_RUNNING_OVERWRITE_VALUE
+            else:
+                return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
 
-    async def switch_safe_charge(self, value):
+    async def switch_safe_charge(self, value: bool):
+        self._SAFE_CHARGE_RUNNING_OVERWRITE_VALUE = value
+        self._SAFE_CHARGE_RUNNING_OVERWRITE_TS = time()
         postdata = {}
         if (value):
+            self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
             postdata = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "",
                                                "SAFE_CHARGE_RUNNING": "",
                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
                                                "LI_STORAGE_MODE_RUNNING": ""}}
         else:
+            self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
             postdata = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01",
                                                "SAFE_CHARGE_RUNNING": "",
                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
@@ -1530,16 +1545,25 @@ class Senec:
     @property
     def li_storage_mode(self) -> bool:
         if hasattr(self, '_raw'):
-            return self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] == 1
+            # if it just has been switched on/off we provide a FAKE value for 5 sec...
+            # since senec unit do not react 'instant' on some requests...
+            if self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS + 5 > time():
+                return self._LI_STORAGE_MODE_RUNNING_OVERWRITE_VALUE
+            else:
+                return self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] == 1
 
-    async def switch_li_storage_mode(self, value):
+    async def switch_li_storage_mode(self, value: bool):
+        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_VALUE = value
+        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS = time()
         postdata = {}
         if (value):
+            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 1
             postdata = {
                 SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
                                        "LI_STORAGE_MODE_START": "u8_01", "LI_STORAGE_MODE_STOP": "",
                                        "LI_STORAGE_MODE_RUNNING": ""}}
         else:
+            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 0
             postdata = {
                 SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
                                        "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "u8_01",
@@ -1556,7 +1580,7 @@ class Senec:
     async def write_senec_v31(self, data):
         async with self.websession.post(self.url, json=data, ssl=False) as res:
             res.raise_for_status()
-            self._raw = parse(await res.json())
+            self._rawPost = parse(await res.json())
 
 
 class Inverter:
@@ -1693,14 +1717,14 @@ class Inverter:
     def device_netbiosname(self) -> str:
         return self._rawVer["root"]["Device"]["@NetBiosName"]
 
-    #@property
-    #def measurements(self) -> dict:
+    # @property
+    # def measurements(self) -> dict:
     #    if ('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"][
     #        "Measurements"]):
     #        return self._raw["root"]["Device"]["Measurements"]["Measurement"]
 
-    #@property
-    #def versions(self) -> dict:
+    # @property
+    # def versions(self) -> dict:
     #    if ('Versions' in self._rawVer["root"]["Device"] and 'Software' in self._rawVer["root"]["Device"]["Versions"]):
     #        return self._rawVer["root"]["Device"]["Versions"]["Software"]
 
@@ -2039,21 +2063,24 @@ class MySenecWebPortal:
                                     entity_now_name = str(key + "_now")
                                     self._battery_entities[entity_now_name] = value_now
                                 else:
-                                    _LOGGER.info(f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                                    _LOGGER.info(
+                                        f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
                             else:
                                 if "now" in r_json[key]:
                                     value_now = r_json[key]["now"]
                                     entity_now_name = str(key + "_now")
                                     self._power_entities[entity_now_name] = value_now
                                 else:
-                                    _LOGGER.info(f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                                    _LOGGER.info(
+                                        f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
                                 if "today" in r_json[key]:
                                     value_today = r_json[key]["today"]
                                     entity_today_name = str(key + "_today")
                                     self._energy_entities[entity_today_name] = value_today
                                 else:
-                                    _LOGGER.info(f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                                    _LOGGER.info(
+                                        f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
                         else:
                             _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
@@ -2196,8 +2223,8 @@ class MySenecWebPortal:
         if hasattr(self, '_zone_id'):
             return str(self._zone_id)
 
-    #@property
-    #def firmwareVersion(self) -> str:
+    # @property
+    # def firmwareVersion(self) -> str:
     #    if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
     #        return str(self._raw["firmwareVersion"])
 
