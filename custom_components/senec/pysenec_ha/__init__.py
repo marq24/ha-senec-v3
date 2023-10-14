@@ -5,9 +5,6 @@ import xmltodict
 from time import time
 from datetime import datetime
 
-from custom_components.senec.pysenec_ha.constants import SYSTEM_STATE_NAME, SYSTEM_TYPE_NAME, BATT_TYPE_NAME
-from custom_components.senec.pysenec_ha.util import parse
-
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
 from http.cookies import BaseCookie, SimpleCookie, Morsel
@@ -16,9 +13,34 @@ from aiohttp.helpers import is_ip_address
 from yarl import URL
 from typing import Union, cast
 
-
 from custom_components.senec.const import (
+    QUERY_BMS_KEY,
+    QUERY_FANDATA_KEY,
+    QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
+)
+
+from custom_components.senec.pysenec_ha.util import parse
+from custom_components.senec.pysenec_ha.constants import (
+    SYSTEM_STATE_NAME,
+    SYSTEM_TYPE_NAME,
+    BATT_TYPE_NAME,
+
+    SENEC_SECTION_BMS,
+    SENEC_SECTION_ENERGY,
+    SENEC_SECTION_FAN_SPEED,
+    SENEC_SECTION_STATISTIC,
+    SENEC_SECTION_TEMPMEASURE,
+    SENEC_SECTION_PWR_UNIT,
+    SENEC_SECTION_PV1,
+    SENEC_SECTION_PM1OBJ1,
+    SENEC_SECTION_PM1OBJ2,
+    SENEC_SECTION_WALLBOX,
+
+    SENEC_SECTION_FACTORY,
+    SENEC_SECTION_SYS_UPDATE,
+    SENEC_SECTION_BAT1,
+    SENEC_SECTION_WIZARD,
 )
 
 # 4: "INITIAL CHARGE",
@@ -46,7 +68,25 @@ _LOGGER = logging.getLogger(__name__)
 class Senec:
     """Senec Home Battery Sensor"""
 
-    def __init__(self, host, use_https, websession):
+    def __init__(self, host, use_https, websession, lang: str = "en", options: dict = None):
+        _LOGGER.info(f"restarting Senec lala.cgi integration... for host: '{host}' with options: {options}")
+        self._lang = lang
+        self._QUERY_STATS = True
+        if options is not None and QUERY_BMS_KEY in options:
+            self._QUERY_BMS = options[QUERY_BMS_KEY]
+        else:
+            self._QUERY_BMS = False
+
+        if options is not None and QUERY_WALLBOX_KEY in options:
+            self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
+        else:
+            self._QUERY_WALLBOX = False
+
+        if options is not None and QUERY_FANDATA_KEY in options:
+            self._QUERY_FANDATA = options[QUERY_FANDATA_KEY]
+        else:
+            self._QUERY_FANDATA = False
+
         self.host = host
         self.websession: aiohttp.websession = websession
         if use_https:
@@ -54,31 +94,37 @@ class Senec:
         else:
             self.url = f"http://{host}/lala.cgi"
 
+        # evil HACK - since SENEC does not switch the property fast enough...
+        # so for five seconds after the switch take place we will return
+        # the 'faked' value
+        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS = 0
+        self._SAFE_CHARGE_RUNNING_OVERWRITE_TS = 0
+
     @property
     def device_id(self) -> str:
-        return self._raw["FACTORY"]["DEVICE_ID"]
+        return self._rawVer[SENEC_SECTION_FACTORY]["DEVICE_ID"]
 
     @property
     def versions(self) -> str:
-        a = self._raw["WIZARD"]["APPLICATION_VERSION"]
-        b = self._raw["WIZARD"]["FIRMWARE_VERSION"]
-        c = self._raw["WIZARD"]["INTERFACE_VERSION"]
-        d = str(self._raw["SYS_UPDATE"]["NPU_VER"])
-        e = str(self._raw["SYS_UPDATE"]["NPU_IMAGE_VERSION"])
-        return 'App:' + a + ' FW:' + b + ' NPU-Image:' + e + '(v' + d + ')'
+        a = self._rawVer[SENEC_SECTION_WIZARD]["APPLICATION_VERSION"]
+        b = self._rawVer[SENEC_SECTION_WIZARD]["FIRMWARE_VERSION"]
+        c = self._rawVer[SENEC_SECTION_WIZARD]["INTERFACE_VERSION"]
+        d = str(self._rawVer[SENEC_SECTION_SYS_UPDATE]["NPU_VER"])
+        e = str(self._rawVer[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"])
+        return f"App:{a} FW:{b} NPU-Image:{e}(v{d})"
 
     @property
     def device_type(self) -> str:
-        value = self._raw["FACTORY"]["SYS_TYPE"]
+        value = self._rawVer[SENEC_SECTION_FACTORY]["SYS_TYPE"]
         return SYSTEM_TYPE_NAME.get(value, "UNKNOWN")
 
     @property
     def device_type_internal(self) -> str:
-        return self._raw["FACTORY"]["SYS_TYPE"]
+        return self._rawVer[SENEC_SECTION_FACTORY]["SYS_TYPE"]
 
     @property
     def batt_type(self) -> str:
-        value = self._raw["BAT1"]["TYPE"]
+        value = self._rawVer[SENEC_SECTION_BAT1]["TYPE"]
         return BATT_TYPE_NAME.get(value, "UNKNOWN")
 
     async def update_version(self):
@@ -86,12 +132,12 @@ class Senec:
 
     async def read_version(self):
         form = {
-            "FACTORY": {
+            SENEC_SECTION_FACTORY: {
                 "SYS_TYPE": "",
                 "COUNTRY": "",
                 "DEVICE_ID": ""
             },
-            "WIZARD": {
+            SENEC_SECTION_WIZARD: {
                 "APPLICATION_VERSION": "",
                 "FIRMWARE_VERSION": "",
                 "INTERFACE_VERSION": "",
@@ -100,22 +146,22 @@ class Senec:
                 # "MASTER_SLAVE_MODE": "u8_00",
                 # "SETUP_NUMBER_WALLBOXES": "u8_00"
             },
-            "BAT1": {
+            SENEC_SECTION_BAT1: {
                 "TYPE": "",
                 # "ISLAND_ENABLE": "u8_00",
                 # "NSP_FW": "u1_0000",
                 # "NSP2_FW": "u1_0000"
             },
-            "SYS_UPDATE": {
+            SENEC_SECTION_SYS_UPDATE: {
                 "NPU_VER": "",
                 "NPU_IMAGE_VERSION": ""
             },
-            "STATISTIC": {}
+            SENEC_SECTION_STATISTIC: {}
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
-            self._raw = parse(await res.json())
+            self._rawVer = parse(await res.json())
 
     @property
     def system_state(self) -> str:
@@ -123,8 +169,11 @@ class Senec:
         Textual descritpion of energy status
 
         """
-        value = self._raw["ENERGY"]["STAT_STATE"]
-        return SYSTEM_STATE_NAME.get(value, "UNKNOWN")
+        value = self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"]
+        if self._lang in SYSTEM_STATE_NAME:
+            return SYSTEM_STATE_NAME[self._lang].get(value, "UNKNOWN")
+        else:
+            return SYSTEM_STATE_NAME["en"].get(value, "UNKNOWN")
 
     @property
     def raw_status(self) -> dict:
@@ -140,7 +189,7 @@ class Senec:
         Current power consumption (W)
 
         """
-        return self._raw["ENERGY"]["GUI_HOUSE_POW"]
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_HOUSE_POW"]
 
     @property
     def house_total_consumption(self) -> float:
@@ -148,37 +197,39 @@ class Senec:
         Total energy used by house (kWh)
         Does not include Wallbox.
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_HOUSE_CONS" in self._raw["STATISTIC"]:
-            return self._raw["STATISTIC"]["LIVE_HOUSE_CONS"]
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_HOUSE_CONS" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_HOUSE_CONS"]
 
     @property
     def solar_generated_power(self) -> float:
         """
         Current power generated by solar panels (W)
         """
-        return abs(self._raw["ENERGY"]["GUI_INVERTER_POWER"])
+        return abs(self._raw[SENEC_SECTION_ENERGY]["GUI_INVERTER_POWER"])
 
     @property
     def solar_total_generated(self) -> float:
         """
         Total energy generated by solar panels (kWh)
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_PV_GEN" in self._raw["STATISTIC"]:
-            return self._raw["STATISTIC"]["LIVE_PV_GEN"]
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_PV_GEN" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_PV_GEN"]
 
     @property
     def battery_charge_percent(self) -> float:
         """
         Current battery charge value (%)
         """
-        return self._raw["ENERGY"]["GUI_BAT_DATA_FUEL_CHARGE"]
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_FUEL_CHARGE"]
 
     @property
     def battery_charge_power(self) -> float:
         """
         Current battery charging power (W)
         """
-        value = self._raw["ENERGY"]["GUI_BAT_DATA_POWER"]
+        value = self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_POWER"]
         if value > 0:
             if self.is_battery_state_charging():
                 return value
@@ -189,7 +240,7 @@ class Senec:
         """
         Current battery discharging power (W)
         """
-        value = self._raw["ENERGY"]["GUI_BAT_DATA_POWER"]
+        value = self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_POWER"]
         if value < 0:
             if self.is_battery_state_discharging():
                 return abs(value)
@@ -202,30 +253,40 @@ class Senec:
         Value is positive when battery is charging
         Value is negative when battery is discharging.
         """
-        return self._raw["ENERGY"]["GUI_BAT_DATA_POWER"]
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_POWER"]
+
+    @property
+    def battery_state_current(self) -> float:
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_CURRENT"]
+
+    @property
+    def battery_state_voltage(self) -> float:
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_VOLTAGE"]
 
     @property
     def battery_total_charged(self) -> float:
         """
         Total energy charged to battery (kWh)
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_BAT_CHARGE" in self._raw["STATISTIC"]:
-            return self._raw["STATISTIC"]["LIVE_BAT_CHARGE"]
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_BAT_CHARGE" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_BAT_CHARGE"]
 
     @property
     def battery_total_discharged(self) -> float:
         """
         Total energy discharged from battery (kWh)
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_BAT_DISCHARGE" in self._raw["STATISTIC"]:
-            return self._raw["STATISTIC"]["LIVE_BAT_DISCHARGE"]
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_BAT_DISCHARGE" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_BAT_DISCHARGE"]
 
     @property
     def grid_imported_power(self) -> float:
         """
         Current power imported from grid (W)
         """
-        value = self._raw["ENERGY"]["GUI_GRID_POW"]
+        value = self._raw[SENEC_SECTION_ENERGY]["GUI_GRID_POW"]
         if value > 0:
             return value
         return 0
@@ -235,7 +296,7 @@ class Senec:
         """
         Current power exported to grid (W)
         """
-        value = self._raw["ENERGY"]["GUI_GRID_POW"]
+        value = self._raw[SENEC_SECTION_ENERGY]["GUI_GRID_POW"]
         if value < 0:
             return abs(value)
         return 0
@@ -248,597 +309,703 @@ class Senec:
         Value is positive when power is imported from grid.
         Value is negative when power is exported to grid.
         """
-        return self._raw["ENERGY"]["GUI_GRID_POW"]
+        return self._raw[SENEC_SECTION_ENERGY]["GUI_GRID_POW"]
 
     @property
     def grid_total_export(self) -> float:
         """
         Total energy exported to grid export (kWh)
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_GRID_EXPORT" in self._raw["STATISTIC"] and \
-                self._raw["STATISTIC"]["LIVE_GRID_EXPORT"] != "VARIABLE_NOT_FOUND":
-            return self._raw["STATISTIC"]["LIVE_GRID_EXPORT"]
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_GRID_EXPORT" in self._raw[
+            SENEC_SECTION_STATISTIC] and \
+                self._raw[SENEC_SECTION_STATISTIC]["LIVE_GRID_EXPORT"] != "VARIABLE_NOT_FOUND":
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_GRID_EXPORT"]
 
     @property
     def grid_total_import(self) -> float:
         """
         Total energy imported from grid (kWh)
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_GRID_IMPORT" in self._raw["STATISTIC"]:
-            return self._raw["STATISTIC"]["LIVE_GRID_IMPORT"]
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_GRID_IMPORT" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_GRID_IMPORT"]
 
     @property
     def battery_temp(self) -> float:
         """
         Current battery temperature
         """
-        return self._raw["TEMPMEASURE"]["BATTERY_TEMP"]
+        return self._raw[SENEC_SECTION_TEMPMEASURE]["BATTERY_TEMP"]
 
     @property
     def case_temp(self) -> float:
         """
         Current case temperature
         """
-        return self._raw["TEMPMEASURE"]["CASE_TEMP"]
+        return self._raw[SENEC_SECTION_TEMPMEASURE]["CASE_TEMP"]
 
     @property
     def mcu_temp(self) -> float:
         """
         Current controller temperature
         """
-        return self._raw["TEMPMEASURE"]["MCU_TEMP"]
+        return self._raw[SENEC_SECTION_TEMPMEASURE]["MCU_TEMP"]
 
     @property
     def solar_mpp1_potential(self) -> float:
-        return self._raw["PV1"]["MPP_VOL"][0]
+        return self._raw[SENEC_SECTION_PV1]["MPP_VOL"][0]
 
     @property
     def solar_mpp1_current(self) -> float:
-        return self._raw["PV1"]["MPP_CUR"][0]
+        return self._raw[SENEC_SECTION_PV1]["MPP_CUR"][0]
 
     @property
     def solar_mpp1_power(self) -> float:
-        return self._raw["PV1"]["MPP_POWER"][0]
+        return self._raw[SENEC_SECTION_PV1]["MPP_POWER"][0]
 
     @property
     def solar_mpp2_potential(self) -> float:
-        return self._raw["PV1"]["MPP_VOL"][1]
+        return self._raw[SENEC_SECTION_PV1]["MPP_VOL"][1]
 
     @property
     def solar_mpp2_current(self) -> float:
-        return self._raw["PV1"]["MPP_CUR"][1]
+        return self._raw[SENEC_SECTION_PV1]["MPP_CUR"][1]
 
     @property
     def solar_mpp2_power(self) -> float:
-        return self._raw["PV1"]["MPP_POWER"][1]
+        return self._raw[SENEC_SECTION_PV1]["MPP_POWER"][1]
 
     @property
     def solar_mpp3_potential(self) -> float:
-        return self._raw["PV1"]["MPP_VOL"][2]
+        return self._raw[SENEC_SECTION_PV1]["MPP_VOL"][2]
 
     @property
     def solar_mpp3_current(self) -> float:
-        return self._raw["PV1"]["MPP_CUR"][2]
+        return self._raw[SENEC_SECTION_PV1]["MPP_CUR"][2]
 
     @property
     def solar_mpp3_power(self) -> float:
-        return self._raw["PV1"]["MPP_POWER"][2]
+        return self._raw[SENEC_SECTION_PV1]["MPP_POWER"][2]
 
     @property
     def enfluri_net_freq(self) -> float:
-        return self._raw["PM1OBJ1"]["FREQ"]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["FREQ"]
 
     @property
     def enfluri_net_potential_p1(self) -> float:
-        return self._raw["PM1OBJ1"]["U_AC"][0]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
 
     @property
     def enfluri_net_potential_p2(self) -> float:
-        return self._raw["PM1OBJ1"]["U_AC"][1]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
 
     @property
     def enfluri_net_potential_p3(self) -> float:
-        return self._raw["PM1OBJ1"]["U_AC"][2]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
 
     @property
     def enfluri_net_current_p1(self) -> float:
-        return self._raw["PM1OBJ1"]["I_AC"][0]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["I_AC"][0]
 
     @property
     def enfluri_net_current_p2(self) -> float:
-        return self._raw["PM1OBJ1"]["I_AC"][1]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["I_AC"][1]
 
     @property
     def enfluri_net_current_p3(self) -> float:
-        return self._raw["PM1OBJ1"]["I_AC"][2]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["I_AC"][2]
 
     @property
     def enfluri_net_power_p1(self) -> float:
-        return self._raw["PM1OBJ1"]["P_AC"][0]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["P_AC"][0]
 
     @property
     def enfluri_net_power_p2(self) -> float:
-        return self._raw["PM1OBJ1"]["P_AC"][1]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["P_AC"][1]
 
     @property
     def enfluri_net_power_p3(self) -> float:
-        return self._raw["PM1OBJ1"]["P_AC"][2]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["P_AC"][2]
 
     @property
     def enfluri_net_power_total(self) -> float:
-        return self._raw["PM1OBJ1"]["P_TOTAL"]
+        return self._raw[SENEC_SECTION_PM1OBJ1]["P_TOTAL"]
 
     @property
     def enfluri_usage_freq(self) -> float:
-        return self._raw["PM1OBJ2"]["FREQ"]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["FREQ"]
 
     @property
     def enfluri_usage_potential_p1(self) -> float:
-        return self._raw["PM1OBJ2"]["U_AC"][0]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["U_AC"][0]
 
     @property
     def enfluri_usage_potential_p2(self) -> float:
-        return self._raw["PM1OBJ2"]["U_AC"][1]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["U_AC"][1]
 
     @property
     def enfluri_usage_potential_p3(self) -> float:
-        return self._raw["PM1OBJ2"]["U_AC"][2]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["U_AC"][2]
 
     @property
     def enfluri_usage_current_p1(self) -> float:
-        return self._raw["PM1OBJ2"]["I_AC"][0]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["I_AC"][0]
 
     @property
     def enfluri_usage_current_p2(self) -> float:
-        return self._raw["PM1OBJ2"]["I_AC"][1]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["I_AC"][1]
 
     @property
     def enfluri_usage_current_p3(self) -> float:
-        return self._raw["PM1OBJ2"]["I_AC"][2]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["I_AC"][2]
 
     @property
     def enfluri_usage_power_p1(self) -> float:
-        return self._raw["PM1OBJ2"]["P_AC"][0]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["P_AC"][0]
 
     @property
     def enfluri_usage_power_p2(self) -> float:
-        return self._raw["PM1OBJ2"]["P_AC"][1]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["P_AC"][1]
 
     @property
     def enfluri_usage_power_p3(self) -> float:
-        return self._raw["PM1OBJ2"]["P_AC"][2]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["P_AC"][2]
 
     @property
     def enfluri_usage_power_total(self) -> float:
-        return self._raw["PM1OBJ2"]["P_TOTAL"]
+        return self._raw[SENEC_SECTION_PM1OBJ2]["P_TOTAL"]
 
     def is_battery_empty(self) -> bool:
         # 15: "BATTERY EMPTY",
-        bat_state_is_empty = self._raw["ENERGY"]["STAT_STATE"] == 15
-        bat_percent_is_zero = self._raw["ENERGY"]["GUI_BAT_DATA_FUEL_CHARGE"] == 0
+        bat_state_is_empty = self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"] == 15
+        bat_percent_is_zero = self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_FUEL_CHARGE"] == 0
         return bat_state_is_empty or bat_percent_is_zero
 
     def is_battery_state_charging(self) -> bool:
-        return self._raw["ENERGY"]["STAT_STATE"] in BAT_STATUS_CHARGE
+        return self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"] in BAT_STATUS_CHARGE
 
     def is_battery_state_discharging(self) -> bool:
-        return self._raw["ENERGY"]["STAT_STATE"] in BAT_STATUS_DISCHARGE
+        return self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"] in BAT_STATUS_DISCHARGE
 
     @property
-    def bms_cell_temp_A1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][0]
+    def bms_cell_temp_a1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][0]
 
     @property
-    def bms_cell_temp_A2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][1]
+    def bms_cell_temp_a2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][1]
 
     @property
-    def bms_cell_temp_A3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][2]
+    def bms_cell_temp_a3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][2]
 
     @property
-    def bms_cell_temp_A4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][3]
+    def bms_cell_temp_a4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][3]
 
     @property
-    def bms_cell_temp_A5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][4]
+    def bms_cell_temp_a5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][4]
 
     @property
-    def bms_cell_temp_A6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][5]
+    def bms_cell_temp_a6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][5]
 
     @property
-    def bms_cell_temp_B1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][0]
+    def bms_cell_temp_b1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][0]
 
     @property
-    def bms_cell_temp_B2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][1]
+    def bms_cell_temp_b2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][1]
 
     @property
-    def bms_cell_temp_B3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][2]
+    def bms_cell_temp_b3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][2]
 
     @property
-    def bms_cell_temp_B4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][3]
+    def bms_cell_temp_b4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][3]
 
     @property
-    def bms_cell_temp_B5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][4]
+    def bms_cell_temp_b5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][4]
 
     @property
-    def bms_cell_temp_B6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][5]
+    def bms_cell_temp_b6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][5]
 
     @property
-    def bms_cell_temp_C1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][0]
+    def bms_cell_temp_c1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][0]
 
     @property
-    def bms_cell_temp_C2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][1]
+    def bms_cell_temp_c2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][1]
 
     @property
-    def bms_cell_temp_C3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][2]
+    def bms_cell_temp_c3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][2]
 
     @property
-    def bms_cell_temp_C4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][3]
+    def bms_cell_temp_c4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][3]
 
     @property
-    def bms_cell_temp_C5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][4]
+    def bms_cell_temp_c5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][4]
 
     @property
-    def bms_cell_temp_C6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][5]
+    def bms_cell_temp_c6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][5]
 
     @property
-    def bms_cell_temp_D1(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][0]
+    def bms_cell_temp_d1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][0]
 
     @property
-    def bms_cell_temp_D2(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][1]
+    def bms_cell_temp_d2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][1]
 
     @property
-    def bms_cell_temp_D3(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][2]
+    def bms_cell_temp_d3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][2]
 
     @property
-    def bms_cell_temp_D4(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][3]
+    def bms_cell_temp_d4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][3]
 
     @property
-    def bms_cell_temp_D5(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][4]
+    def bms_cell_temp_d5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][4]
 
     @property
-    def bms_cell_temp_D6(self) -> float:
-        return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][5]
+    def bms_cell_temp_d6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][5]
 
     @property
-    def bms_cell_volt_A1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][0]
+    def bms_cell_volt_a1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][0]
 
     @property
-    def bms_cell_volt_A2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][1]
+    def bms_cell_volt_a2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][1]
 
     @property
-    def bms_cell_volt_A3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][2]
+    def bms_cell_volt_a3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][2]
 
     @property
-    def bms_cell_volt_A4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][3]
+    def bms_cell_volt_a4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][3]
 
     @property
-    def bms_cell_volt_A5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][4]
+    def bms_cell_volt_a5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][4]
 
     @property
-    def bms_cell_volt_A6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][5]
+    def bms_cell_volt_a6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][5]
 
     @property
-    def bms_cell_volt_A7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][6]
+    def bms_cell_volt_a7(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][6]
 
     @property
-    def bms_cell_volt_A8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][7]
+    def bms_cell_volt_a8(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][7]
 
     @property
-    def bms_cell_volt_A9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][8]
+    def bms_cell_volt_a9(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][8]
 
     @property
-    def bms_cell_volt_A10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][9]
+    def bms_cell_volt_a10(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][9]
 
     @property
-    def bms_cell_volt_A11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][10]
+    def bms_cell_volt_a11(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][10]
 
     @property
-    def bms_cell_volt_A12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][11]
+    def bms_cell_volt_a12(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][11]
 
     @property
-    def bms_cell_volt_A13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][12]
+    def bms_cell_volt_a13(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][12]
 
     @property
-    def bms_cell_volt_A14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][13]
+    def bms_cell_volt_a14(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][13]
 
     @property
-    def bms_cell_volt_B1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][0]
+    def bms_cell_volt_b1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][0]
 
     @property
-    def bms_cell_volt_B2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][1]
+    def bms_cell_volt_b2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][1]
 
     @property
-    def bms_cell_volt_B3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][2]
+    def bms_cell_volt_b3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][2]
 
     @property
-    def bms_cell_volt_B4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][3]
+    def bms_cell_volt_b4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][3]
 
     @property
-    def bms_cell_volt_B5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][4]
+    def bms_cell_volt_b5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][4]
 
     @property
-    def bms_cell_volt_B6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][5]
+    def bms_cell_volt_b6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][5]
 
     @property
-    def bms_cell_volt_B7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][6]
+    def bms_cell_volt_b7(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][6]
 
     @property
-    def bms_cell_volt_B8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][7]
+    def bms_cell_volt_b8(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][7]
 
     @property
-    def bms_cell_volt_B9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][8]
+    def bms_cell_volt_b9(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][8]
 
     @property
-    def bms_cell_volt_B10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][9]
+    def bms_cell_volt_b10(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][9]
 
     @property
-    def bms_cell_volt_B11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][10]
+    def bms_cell_volt_b11(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][10]
 
     @property
-    def bms_cell_volt_B12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][11]
+    def bms_cell_volt_b12(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][11]
 
     @property
-    def bms_cell_volt_B13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][12]
+    def bms_cell_volt_b13(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][12]
 
     @property
-    def bms_cell_volt_B14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][13]
+    def bms_cell_volt_b14(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][13]
 
     @property
-    def bms_cell_volt_C1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][0]
+    def bms_cell_volt_c1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][0]
 
     @property
-    def bms_cell_volt_C2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][1]
+    def bms_cell_volt_c2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][1]
 
     @property
-    def bms_cell_volt_C3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][2]
+    def bms_cell_volt_c3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][2]
 
     @property
-    def bms_cell_volt_C4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][3]
+    def bms_cell_volt_c4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][3]
 
     @property
-    def bms_cell_volt_C5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][4]
+    def bms_cell_volt_c5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][4]
 
     @property
-    def bms_cell_volt_C6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][5]
+    def bms_cell_volt_c6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][5]
 
     @property
-    def bms_cell_volt_C7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][6]
+    def bms_cell_volt_c7(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][6]
 
     @property
-    def bms_cell_volt_C8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][7]
+    def bms_cell_volt_c8(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][7]
 
     @property
-    def bms_cell_volt_C9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][8]
+    def bms_cell_volt_c9(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][8]
 
     @property
-    def bms_cell_volt_C10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][9]
+    def bms_cell_volt_c10(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][9]
 
     @property
-    def bms_cell_volt_C11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][10]
+    def bms_cell_volt_c11(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][10]
 
     @property
-    def bms_cell_volt_C12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][11]
+    def bms_cell_volt_c12(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][11]
 
     @property
-    def bms_cell_volt_C13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][12]
+    def bms_cell_volt_c13(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][12]
 
     @property
-    def bms_cell_volt_C14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][13]
+    def bms_cell_volt_c14(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][13]
 
     @property
-    def bms_cell_volt_D1(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][0]
+    def bms_cell_volt_d1(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][0]
 
     @property
-    def bms_cell_volt_D2(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][1]
+    def bms_cell_volt_d2(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][1]
 
     @property
-    def bms_cell_volt_D3(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][2]
+    def bms_cell_volt_d3(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][2]
 
     @property
-    def bms_cell_volt_D4(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][3]
+    def bms_cell_volt_d4(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][3]
 
     @property
-    def bms_cell_volt_D5(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][4]
+    def bms_cell_volt_d5(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][4]
 
     @property
-    def bms_cell_volt_D6(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][5]
+    def bms_cell_volt_d6(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][5]
 
     @property
-    def bms_cell_volt_D7(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][6]
+    def bms_cell_volt_d7(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][6]
 
     @property
-    def bms_cell_volt_D8(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][7]
+    def bms_cell_volt_d8(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][7]
 
     @property
-    def bms_cell_volt_D9(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][8]
+    def bms_cell_volt_d9(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][8]
 
     @property
-    def bms_cell_volt_D10(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][9]
+    def bms_cell_volt_d10(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][9]
 
     @property
-    def bms_cell_volt_D11(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][10]
+    def bms_cell_volt_d11(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][10]
 
     @property
-    def bms_cell_volt_D12(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][11]
+    def bms_cell_volt_d12(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][11]
 
     @property
-    def bms_cell_volt_D13(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][12]
+    def bms_cell_volt_d13(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][12]
 
     @property
-    def bms_cell_volt_D14(self) -> float:
-        return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
+    def bms_cell_volt_d14(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
 
     @property
-    def bms_soc_A(self) -> float:
-        return self._raw["BMS"]["SOC"][0]
+    def bms_soc_a(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][0]
 
     @property
-    def bms_soc_B(self) -> float:
-        return self._raw["BMS"]["SOC"][1]
+    def bms_soc_b(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][1]
 
     @property
-    def bms_soc_C(self) -> float:
-        return self._raw["BMS"]["SOC"][2]
+    def bms_soc_c(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][2]
 
     @property
-    def bms_soc_D(self) -> float:
-        return self._raw["BMS"]["SOC"][3]
+    def bms_soc_d(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOC"][3]
 
     @property
-    def bms_soh_A(self) -> float:
-        return self._raw["BMS"]["SOH"][0]
+    def bms_soh_a(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][0]
 
     @property
-    def bms_soh_B(self) -> float:
-        return self._raw["BMS"]["SOH"][1]
+    def bms_soh_b(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][1]
 
     @property
-    def bms_soh_C(self) -> float:
-        return self._raw["BMS"]["SOH"][2]
+    def bms_soh_c(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][2]
 
     @property
-    def bms_soh_D(self) -> float:
-        return self._raw["BMS"]["SOH"][3]
+    def bms_soh_d(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+            return self._raw["BMS"]["SOH"][3]
 
     @property
-    def bms_voltage_A(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][0]
+    def bms_voltage_a(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][0]
 
     @property
-    def bms_voltage_B(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][1]
+    def bms_voltage_b(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][1]
 
     @property
-    def bms_voltage_C(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][2]
+    def bms_voltage_c(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][2]
 
     @property
-    def bms_voltage_D(self) -> float:
-        return self._raw["BMS"]["VOLTAGE"][3]
+    def bms_voltage_d(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+            return self._raw["BMS"]["VOLTAGE"][3]
 
     @property
-    def bms_current_A(self) -> float:
-        return self._raw["BMS"]["CURRENT"][0]
+    def bms_current_a(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][0]
 
     @property
-    def bms_current_B(self) -> float:
-        return self._raw["BMS"]["CURRENT"][1]
+    def bms_current_b(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][1]
 
     @property
-    def bms_current_C(self) -> float:
-        return self._raw["BMS"]["CURRENT"][2]
+    def bms_current_c(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][2]
 
     @property
-    def bms_current_D(self) -> float:
-        return self._raw["BMS"]["CURRENT"][3]
+    def bms_current_d(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+            return self._raw["BMS"]["CURRENT"][3]
 
     @property
-    def bms_cycles_A(self) -> float:
-        return self._raw["BMS"]["CYCLES"][0]
+    def bms_cycles_a(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][0]
 
     @property
-    def bms_cycles_B(self) -> float:
-        return self._raw["BMS"]["CYCLES"][1]
+    def bms_cycles_b(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][1]
 
     @property
-    def bms_cycles_C(self) -> float:
-        return self._raw["BMS"]["CYCLES"][2]
+    def bms_cycles_c(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][2]
 
     @property
-    def bms_cycles_D(self) -> float:
-        return self._raw["BMS"]["CYCLES"][3]
+    def bms_cycles_d(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+            return self._raw["BMS"]["CYCLES"][3]
 
     @property
-    def bms_fw_A(self) -> float:
-        return self._raw["BMS"]["FW"][0]
+    def bms_fw_a(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][0]
 
     @property
-    def bms_fw_B(self) -> float:
-        return self._raw["BMS"]["FW"][1]
+    def bms_fw_b(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][1]
 
     @property
-    def bms_fw_C(self) -> float:
-        return self._raw["BMS"]["FW"][2]
+    def bms_fw_c(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][2]
 
     @property
-    def bms_fw_D(self) -> float:
-        return self._raw["BMS"]["FW"][3]
+    def bms_fw_d(self) -> float:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+            return self._raw["BMS"]["FW"][3]
 
     @property
     def wallbox_power(self) -> float:
@@ -846,86 +1013,437 @@ class Senec:
         Wallbox Total Charging Power (W)
         Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
         """
-        return self._raw["WALLBOX"]["L1_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][0] + \
-            self._raw["WALLBOX"]["L2_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][1] + \
-            self._raw["WALLBOX"]["L3_CHARGING_CURRENT"][0] * self._raw["PM1OBJ1"]["U_AC"][2]
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            total = 0
+            if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][0] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][0] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][0] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][0] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][0] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][0] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
 
     @property
     def wallbox_ev_connected(self) -> bool:
         """
         Wallbox EV Connected
         """
-        return self._raw["WALLBOX"]["EV_CONNECTED"][0]
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "EV_CONNECTED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["EV_CONNECTED"][0]
 
     @property
     def wallbox_energy(self) -> float:
         """
         Wallbox Total Energy
         """
-        if hasattr(self, '_raw') and "STATISTIC" in self._raw and "LIVE_WB_ENERGY" in self._raw["STATISTIC"]:
-            return self._raw["STATISTIC"]["LIVE_WB_ENERGY"][0]
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_WB_ENERGY" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_WB_ENERGY"][0]
+
+    @property
+    def wallbox_l1_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][0] == 1
+
+    @property
+    def wallbox_l2_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][0] == 1
+
+    @property
+    def wallbox_l3_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][0] == 1
+
+    @property
+    def wallbox_l1_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][0]
+
+    @property
+    def wallbox_l2_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][0]
+
+    @property
+    def wallbox_l3_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][0]
+
+    @property
+    def wallbox_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][0]
+
+    @property
+    def wallbox_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][0]
+
+    @property
+    def wallbox_2_power(self) -> float:
+        """
+        Wallbox Total Charging Power (W)
+        Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            total = 0
+            if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][1] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][1] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][1] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][1] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][1] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][1] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
+
+    @property
+    def wallbox_2_ev_connected(self) -> bool:
+        """
+        Wallbox EV Connected
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "EV_CONNECTED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["EV_CONNECTED"][1]
+
+    @property
+    def wallbox_2_energy(self) -> float:
+        """
+        Wallbox Total Energy
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_WB_ENERGY" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_WB_ENERGY"][1]
+
+    @property
+    def wallbox_2_l1_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][1] == 1
+
+    @property
+    def wallbox_2_l2_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][1] == 1
+
+    @property
+    def wallbox_2_l3_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][1] == 1
+
+    @property
+    def wallbox_2_l1_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][1]
+
+    @property
+    def wallbox_2_l2_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][1]
+
+    @property
+    def wallbox_2_l3_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][1]
+
+    @property
+    def wallbox_2_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][1]
+
+    @property
+    def wallbox_2_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][1]
+
+    @property
+    def wallbox_3_power(self) -> float:
+        """
+        Wallbox Total Charging Power (W)
+        Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            total = 0
+            if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][2] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][2] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][2] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][2] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][2] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][2] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
+
+    @property
+    def wallbox_3_ev_connected(self) -> bool:
+        """
+        Wallbox EV Connected
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "EV_CONNECTED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["EV_CONNECTED"][2]
+
+    @property
+    def wallbox_3_energy(self) -> float:
+        """
+        Wallbox Total Energy
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_WB_ENERGY" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_WB_ENERGY"][2]
+
+    @property
+    def wallbox_3_l1_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][2] == 1
+
+    @property
+    def wallbox_3_l2_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][2] == 1
+
+    @property
+    def wallbox_3_l3_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][2] == 1
+
+    @property
+    def wallbox_3_l1_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][2]
+
+    @property
+    def wallbox_3_l2_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][2]
+
+    @property
+    def wallbox_3_l3_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][2]
+
+    @property
+    def wallbox_3_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][2]
+
+    @property
+    def wallbox_3_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][2]
+
+    @property
+    def wallbox_4_power(self) -> float:
+        """
+        Wallbox Total Charging Power (W)
+        Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            total = 0
+            if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][3] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][3] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][0]
+            if self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][3] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][3] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][1]
+            if self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][3] == 1:
+                total += self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][3] * \
+                         self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"][2]
+            return total
+
+    @property
+    def wallbox_4_ev_connected(self) -> bool:
+        """
+        Wallbox EV Connected
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "EV_CONNECTED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["EV_CONNECTED"][3]
+
+    @property
+    def wallbox_4_energy(self) -> float:
+        """
+        Wallbox Total Energy
+        """
+        if hasattr(self, '_raw') and SENEC_SECTION_STATISTIC in self._raw and "LIVE_WB_ENERGY" in self._raw[
+            SENEC_SECTION_STATISTIC]:
+            return self._raw[SENEC_SECTION_STATISTIC]["LIVE_WB_ENERGY"][3]
+
+    @property
+    def wallbox_4_l1_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][3] == 1
+
+    @property
+    def wallbox_4_l2_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][3] == 1
+
+    @property
+    def wallbox_4_l3_used(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][3] == 1
+
+    @property
+    def wallbox_4_l1_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][3]
+
+    @property
+    def wallbox_4_l2_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L2_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][3]
+
+    @property
+    def wallbox_4_l3_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L3_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][3]
+
+    @property
+    def wallbox_4_min_charging_current(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][3]
+
+    @property
+    def wallbox_4_set_icmax(self) -> float:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][3]
 
     @property
     def fan_inv_lv(self) -> bool:
-        if hasattr(self, '_raw') and "FAN_SPEED" in self._raw and "INV_LV" in self._raw["FAN_SPEED"]:
-            return self._raw["FAN_SPEED"]["INV_LV"]
+        if hasattr(self, '_raw') and SENEC_SECTION_FAN_SPEED in self._raw and "INV_LV" in self._raw[
+            SENEC_SECTION_FAN_SPEED]:
+            return self._raw[SENEC_SECTION_FAN_SPEED]["INV_LV"] == 1
 
     @property
     def fan_inv_hv(self) -> bool:
-        if hasattr(self, '_raw') and "FAN_SPEED" in self._raw and "INV_HV" in self._raw["FAN_SPEED"]:
-            return self._raw["FAN_SPEED"]["INV_HV"]
+        if hasattr(self, '_raw') and SENEC_SECTION_FAN_SPEED in self._raw and "INV_HV" in self._raw[
+            SENEC_SECTION_FAN_SPEED]:
+            return self._raw[SENEC_SECTION_FAN_SPEED]["INV_HV"] == 1
 
     async def update(self):
-        await self.read_senec_v31()
+        await self.read_senec_lala()
 
-    async def read_senec_v31(self):
-        """Read values used by webinterface from Senec Home v2.1
-
-        Note: Not all values are "high priority" and reading everything causes problems with Senec device, i.e. no sync with Senec cloud possible.
-        """
+    async def read_senec_lala(self):
         form = {
-            "ENERGY": {
+            SENEC_SECTION_ENERGY: {
                 "STAT_STATE": "",
-                "GUI_BAT_DATA_POWER": "",
-                "GUI_INVERTER_POWER": "",
-                "GUI_HOUSE_POW": "",
                 "GUI_GRID_POW": "",
+                "GUI_HOUSE_POW": "",
+                "GUI_INVERTER_POWER": "",
                 "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "GUI_CHARGING_INFO": "",
-                "GUI_BOOSTING_INFO": "",
                 "GUI_BAT_DATA_POWER": "",
                 "GUI_BAT_DATA_VOLTAGE": "",
                 "GUI_BAT_DATA_CURRENT": "",
-                "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "STAT_LIMITED_NET_SKEW": "",
                 "SAFE_CHARGE_RUNNING": "",
-                "LI_STORAGE_MODE_RUNNING": "",
+                "LI_STORAGE_MODE_RUNNING": ""
             },
-            "STATISTIC": {
-                "LIVE_BAT_CHARGE": "",
-                "LIVE_BAT_DISCHARGE": "",
-                "LIVE_GRID_EXPORT": "",
-                "LIVE_GRID_IMPORT": "",
-                "LIVE_HOUSE_CONS": "",
-                "LIVE_PV_GEN": "",
-                "LIVE_WB_ENERGY": "",
-            },
-            "TEMPMEASURE": {
+            # SENEC_SECTION_STATISTIC: {
+            #    "LIVE_BAT_CHARGE": "",
+            #    "LIVE_BAT_DISCHARGE": "",
+            #    "LIVE_GRID_EXPORT": "",
+            #    "LIVE_GRID_IMPORT": "",
+            #    "LIVE_HOUSE_CONS": "",
+            #    "LIVE_PV_GEN": "",
+            #    "LIVE_WB_ENERGY": "",
+            # },
+            SENEC_SECTION_TEMPMEASURE: {
                 "BATTERY_TEMP": "",
                 "CASE_TEMP": "",
                 "MCU_TEMP": "",
             },
-            "PV1": {"POWER_RATIO": "",
-                    "POWER_RATIO_L1": "",
-                    "POWER_RATIO_L2": "",
-                    "POWER_RATIO_L3": "",
-                    "MPP_VOL": "",
-                    "MPP_CUR": "",
-                    "MPP_POWER": ""},
-            "PWR_UNIT": {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
-            "PM1OBJ1": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            "PM1OBJ2": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            "BMS": {
+            SENEC_SECTION_PV1: {
+                "POWER_RATIO": "",
+                "POWER_RATIO_L1": "",
+                "POWER_RATIO_L2": "",
+                "POWER_RATIO_L3": "",
+                "MPP_VOL": "",
+                "MPP_CUR": "",
+                "MPP_POWER": ""},
+            SENEC_SECTION_PWR_UNIT: {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
+            SENEC_SECTION_PM1OBJ1: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+            SENEC_SECTION_PM1OBJ2: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+            # "BMS": {
+            #    "CELL_TEMPERATURES_MODULE_A": "",
+            #    "CELL_TEMPERATURES_MODULE_B": "",
+            #    "CELL_TEMPERATURES_MODULE_C": "",
+            #    "CELL_TEMPERATURES_MODULE_D": "",
+            #    "CELL_VOLTAGES_MODULE_A": "",
+            #    "CELL_VOLTAGES_MODULE_B": "",
+            #    "CELL_VOLTAGES_MODULE_C": "",
+            #    "CELL_VOLTAGES_MODULE_D": "",
+            #    "CURRENT": "",
+            #    "VOLTAGE": "",
+            #    "SOC": "",
+            #    "SOH": "",
+            #    "CYCLES": "",
+            # },
+            # SENEC_SECTION_WALLBOX: {
+            #    "L1_CHARGING_CURRENT": "",
+            #    "L2_CHARGING_CURRENT": "",
+            #    "L3_CHARGING_CURRENT": "",
+            #    "EV_CONNECTED": ""
+            # },
+            # SENEC_SECTION_FAN_SPEED: {},
+        }
+        if self._QUERY_STATS:
+            form.update({SENEC_SECTION_STATISTIC: {}})
+
+        if self._QUERY_FANDATA:
+            form.update({SENEC_SECTION_FAN_SPEED: {}})
+
+        if self._QUERY_BMS:
+            form.update({SENEC_SECTION_BMS: {
                 "CELL_TEMPERATURES_MODULE_A": "",
                 "CELL_TEMPERATURES_MODULE_B": "",
                 "CELL_TEMPERATURES_MODULE_C": "",
@@ -938,91 +1456,42 @@ class Senec:
                 "VOLTAGE": "",
                 "SOC": "",
                 "SOH": "",
-                "CYCLES": "",
-            },
-            "WALLBOX": {
+                "CYCLES": ""}
+            })
+
+        if self._QUERY_WALLBOX:
+            form.update({SENEC_SECTION_WALLBOX: {
                 "L1_CHARGING_CURRENT": "",
+                "L1_USED": "",
                 "L2_CHARGING_CURRENT": "",
+                "L2_USED": "",
                 "L3_CHARGING_CURRENT": "",
-                "EV_CONNECTED": ""
-            },
-            "FAN_SPEED": {},
-        }
+                "L3_USED": "",
+                "EV_CONNECTED": "",
+                "MIN_CHARGING_CURRENT": "",
+                "SET_ICMAX": ""}
+            })
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
             self._raw = parse(await res.json())
 
-    async def read_senec_v21(self):
-        """Read values used by webinterface from Senec Home v2.1
-
-        Note: Not all values are "high priority" and reading everything causes problems with Senec device, i.e. no sync with Senec cloud possible.
-        """
+    async def read_senec_energy(self):
         form = {
-            "ENERGY": {
+            SENEC_SECTION_ENERGY: {
                 "STAT_STATE": "",
-                "GUI_BAT_DATA_POWER": "",
-                "GUI_INVERTER_POWER": "",
-                "GUI_HOUSE_POW": "",
                 "GUI_GRID_POW": "",
-                "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "GUI_CHARGING_INFO": "",
-                "GUI_BOOSTING_INFO": "",
+                "GUI_HOUSE_POW": "",
+                "GUI_INVERTER_POWER": "",
                 "GUI_BAT_DATA_POWER": "",
                 "GUI_BAT_DATA_VOLTAGE": "",
-                "GUI_BAT_DATA_CURRENT": "",
-                "GUI_BAT_DATA_FUEL_CHARGE": "",
-                "STAT_LIMITED_NET_SKEW": "",
-            },
-            "STATISTIC": {
-                "LIVE_BAT_CHARGE": "",
-                "LIVE_BAT_DISCHARGE": "",
-                "LIVE_GRID_EXPORT": "",
-                "LIVE_GRID_IMPORT": "",
-                "LIVE_HOUSE_CONS": "",
-                "LIVE_PV_GEN": "",
-            },
-            "TEMPMEASURE": {
-                "BATTERY_TEMP": "",
-                "CASE_TEMP": "",
-                "MCU_TEMP": "",
-            },
-            "PV1": {"POWER_RATIO": ""},
-            "PWR_UNIT": {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
-            "PM1OBJ1": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            "PM1OBJ2": {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+                "GUI_BAT_DATA_CURRENT": ""
+            }
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
-            self._raw = parse(await res.json())
-
-    async def read_senec_v21_all(self):
-        """Read ALL values from Senec Home v2.1
-
-        Note: This causes high demand on the SENEC machine so it shouldn't run too often. Adverse effects: No sync with Senec possible if called too often.
-        """
-        form = {
-            "STATISTIC": {},
-            "ENERGY": {},
-            "FEATURES": {},
-            "LOG": {},
-            "SYS_UPDATE": {},
-            "WIZARD": {},
-            "BMS": {},
-            "BAT1": {},
-            "BAT1OBJ1": {},
-            "BAT1OBJ2": {},
-            "BAT1OBJ2": {},
-            "BAT1OBJ3": {},
-            "BAT1OBJ4": {},
-            "PWR_UNIT": {},
-            "PV1": {},
-        }
-
-        async with self.websession.post(self.url, json=form, ssl=False) as res:
-            res.raise_for_status()
-            self._raw = parse(await res.json())
+            self._energy_raw = parse(await res.json())
 
     ## LADEN...
     ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
@@ -1047,36 +1516,58 @@ class Senec:
     @property
     def safe_charge(self) -> bool:
         if hasattr(self, '_raw'):
-            return self._raw["ENERGY"]["SAFE_CHARGE_RUNNING"] == 1
+            # if it just has been switched on/off we provide a FAKE value for 5 sec...
+            # since senec unit do not react 'instant' on some requests...
+            if self._SAFE_CHARGE_RUNNING_OVERWRITE_TS + 5 > time():
+                return self._SAFE_CHARGE_RUNNING_OVERWRITE_VALUE
+            else:
+                return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
 
-    async def switch_safe_charge(self, value):
+    async def switch_safe_charge(self, value: bool):
+        self._SAFE_CHARGE_RUNNING_OVERWRITE_VALUE = value
+        self._SAFE_CHARGE_RUNNING_OVERWRITE_TS = time()
         postdata = {}
         if (value):
-            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
-                                   "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
-                                   "LI_STORAGE_MODE_RUNNING": ""}}
+            self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
+            postdata = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "",
+                                               "SAFE_CHARGE_RUNNING": "",
+                                               "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
+                                               "LI_STORAGE_MODE_RUNNING": ""}}
         else:
-            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01", "SAFE_CHARGE_RUNNING": "",
-                                   "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
-                                   "LI_STORAGE_MODE_RUNNING": ""}}
+            self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
+            postdata = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01",
+                                               "SAFE_CHARGE_RUNNING": "",
+                                               "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
+                                               "LI_STORAGE_MODE_RUNNING": ""}}
 
         await self.write(postdata)
 
     @property
     def li_storage_mode(self) -> bool:
         if hasattr(self, '_raw'):
-            return self._raw["ENERGY"]["LI_STORAGE_MODE_RUNNING"] == 1
+            # if it just has been switched on/off we provide a FAKE value for 5 sec...
+            # since senec unit do not react 'instant' on some requests...
+            if self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS + 5 > time():
+                return self._LI_STORAGE_MODE_RUNNING_OVERWRITE_VALUE
+            else:
+                return self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] == 1
 
-    async def switch_li_storage_mode(self, value):
+    async def switch_li_storage_mode(self, value: bool):
+        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_VALUE = value
+        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS = time()
         postdata = {}
         if (value):
-            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
-                                   "LI_STORAGE_MODE_START": "u8_01", "LI_STORAGE_MODE_STOP": "",
-                                   "LI_STORAGE_MODE_RUNNING": ""}}
+            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 1
+            postdata = {
+                SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
+                                       "LI_STORAGE_MODE_START": "u8_01", "LI_STORAGE_MODE_STOP": "",
+                                       "LI_STORAGE_MODE_RUNNING": ""}}
         else:
-            postdata = {"ENERGY": {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
-                                   "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "u8_01",
-                                   "LI_STORAGE_MODE_RUNNING": ""}}
+            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 0
+            postdata = {
+                SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
+                                       "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "u8_01",
+                                       "LI_STORAGE_MODE_RUNNING": ""}}
 
         await self.write(postdata)
 
@@ -1089,7 +1580,7 @@ class Senec:
     async def write_senec_v31(self, data):
         async with self.websession.post(self.url, json=data, ssl=False) as res:
             res.raise_for_status()
-            self._raw = parse(await res.json())
+            self._rawPost = parse(await res.json())
 
 
 class Inverter:
@@ -1111,9 +1602,9 @@ class Inverter:
         async with self.websession.get(self.url3) as res:
             res.raise_for_status()
             txt = await res.text()
-            self._raw = xmltodict.parse(txt)
+            self._rawVer = xmltodict.parse(txt)
             lastDev = ''
-            for aEntry in self._raw["root"]["Device"]["Versions"]["Software"]:
+            for aEntry in self._rawVer["root"]["Device"]["Versions"]["Software"]:
                 if '@Name' in aEntry:
                     aDev = aEntry["@Device"]
                     if (not self._has_bdc):
@@ -1132,7 +1623,7 @@ class Inverter:
         await self.read_inverter()
 
     async def read_inverter(self):
-        async with self.websession.get(self.url2 + '?' + str(datetime.now())) as res:
+        async with self.websession.get(f"{self.url2}?{datetime.now()}") as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
@@ -1216,26 +1707,26 @@ class Inverter:
 
     @property
     def device_name(self) -> str:
-        return self._raw["root"]["Device"]["@Name"]
+        return self._rawVer["root"]["Device"]["@Name"]
 
     @property
     def device_serial(self) -> str:
-        return self._raw["root"]["Device"]["@Serial"]
+        return self._rawVer["root"]["Device"]["@Serial"]
 
     @property
     def device_netbiosname(self) -> str:
-        return self._raw["root"]["Device"]["@NetBiosName"]
+        return self._rawVer["root"]["Device"]["@NetBiosName"]
 
-    @property
-    def measurements(self) -> dict:
-        if ('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"][
-            "Measurements"]):
-            return self._raw["root"]["Device"]["Measurements"]["Measurement"]
+    # @property
+    # def measurements(self) -> dict:
+    #    if ('Measurements' in self._raw["root"]["Device"] and "Measurement" in self._raw["root"]["Device"][
+    #        "Measurements"]):
+    #        return self._raw["root"]["Device"]["Measurements"]["Measurement"]
 
-    @property
-    def versions(self) -> dict:
-        if ('Versions' in self._raw["root"]["Device"] and 'Software' in self._raw["root"]["Device"]["Versions"]):
-            return self._raw["root"]["Device"]["Versions"]["Software"]
+    # @property
+    # def versions(self) -> dict:
+    #    if ('Versions' in self._rawVer["root"]["Device"] and 'Software' in self._rawVer["root"]["Device"]["Versions"]):
+    #        return self._rawVer["root"]["Device"]["Versions"]["Software"]
 
     @property
     def ac_voltage(self) -> float:
@@ -1351,7 +1842,7 @@ class Inverter:
 class MySenecWebPortal:
 
     def __init__(self, user, pwd, websession, master_plant_number: int = 0, options: dict = None):
-        _LOGGER.info("restarting... with options: "+str(options))
+        _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' with options: {options}")
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
             self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
 
@@ -1444,7 +1935,7 @@ class MySenecWebPortal:
                     if doUpdate:
                         self.updateClassic()
             else:
-                _LOGGER.warning("Login failed with Code " + str(res.status))
+                _LOGGER.warning(f"Login failed with Code {res.status}")
 
     async def updateClassic(self):
         _LOGGER.debug("***** updateClassic(self) ********")
@@ -1481,7 +1972,7 @@ class MySenecWebPortal:
                     if doUpdate:
                         await self.update()
                 else:
-                    _LOGGER.error("Login failed with Code " + str(res.status))
+                    _LOGGER.warning(f"Login failed with Code {res.status}")
                     self.purgeSenecCookies()
             except ClientResponseError as exc:
                 # _LOGGER.error(str(exc))
@@ -1492,7 +1983,7 @@ class MySenecWebPortal:
                         self.purgeSenecCookies()
                         self._isAuthenticated = False
                     else:
-                        _LOGGER.error("Login exception with Code " + str(exc.status))
+                        _LOGGER.warning(f"Login exception with Code {res.status}")
                         self.purgeSenecCookies()
 
     async def update(self):
@@ -1565,22 +2056,34 @@ class MySenecWebPortal:
                     r_json = await res.json()
                     self._raw = parse(r_json)
                     for key in (self._API_KEYS + self._API_KEYS_EXTRA):
-                        if (key != "acculevel"):
-                            value_now = r_json[key]["now"]
-                            entity_now_name = str(key + "_now")
-                            self._power_entities[entity_now_name] = value_now
+                        if key in r_json:
+                            if key == "acculevel":
+                                if "now" in r_json[key]:
+                                    value_now = r_json[key]["now"]
+                                    entity_now_name = str(key + "_now")
+                                    self._battery_entities[entity_now_name] = value_now
+                                else:
+                                    _LOGGER.info(
+                                        f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                            else:
+                                if "now" in r_json[key]:
+                                    value_now = r_json[key]["now"]
+                                    entity_now_name = str(key + "_now")
+                                    self._power_entities[entity_now_name] = value_now
+                                else:
+                                    _LOGGER.info(
+                                        f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
-                            value_today = r_json[key]["today"]
-                            entity_today_name = str(key + "_today")
-                            self._energy_entities[entity_today_name] = value_today
+                                if "today" in r_json[key]:
+                                    value_today = r_json[key]["today"]
+                                    entity_today_name = str(key + "_today")
+                                    self._energy_entities[entity_today_name] = value_today
+                                else:
+                                    _LOGGER.info(
+                                        f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+
                         else:
-                            value_now = r_json[key]["now"]
-                            entity_now_name = str(key + "_now")
-                            self._battery_entities[entity_now_name] = value_now
-
-                            # value_today = r_json[key]["today"]
-                            # entity_today_name = str(key + "_today")
-                            # self._battery_entities[entity_today_name]=value_today
+                            _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
 
                 else:
                     self._isAuthenticated = False
@@ -1603,9 +2106,12 @@ class MySenecWebPortal:
                     res.raise_for_status()
                     if res.status == 200:
                         r_json = await res.json()
-                        value = r_json["fullkwh"]
-                        entity_name = str(key + "_total")
-                        self._energy_entities[entity_name] = value
+                        if "fullkwh" in r_json:
+                            value = r_json["fullkwh"]
+                            entity_name = str(key + "_total")
+                            self._energy_entities[entity_name] = value
+                        else:
+                            _LOGGER.info(f"No 'fullkwh' in json: {r_json} when requesting: {api_url}")
                     else:
                         self._isAuthenticated = False
                         await self.update()
@@ -1621,7 +2127,15 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_context(self) ********")
         if self._isAuthenticated:
             await self.update_get_customer()
-            await self.update_get_systems(self._master_plant_number)
+
+            # in autodetect-mode the initial self._master_plant_number = -1
+            if self._master_plant_number == -1:
+                self._master_plant_number = 0
+                is_autodetect = True
+            else:
+                is_autodetect = False
+
+            await self.update_get_systems(a_plant_number=self._master_plant_number, autodetect_mode=is_autodetect)
         else:
             await self.authenticate(doUpdate=False, throw401=False)
 
@@ -1645,7 +2159,7 @@ class MySenecWebPortal:
                 self._isAuthenticated = False
                 await self.authenticate(doUpdate=False, throw401=False)
 
-    async def update_get_systems(self, a_plant_number: int):
+    async def update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
         _LOGGER.debug("***** update_get_systems(self) ********")
 
         a_url = f"{self._SENEC_API_GET_SYSTEM_URL}" % str(a_plant_number)
@@ -1653,21 +2167,32 @@ class MySenecWebPortal:
             res.raise_for_status()
             if res.status == 200:
                 r_json = await res.json()
-
-                if "master" in r_json and r_json["master"]:
-                    # we are cool that's a master-system... so we store our counter...
+                if autodetect_mode:
+                    if "master" in r_json and r_json["master"]:
+                        # we are cool that's a master-system... so we store our counter...
+                        self._serial_number = r_json["steuereinheitnummer"]
+                        self._product_name = r_json["produktName"]
+                        if "zoneId" in r_json:
+                            self._zone_id = r_json["zoneId"]
+                        else:
+                            self._zone_id = "UNKNOWN"
+                        self._master_plant_number = a_plant_number
+                    else:
+                        if not hasattr(self, "_serial_number_slave"):
+                            self._serial_number_slave = []
+                            self._product_name_slave = []
+                        self._serial_number_slave.append(r_json["steuereinheitnummer"])
+                        self._product_name_slave.append(r_json["produktName"])
+                        a_plant_number += 1
+                        await self.update_get_systems(a_plant_number, autodetect_mode)
+                else:
                     self._serial_number = r_json["steuereinheitnummer"]
                     self._product_name = r_json["produktName"]
-                    self._zone_id = r_json["zoneId"]
+                    if "zoneId" in r_json:
+                        self._zone_id = r_json["zoneId"]
+                    else:
+                        self._zone_id = "UNKNOWN"
                     self._master_plant_number = a_plant_number
-                else:
-                    if not hasattr(self, "_serial_number_slave"):
-                        self._serial_number_slave = []
-                        self._product_name_slave = []
-                    self._serial_number_slave.append(r_json["steuereinheitnummer"])
-                    self._product_name_slave.append(r_json["produktName"])
-                    a_plant_number += 1
-                    await self.update_get_systems(a_plant_number)
 
             else:
                 self._isAuthenticated = False
@@ -1698,10 +2223,10 @@ class MySenecWebPortal:
         if hasattr(self, '_zone_id'):
             return str(self._zone_id)
 
-    @property
-    def firmwareVersion(self) -> str:
-        if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
-            return str(self._raw["firmwareVersion"])
+    # @property
+    # def firmwareVersion(self) -> str:
+    #    if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
+    #        return str(self._raw["firmwareVersion"])
 
     @property
     def masterPlantNumber(self) -> int:

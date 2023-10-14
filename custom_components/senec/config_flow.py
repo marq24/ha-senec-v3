@@ -36,13 +36,19 @@ from .const import (
     SYSTEM_MODES,
     MODE_WEB,
 
+    MASTER_PLANT_NUMBERS,
+
+    SYSTYPE_NAME_SENEC,
+    SYSTYPE_NAME_INVERTER,
+    SYSTYPE_NAME_WEBAPI,
+
     SETUP_SYS_TYPE,
     SETUP_SYS_MODE,
     CONF_DEV_TYPE,
     CONF_DEV_TYPE_INT,
     CONF_USE_HTTPS,
     CONF_SUPPORT_BDC,
-    CONF_DEV_NAME,
+    CONF_DEV_MODEL,
     CONF_DEV_SERIAL,
     CONF_DEV_VERSION,
     CONF_SYSTYPE_SENEC,
@@ -54,12 +60,26 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+#@callback
+#def senec_entries_data(hass: HomeAssistant):
+#    """Return the hosts already configured."""
+#    return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
+
+#@callback
+#def senec_entries_options(hass: HomeAssistant):
+#    """Return the hosts already configured."""
+#    return {entry.options[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
 
 @callback
 def senec_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
-    return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
-
+    conf_hosts = []
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if hasattr(entry, 'options') and CONF_HOST in entry.options:
+            conf_hosts.append(entry.options[CONF_HOST])
+        else:
+            conf_hosts.append(entry.data[CONF_HOST])
+    return conf_hosts
 
 class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for senec."""
@@ -70,15 +90,18 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         """Initialize."""
         self._errors = {}
-        self._device_type = ""
+        self._selected_system = None
+
+        self._use_https = False
         self._device_type_internal = ""
         self._support_bdc = False
-        self._device_name = ""
+        self._device_master_plant_number = -1
+
+        self._device_type = ""
+        self._device_model = ""
         self._device_serial = ""
         self._device_version = ""
-        self._device_master_plant_number = -1
-        self._selected_system = None
-        self._use_https = False
+        self._stats_available = False
 
     def _host_in_configuration_exists(self, host) -> bool:
         """Return True if host exists in configuration."""
@@ -93,12 +116,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             senec_client = Senec(host=host, use_https=use_https, websession=websession)
             await senec_client.update_version()
-            self._device_type = "SENEC Main-Unit"
+            self._use_https = use_https
             self._device_type_internal = senec_client.device_type_internal
-            self._device_name = senec_client.device_type + ' | ' + senec_client.batt_type
+
+            # these values will also read with every restart...
+            self._device_type = SYSTYPE_NAME_SENEC
+            self._device_model = senec_client.device_type + ' | ' + senec_client.batt_type
             self._device_serial = 'S' + senec_client.device_id
             self._device_version = senec_client.versions
-            self._use_https = use_https
             self._stats_available = senec_client.grid_total_export is not None
 
             _LOGGER.info(
@@ -122,11 +147,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             inverter_client = Inverter(host=host, websession=websession)
             await inverter_client.update_version()
-            self._device_type = "SENEC Inverter Module"
             self._support_bdc = inverter_client.has_bdc
-            self._device_name = inverter_client.device_name + ' Netbios: ' + inverter_client.device_netbiosname
+
+            # these values will also read with every restart...
+            self._device_type = SYSTYPE_NAME_INVERTER
+            self._device_model = inverter_client.device_name + ' Netbios: ' + inverter_client.device_netbiosname
             self._device_serial = inverter_client.device_serial
             self._device_version = inverter_client.device_versions
+
             _LOGGER.info(
                 "Successfully connect to build-in Inverter device at %s",
                 host,
@@ -140,22 +168,23 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         return False
 
-    async def _test_connection_webapi(self, user, pwd):
+    async def _test_connection_webapi(self, user: str, pwd: str, master_plant:int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
         websession = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
-            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, websession=websession)
+            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, websession=websession, master_plant_number=master_plant)
             await senec_web_client.authenticate(doUpdate=False, throw401=True)
             if senec_web_client._isAuthenticated:
                 await senec_web_client.update_context()
-                self._device_type = "SENEC WebAPI"
-                # self._device_type_internal = senec_client.device_type_internal
-                self._device_type = senec_web_client.product_name
-                self._device_name = 'SENEC.Num: ' + senec_web_client.senec_num
-                self._device_serial = senec_web_client.serial_number
-                self._device_version = senec_web_client.firmwareVersion
                 self._device_master_plant_number = senec_web_client.masterPlantNumber
+
+                # these values will also read with every restart...
+                self._device_type = SYSTYPE_NAME_WEBAPI
+                self._device_model = senec_web_client.product_name + ' | SENEC.Num: ' + senec_web_client.senec_num
+                self._device_serial = senec_web_client.serial_number
+                self._device_version = None # senec_web_client.firmwareVersion
+
                 _LOGGER.info("Successfully connect to mein-senec.de with '%s'", user)
                 return True
             else:
@@ -207,34 +236,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=self._errors,
         )
 
-    # async def async_step_mode(self, user_input=None):
-    #     self._errors = {}
-    #     if user_input is not None:
-    #         if self._selected_system.get(SETUP_SYS_MODE) == MODE_WEB:
-    #             return await self.async_step_websetup()
-    #         else:
-    #             return await self.async_step_system()
-    #     else:
-    #         user_input = {}
-    #         user_input[SETUP_SYS_MODE] = DEFAULT_MODE
-    #
-    #     return self.async_show_form(
-    #         step_id="mode",
-    #         data_schema=vol.Schema(
-    #             {
-    #                 vol.Required(SETUP_SYS_MODE, default=user_input.get(SETUP_SYS_MODE, DEFAULT_MODE)):
-    #                     selector.SelectSelector(
-    #                         selector.SelectSelectorConfig(
-    #                             options=SYSTEM_MODES,
-    #                             mode=selector.SelectSelectorMode.DROPDOWN,
-    #                             translation_key=SETUP_SYS_MODE,
-    #                         )
-    #                     )
-    #             }
-    #         ),
-    #         errors=self._errors,
-    #     )
-
     async def async_step_system(self, user_input=None):
         """Step when user initializes a integration."""
         self._errors = {}
@@ -263,7 +264,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                                                          CONF_TYPE: CONF_SYSTYPE_INVERTER,
                                                                          CONF_DEV_TYPE: self._device_type,
                                                                          CONF_SUPPORT_BDC: self._support_bdc,
-                                                                         CONF_DEV_NAME: self._device_name,
+                                                                         CONF_DEV_MODEL: self._device_model,
                                                                          CONF_DEV_SERIAL: self._device_serial,
                                                                          CONF_DEV_VERSION: self._device_version
                                                                          })
@@ -285,7 +286,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                   CONF_TYPE: CONF_SYSTYPE_SENEC,
                                   CONF_DEV_TYPE_INT: self._device_type_internal,
                                   CONF_DEV_TYPE: self._device_type,
-                                  CONF_DEV_NAME: self._device_name,
+                                  CONF_DEV_MODEL: self._device_model,
                                   CONF_DEV_SERIAL: self._device_serial,
                                   CONF_DEV_VERSION: self._device_version
                                   }
@@ -345,7 +346,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_websetup(self, user_input=None):
         self._errors = {}
         if user_input is not None:
-            # set some defaults in case we need to return to the form
             name = user_input.get(CONF_NAME, DEFAULT_NAME_WEB)
             # this is an extremely lousy check!
             if "ome V4 " in self._device_type:
@@ -355,10 +355,20 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user = user_input.get(CONF_USERNAME, DEFAULT_USERNAME)
             pwd = user_input.get(CONF_PASSWORD, "")
 
-            if self._host_in_configuration_exists(user):
+            # when the user has multiple masters, the auto-detect does
+            # not work - so we allow the specification of the AnlagenNummer
+            master_plant_val = user_input.get(CONF_DEV_MASTER_NUM, "auto")
+            if master_plant_val == 'auto':
+                already_exist_ident = user
+                master_plant_num = -1
+            else:
+                already_exist_ident = f"{user}_{master_plant_val}"
+                master_plant_num = int(master_plant_val)
+
+            if self._host_in_configuration_exists(already_exist_ident):
                 self._errors[CONF_USERNAME] = "already_configured"
             else:
-                if await self._test_connection_webapi(user, pwd):
+                if await self._test_connection_webapi(user, pwd, master_plant_num):
                     return self.async_create_entry(title=name, data={CONF_NAME: name,
                                                                      CONF_HOST: user,
                                                                      CONF_USERNAME: user,
@@ -367,7 +377,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                                                      CONF_TYPE: CONF_SYSTYPE_WEB,
                                                                      CONF_DEV_TYPE_INT: self._device_type_internal,
                                                                      CONF_DEV_TYPE: self._device_type,
-                                                                     CONF_DEV_NAME: self._device_name,
+                                                                     CONF_DEV_MODEL: self._device_model,
                                                                      CONF_DEV_SERIAL: self._device_serial,
                                                                      CONF_DEV_VERSION: self._device_version,
                                                                      CONF_DEV_MASTER_NUM: self._device_master_plant_number
@@ -395,7 +405,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ): str,
                     vol.Required(
                         CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                    ): str
+                    ): str,
+                    vol.Required(CONF_DEV_MASTER_NUM, default=user_input.get(CONF_DEV_MASTER_NUM, "auto")):
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=MASTER_PLANT_NUMBERS,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                                translation_key=CONF_DEV_MASTER_NUM,
+                            )
+                        )
                 }
             ),
             last_step=True,
@@ -409,19 +427,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         return SenecOptionsFlowHandler(config_entry)
-
-    # async def _show_config_form(self, user_input):  # pylint: disable=unused-argument
-    #     return self.async_show_form(
-    #         step_id="user",
-    #         data_schema=vol.Schema(
-    #             {
-    #                 vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
-    #                 vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
-    #                 vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
-    #             }
-    #         ),
-    #         errors=self._errors,
-    #     )
 
 
 class SenecOptionsFlowHandler(config_entries.OptionsFlow):
@@ -444,9 +449,29 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_system(self, user_input=None):
         """Handle a flow initialized by the user."""
+        self._errors = {}
         if user_input is not None:
+
+            # verify the entered host...
+            host_entry = user_input.get(CONF_HOST, DEFAULT_HOST).lower()
+            # make sure we just handle host/ip's - removing http/https
+            if host_entry.startswith("http://"):
+                host_entry = host_entry.replace("http://", "")
+            if host_entry.startswith('https://'):
+                host_entry = host_entry.replace("https://", "")
+
+            user_input[CONF_HOST] = host_entry
+
             self.options.update(user_input)
-            return self._update_options()
+            if self.data.get(CONF_HOST) != self.options.get(CONF_HOST):
+                # ok looks like the host has been changed... we need to do some things...
+                if self._host_in_configuration_exists(host_entry):
+                    self._errors[CONF_HOST] = "already_configured"
+                else:
+                    return self._update_options()
+            else:
+                # host did not change...
+                return self._update_options()
 
         dataSchema = vol.Schema(
             {
