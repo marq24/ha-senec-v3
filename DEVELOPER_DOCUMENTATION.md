@@ -1035,3 +1035,55 @@ Information represented by the V_STECA-Object:
 |percent#v|0.0||
 |percent#vf|0.0|||
 |percent#f|0|||
+
+## Web API
+The following Information can be accessed via the Web-API (mein-senec.de).
+
+### Peak Shaving
+
+#### Read/Get Information
+When logged in, call the following URL via GET: ```https://mein-senec.de/endkunde/api/peakshaving/getSettings?anlageNummer=0```
+
+_Response_
+
+```JSON
+
+{
+    "einspeisebegrenzungKwpInPercent": 100, #export limit in kwh in percent 
+    "peakShavingMode": "DEACTIVATED", #Current mode DEACTIVATED, MANUAL, AUTO
+    "peakShavingCapacityLimitInPercent": 0, #Battery capacity limit in percent
+    "peakShavingLocalEndTime": [
+        0,
+        0
+    ],
+    "bearbeitungsdatum": 1665062808000,
+    "bearbeiter": {
+        "id": 111111,
+        "geloescht": false,
+        "userRole": "STUB",
+        "aktiv": false
+    },
+    "valid": true,
+    "peakShavingEndDate": 1696723200000 #END time of peak shaving
+}
+```
+
+#### URL to set Settings
+To set the changed configuration call ("GET") the following URL and set the respective query string parameter:
+```https://mein-senec.de/endkunde/api/peakshaving/saveSettings?anlageNummer=0&mode=AUTO&capacityLimit=0&endzeit=1697414400000```
+
+
+#### Definition of variables
+
+##### Mode ("peakShavingMode" in response to read the current data, "mode" in request to save changes)
+- Deactivated = no peak shaving, only dynamic export limit. Defined as "DEACTIVATED" in get and save Settings
+- Manual = manual peak shaving parameter assignment. Defined as "MANUAL" in get and save Settings
+- Automatic = forecast-based peak shaving parameter assignment (BETA). Defined as "AUTO" in get and save Settings
+
+##### Capacity limit ("peakShavingCapacityLimitInPercent" in response to read the current data,"capacityLimit" in request to save changes)
+- Temporarily limits the capacity of the battery storage, so that the remaining capacity can be used for potential losses due to the export limit.
+
+##### End ("peakShavingEndDate" in response to read the current data, "endzeit" in request to save changes)
+- Time of the day on which the capacity limitation should switch off again.
+
+
