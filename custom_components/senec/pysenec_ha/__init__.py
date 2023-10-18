@@ -18,6 +18,7 @@ from custom_components.senec.const import (
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
+    QUERY_PEAK_SHAVING_KEY,
 )
 
 from custom_components.senec.pysenec_ha.util import parse
@@ -1843,10 +1844,20 @@ class MySenecWebPortal:
 
     def __init__(self, user, pwd, websession, master_plant_number: int = 0, options: dict = None):
         _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' with options: {options}")
+        #Check if spare capacity is in options
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
             self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
 
+        #check if peak shaving is in options
+        if options is not None and QUERY_PEAK_SHAVING_KEY in options:
+            self._QUERY_PEAK_SHAVING = options[QUERY_PEAK_SHAVING_KEY]
+
+        #Variable to save latest update time for spare capacity
         self._QUERY_SPARE_CAPACITY_TS = 0
+
+        #Variable to save latest update time for peak shaving
+        self._QUERY_PEAK_SHAVING_TS = 0
+
 
         loop = aiohttp.helpers.get_running_loop(websession.loop)
         senec_jar = MySenecCookieJar(loop=loop);
@@ -1882,6 +1893,9 @@ class MySenecWebPortal:
         # Call the following URL (Post Request) in order to set the spare capacity
         self._SENEC_API_SET_SPARE_CAPACITY = "/emergencypower?reserve-in-percent="
 
+        # Call for export limit and current peak shaving information - to be followed by master plant number
+        self._SENEC_API_GET_PEAK_SHAVING = "https://mein-senec.de/endkunde/api/peakshaving/getSettings?anlageNummer="
+
         # can be used in all api calls, names come from senec website
         self._API_KEYS = [
             "accuimport",  # what comes OUT OF the accu
@@ -1903,6 +1917,7 @@ class MySenecWebPortal:
         self._battery_entities = {}
         self._spare_capacity = 0  # initialize the spare_capacity with 0
         self._isAuthenticated = False
+        self._peakShaving_entities = {} 
 
     def checkCookieJarType(self):
         if hasattr(self.websession, "_cookie_jar"):
@@ -1996,8 +2011,82 @@ class MySenecWebPortal:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_SPARE_CAPACITY_TS + 86400 < time():
                     await self.update_spare_capacity()
+            if self._QUERY_PEAK_SHAVING:
+                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
+                    await self.update_peak_shaving()
         else:
             await self.authenticate(doUpdate=True, throw401=False)
+
+
+    """This function will update peak shaving information"""
+    async def update_peak_shaving(self):
+        _LOGGER.info("***** update_peak_shaving(self) ********")
+        a_url = f"{self._SENEC_API_GET_PEAK_SHAVING}{self._master_plant_number}"
+        async with self.websession.get(a_url) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    r_json = await res.json()
+                    parsed_json = parse(r_json)
+
+                    #GET Data from JSON
+                    key = "einspeisebegrenzungKwpInPercent"
+                    if key in parsed_json
+                        self._peak_shaving_entities[key] = parsed_json[key]
+
+                    key = "peakShavingMode"
+                    if key in parsed_json
+                        self._peak_shaving_entities[key] = parsed_json[key]
+                    
+                    key = "peakShavingCapacityLimitInPercent"
+                    if key in parsed_json
+                        self._peak_shaving_entities[key] = parsed_json[key]
+
+                    key = "peakShavingEndDate"
+                    if key in parsed_json
+                        self._peak_shaving_entities[key] = parsed_json[key]
+
+                    self._QUERY_PEAK_SHAVING_TS= time() #Update timer, that the next update takes place in 24 hours
+                else:
+                    self._isAuthenticated = False
+                    await self.update()
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purgeSenecCookies()
+
+                self._isAuthenticated = False
+                await self.update()
+
+    """This function will set the peak shaving data over the web api"""
+    async def set_peak_shaving(self, new_peak_shaving: dict):
+        _LOGGER.debug("***** set_spare_capacity(self) ********")
+        
+        #TODO Prepare data for URL
+        #TODO SET URL
+        a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
+
+        async with self.websession.post(a_url, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    _LOGGER.debug("***** Set Peak Shaving successfully ********")
+                    # Reset the timer in order that the Spare Capacity is updated immediately after the change
+                    self._QUERY_PEAK_SHAVING_TS = 0
+                else:
+                    self._isAuthenticated = False
+                    await self.authenticate(doUpdate=False, throw401=False)
+                    await self.set_peak_shaving(new_peak_shaving)
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purgeSenecCookies()
+
+                self._isAuthenticated = False
+                await self.authenticate(doUpdate=False, throw401=True)
+                await self.set_peak_shaving(new_peak_shaving)
+
 
     """This function will update the spare capacity over the web api"""
     async def update_spare_capacity(self):

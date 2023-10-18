@@ -94,6 +94,7 @@ QUERY_BMS_KEY = "query_bms_data"
 QUERY_FANDATA_KEY = "query_fan_data"
 QUERY_WALLBOX_KEY = "query_wallbox_data"
 QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
+QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
 
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
@@ -380,7 +381,17 @@ WEB_SENSOR_TYPES = [
         device_class=SensorDeviceClass.POWER,
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
-    )
+    ),
+    SensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="gridexport_limit",
+        name="Grid Exported Limit",
+        native_unit_of_measurement=PERCENTAGE,
+        icon="mdi:transmission-tower-off",
+        device_class=SensorDeviceClass.POWER_FACTOR,
+        suggested_display_precision=0,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
 ]
 
 """Supported main unit sensor types."""
