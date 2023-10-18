@@ -2011,6 +2011,7 @@ class MySenecWebPortal:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_SPARE_CAPACITY_TS + 86400 < time():
                     await self.update_spare_capacity()
+            #
             if self._QUERY_PEAK_SHAVING:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
@@ -2028,24 +2029,12 @@ class MySenecWebPortal:
                 res.raise_for_status()
                 if res.status == 200:
                     r_json = await res.json()
-                    parsed_json = parse(r_json)
 
                     #GET Data from JSON
-                    key = "einspeisebegrenzungKwpInPercent"
-                    if key in parsed_json
-                        self._peak_shaving_entities[key] = parsed_json[key]
-
-                    key = "peakShavingMode"
-                    if key in parsed_json
-                        self._peak_shaving_entities[key] = parsed_json[key]
-                    
-                    key = "peakShavingCapacityLimitInPercent"
-                    if key in parsed_json
-                        self._peak_shaving_entities[key] = parsed_json[key]
-
-                    key = "peakShavingEndDate"
-                    if key in parsed_json
-                        self._peak_shaving_entities[key] = parsed_json[key]
+                    self._peakShaving_entities["einspeisebegrenzungKwpInPercent"] = r_json["einspeisebegrenzungKwpInPercent"]
+                    self._peakShaving_entities["peakShavingMode"] = r_json["peakShavingMode"]
+                    self._peakShaving_entities["peakShavingCapacityLimitInPercent"] = r_json["peakShavingCapacityLimitInPercent"]
+                    self._peakShaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(r_json["peakShavingEndDate"]/1000) #from miliseconds to seconds
 
                     self._QUERY_PEAK_SHAVING_TS= time() #Update timer, that the next update takes place in 24 hours
                 else:
@@ -2416,6 +2405,26 @@ class MySenecWebPortal:
     def acculevel_now(self) -> int:
         if hasattr(self, "_battery_entities") and "acculevel_now" in self._battery_entities:
             return self._battery_entities["acculevel_now"]
+
+    @property
+    def gridexport_limit(self) -> int:
+        if hasattr(self, "_peakShaving_entities") and "einspeisebegrenzungKwpInPercent" in self._peakShaving_entities:
+            return self._peakShaving_entities["einspeisebegrenzungKwpInPercent"]
+        
+    @property
+    def peakshaving_mode(self) -> int:
+        if hasattr(self, "_peakShaving_entities") and "peakShavingMode" in self._peakShaving_entities:
+            return self._peakShaving_entities["peakShavingMode"]
+        
+    @property
+    def peakshaving_capacitylimit(self) -> int:
+        if hasattr(self, "_peakShaving_entities") and "peakShavingCapacityLimitInPercent" in self._peakShaving_entities:
+            return self._peakShaving_entities["peakShavingCapacityLimitInPercent"]
+
+    @property
+    def peakshaving_enddate(self) -> int:
+        if hasattr(self, "_peakShaving_entities") and "peakShavingEndDate" in self._peakShaving_entities:
+            return self._peakShaving_entities["peakShavingEndDate"]
 
 
 class MySenecCookieJar(aiohttp.CookieJar):

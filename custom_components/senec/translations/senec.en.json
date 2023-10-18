@@ -1,4 +1,9 @@
 {
+  "gridexport_limit": "Grid Export limit",
+  "peakshaving_mode": "Peak Shaving Mode",
+  "peakshaving_capacitylimit": "Peak Shaving battery capacity limit",
+  "peakshaving_enddate": "Peak Shaving end time",
+  
   "spare_capacity": "Spare Capacity",
 
   "safe_charge": "Load Battery",

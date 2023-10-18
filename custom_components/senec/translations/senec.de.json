@@ -1,4 +1,9 @@
 {
+  "gridexport_limit": "Einspeisebegrenzung",
+  "peakshaving_mode": "Peak Shaving Modus",
+  "peakshaving_capacitylimit": "Peak Shaving Akku Begrenzung",
+  "peakshaving_enddate": "Peak Shaving Endzeit",
+
   "spare_capacity": "Reservekapazität",
 
   "safe_charge": "Akku Volladung",
