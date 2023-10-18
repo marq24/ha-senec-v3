@@ -1,0 +1,61 @@
+# Service ID
+set_peakshaving:
+  # Service name as shown in UI
+  name: Set Peak Shaving 
+  # Description of the service
+  description: Sets Peak Shaving Mode, battery capacity limit and end time
+  # Battery capacity limit and end time can just be set, if the selected mode is "Manual"
+  # Different fields that your service accepts
+  fields:
+    # Key of the field
+    mode:
+      # Field name as shown in UI
+      name: Peak Shaving Mode
+      # Description of the field
+      description: DEACTIVATED = Peak Shaving is disabled, MANUAL = You can set the parameter (battery capacity, end time), AUTO = Peak Shaving is in automatic mode. Battery capacity and end time will be ignored.
+      # Whether or not field is required (default = false)
+      required: true
+      selector:
+        select:
+          options:
+           - DEACTIVATED
+           - MANUAL
+           - AUTO
+    capacity:
+      name: Battery capacity limit
+      description: Temporarily limits the capacity of the battery storage, so that the remaining capacity can be used for potential losses due to the export limit.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+    end_time:
+      name: End time
+      description: Time of the day on which the capacity limitation should switch off again.
+      required: false
+      selector:
+        time:
+      # Advanced fields are only shown when the advanced mode is enabled for the user (default = false)
+      # advanced: true
+      # Example value that can be passed for this field
+      #example: "low"
+      # The default field value
+      #default: "high"
+      #selector:
+      #  datetime:
+      # Selector (https://www.home-assistant.io/docs/blueprint/selectors/) to control the input UI for this field
+      #selector:
+      #  select:
+      #    options:
+      #      - "off"
+      #      - "low"
+      #      - "medium"
+      #      - "high"
+
+    #end:
+    #  name: End Time & Date
+    #  description: Set the end of the holiday
+    #  required: true
+    #  selector:
+    #    datetime:
