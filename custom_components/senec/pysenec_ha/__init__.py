@@ -2062,8 +2062,9 @@ class MySenecWebPortal:
                 res.raise_for_status()
                 if res.status == 200:
                     _LOGGER.debug("***** Set Peak Shaving successfully ********")
-                    # Reset the timer in order that the Spare Capacity is updated immediately after the change
+                    # Reset the timer in order that the Peak Shaving is updated immediately after the change
                     self._QUERY_PEAK_SHAVING_TS = 0
+
                 else:
                     self._isAuthenticated = False
                     await self.authenticate(doUpdate=False, throw401=False)
