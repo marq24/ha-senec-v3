@@ -19,15 +19,10 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-_LANG = None
-
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    global _LANG
-    _LANG = coordinator._langDict
-
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         for description in INVERTER_SENSOR_TYPES:
@@ -83,11 +78,11 @@ class SenecSensor(SenecEntity, SensorEntity):
         key = self.entity_description.key.lower()
         name = self.entity_description.name
         self.entity_id = f"sensor.{slugify(title)}_{key}"
-        if key in _LANG:
-            self._attr_name = _LANG[key]
-        else:
-            _LOGGER.info(str(key)+" Sensor not found in translation")
-            self._attr_name = f"{title} {name}"
+
+        # we use the "key" also as our internal translation-key - and EXTREMELY important we have
+        # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
+        self._attr_translation_key = key
+        self._attr_has_entity_name = True
 
     @property
     def state(self):

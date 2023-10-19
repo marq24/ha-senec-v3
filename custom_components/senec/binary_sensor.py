@@ -13,7 +13,6 @@ from .const import DOMAIN, MAIN_BIN_SENSOR_TYPES, CONF_SYSTYPE_INVERTER, CONF_SY
     ExtBinarySensorEntityDescription
 
 _LOGGER = logging.getLogger(__name__)
-_LANG = None
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, async_add_entities):
@@ -23,9 +22,6 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         _LOGGER.info("No binary_sensors for WebPortal...")
     else:
-        global _LANG
-        _LANG = coordinator._langDict
-
         entities = []
         for description in MAIN_BIN_SENSOR_TYPES:
             entity = SenecBinarySensor(coordinator, description)
@@ -52,11 +48,11 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
         self._attr_icon = self.entity_description.icon
         self._attr_icon_off = self.entity_description.icon_off
         self.entity_id = f"binary_sensor.{slugify(title)}_{key}"
-        if key in _LANG:
-            self._attr_name = _LANG[key]
-        else:
-            _LOGGER.info(str(key)+" BinarySensor not found in translation")
-            self._attr_name = f"{title} {name}"
+
+        # we use the "key" also as our internal translation-key - and EXTREMELY important we have
+        # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
+        self._attr_translation_key = key
+        self._attr_has_entity_name = True
 
     @property
     def is_on(self) -> bool | None:

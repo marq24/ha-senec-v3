@@ -61,7 +61,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-_LANG = None
 SCAN_INTERVAL = timedelta(seconds=60)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
@@ -83,10 +82,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                                                                                      DEFAULT_SCAN_INTERVAL_SENECV2)))
 
     _LOGGER.info("Starting " + str(config_entry.data.get(CONF_NAME)) + " with interval: " + str(SCAN_INTERVAL))
-    load_translation(hass)
     session = async_get_clientsession(hass)
 
-    coordinator = SenecDataUpdateCoordinator(hass, session, config_entry, langDict=_LANG)
+    coordinator = SenecDataUpdateCoordinator(hass, session, config_entry)
     await coordinator.async_refresh()
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady
@@ -115,7 +113,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_type = SYSTYPE_NAME_WEBAPI
         coordinator._device_model = f"{coordinator.senec.product_name} | SENEC.Num: {coordinator.senec.senec_num}"
         coordinator._device_serial = coordinator.senec.serial_number
-        coordinator._device_version = None # senec_web_client.firmwareVersion
+        coordinator._device_version = None  # senec_web_client.firmwareVersion
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
@@ -127,23 +125,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return True
 
 
-def load_translation(hass):
-    """Load correct language file or default to english"""
-    global _LANG  # pylint: disable=global-statement
-    basepath = __file__[:-11]
-    file = f"{basepath}translations/senec.{hass.config.language.lower()}.json"
-    try:
-        with open(file) as f:  # pylint: disable=unspecified-encoding,invalid-name
-            _LANG = json.load(f)
-    except:  # pylint: disable=unspecified-encoding,bare-except,invalid-name
-        with open(f"{basepath}translations/senec.en.json") as f:
-            _LANG = json.load(f)
-
-
 class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     """Define an object to hold Senec data."""
 
-    def __init__(self, hass: HomeAssistant, session, config_entry, langDict=None):
+    def __init__(self, hass: HomeAssistant, session, config_entry):
         """Initialize."""
         # Build-In INVERTER
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
@@ -245,7 +230,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                lang=hass.config.language.lower(), options=opt)
 
         self.name = config_entry.title
-        self._langDict = langDict
         self._config_entry = config_entry
 
         self._device_type = None
@@ -323,7 +307,7 @@ class SenecEntity(Entity):
         dmodel = self.coordinator._device_model
         if dmodel is None:
             dmodel = self.coordinator._config_entry.options.get(CONF_DEV_MODEL,
-                                                               self.coordinator._config_entry.data.get(CONF_DEV_MODEL))
+                                                                self.coordinator._config_entry.data.get(CONF_DEV_MODEL))
 
         dserial = self.coordinator._device_serial
         if dserial is None:
