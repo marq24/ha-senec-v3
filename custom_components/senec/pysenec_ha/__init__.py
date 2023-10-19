@@ -1895,6 +1895,8 @@ class MySenecWebPortal:
 
         # Call for export limit and current peak shaving information - to be followed by master plant number
         self._SENEC_API_GET_PEAK_SHAVING = "https://mein-senec.de/endkunde/api/peakshaving/getSettings?anlageNummer="
+        #Call to set spare capacity information - Base URL
+        self._SENEC_API_SET_PEAK_SHAVING_BASE_URL = "https://mein-senec.de/endkunde/api/peakshaving/saveSettings?anlageNummer="
 
         # can be used in all api calls, names come from senec website
         self._API_KEYS = [
@@ -2050,11 +2052,10 @@ class MySenecWebPortal:
 
     """This function will set the peak shaving data over the web api"""
     async def set_peak_shaving(self, new_peak_shaving: dict):
-        _LOGGER.debug("***** set_spare_capacity(self) ********")
+        _LOGGER.debug("***** set_peak_shaving(self, new_peak_shaving) ********")
         
-        #TODO Prepare data for URL
-        #TODO SET URL
-        a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
+        # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
+        a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._master_plant_number}&mode={new_peak_shaving['mode']}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
 
         async with self.websession.post(a_url, ssl=False) as res:
             try:
@@ -2075,7 +2076,6 @@ class MySenecWebPortal:
                 self._isAuthenticated = False
                 await self.authenticate(doUpdate=False, throw401=True)
                 await self.set_peak_shaving(new_peak_shaving)
-
 
     """This function will update the spare capacity over the web api"""
     async def update_spare_capacity(self):

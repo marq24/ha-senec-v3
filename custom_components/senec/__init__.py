@@ -120,6 +120,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_serial = coordinator.senec.serial_number
         coordinator._device_version = None # senec_web_client.firmwareVersion
 
+        #Register Services
+        service = SenecService.SenecService(hass, config_entry, coordinator)
+        hass.services.async_register(DOMAIN, "set_peakshaving", service.set_peakshaving)
+            
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
@@ -127,10 +132,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, platform))
 
     config_entry.add_update_listener(async_reload_entry)
-
-    #Register Services
-    service = SenecService.SenecService(hass, config_entry, coordinator)
-    hass.services.async_register(DOMAIN, "set_peakshaving", service.set_peakshaving)
 
     return True
 
@@ -206,8 +207,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                         if ps_gridlimit.disabled_by is None or ps_mode.disabled_by is None or ps_capacity.disabled_by is None or ps_end is None:
                             _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
                             opt[QUERY_PEAK_SHAVING_KEY] = True
-                    _LOGGER.info("***** PEAK SHAVING:"+ str(opt[QUERY_PEAK_SHAVING_KEY]))
-
+                  
             self.senec = MySenecWebPortal(user=user, pwd=pwd, websession=session,
                                           master_plant_number=a_master_plant_number,
                                           options=opt)

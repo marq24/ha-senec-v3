@@ -27,6 +27,13 @@
                 "6": "System number 6 (AnlagenNummer)",
                 "7": "System number 7 (AnlagenNummer)"
             }
+        },
+        "set_peakshaving_mode_options":{
+            "options": {
+                "DEACTIVATED":"Deactivated",
+                "MANUAL":"Manual",
+                "AUTO":"Automatic"
+            }
         }
     },
     "config": {
@@ -87,6 +94,26 @@
                     "scan_interval":"Polling Interval in seconds [minimum 60 seconds (30 seconds for SENEC.Home V4)]",
                     "master_plant_number": "System number (expert setting: only when using multiple master instances - otherwise use 'Autodetect')"
                 }
+            }
+        }
+    },
+    "services": {
+        "set_peakshaving": {
+            "name": "Set Peak Shaving",
+            "description":"Sets the Peak Shaving mode, battery limit and end time.",
+            "fields": {
+                "mode":{
+                    "name":"Peak Shaving Mode",
+                    "description":"Deactivated = Peak Shaving is deactivated, Manual = You can set the parameters yourself (battery limit, end time), Automatic = Peak Shaving is in automatic mode. In automatic mode, entries in the Battery Limit and End Time fields are ignored."
+                },
+                "capacity":{
+                    "name":"Battery Limit",
+                    "description":"Temporarily limits the capacity of the battery storage so that the remaining capacity can be used for possible losses due to the grid export limitation."
+                },                
+                "end_time":{
+                    "name":"End time",
+                    "description":"Time of day at which the battery limit / capacity limitation should be switched off again."
+                }                
             }
         }
     }

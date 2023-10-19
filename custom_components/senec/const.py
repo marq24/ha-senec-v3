@@ -400,11 +400,9 @@ WEB_SENSOR_TYPES = [
         entity_registry_enabled_default=False,
         key="peakshaving_mode",
         name="Peak Shaving Mode",
-        #native_unit_of_measurement=PERCENTAGE,
         icon="mdi:toggle-switch",
         device_class=SensorDeviceClass.ENUM,
         options=PEAK_SHAVING_OPTIONS
-        #state_class=SensorStateClass.MEASUREMENT,
     ),
         SensorEntityDescription(
         entity_registry_enabled_default=False,
@@ -419,12 +417,9 @@ WEB_SENSOR_TYPES = [
         SensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_enddate",
-        name="Peak Shaving End Date",
-       #native_unit_of_measurement=PERCENTAGE,
+        name="Peak Shaving End Time",
         icon="mdi:calendar-clock",
         device_class=SensorDeviceClass.TIMESTAMP,
-        #suggested_display_precision=0,
-        #state_class=SensorStateClass.MEASUREMENT,
     ),
 ]
 
