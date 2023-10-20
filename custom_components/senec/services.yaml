@@ -16,18 +16,18 @@ set_peakshaving:
       # Description of the field
       description: DEACTIVATED = Peak Shaving is disabled, MANUAL = You can set the parameter (battery capacity, end time), AUTO = Peak Shaving is in automatic mode. Battery capacity and end time will be ignored.
       #Example value
-      example: "AUTO"
+      example: "auto"
       #Default value
-      default: "AUTO"
+      default: "auto"
       # Options
       selector:
         select:
           mode: "dropdown"
           translation_key: "set_peakshaving_mode_options"
           options:
-           - DEACTIVATED
-           - MANUAL
-           - AUTO
+           - deactivated
+           - manual
+           - auto
     capacity:
       required: true
       name: Battery capacity limit

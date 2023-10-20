@@ -97,7 +97,7 @@ QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
 
 # Peak Shaving Options
-PEAK_SHAVING_OPTIONS = ["DEACTIVATED", "MANUAL", "AUTO"]
+PEAK_SHAVING_OPTIONS = ["deactivated", "manual", "auto"]
 
 
 @dataclass

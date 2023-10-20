@@ -2034,7 +2034,7 @@ class MySenecWebPortal:
                     # GET Data from JSON
                     self._peakShaving_entities["einspeisebegrenzungKwpInPercent"] = r_json[
                         "einspeisebegrenzungKwpInPercent"]
-                    self._peakShaving_entities["peakShavingMode"] = r_json["peakShavingMode"]
+                    self._peakShaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
                     self._peakShaving_entities["peakShavingCapacityLimitInPercent"] = r_json[
                         "peakShavingCapacityLimitInPercent"]
                     self._peakShaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(
@@ -2058,7 +2058,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** set_peak_shaving(self, new_peak_shaving) ********")
 
         # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
-        a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._master_plant_number}&mode={new_peak_shaving['mode']}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
+        a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._master_plant_number}&mode={new_peak_shaving['mode'].upper()}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
 
         async with self.websession.post(a_url, ssl=False) as res:
             try:

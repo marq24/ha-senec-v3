@@ -30,9 +30,9 @@
     },
     "set_peakshaving_mode_options": {
       "options": {
-        "DEACTIVATED": "Deactivated",
-        "MANUAL": "Manual",
-        "AUTO": "Automatic"
+        "deactivated": "Deactivated",
+        "manual": "Manual",
+        "auto": "Automatic"
       }
     }
   },
@@ -125,9 +125,9 @@
       "peakshaving_mode": {
         "name": "Peak Shaving Mode",
         "state": {
-          "DEACTIVATED": "Deactivated",
-          "MANUAL": "Manual",
-          "AUTO": "Automatic"
+          "deactivated": "Deactivated",
+          "manual": "Manual",
+          "auto": "Automatic"
         }
       },
       "peakshaving_capacitylimit": {
