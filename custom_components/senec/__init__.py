@@ -58,7 +58,10 @@ from .const import (
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
+    QUERY_PEAK_SHAVING_KEY,
 )
+from . import service as SenecService
+
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
@@ -115,6 +118,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_serial = coordinator.senec.serial_number
         coordinator._device_version = None  # senec_web_client.firmwareVersion
 
+        #Register Services
+        service = SenecService.SenecService(hass, config_entry, coordinator)
+        hass.services.async_register(DOMAIN, "set_peakshaving", service.set_peakshaving)
+            
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
@@ -122,6 +130,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, platform))
 
     config_entry.add_update_listener(async_reload_entry)
+
     return True
 
 
@@ -148,10 +157,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             user = config_entry.options.get(CONF_USERNAME, config_entry.data[CONF_USERNAME])
             pwd = config_entry.options.get(CONF_PASSWORD, config_entry.data[CONF_PASSWORD])
 
-            # we need to know if the 'spare_capacity' code should be called or not?!
-            opt = {QUERY_SPARE_CAPACITY_KEY: False}
+            # we need to know if the 'spare_capacity' and 'peak_shaving' code should be called or not?!
+            opt = {QUERY_SPARE_CAPACITY_KEY: False, QUERY_PEAK_SHAVING_KEY: False}
             if hass is not None and config_entry.title is not None:
                 sce_id = f"number.{slugify(config_entry.title)}_spare_capacity".lower()
+                ps_gridlimit_id = f"sensor.{slugify(config_entry.title)}_gridexport_limit".lower()
+                ps_mode_id = f"sensor.{slugify(config_entry.title)}_peakshaving_mode".lower()
+                ps_capacity_id = f"sensor.{slugify(config_entry.title)}_peakshaving_capacitylimit".lower()
+                ps_end_id = f"sensor.{slugify(config_entry.title)}_peakshaving_enddate".lower()
 
                 # we do not need to listen to changed to the entity - since the integration will be automatically
                 # restarted when an Entity of the integration will be disabled/enabled via the GUI (cool!) - but for
@@ -161,13 +174,25 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
                 # this is enough to check the current enabled/disabled status of the 'spare_capacity' control
                 registry = entity_registry.async_get(hass)
+                
                 if registry is not None:
+                    #Spare Capacity
                     spare_capacity_entity = registry.async_get(sce_id)
                     if spare_capacity_entity is not None:
                         if spare_capacity_entity.disabled_by is None:
                             _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
                             opt[QUERY_SPARE_CAPACITY_KEY] = True
+                    #Peak Shaving
+                    ps_gridlimit = registry.async_get(ps_gridlimit_id)
+                    ps_mode = registry.async_get(ps_mode_id)
+                    ps_capacity = registry.async_get(ps_capacity_id)
+                    ps_end = registry.async_get(ps_end_id)
 
+                    if ps_gridlimit is not None and ps_mode is not None and ps_capacity is not None and ps_end is not None:
+                        if ps_gridlimit.disabled_by is None or ps_mode.disabled_by is None or ps_capacity.disabled_by is None or ps_end is None:
+                            _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
+                            opt[QUERY_PEAK_SHAVING_KEY] = True
+                  
             self.senec = MySenecWebPortal(user=user, pwd=pwd, websession=session,
                                           master_plant_number=a_master_plant_number,
                                           options=opt)

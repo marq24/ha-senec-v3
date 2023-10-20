@@ -27,6 +27,13 @@
         "6": "Anlagennummer 6",
         "7": "Anlagennummer 7"
       }
+    },
+    "set_peakshaving_mode_options": {
+      "options": {
+        "DEACTIVATED": "Deaktiviert",
+        "MANUAL": "Manuell",
+        "AUTO": "Automatisch"
+      }
     }
   },
   "config": {
@@ -86,6 +93,26 @@
           "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
           "password": "Dein 'mein-senec.de' Passwort",
           "scan_interval": "Aktualisierungsintervall in Sekunden [Minimum 60 Sekunden (30 Sekunden für SENEC.Home V4)]"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_peakshaving": {
+      "name": "Set Peak Shaving",
+      "description": "Setzt den Peak Shaving Modus, das Batterie-Limit und die Endzeit.",
+      "fields": {
+        "mode": {
+          "name": "Peak Shaving Modus",
+          "description": "Deaktiviert = Peak Shaving ist deaktiviert, Manuell = Du kannst selber die Parameter setzen (Baterie-Limit, Endzeit), Automatisch = Peak Shaving ist im automatischen Modus. Im automatischen Modus werden die Eingaben der Felder Battery-Limit und Endzeit ignoriert."
+        },
+        "capacity": {
+          "name": "Batterie-Limit",
+          "description": "Begrenzt vorübergehend die Kapazität des Batteriespeichers, sodass die verbleibende Kapazität für eventuelle Verluste aufgrund der Einspeisebegrenzung genutzt werden kann."
+        },
+        "end_time": {
+          "name": "Endzeit",
+          "description": "Tageszeit, zu der das Batterie-Limit bzw. die Kapazitätsbegrenzung wieder abgeschaltet werden soll."
         }
       }
     }
