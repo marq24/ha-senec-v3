@@ -59,6 +59,8 @@ from .const import (
     QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
+
+    SERVICE_SET_PEAKSHAVING,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -118,7 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
         # Register Services
         service = SenecService.SenecService(hass, config_entry, coordinator)
-        hass.services.async_register(DOMAIN, "set_peakshaving", service.set_peakshaving)
+        hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, service.set_peakshaving)
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
@@ -294,6 +296,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     )
     if unload_ok:
         hass.data[DOMAIN].pop(config_entry.entry_id)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_PEAKSHAVING) # Remove Service on unload
     return unload_ok
 
 

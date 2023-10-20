@@ -99,6 +99,8 @@ QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
 # Peak Shaving Options
 PEAK_SHAVING_OPTIONS = ["deactivated", "manual", "auto"]
 
+# Service names
+SERVICE_SET_PEAKSHAVING: Final = "set_peakshaving"
 
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
