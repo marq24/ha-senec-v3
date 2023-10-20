@@ -30,9 +30,9 @@
     },
     "set_peakshaving_mode_options": {
       "options": {
-        "DEACTIVATED": "Deaktiviert",
-        "MANUAL": "Manuell",
-        "AUTO": "Automatisch"
+        "deactivated": "Deaktiviert",
+        "manual": "Manuell",
+        "auto": "Automatisch"
       }
     }
   },
@@ -99,7 +99,7 @@
   },
   "services": {
     "set_peakshaving": {
-      "name": "Set Peak Shaving",
+      "name": "Peak Shaving setzen",
       "description": "Setzt den Peak Shaving Modus, das Batterie-Limit und die Endzeit.",
       "fields": {
         "mode": {
@@ -119,6 +119,23 @@
   },
   "entity": {
     "sensor": {
+      "gridexport_limit": {
+        "name": "Einspeisebegrenzung"
+      },
+      "peakshaving_mode": {
+        "name": "Peak Shaving Modus",
+        "state": {
+          "deactivated": "Deaktiviert",
+          "manual": "Manuell",
+          "auto": "Automatisch"
+        }
+      },
+      "peakshaving_capacitylimit": {
+        "name": "Peak Shaving Akku Begrenzung"
+      },
+      "peakshaving_enddate": {
+        "name": "Peak Shaving Endzeit"
+      },
       "spare_capacity": {
         "name": "Reservekapazität"
       },

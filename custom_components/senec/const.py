@@ -96,22 +96,26 @@ QUERY_WALLBOX_KEY = "query_wallbox_data"
 QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
 
-#Peak Shaving Options
-PEAK_SHAVING_OPTIONS = ["DEACTIVATED","MANUAL","AUTO"]
+# Peak Shaving Options
+PEAK_SHAVING_OPTIONS = ["deactivated", "manual", "auto"]
+
 
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
     senec_lala_section: str | None = None
 
+
 @dataclass
 class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
     senec_lala_section: str | None = None
 
+
 @dataclass
 class ExtSwitchEntityDescription(SwitchEntityDescription):
     update_after_switch_delay_in_sec: int = 0
+
 
 """Supported number implementations"""
 WEB_NUMBER_SENYOR_TYPES = [
@@ -119,12 +123,12 @@ WEB_NUMBER_SENYOR_TYPES = [
         entity_registry_enabled_default=False,
         key="spare_capacity",
         name="Spare Capacity",
-        device_class = NumberDeviceClass.BATTERY,
-        mode = NumberMode.SLIDER,
-        native_max_value = 50,
-        native_min_value = 0,
-        native_step = 1,
-        native_unit_of_measurement = PERCENTAGE,
+        device_class=NumberDeviceClass.BATTERY,
+        mode=NumberMode.SLIDER,
+        native_max_value=50,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=PERCENTAGE,
         icon="mdi:battery-lock",
     ),
 ]
@@ -385,7 +389,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    #Peak Shaving
+    # Peak Shaving
     SensorEntityDescription(
         entity_registry_enabled_default=False,
         key="gridexport_limit",
@@ -396,7 +400,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-        SensorEntityDescription(
+    SensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_mode",
         name="Peak Shaving Mode",
@@ -404,7 +408,7 @@ WEB_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENUM,
         options=PEAK_SHAVING_OPTIONS
     ),
-        SensorEntityDescription(
+    SensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_capacitylimit",
         name="Peak Shaving Capacity Limit",
@@ -414,7 +418,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-        SensorEntityDescription(
+    SensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_enddate",
         name="Peak Shaving End Time",
@@ -422,7 +426,6 @@ WEB_SENSOR_TYPES = [
         device_class=SensorDeviceClass.TIMESTAMP,
     ),
 ]
-
 
 """Supported main unit sensor types."""
 MAIN_SENSOR_TYPES = [

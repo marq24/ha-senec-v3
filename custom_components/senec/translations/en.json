@@ -30,9 +30,9 @@
     },
     "set_peakshaving_mode_options": {
       "options": {
-        "DEACTIVATED": "Deactivated",
-        "MANUAL": "Manual",
-        "AUTO": "Automatic"
+        "deactivated": "Deactivated",
+        "manual": "Manual",
+        "auto": "Automatic"
       }
     }
   },
@@ -119,6 +119,23 @@
   },
   "entity": {
     "sensor": {
+      "gridexport_limit": {
+        "name": "Grid Export limit"
+      },
+      "peakshaving_mode": {
+        "name": "Peak Shaving Mode",
+        "state": {
+          "deactivated": "Deactivated",
+          "manual": "Manual",
+          "auto": "Automatic"
+        }
+      },
+      "peakshaving_capacitylimit": {
+        "name": "Peak Shaving battery capacity limit"
+      },
+      "peakshaving_enddate": {
+        "name": "Peak Shaving end time"
+      },
       "spare_capacity": {
         "name": "Spare Capacity"
       },
@@ -823,3 +840,4 @@
       }
     }
   }
+}

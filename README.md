@@ -161,10 +161,10 @@ To enable a disabled function or sensor navigate to Settings -> Devices and Serv
 
 The following features are provided by the Web API:
 
-| Feature               | Description                                                                                                                                                                                                                                                          | enabled by default |
-|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
-| WEBAPI Spare Capacity | Current spare capacity in percent with the option to update. Precondition: When you are using "SENEC Backup Power pro" and you are able to see and update the spare capacity at mein-senec.de, than you can read andupdate the spare capacity with this integration. | no                 |
-|Service: Set Peak Shaving|When using the Web API, you can use the Peak Shaving Service. This service gives you the abilty to switch the Mode (Deactivated, Automatic, Manual). In the manual mode you can define a battery capacity limit, so that the capacity can be used for charging later, as well as a end time - to realease the battery capacity limit. |yes|
+| Feature                    | Description                                                                                                                                                                                                                                                                                                                           | enabled by default |
+|----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
+| WEBAPI Spare Capacity      | Current spare capacity in percent with the option to update. Precondition: When you are using "SENEC Backup Power pro" and you are able to see and update the spare capacity at mein-senec.de, than you can read andupdate the spare capacity with this integration.                                                                  | no                 |
+| Service: Set Peak Shaving  | When using the Web API, you can use the Peak Shaving Service. This service gives you the abilty to switch the Mode (Deactivated, Automatic, Manual). In the manual mode you can define a battery capacity limit, so that the capacity can be used for charging later, as well as a end time - to realease the battery capacity limit. | yes                |
 
 #### Sensors
 
