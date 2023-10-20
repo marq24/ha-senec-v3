@@ -1,6 +1,8 @@
 """ Services for SENEC Device"""
 
 from datetime import datetime
+from homeassistant.util import slugify
+from homeassistant.config_entries import ConfigEntry
 
 
 class SenecService():
@@ -26,11 +28,8 @@ class SenecService():
             new_peak_shaving = {"mode": mode, "capacity": capacity, "end_time": end_time}
             await self._coordinator.senec.set_peak_shaving(new_peak_shaving)
 
-            # Force update
-            # registry = entity_registry.async_get(self._hass)
-            # peakshaving_mode_key = f"sensor.{slugify(ConfigEntry.title)}_peakshaving_mode".lower()
-            # entity = registry.async_get(peakshaving_mode_key)
-            # entity.async_schedule_update_ha_state(force_refresh=True)
+            # Force update of data
+            await self._coordinator.async_refresh()
 
             return True
         except ValueError:
