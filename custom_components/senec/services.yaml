@@ -1,7 +1,7 @@
 # Service ID
 set_peakshaving:
   # Service name as shown in UI
-  name: Set Peak Shaving 
+  name: Set Peak Shaving
   # Description of the service
   description: Sets Peak Shaving Mode, battery capacity limit and end time.
   # Battery capacity limit and end time can just be set, if the selected mode is "Manual"
@@ -9,7 +9,7 @@ set_peakshaving:
   fields:
     # Key of the field
     mode:
-      # Whether or not field is required (default = false)
+      # Whether field is required (default = false)
       required: true
       # Field name as shown in UI
       name: Peak Shaving Mode

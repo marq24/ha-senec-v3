@@ -119,6 +119,23 @@
   },
   "entity": {
     "sensor": {
+      "gridexport_limit": {
+        "name": "Grid Export limit"
+      },
+      "peakshaving_mode": {
+        "name": "Peak Shaving Mode",
+        "state": {
+          "DEACTIVATED": "Deactivated",
+          "MANUAL": "Manual",
+          "AUTO": "Automatic"
+        }
+      },
+      "peakshaving_capacitylimit": {
+        "name": "Peak Shaving battery capacity limit"
+      },
+      "peakshaving_enddate": {
+        "name": "Peak Shaving end time"
+      },
       "spare_capacity": {
         "name": "Spare Capacity"
       },
@@ -823,3 +840,4 @@
       }
     }
   }
+}

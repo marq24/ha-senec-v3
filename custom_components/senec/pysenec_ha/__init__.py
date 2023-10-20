@@ -1844,20 +1844,19 @@ class MySenecWebPortal:
 
     def __init__(self, user, pwd, websession, master_plant_number: int = 0, options: dict = None):
         _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' with options: {options}")
-        #Check if spare capacity is in options
+        # Check if spare capacity is in options
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
             self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
 
-        #check if peak shaving is in options
+        # check if peak shaving is in options
         if options is not None and QUERY_PEAK_SHAVING_KEY in options:
             self._QUERY_PEAK_SHAVING = options[QUERY_PEAK_SHAVING_KEY]
 
-        #Variable to save latest update time for spare capacity
+        # Variable to save latest update time for spare capacity
         self._QUERY_SPARE_CAPACITY_TS = 0
 
-        #Variable to save latest update time for peak shaving
+        # Variable to save latest update time for peak shaving
         self._QUERY_PEAK_SHAVING_TS = 0
-
 
         loop = aiohttp.helpers.get_running_loop(websession.loop)
         senec_jar = MySenecCookieJar(loop=loop);
@@ -1895,7 +1894,7 @@ class MySenecWebPortal:
 
         # Call for export limit and current peak shaving information - to be followed by master plant number
         self._SENEC_API_GET_PEAK_SHAVING = "https://mein-senec.de/endkunde/api/peakshaving/getSettings?anlageNummer="
-        #Call to set spare capacity information - Base URL
+        # Call to set spare capacity information - Base URL
         self._SENEC_API_SET_PEAK_SHAVING_BASE_URL = "https://mein-senec.de/endkunde/api/peakshaving/saveSettings?anlageNummer="
 
         # can be used in all api calls, names come from senec website
@@ -1919,7 +1918,7 @@ class MySenecWebPortal:
         self._battery_entities = {}
         self._spare_capacity = 0  # initialize the spare_capacity with 0
         self._isAuthenticated = False
-        self._peakShaving_entities = {} 
+        self._peakShaving_entities = {}
 
     def checkCookieJarType(self):
         if hasattr(self.websession, "_cookie_jar"):
@@ -2021,8 +2020,8 @@ class MySenecWebPortal:
         else:
             await self.authenticate(doUpdate=True, throw401=False)
 
-
     """This function will update peak shaving information"""
+
     async def update_peak_shaving(self):
         _LOGGER.info("***** update_peak_shaving(self) ********")
         a_url = f"{self._SENEC_API_GET_PEAK_SHAVING}{self._master_plant_number}"
@@ -2032,13 +2031,16 @@ class MySenecWebPortal:
                 if res.status == 200:
                     r_json = await res.json()
 
-                    #GET Data from JSON
-                    self._peakShaving_entities["einspeisebegrenzungKwpInPercent"] = r_json["einspeisebegrenzungKwpInPercent"]
+                    # GET Data from JSON
+                    self._peakShaving_entities["einspeisebegrenzungKwpInPercent"] = r_json[
+                        "einspeisebegrenzungKwpInPercent"]
                     self._peakShaving_entities["peakShavingMode"] = r_json["peakShavingMode"]
-                    self._peakShaving_entities["peakShavingCapacityLimitInPercent"] = r_json["peakShavingCapacityLimitInPercent"]
-                    self._peakShaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(r_json["peakShavingEndDate"]/1000) #from miliseconds to seconds
+                    self._peakShaving_entities["peakShavingCapacityLimitInPercent"] = r_json[
+                        "peakShavingCapacityLimitInPercent"]
+                    self._peakShaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(
+                        r_json["peakShavingEndDate"] / 1000)  # from miliseconds to seconds
 
-                    self._QUERY_PEAK_SHAVING_TS= time() #Update timer, that the next update takes place in 24 hours
+                    self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
                 else:
                     self._isAuthenticated = False
                     await self.update()
@@ -2051,9 +2053,10 @@ class MySenecWebPortal:
                 await self.update()
 
     """This function will set the peak shaving data over the web api"""
+
     async def set_peak_shaving(self, new_peak_shaving: dict):
         _LOGGER.debug("***** set_peak_shaving(self, new_peak_shaving) ********")
-        
+
         # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
         a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._master_plant_number}&mode={new_peak_shaving['mode']}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
 
@@ -2079,6 +2082,7 @@ class MySenecWebPortal:
                 await self.set_peak_shaving(new_peak_shaving)
 
     """This function will update the spare capacity over the web api"""
+
     async def update_spare_capacity(self):
         _LOGGER.info("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
@@ -2100,6 +2104,7 @@ class MySenecWebPortal:
                 await self.update()
 
     """This function will set the spare capacity over the web api"""
+
     async def set_spare_capacity(self, new_spare_capacity: int):
         _LOGGER.debug("***** set_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
@@ -2411,12 +2416,12 @@ class MySenecWebPortal:
     def gridexport_limit(self) -> int:
         if hasattr(self, "_peakShaving_entities") and "einspeisebegrenzungKwpInPercent" in self._peakShaving_entities:
             return self._peakShaving_entities["einspeisebegrenzungKwpInPercent"]
-        
+
     @property
     def peakshaving_mode(self) -> int:
         if hasattr(self, "_peakShaving_entities") and "peakShavingMode" in self._peakShaving_entities:
             return self._peakShaving_entities["peakShavingMode"]
-        
+
     @property
     def peakshaving_capacitylimit(self) -> int:
         if hasattr(self, "_peakShaving_entities") and "peakShavingCapacityLimitInPercent" in self._peakShaving_entities:

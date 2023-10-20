@@ -1,7 +1,6 @@
 """The senec integration."""
 import asyncio
 import logging
-import json
 import voluptuous as vol
 
 from datetime import timedelta
@@ -29,6 +28,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
+from . import service as SenecService
 
 from .const import (
     DOMAIN,
@@ -60,8 +60,6 @@ from .const import (
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
 )
-from . import service as SenecService
-
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
@@ -118,10 +116,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_serial = coordinator.senec.serial_number
         coordinator._device_version = None  # senec_web_client.firmwareVersion
 
-        #Register Services
+        # Register Services
         service = SenecService.SenecService(hass, config_entry, coordinator)
         hass.services.async_register(DOMAIN, "set_peakshaving", service.set_peakshaving)
-            
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
@@ -174,15 +171,15 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
                 # this is enough to check the current enabled/disabled status of the 'spare_capacity' control
                 registry = entity_registry.async_get(hass)
-                
+
                 if registry is not None:
-                    #Spare Capacity
+                    # Spare Capacity
                     spare_capacity_entity = registry.async_get(sce_id)
                     if spare_capacity_entity is not None:
                         if spare_capacity_entity.disabled_by is None:
                             _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
                             opt[QUERY_SPARE_CAPACITY_KEY] = True
-                    #Peak Shaving
+                    # Peak Shaving
                     ps_gridlimit = registry.async_get(ps_gridlimit_id)
                     ps_mode = registry.async_get(ps_mode_id)
                     ps_capacity = registry.async_get(ps_capacity_id)
@@ -192,7 +189,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                         if ps_gridlimit.disabled_by is None or ps_mode.disabled_by is None or ps_capacity.disabled_by is None or ps_end is None:
                             _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
                             opt[QUERY_PEAK_SHAVING_KEY] = True
-                  
+
             self.senec = MySenecWebPortal(user=user, pwd=pwd, websession=session,
                                           master_plant_number=a_master_plant_number,
                                           options=opt)
