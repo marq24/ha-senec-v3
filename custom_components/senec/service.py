@@ -1,8 +1,6 @@
 """ Services for SENEC Device"""
 
 from datetime import datetime
-from homeassistant.util import slugify
-from homeassistant.config_entries import ConfigEntry
 
 
 class SenecService():
