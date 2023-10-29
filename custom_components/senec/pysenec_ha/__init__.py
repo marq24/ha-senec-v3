@@ -1,3 +1,5 @@
+import asyncio
+
 import aiohttp
 import logging
 
@@ -8,7 +10,7 @@ from datetime import datetime
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
 from http.cookies import BaseCookie, SimpleCookie, Morsel
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientConnectorError
 from aiohttp.helpers import is_ip_address
 from yarl import URL
 from typing import Union, cast
@@ -1373,7 +1375,16 @@ class Senec:
             return self._raw[SENEC_SECTION_FAN_SPEED]["INV_HV"] == 1
 
     async def update(self):
-        await self.read_senec_lala()
+        await self.read_senec_lala_with_retry(retry=True)
+
+    async def read_senec_lala_with_retry(self, retry: bool = False):
+        try:
+            await self.read_senec_lala()
+        except ClientConnectorError as exc:
+            _LOGGER.info(f"{exc}")
+            if retry:
+                await asyncio.sleep(5)
+                await self.read_senec_lala_with_retry(retry=False)
 
     async def read_senec_lala(self):
         form = {
@@ -1621,7 +1632,16 @@ class Inverter:
                     lastDev = aDev
 
     async def update(self):
-        await self.read_inverter()
+        await self.read_inverter_with_retry(retry=True)
+
+    async def read_inverter_with_retry(self, retry: bool = False):
+        try:
+            await self.read_inverter()
+        except ClientConnectorError as exc:
+            _LOGGER.info(f"{exc}")
+            if retry:
+                await asyncio.sleep(5)
+                await self.read_inverter_with_retry(retry=False)
 
     async def read_inverter(self):
         async with self.websession.get(f"{self.url2}?{datetime.now()}") as res:
@@ -2008,12 +2028,12 @@ class MySenecWebPortal:
             self.checkCookieJarType()
             await self.update_now_kW_stats()
             await self.update_full_kWh_stats()
-            if self._QUERY_SPARE_CAPACITY:
+            if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_SPARE_CAPACITY_TS + 86400 < time():
                     await self.update_spare_capacity()
             #
-            if self._QUERY_PEAK_SHAVING:
+            if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
                     await self.update_peak_shaving()
