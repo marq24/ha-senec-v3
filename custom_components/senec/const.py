@@ -273,53 +273,59 @@ MAIN_BIN_SENSOR_TYPES = [
 
 WEB_SENSOR_TYPES = [
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="consumption_total",
         name="House consumed",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:home-import-outline",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
+        controls=("only_increasing"),
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="powergenerated_total",
         name="Solar generated",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:solar-power",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
+        controls=("only_increasing"),
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="accuimport_total",
         name="Battery discharged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:home-battery-outline",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
+        controls=("only_increasing"),
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="accuexport_total",
         name="Battery charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:home-battery",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
+        controls=("only_increasing"),
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="gridimport_total",
         name="Grid Imported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:transmission-tower-export",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
+        controls=("only_increasing"),
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="gridexport_total",
         name="Grid Exported",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:transmission-tower-import",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
+        controls=("only_increasing"),
     ),
 
     # accuimport_today

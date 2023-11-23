@@ -317,7 +317,6 @@ class SenecEntity(Entity):
         self.coordinator = coordinator
         self.entity_description = description
         self._name = coordinator._config_entry.title
-        self._state = None
 
     @property
     def device_info(self) -> dict:
