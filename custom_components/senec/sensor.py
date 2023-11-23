@@ -92,7 +92,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
         self._previous_float_value: float | None = None
         self._is_total_increasing: bool = description is not None and isinstance(description,
                                                                                  ExtSensorEntityDescription) and hasattr(
-            description, "controls") and "only_increasing" in description.controls
+            description, "controls") and description.controls is not None and "only_increasing" in description.controls
 
     @property
     def state(self):
@@ -115,7 +115,8 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
         if not self._is_total_increasing:
             return value
         elif (self._previous_float_value is not None) and (value < self._previous_float_value):
-            _LOGGER.debug(f"Thanks for nothing Senec! prev>new for key {self._attr_translation_key} - prev:{self._previous_float_value} new: {value}")
+            _LOGGER.debug(
+                f"Thanks for nothing Senec! prev>new for key {self._attr_translation_key} - prev:{self._previous_float_value} new: {value}")
             return self._previous_float_value
         else:
             self._previous_float_value = value
