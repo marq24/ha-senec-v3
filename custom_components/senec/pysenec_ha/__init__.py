@@ -6,6 +6,7 @@ import logging
 import xmltodict
 from time import time
 from datetime import datetime
+from packaging import version
 
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
@@ -1542,15 +1543,15 @@ class Senec:
         if (value):
             self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
             post_data = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "",
-                                               "SAFE_CHARGE_RUNNING": "",
-                                               "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
-                                               "LI_STORAGE_MODE_RUNNING": ""}}
+                                                "SAFE_CHARGE_RUNNING": "",
+                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
+                                                "LI_STORAGE_MODE_RUNNING": ""}}
         else:
             self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
             post_data = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01",
-                                               "SAFE_CHARGE_RUNNING": "",
-                                               "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
-                                               "LI_STORAGE_MODE_RUNNING": ""}}
+                                                "SAFE_CHARGE_RUNNING": "",
+                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
+                                                "LI_STORAGE_MODE_RUNNING": ""}}
 
         await self.write(post_data)
 
@@ -1878,14 +1879,16 @@ class MySenecWebPortal:
         # Variable to save latest update time for peak shaving
         self._QUERY_PEAK_SHAVING_TS = 0
 
-        loop = aiohttp.helpers.get_running_loop(websession.loop)
-        senec_jar = MySenecCookieJar(loop=loop);
-        if hasattr(websession, "_cookie_jar"):
-            old_jar = getattr(websession, "_cookie_jar")
-            senec_jar.update_cookies(old_jar._host_only_cookies)
-
         self.websession: aiohttp.websession = websession
-        setattr(self.websession, "_cookie_jar", senec_jar)
+        if version.parse(aiohttp.__version__) < version.parse("3.9.0"):
+            _LOGGER.info(
+                f"CookieJar patch required cause aiohttp version is below 3.9.0 (current lib version is: {aiohttp.__version__})")
+            loop = aiohttp.helpers.get_running_loop(websession.loop)
+            senec_jar = MySenecCookieJar(loop=loop);
+            if hasattr(websession, "_cookie_jar"):
+                old_jar = getattr(websession, "_cookie_jar")
+                senec_jar.update_cookies(old_jar._host_only_cookies)
+            setattr(self.websession, "_cookie_jar", senec_jar)
 
         self._master_plant_number = master_plant_number
 
@@ -1941,14 +1944,15 @@ class MySenecWebPortal:
         self._peak_shaving_entities = {}
 
     def check_cookie_jar_type(self):
-        if hasattr(self.websession, "_cookie_jar"):
-            old_jar = getattr(self.websession, "_cookie_jar")
-            if type(old_jar) is not MySenecCookieJar:
-                _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
-                loop = aiohttp.helpers.get_running_loop(self.websession.loop)
-                new_senec_jar = MySenecCookieJar(loop=loop);
-                new_senec_jar.update_cookies(old_jar._host_only_cookies)
-                setattr(self.websession, "_cookie_jar", new_senec_jar)
+        if version.parse(aiohttp.__version__) < version.parse("3.9.0"):
+            if hasattr(self.websession, "_cookie_jar"):
+                old_jar = getattr(self.websession, "_cookie_jar")
+                if type(old_jar) is not MySenecCookieJar:
+                    _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
+                    loop = aiohttp.helpers.get_running_loop(self.websession.loop)
+                    new_senec_jar = MySenecCookieJar(loop=loop);
+                    new_senec_jar.update_cookies(old_jar._host_only_cookies)
+                    setattr(self.websession, "_cookie_jar", new_senec_jar)
 
     def purge_senec_cookies(self):
         if hasattr(self.websession, "_cookie_jar"):
@@ -2444,7 +2448,8 @@ class MySenecWebPortal:
 
     @property
     def peakshaving_capacitylimit(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
+        if hasattr(self,
+                   "_peakShaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingCapacityLimitInPercent"]
 
     @property
