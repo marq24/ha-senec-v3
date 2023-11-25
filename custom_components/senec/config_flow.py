@@ -1,7 +1,6 @@
 """Config flow for senec integration."""
 import logging
 import voluptuous as vol
-from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
 from custom_components.senec.pysenec_ha import Inverter
@@ -174,8 +173,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         websession = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
             senec_web_client = MySenecWebPortal(user=user, pwd=pwd, websession=websession, master_plant_number=master_plant)
-            await senec_web_client.authenticate(doUpdate=False, throw401=True)
-            if senec_web_client._isAuthenticated:
+            await senec_web_client.authenticate(do_update=False, throw401=True)
+            if senec_web_client._is_authenticated:
                 await senec_web_client.update_context()
                 self._device_master_plant_number = senec_web_client.masterPlantNumber
 

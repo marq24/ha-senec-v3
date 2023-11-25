@@ -105,29 +105,29 @@ class Senec:
 
     @property
     def device_id(self) -> str:
-        return self._rawVer[SENEC_SECTION_FACTORY]["DEVICE_ID"]
+        return self._raw_version[SENEC_SECTION_FACTORY]["DEVICE_ID"]
 
     @property
     def versions(self) -> str:
-        a = self._rawVer[SENEC_SECTION_WIZARD]["APPLICATION_VERSION"]
-        b = self._rawVer[SENEC_SECTION_WIZARD]["FIRMWARE_VERSION"]
-        c = self._rawVer[SENEC_SECTION_WIZARD]["INTERFACE_VERSION"]
-        d = str(self._rawVer[SENEC_SECTION_SYS_UPDATE]["NPU_VER"])
-        e = str(self._rawVer[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"])
+        a = self._raw_version[SENEC_SECTION_WIZARD]["APPLICATION_VERSION"]
+        b = self._raw_version[SENEC_SECTION_WIZARD]["FIRMWARE_VERSION"]
+        c = self._raw_version[SENEC_SECTION_WIZARD]["INTERFACE_VERSION"]
+        d = str(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_VER"])
+        e = str(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"])
         return f"App:{a} FW:{b} NPU-Image:{e}(v{d})"
 
     @property
     def device_type(self) -> str:
-        value = self._rawVer[SENEC_SECTION_FACTORY]["SYS_TYPE"]
+        value = self._raw_version[SENEC_SECTION_FACTORY]["SYS_TYPE"]
         return SYSTEM_TYPE_NAME.get(value, "UNKNOWN")
 
     @property
     def device_type_internal(self) -> str:
-        return self._rawVer[SENEC_SECTION_FACTORY]["SYS_TYPE"]
+        return self._raw_version[SENEC_SECTION_FACTORY]["SYS_TYPE"]
 
     @property
     def batt_type(self) -> str:
-        value = self._rawVer[SENEC_SECTION_BAT1]["TYPE"]
+        value = self._raw_version[SENEC_SECTION_BAT1]["TYPE"]
         return BATT_TYPE_NAME.get(value, "UNKNOWN")
 
     async def update_version(self):
@@ -164,7 +164,7 @@ class Senec:
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
             res.raise_for_status()
-            self._rawVer = parse(await res.json())
+            self._raw_version = parse(await res.json())
 
     @property
     def system_state(self) -> str:
@@ -1538,21 +1538,21 @@ class Senec:
     async def switch_safe_charge(self, value: bool):
         self._SAFE_CHARGE_RUNNING_OVERWRITE_VALUE = value
         self._SAFE_CHARGE_RUNNING_OVERWRITE_TS = time()
-        postdata = {}
+        post_data = {}
         if (value):
             self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
-            postdata = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "",
+            post_data = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "",
                                                "SAFE_CHARGE_RUNNING": "",
                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
                                                "LI_STORAGE_MODE_RUNNING": ""}}
         else:
             self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
-            postdata = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01",
+            post_data = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01",
                                                "SAFE_CHARGE_RUNNING": "",
                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
                                                "LI_STORAGE_MODE_RUNNING": ""}}
 
-        await self.write(postdata)
+        await self.write(post_data)
 
     @property
     def li_storage_mode(self) -> bool:
@@ -1567,21 +1567,21 @@ class Senec:
     async def switch_li_storage_mode(self, value: bool):
         self._LI_STORAGE_MODE_RUNNING_OVERWRITE_VALUE = value
         self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS = time()
-        postdata = {}
+        post_data = {}
         if (value):
             self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 1
-            postdata = {
+            post_data = {
                 SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
                                        "LI_STORAGE_MODE_START": "u8_01", "LI_STORAGE_MODE_STOP": "",
                                        "LI_STORAGE_MODE_RUNNING": ""}}
         else:
             self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 0
-            postdata = {
+            post_data = {
                 SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
                                        "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "u8_01",
                                        "LI_STORAGE_MODE_RUNNING": ""}}
 
-        await self.write(postdata)
+        await self.write(post_data)
 
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
@@ -1592,7 +1592,7 @@ class Senec:
     async def write_senec_v31(self, data):
         async with self.websession.post(self.url, json=data, ssl=False) as res:
             res.raise_for_status()
-            self._rawPost = parse(await res.json())
+            self._raw_post = parse(await res.json())
 
 
 class Inverter:
@@ -1614,22 +1614,22 @@ class Inverter:
         async with self.websession.get(self.url3) as res:
             res.raise_for_status()
             txt = await res.text()
-            self._rawVer = xmltodict.parse(txt)
-            lastDev = ''
-            for aEntry in self._rawVer["root"]["Device"]["Versions"]["Software"]:
-                if '@Name' in aEntry:
-                    aDev = aEntry["@Device"]
+            self._raw_version = xmltodict.parse(txt)
+            last_dev = ''
+            for a_entry in self._raw_version["root"]["Device"]["Versions"]["Software"]:
+                if '@Name' in a_entry:
+                    a_dev = a_entry["@Device"]
                     if (not self._has_bdc):
-                        self._has_bdc = aDev == 'BDC'
-                    if (aDev != lastDev):
+                        self._has_bdc = a_dev == 'BDC'
+                    if (a_dev != last_dev):
                         if (len(self._version_infos) > 0):
                             self._version_infos = self._version_infos + '\n'
-                        self._version_infos = self._version_infos + "[" + aDev + "]:\t"
+                        self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
                     else:
                         if (len(self._version_infos) > 0):
                             self._version_infos = self._version_infos + '|'
-                    self._version_infos = self._version_infos + aEntry["@Name"] + ' v' + aEntry["@Version"]
-                    lastDev = aDev
+                    self._version_infos = self._version_infos + a_entry["@Name"] + ' v' + a_entry["@Version"]
+                    last_dev = a_dev
 
     async def update(self):
         await self.read_inverter_with_retry(retry=True)
@@ -1648,75 +1648,75 @@ class Inverter:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
-            for aEntry in self._raw["root"]["Device"]["Measurements"]["Measurement"]:
-                if '@Type' in aEntry:
-                    if aEntry["@Type"] == 'AC_Voltage':
-                        if '@Value' in aEntry:
-                            self._ac_voltage = aEntry["@Value"]
-                    if aEntry["@Type"] == 'AC_Current':
-                        if '@Value' in aEntry:
-                            self._ac_current = aEntry["@Value"]
-                    if aEntry["@Type"] == 'AC_Power':
-                        if '@Value' in aEntry:
-                            self._ac_power = aEntry["@Value"]
-                    if aEntry["@Type"] == 'AC_Power_fast':
-                        if '@Value' in aEntry:
-                            self._ac_power_fast = aEntry["@Value"]
-                    if aEntry["@Type"] == 'AC_Frequency':
-                        if '@Value' in aEntry:
-                            self._ac_frequency = aEntry["@Value"]
+            for a_entry in self._raw["root"]["Device"]["Measurements"]["Measurement"]:
+                if '@Type' in a_entry:
+                    if a_entry["@Type"] == 'AC_Voltage':
+                        if '@Value' in a_entry:
+                            self._ac_voltage = a_entry["@Value"]
+                    if a_entry["@Type"] == 'AC_Current':
+                        if '@Value' in a_entry:
+                            self._ac_current = a_entry["@Value"]
+                    if a_entry["@Type"] == 'AC_Power':
+                        if '@Value' in a_entry:
+                            self._ac_power = a_entry["@Value"]
+                    if a_entry["@Type"] == 'AC_Power_fast':
+                        if '@Value' in a_entry:
+                            self._ac_power_fast = a_entry["@Value"]
+                    if a_entry["@Type"] == 'AC_Frequency':
+                        if '@Value' in a_entry:
+                            self._ac_frequency = a_entry["@Value"]
 
-                    if aEntry["@Type"] == 'BDC_BAT_Voltage':
-                        if '@Value' in aEntry:
-                            self._bdc_bat_voltage = aEntry["@Value"]
-                    if aEntry["@Type"] == 'BDC_BAT_Current':
-                        if '@Value' in aEntry:
-                            self._bdc_bat_current = aEntry["@Value"]
-                    if aEntry["@Type"] == 'BDC_BAT_Power':
-                        if '@Value' in aEntry:
-                            self._bdc_bat_power = aEntry["@Value"]
-                    if aEntry["@Type"] == 'BDC_LINK_Voltage':
-                        if '@Value' in aEntry:
-                            self._bdc_link_voltage = aEntry["@Value"]
-                    if aEntry["@Type"] == 'BDC_LINK_Current':
-                        if '@Value' in aEntry:
-                            self._bdc_link_current = aEntry["@Value"]
-                    if aEntry["@Type"] == 'BDC_LINK_Power':
-                        if '@Value' in aEntry:
-                            self._bdc_link_power = aEntry["@Value"]
+                    if a_entry["@Type"] == 'BDC_BAT_Voltage':
+                        if '@Value' in a_entry:
+                            self._bdc_bat_voltage = a_entry["@Value"]
+                    if a_entry["@Type"] == 'BDC_BAT_Current':
+                        if '@Value' in a_entry:
+                            self._bdc_bat_current = a_entry["@Value"]
+                    if a_entry["@Type"] == 'BDC_BAT_Power':
+                        if '@Value' in a_entry:
+                            self._bdc_bat_power = a_entry["@Value"]
+                    if a_entry["@Type"] == 'BDC_LINK_Voltage':
+                        if '@Value' in a_entry:
+                            self._bdc_link_voltage = a_entry["@Value"]
+                    if a_entry["@Type"] == 'BDC_LINK_Current':
+                        if '@Value' in a_entry:
+                            self._bdc_link_current = a_entry["@Value"]
+                    if a_entry["@Type"] == 'BDC_LINK_Power':
+                        if '@Value' in a_entry:
+                            self._bdc_link_power = a_entry["@Value"]
 
-                    if aEntry["@Type"] == 'DC_Voltage1':
-                        if '@Value' in aEntry:
-                            self._dc_voltage1 = aEntry["@Value"]
-                    if aEntry["@Type"] == 'DC_Voltage2':
-                        if '@Value' in aEntry:
-                            self._dc_voltage2 = aEntry["@Value"]
-                    if aEntry["@Type"] == 'DC_Current1':
-                        if '@Value' in aEntry:
-                            self._dc_current1 = aEntry["@Value"]
-                    if aEntry["@Type"] == 'DC_Current2':
-                        if '@Value' in aEntry:
-                            self._dc_current2 = aEntry["@Value"]
-                    if aEntry["@Type"] == 'LINK_Voltage':
-                        if '@Value' in aEntry:
-                            self._link_voltage = aEntry["@Value"]
+                    if a_entry["@Type"] == 'DC_Voltage1':
+                        if '@Value' in a_entry:
+                            self._dc_voltage1 = a_entry["@Value"]
+                    if a_entry["@Type"] == 'DC_Voltage2':
+                        if '@Value' in a_entry:
+                            self._dc_voltage2 = a_entry["@Value"]
+                    if a_entry["@Type"] == 'DC_Current1':
+                        if '@Value' in a_entry:
+                            self._dc_current1 = a_entry["@Value"]
+                    if a_entry["@Type"] == 'DC_Current2':
+                        if '@Value' in a_entry:
+                            self._dc_current2 = a_entry["@Value"]
+                    if a_entry["@Type"] == 'LINK_Voltage':
+                        if '@Value' in a_entry:
+                            self._link_voltage = a_entry["@Value"]
 
-                    if aEntry["@Type"] == 'GridPower':
-                        if '@Value' in aEntry:
-                            self._gridpower = aEntry["@Value"]
-                    if aEntry["@Type"] == 'GridConsumedPower':
-                        if '@Value' in aEntry:
-                            self._gridconsumedpower = aEntry["@Value"]
-                    if aEntry["@Type"] == 'GridInjectedPower':
-                        if '@Value' in aEntry:
-                            self._gridinjectedpower = aEntry["@Value"]
-                    if aEntry["@Type"] == 'OwnConsumedPower':
-                        if '@Value' in aEntry:
-                            self._ownconsumedpower = aEntry["@Value"]
+                    if a_entry["@Type"] == 'GridPower':
+                        if '@Value' in a_entry:
+                            self._gridpower = a_entry["@Value"]
+                    if a_entry["@Type"] == 'GridConsumedPower':
+                        if '@Value' in a_entry:
+                            self._gridconsumedpower = a_entry["@Value"]
+                    if a_entry["@Type"] == 'GridInjectedPower':
+                        if '@Value' in a_entry:
+                            self._gridinjectedpower = a_entry["@Value"]
+                    if a_entry["@Type"] == 'OwnConsumedPower':
+                        if '@Value' in a_entry:
+                            self._ownconsumedpower = a_entry["@Value"]
 
-                    if aEntry["@Type"] == 'Derating':
-                        if '@Value' in aEntry:
-                            self._derating = float(100.0 - float(aEntry["@Value"]))
+                    if a_entry["@Type"] == 'Derating':
+                        if '@Value' in a_entry:
+                            self._derating = float(100.0 - float(a_entry["@Value"]))
 
     @property
     def device_versions(self) -> str:
@@ -1728,15 +1728,15 @@ class Inverter:
 
     @property
     def device_name(self) -> str:
-        return self._rawVer["root"]["Device"]["@Name"]
+        return self._raw_version["root"]["Device"]["@Name"]
 
     @property
     def device_serial(self) -> str:
-        return self._rawVer["root"]["Device"]["@Serial"]
+        return self._raw_version["root"]["Device"]["@Serial"]
 
     @property
     def device_netbiosname(self) -> str:
-        return self._rawVer["root"]["Device"]["@NetBiosName"]
+        return self._raw_version["root"]["Device"]["@NetBiosName"]
 
     # @property
     # def measurements(self) -> dict:
@@ -1746,8 +1746,8 @@ class Inverter:
 
     # @property
     # def versions(self) -> dict:
-    #    if ('Versions' in self._rawVer["root"]["Device"] and 'Software' in self._rawVer["root"]["Device"]["Versions"]):
-    #        return self._rawVer["root"]["Device"]["Versions"]["Software"]
+    #    if ('Versions' in self._raw_version["root"]["Device"] and 'Software' in self._raw_version["root"]["Device"]["Versions"]):
+    #        return self._raw_version["root"]["Device"]["Versions"]["Software"]
 
     @property
     def ac_voltage(self) -> float:
@@ -1881,8 +1881,8 @@ class MySenecWebPortal:
         loop = aiohttp.helpers.get_running_loop(websession.loop)
         senec_jar = MySenecCookieJar(loop=loop);
         if hasattr(websession, "_cookie_jar"):
-            oldJar = getattr(websession, "_cookie_jar")
-            senec_jar.update_cookies(oldJar._host_only_cookies)
+            old_jar = getattr(websession, "_cookie_jar")
+            senec_jar.update_cookies(old_jar._host_only_cookies)
 
         self.websession: aiohttp.websession = websession
         setattr(self.websession, "_cookie_jar", senec_jar)
@@ -1937,25 +1937,25 @@ class MySenecWebPortal:
         self._power_entities = {}
         self._battery_entities = {}
         self._spare_capacity = 0  # initialize the spare_capacity with 0
-        self._isAuthenticated = False
-        self._peakShaving_entities = {}
+        self._is_authenticated = False
+        self._peak_shaving_entities = {}
 
-    def checkCookieJarType(self):
+    def check_cookie_jar_type(self):
         if hasattr(self.websession, "_cookie_jar"):
-            oldJar = getattr(self.websession, "_cookie_jar")
-            if type(oldJar) is not MySenecCookieJar:
+            old_jar = getattr(self.websession, "_cookie_jar")
+            if type(old_jar) is not MySenecCookieJar:
                 _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
                 loop = aiohttp.helpers.get_running_loop(self.websession.loop)
                 new_senec_jar = MySenecCookieJar(loop=loop);
-                new_senec_jar.update_cookies(oldJar._host_only_cookies)
+                new_senec_jar.update_cookies(old_jar._host_only_cookies)
                 setattr(self.websession, "_cookie_jar", new_senec_jar)
 
-    def purgeSenecCookies(self):
+    def purge_senec_cookies(self):
         if hasattr(self.websession, "_cookie_jar"):
-            theJar = getattr(self.websession, "_cookie_jar")
-            theJar.clear_domain("mein-senec.de")
+            the_jar = getattr(self.websession, "_cookie_jar")
+            the_jar.clear_domain("mein-senec.de")
 
-    async def authenticateClassic(self, doUpdate: bool):
+    async def authenticate_classic(self, do_update: bool):
         auth_payload = {
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
@@ -1966,33 +1966,33 @@ class MySenecWebPortal:
                 r_json = await res.json()
                 if "token" in r_json:
                     self._token = r_json["token"]
-                    self._isAuthenticated = True
+                    self._is_authenticated = True
                     _LOGGER.info("Login successful")
-                    if doUpdate:
-                        self.updateClassic()
+                    if do_update:
+                        self.update_classic()
             else:
                 _LOGGER.warning(f"Login failed with Code {res.status}")
 
-    async def updateClassic(self):
+    async def update_classic(self):
         _LOGGER.debug("***** updateClassic(self) ********")
-        if self._isAuthenticated:
-            await self.getSystemOverviewClassic()
+        if self._is_authenticated:
+            await self.get_system_overview_classic()
         else:
-            await self.authenticateClassic(True)
+            await self.authenticate_classic(True)
 
-    async def getSystemOverviewClassic(self):
+    async def get_system_overview_classic(self):
         headers = {"Authorization": self._token}
         async with self.websession.get(self._SENEC_CLASSIC_API_OVERVIEW_URL, headers=headers) as res:
             res.raise_for_status()
             if res.status == 200:
                 r_json = await res.json()
             else:
-                self._isAuthenticated = False
+                self._is_authenticated = False
                 await self.update()
 
-    async def authenticate(self, doUpdate: bool, throw401: bool):
+    async def authenticate(self, do_update: bool, throw401: bool):
         _LOGGER.info("***** authenticate(self) ********")
-        self.checkCookieJarType()
+        self.check_cookie_jar_type()
         auth_payload = {
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
@@ -2003,29 +2003,29 @@ class MySenecWebPortal:
                 if res.status == 200:
                     # be gentle reading the complete response...
                     r_json = await res.text()
-                    self._isAuthenticated = True
+                    self._is_authenticated = True
                     _LOGGER.info("Login successful")
-                    if doUpdate:
+                    if do_update:
                         await self.update()
                 else:
                     _LOGGER.warning(f"Login failed with Code {res.status}")
-                    self.purgeSenecCookies()
+                    self.purge_senec_cookies()
             except ClientResponseError as exc:
                 # _LOGGER.error(str(exc))
                 if throw401:
                     raise exc
                 else:
                     if exc.status == 401:
-                        self.purgeSenecCookies()
-                        self._isAuthenticated = False
+                        self.purge_senec_cookies()
+                        self._is_authenticated = False
                     else:
                         _LOGGER.warning(f"Login exception with Code {res.status}")
-                        self.purgeSenecCookies()
+                        self.purge_senec_cookies()
 
     async def update(self):
-        if self._isAuthenticated:
+        if self._is_authenticated:
             _LOGGER.info("***** update(self) ********")
-            self.checkCookieJarType()
+            self.check_cookie_jar_type()
             await self.update_now_kW_stats()
             await self.update_full_kWh_stats()
             if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
@@ -2038,7 +2038,7 @@ class MySenecWebPortal:
                 if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
                     await self.update_peak_shaving()
         else:
-            await self.authenticate(doUpdate=True, throw401=False)
+            await self.authenticate(do_update=True, throw401=False)
 
     """This function will update peak shaving information"""
 
@@ -2052,24 +2052,24 @@ class MySenecWebPortal:
                     r_json = await res.json()
 
                     # GET Data from JSON
-                    self._peakShaving_entities["einspeisebegrenzungKwpInPercent"] = r_json[
+                    self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json[
                         "einspeisebegrenzungKwpInPercent"]
-                    self._peakShaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
-                    self._peakShaving_entities["peakShavingCapacityLimitInPercent"] = r_json[
+                    self._peak_shaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
+                    self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json[
                         "peakShavingCapacityLimitInPercent"]
-                    self._peakShaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(
+                    self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(
                         r_json["peakShavingEndDate"] / 1000)  # from miliseconds to seconds
 
                     self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
                 else:
-                    self._isAuthenticated = False
+                    self._is_authenticated = False
                     await self.update()
 
             except ClientResponseError as exc:
                 if exc.status == 401:
-                    self.purgeSenecCookies()
+                    self.purge_senec_cookies()
 
-                self._isAuthenticated = False
+                self._is_authenticated = False
                 await self.update()
 
     """This function will set the peak shaving data over the web api"""
@@ -2089,16 +2089,16 @@ class MySenecWebPortal:
                     self._QUERY_PEAK_SHAVING_TS = 0
 
                 else:
-                    self._isAuthenticated = False
-                    await self.authenticate(doUpdate=False, throw401=False)
+                    self._is_authenticated = False
+                    await self.authenticate(do_update=False, throw401=False)
                     await self.set_peak_shaving(new_peak_shaving)
 
             except ClientResponseError as exc:
                 if exc.status == 401:
-                    self.purgeSenecCookies()
+                    self.purge_senec_cookies()
 
-                self._isAuthenticated = False
-                await self.authenticate(doUpdate=False, throw401=True)
+                self._is_authenticated = False
+                await self.authenticate(do_update=False, throw401=True)
                 await self.set_peak_shaving(new_peak_shaving)
 
     """This function will update the spare capacity over the web api"""
@@ -2113,14 +2113,14 @@ class MySenecWebPortal:
                     self._spare_capacity = await res.text()
                     self._QUERY_SPARE_CAPACITY_TS = time()
                 else:
-                    self._isAuthenticated = False
+                    self._is_authenticated = False
                     await self.update()
 
             except ClientResponseError as exc:
                 if exc.status == 401:
-                    self.purgeSenecCookies()
+                    self.purge_senec_cookies()
 
-                self._isAuthenticated = False
+                self._is_authenticated = False
                 await self.update()
 
     """This function will set the spare capacity over the web api"""
@@ -2137,16 +2137,16 @@ class MySenecWebPortal:
                     # Reset the timer in order that the Spare Capacity is updated immediately after the change
                     self._QUERY_SPARE_CAPACITY_TS = 0
                 else:
-                    self._isAuthenticated = False
-                    await self.authenticate(doUpdate=False, throw401=False)
+                    self._is_authenticated = False
+                    await self.authenticate(do_update=False, throw401=False)
                     await self.set_spare_capacity(new_spare_capacity)
 
             except ClientResponseError as exc:
                 if exc.status == 401:
-                    self.purgeSenecCookies()
+                    self.purge_senec_cookies()
 
-                self._isAuthenticated = False
-                await self.authenticate(doUpdate=False, throw401=True)
+                self._is_authenticated = False
+                await self.authenticate(do_update=False, throw401=True)
                 await self.set_spare_capacity(new_spare_capacity)
 
     async def update_now_kW_stats(self):
@@ -2190,14 +2190,14 @@ class MySenecWebPortal:
                             _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
 
                 else:
-                    self._isAuthenticated = False
+                    self._is_authenticated = False
                     await self.update()
 
             except ClientResponseError as exc:
                 if exc.status == 401:
-                    self.purgeSenecCookies()
+                    self.purge_senec_cookies()
 
-                self._isAuthenticated = False
+                self._is_authenticated = False
                 await self.update()
 
     async def update_full_kWh_stats(self):
@@ -2217,19 +2217,19 @@ class MySenecWebPortal:
                         else:
                             _LOGGER.info(f"No 'fullkwh' in json: {r_json} when requesting: {api_url}")
                     else:
-                        self._isAuthenticated = False
+                        self._is_authenticated = False
                         await self.update()
 
                 except ClientResponseError as exc:
                     if exc.status == 401:
-                        self.purgeSenecCookies()
+                        self.purge_senec_cookies()
 
-                    self._isAuthenticated = False
+                    self._is_authenticated = False
                     await self.update()
 
     async def update_context(self):
         _LOGGER.debug("***** update_context(self) ********")
-        if self._isAuthenticated:
+        if self._is_authenticated:
             await self.update_get_customer()
 
             # in autodetect-mode the initial self._master_plant_number = -1
@@ -2241,7 +2241,7 @@ class MySenecWebPortal:
 
             await self.update_get_systems(a_plant_number=self._master_plant_number, autodetect_mode=is_autodetect)
         else:
-            await self.authenticate(doUpdate=False, throw401=False)
+            await self.authenticate(do_update=False, throw401=False)
 
     async def update_get_customer(self):
         _LOGGER.debug("***** update_get_customer(self) ********")
@@ -2260,8 +2260,8 @@ class MySenecWebPortal:
                 # vorname
                 # nachname
             else:
-                self._isAuthenticated = False
-                await self.authenticate(doUpdate=False, throw401=False)
+                self._is_authenticated = False
+                await self.authenticate(do_update=False, throw401=False)
 
     async def update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
         _LOGGER.debug("***** update_get_systems(self) ********")
@@ -2299,8 +2299,8 @@ class MySenecWebPortal:
                     self._master_plant_number = a_plant_number
 
             else:
-                self._isAuthenticated = False
-                await self.authenticate(doUpdate=False, throw401=False)
+                self._is_authenticated = False
+                await self.authenticate(do_update=False, throw401=False)
 
     @property
     def spare_capacity(self) -> int:
@@ -2434,23 +2434,23 @@ class MySenecWebPortal:
 
     @property
     def gridexport_limit(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "einspeisebegrenzungKwpInPercent" in self._peakShaving_entities:
-            return self._peakShaving_entities["einspeisebegrenzungKwpInPercent"]
+        if hasattr(self, "_peakShaving_entities") and "einspeisebegrenzungKwpInPercent" in self._peak_shaving_entities:
+            return self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"]
 
     @property
     def peakshaving_mode(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "peakShavingMode" in self._peakShaving_entities:
-            return self._peakShaving_entities["peakShavingMode"]
+        if hasattr(self, "_peakShaving_entities") and "peakShavingMode" in self._peak_shaving_entities:
+            return self._peak_shaving_entities["peakShavingMode"]
 
     @property
     def peakshaving_capacitylimit(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "peakShavingCapacityLimitInPercent" in self._peakShaving_entities:
-            return self._peakShaving_entities["peakShavingCapacityLimitInPercent"]
+        if hasattr(self, "_peakShaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
+            return self._peak_shaving_entities["peakShavingCapacityLimitInPercent"]
 
     @property
     def peakshaving_enddate(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "peakShavingEndDate" in self._peakShaving_entities:
-            return self._peakShaving_entities["peakShavingEndDate"]
+        if hasattr(self, "_peakShaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
+            return self._peak_shaving_entities["peakShavingEndDate"]
 
 
 class MySenecCookieJar(aiohttp.CookieJar):
