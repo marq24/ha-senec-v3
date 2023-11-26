@@ -265,8 +265,9 @@ look into the [current developer documentation section](./DEVELOPER_DOCUMENTATIO
 | [@mchwalisz](https://github.com/mchwalisz)   | This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec) since with latest updates of the firmware introduced by SENEC the original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
 
 [hacs]: https://github.com/hacs/integration
-[hacsbadge]: https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge
-[buymecoffee]: https://www.buymeacoffee.com/marquardt24
-[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a-coffee-blue.svg?style=for-the-badge
+[hacsbadge]: https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
 [paypal]: https://paypal.me/marq24
-[paypalbadge]: https://img.shields.io/badge/paypal-me-blue.svg?logo=paypal&style=for-the-badge
+[buymecoffee]: https://www.buymeacoffee.com/marquardt24
+[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a-coffee-blue.svg?style=for-the-badge&logo=buymeacoffee&logoColor=ccc
+[paypal]: https://paypal.me/marq24
+[paypalbadge]: https://img.shields.io/badge/paypal-me-blue.svg?style=for-the-badge&logo=paypal&logoColor=ccc
