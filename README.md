@@ -8,6 +8,22 @@ Therefore, use this integration **at your own risk**.
 
 [![hacs_badge][hacsbadge]][hacs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![PayPal][paypalbadge]][paypal]
 
+---
+###### Advertisement / Werbung
+
+### Switch to Tibber!
+
+Are you still customer of SENEC.Cloud as electricity provider? Be smart switch to Tibber - that's what I did in october 2023.
+
+If you want to join Tibber (become a customer), you might consider using my personal invitation link. When you use this
+link, Tibber will we grant you and me a Bonus of 50,-€ for each of us, that then can be used in the Tibber store (not
+for your power bill) - e.g. to buy a Tibber Bridge.  If you are already a Tibber customer and have not used an
+invitation link yet, you can also enter one afterward in the Tibber App.
+
+[Use my personal Tibber invitation link](https://invite.tibber.com/6o0kqvzf) or Enter the following code: 6o0kqvzf
+(six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterwards in the App - TIA!
+---
+
 ## Setup / Installation
 
 ### Installation using HACS
@@ -17,8 +33,8 @@ Therefore, use this integration **at your own risk**.
     - Select latest version or `master`
 - Restart Home Assistant to install all dependencies
 
-__If you only find__ the `Senec solar system sensor` integration (which will not work any longer!) - please add this repo as custom repository https://github.com/marq24/ha-senec-v3 to HACS
-
+__If you only find__ the `Senec solar system sensor` integration (which will not work any longer!) - please add this
+repo as custom repository https://github.com/marq24/ha-senec-v3 to HACS
 
 ### Manual installation
 
@@ -163,34 +179,34 @@ To enable a disabled function or sensor navigate to Settings -> Devices and Serv
 
 The following features are provided by the Web API:
 
-| Feature                    | Description                                                                                                                                                                                                                                                                                                                           | enabled by default |
-|----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
-| WEBAPI Spare Capacity      | Current spare capacity in percent with the option to update. Precondition: When you are using "SENEC Backup Power pro" and you are able to see and update the spare capacity at mein-senec.de, than you can read andupdate the spare capacity with this integration.                                                                  | no                 |
-| Service: Set Peak Shaving  | When using the Web API, you can use the Peak Shaving Service. This service gives you the abilty to switch the Mode (Deactivated, Automatic, Manual). In the manual mode you can define a battery capacity limit, so that the capacity can be used for charging later, as well as a end time - to realease the battery capacity limit. | yes                |
+| Feature                   | Description                                                                                                                                                                                                                                                                                                                           | enabled by default |
+|---------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
+| WEBAPI Spare Capacity     | Current spare capacity in percent with the option to update. Precondition: When you are using "SENEC Backup Power pro" and you are able to see and update the spare capacity at mein-senec.de, than you can read andupdate the spare capacity with this integration.                                                                  | no                 |
+| Service: Set Peak Shaving | When using the Web API, you can use the Peak Shaving Service. This service gives you the abilty to switch the Mode (Deactivated, Automatic, Manual). In the manual mode you can define a battery capacity limit, so that the capacity can be used for charging later, as well as a end time - to realease the battery capacity limit. | yes                |
 
 #### Sensors
 
 The following Sensors are provided by the Web API:
 
-| Sensor                         | Description                                                                                        | enabled by default |
-|--------------------------------|----------------------------------------------------------------------------------------------------|--------------------|
-| WEBAPI Battery Charge Percent  | Current charge level of Battery in percent                                                         | yes                |
-| WEBAPI Battery Charge Power    | Current charge power of Battery                                                                    | yes                |
-| WEBAPI Battery charged         | Total: Charged power in Battery - This information is needed for the energy dashboard              | yes                |
-| WEBAPI Battery Discharge Power | Current discharge power of Battery                                                                 | yes                |
-| WEBAPI Battery discharged      | Total: Discharged power from Battery - This information is needed for the energy dashboard         | yes                |
-| WEBAPI Grid Exported           | Total: Power exported to the grid - This information is needed for the energy dashboard            | yes                |
-| WEBAPI Grid Exported Power     | Current power exporting to the grid                                                                | yes                |
-| WEBAPI Grid Imported           | Total: Power imported from the grid - This information is needed for the energy dashboard          | yes                |
-| WEBAPI Grid Imported Power     | Current power imported from the grid                                                               | yes                |
-| WEBAPI House consumed          | Total: Amount of power consumed by the House - This information is needed for the energy dashboard | yes                |
-| WEBAPI House Power             | Current power used by the House                                                                    | yes                |
-| WEBAPI Solar generated         | Total: Power generated by the Solar - This information is needed for the energy dashboard          | yes                |
-| WEBAPI Solar Generated Power   | Current power generated by Solar                                                                   | yes                |
-| WEBAPI Grid Exported Limit     | Grid Export Limit in Percent                                                                       | no                 |
-| WEBAPI Peak Shaving Mode       | Shows the current Peak Shaving Mode (Deactivated, Automatic, Manual)                               | no                 |
-| WEBAPI Peak Shaving Capacity Limit | When using the Manual Peak Shaving Mode this capacity limit will be used for your battery      | no                 |
-| WEBAPI Peak Shaving End Time   | When using the Manual Peak Shaving Mode, this time releases the capacity limit for the battery     | no                 |
+| Sensor                             | Description                                                                                        | enabled by default |
+|------------------------------------|----------------------------------------------------------------------------------------------------|--------------------|
+| WEBAPI Battery Charge Percent      | Current charge level of Battery in percent                                                         | yes                |
+| WEBAPI Battery Charge Power        | Current charge power of Battery                                                                    | yes                |
+| WEBAPI Battery charged             | Total: Charged power in Battery - This information is needed for the energy dashboard              | yes                |
+| WEBAPI Battery Discharge Power     | Current discharge power of Battery                                                                 | yes                |
+| WEBAPI Battery discharged          | Total: Discharged power from Battery - This information is needed for the energy dashboard         | yes                |
+| WEBAPI Grid Exported               | Total: Power exported to the grid - This information is needed for the energy dashboard            | yes                |
+| WEBAPI Grid Exported Power         | Current power exporting to the grid                                                                | yes                |
+| WEBAPI Grid Imported               | Total: Power imported from the grid - This information is needed for the energy dashboard          | yes                |
+| WEBAPI Grid Imported Power         | Current power imported from the grid                                                               | yes                |
+| WEBAPI House consumed              | Total: Amount of power consumed by the House - This information is needed for the energy dashboard | yes                |
+| WEBAPI House Power                 | Current power used by the House                                                                    | yes                |
+| WEBAPI Solar generated             | Total: Power generated by the Solar - This information is needed for the energy dashboard          | yes                |
+| WEBAPI Solar Generated Power       | Current power generated by Solar                                                                   | yes                |
+| WEBAPI Grid Exported Limit         | Grid Export Limit in Percent                                                                       | no                 |
+| WEBAPI Peak Shaving Mode           | Shows the current Peak Shaving Mode (Deactivated, Automatic, Manual)                               | no                 |
+| WEBAPI Peak Shaving Capacity Limit | When using the Manual Peak Shaving Mode this capacity limit will be used for your battery          | no                 |
+| WEBAPI Peak Shaving End Time       | When using the Manual Peak Shaving Mode, this time releases the capacity limit for the battery     | no                 |
 
 # There is even more...
 
@@ -265,9 +281,15 @@ look into the [current developer documentation section](./DEVELOPER_DOCUMENTATIO
 | [@mchwalisz](https://github.com/mchwalisz)   | This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec) since with latest updates of the firmware introduced by SENEC the original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
 
 [hacs]: https://github.com/hacs/integration
+
 [hacsbadge]: https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
+
 [paypal]: https://paypal.me/marq24
+
 [buymecoffee]: https://www.buymeacoffee.com/marquardt24
+
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a-coffee-blue.svg?style=for-the-badge&logo=buymeacoffee&logoColor=ccc
+
 [paypal]: https://paypal.me/marq24
+
 [paypalbadge]: https://img.shields.io/badge/paypal-me-blue.svg?style=for-the-badge&logo=paypal&logoColor=ccc
