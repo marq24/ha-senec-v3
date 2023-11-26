@@ -25,6 +25,7 @@ invitation link yet, you can also enter one afterward in the Tibber App.
 Please consider [using my personal Tibber invitation link to joind Tibber today](https://invite.tibber.com/6o0kqvzf) or
 Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterwards in the Tibber
 App - TIA!
+
 ---
 
 ## Setup / Installation
