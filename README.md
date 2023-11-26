@@ -9,19 +9,22 @@ Therefore, use this integration **at your own risk**.
 [![hacs_badge][hacsbadge]][hacs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![PayPal][paypalbadge]][paypal]
 
 ---
+
 ###### Advertisement / Werbung
 
 ### Switch to Tibber!
 
-Are you still customer of SENEC.Cloud as electricity provider? Be smart switch to Tibber - that's what I did in october 2023.
+Are you still customer of (IMHO totally overpriced) SENEC.Cloud as electricity provider? Be smart switch to Tibber -
+that's what I did in october 2023.
 
-If you want to join Tibber (become a customer), you might consider using my personal invitation link. When you use this
-link, Tibber will we grant you and me a Bonus of 50,-€ for each of us, that then can be used in the Tibber store (not
-for your power bill) - e.g. to buy a Tibber Bridge.  If you are already a Tibber customer and have not used an
+If you want to join Tibber (become a customer), you might want to use my personal invitation link. When you use this
+link, Tibber will we grant you and me a bonus of 50,-€ for each of us. This bonus then can be used in the Tibber store
+(not for your power bill) - e.g. to buy a Tibber Bridge. If you are already a Tibber customer and have not used an
 invitation link yet, you can also enter one afterward in the Tibber App.
 
-[Use my personal Tibber invitation link](https://invite.tibber.com/6o0kqvzf) or Enter the following code: 6o0kqvzf
-(six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterwards in the App - TIA!
+Please consider [using my personal Tibber invitation link to joind Tibber today](https://invite.tibber.com/6o0kqvzf) or
+Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterwards in the Tibber
+App - TIA!
 ---
 
 ## Setup / Installation
