@@ -56,7 +56,7 @@ from custom_components.senec.pysenec_ha.constants import (
 # 14: "CHARGE",
 # 43: "CAPACITY TEST: CHARGE",
 # 71: "OFFPEAK-CHARGE",
-BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 43, 71}
+BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 23, 24, 25, 33, 43, 71}
 
 # 16: "DISCHARGE",
 # 17: "PV + DISCHARGE",
@@ -64,7 +64,7 @@ BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 43, 71}
 # 21: "OWN CONSUMPTION"
 # 44: "CAPACITY TEST: DISCHARGE",
 # 97: "SAFETY DISCHARGE",
-BAT_STATUS_DISCHARGE = {16, 17, 18, 21, 44, 97}
+BAT_STATUS_DISCHARGE = {16, 17, 18, 21, 29, 44, 97}
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1881,14 +1881,14 @@ class MySenecWebPortal:
 
         self.websession: aiohttp.websession = websession
         if version.parse(aiohttp.__version__) < version.parse("3.9.0"):
-            _LOGGER.info(
-                f"CookieJar patch required cause aiohttp version is below 3.9.0 (current lib version is: {aiohttp.__version__})")
+            _LOGGER.info(f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar need to be patched")
             loop = aiohttp.helpers.get_running_loop(websession.loop)
-            senec_jar = MySenecCookieJar(loop=loop);
+            senec_jar = MySenecCookieJar(loop=loop)
             if hasattr(websession, "_cookie_jar"):
                 old_jar = getattr(websession, "_cookie_jar")
                 senec_jar.update_cookies(old_jar._host_only_cookies)
             setattr(self.websession, "_cookie_jar", senec_jar)
+            _LOGGER.info(f"CookieJar patch applied...")
 
         self._master_plant_number = master_plant_number
 

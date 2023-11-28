@@ -22,8 +22,8 @@ link, Tibber will we grant you and me a bonus of 50,-€ for each of us. This bo
 (not for your power bill) - e.g. to buy a Tibber Bridge. If you are already a Tibber customer and have not used an
 invitation link yet, you can also enter one afterward in the Tibber App.
 
-Please consider [using my personal Tibber invitation link to joind Tibber today](https://invite.tibber.com/6o0kqvzf) or
-Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterwards in the Tibber
+Please consider [using my personal Tibber invitation link to join Tibber today](https://invite.tibber.com/6o0kqvzf) or
+Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterward in the Tibber
 App - TIA!
 
 ---

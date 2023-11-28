@@ -184,16 +184,16 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._device_serial = senec_web_client.serial_number
                 self._device_version = None # senec_web_client.firmwareVersion
 
-                _LOGGER.info("Successfully connect to mein-senec.de with '%s'", user)
+                _LOGGER.info(f"Successfully connect to mein-senec.de with '{user}'")
                 return True
             else:
                 self._errors[CONF_USERNAME] = "login_failed"
                 self._errors[CONF_PASSWORD] = "login_failed"
-                _LOGGER.warning("Could not connect to mein-senec.de with '%s', check credentials", user)
+                _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials (! _is_authenticated)")
         except (OSError, HTTPError, Timeout, ClientResponseError):
             self._errors[CONF_USERNAME] = "login_failed"
             self._errors[CONF_PASSWORD] = "login_failed"
-            _LOGGER.warning("Could not connect to mein-senec.de with '%s', check credentials", user)
+            _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials (exception)")
         return False
 
     async def async_step_user(self, user_input=None):
