@@ -6,15 +6,17 @@ import logging
 import xmltodict
 from time import time
 from datetime import datetime
+
 from packaging import version
 
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
+from aiohttp.abc import ClearCookiePredicate
 from http.cookies import BaseCookie, SimpleCookie, Morsel
 from aiohttp import ClientResponseError, ClientConnectorError
 from aiohttp.helpers import is_ip_address
 from yarl import URL
-from typing import Union, cast
+from typing import Union, cast, Optional
 
 from custom_components.senec.const import (
     QUERY_BMS_KEY,
@@ -1880,15 +1882,13 @@ class MySenecWebPortal:
         self._QUERY_PEAK_SHAVING_TS = 0
 
         self.websession: aiohttp.websession = websession
-        if version.parse(aiohttp.__version__) < version.parse("3.9.0"):
-            _LOGGER.info(f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar need to be patched")
-            loop = aiohttp.helpers.get_running_loop(websession.loop)
-            senec_jar = MySenecCookieJar(loop=loop)
-            if hasattr(websession, "_cookie_jar"):
-                old_jar = getattr(websession, "_cookie_jar")
-                senec_jar.update_cookies(old_jar._host_only_cookies)
-            setattr(self.websession, "_cookie_jar", senec_jar)
-            _LOGGER.info(f"CookieJar patch applied...")
+
+        loop = aiohttp.helpers.get_running_loop(websession.loop)
+        senec_jar = MySenecCookieJar(loop=loop)
+        if hasattr(websession, "_cookie_jar"):
+            old_jar = getattr(websession, "_cookie_jar")
+            senec_jar.update_cookies(old_jar._host_only_cookies)
+        setattr(self.websession, "_cookie_jar", senec_jar)
 
         self._master_plant_number = master_plant_number
 
@@ -1944,15 +1944,14 @@ class MySenecWebPortal:
         self._peak_shaving_entities = {}
 
     def check_cookie_jar_type(self):
-        if version.parse(aiohttp.__version__) < version.parse("3.9.0"):
-            if hasattr(self.websession, "_cookie_jar"):
-                old_jar = getattr(self.websession, "_cookie_jar")
-                if type(old_jar) is not MySenecCookieJar:
-                    _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
-                    loop = aiohttp.helpers.get_running_loop(self.websession.loop)
-                    new_senec_jar = MySenecCookieJar(loop=loop);
-                    new_senec_jar.update_cookies(old_jar._host_only_cookies)
-                    setattr(self.websession, "_cookie_jar", new_senec_jar)
+        if hasattr(self.websession, "_cookie_jar"):
+            old_jar = getattr(self.websession, "_cookie_jar")
+            if type(old_jar) is not MySenecCookieJar:
+                _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
+                loop = aiohttp.helpers.get_running_loop(self.websession.loop)
+                new_senec_jar = MySenecCookieJar(loop=loop);
+                new_senec_jar.update_cookies(old_jar._host_only_cookies)
+                setattr(self.websession, "_cookie_jar", new_senec_jar)
 
     def purge_senec_cookies(self):
         if hasattr(self.websession, "_cookie_jar"):
@@ -2457,11 +2456,23 @@ class MySenecWebPortal:
         if hasattr(self, "_peakShaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingEndDate"]
 
+@staticmethod
+def _require_lib_patch() -> bool:
+    need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
+    if need_patch:
+        _LOGGER.info(f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar.filter_cookies(...) need to be patched")
+    return need_patch
 
 class MySenecCookieJar(aiohttp.CookieJar):
+
+    _require_filter_cookies_patch = _require_lib_patch()
+
     # Overwriting the default 'filter_cookies' impl - since the original will always return the last stored
     # matching path... [but we need the 'best' path-matching cookie of our jar!]
     def filter_cookies(self, request_url: URL = URL()) -> Union["BaseCookie[str]", "SimpleCookie[str]"]:
+        if not self._require_filter_cookies_patch:
+            return super().filter_cookies(request_url)
+
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         request_url = URL(request_url)
@@ -2507,3 +2518,36 @@ class MySenecCookieJar(aiohttp.CookieJar):
             filtered[name] = mrsl_val
 
         return filtered
+
+    def _get_all_for_domain(self, domain):
+        filtered = []
+        for cookie in self._cookies.keys():
+            a_domain = cookie[0]
+            if a_domain == domain:
+                filtered.append(self._cookies[cookie])
+        return filtered
+
+    def _put_all(self, cookies_to_add):
+        for cookies in cookies_to_add:
+            self.update_cookies(cookies)
+
+    # Overwriting the default 'clear' impl - make sure that our senec cookies will
+    # survive the clearing... IMHO nobody should call clear anyhow
+    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+        if predicate is None:
+            _LOGGER.warning(f"CookieJar.clear() have been called without ANY predicates! This would PURGE all cookies (IMHO nobody should do that inside a home assistant integration) - We will keep at least the mein.senec.de cookies! but any other integration might break cause of this call!")
+
+            mein_senec = self._get_all_for_domain("mein-senec.de")
+            app_gateway = self._get_all_for_domain("app-gateway-prod.senecops.com")
+
+            super().clear(predicate)
+
+            if len(mein_senec) > 0:
+                self._put_all(mein_senec)
+            if len(app_gateway) > 0:
+                self._put_all(app_gateway)
+
+            return None
+        else:
+            super().clear(predicate)
+            return None
