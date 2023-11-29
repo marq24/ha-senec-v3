@@ -8,6 +8,7 @@ import xmltodict
 from time import time
 from datetime import datetime
 
+from orjson import JSONDecodeError
 from packaging import version
 
 # required to patch the CookieJar of aiohttp - thanks for nothing!
@@ -167,8 +168,11 @@ class Senec:
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
-            res.raise_for_status()
-            self._raw_version = parse(await res.json())
+            try:
+                res.raise_for_status()
+                self._raw_version = parse(await res.json())
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
     @property
     def system_state(self) -> str:
@@ -1489,8 +1493,11 @@ class Senec:
             })
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
-            res.raise_for_status()
-            self._raw = parse(await res.json())
+            try:
+                res.raise_for_status()
+                self._raw = parse(await res.json())
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
     async def read_senec_energy(self):
         form = {
@@ -1506,8 +1513,12 @@ class Senec:
         }
 
         async with self.websession.post(self.url, json=form, ssl=False) as res:
-            res.raise_for_status()
-            self._energy_raw = parse(await res.json())
+            try:
+                res.raise_for_status()
+                self._energy_raw = parse(await res.json())
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
 
     ## LADEN...
     ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
@@ -1595,8 +1606,11 @@ class Senec:
 
     async def write_senec_v31(self, data):
         async with self.websession.post(self.url, json=data, ssl=False) as res:
-            res.raise_for_status()
-            self._raw_post = parse(await res.json())
+            try:
+                res.raise_for_status()
+                self._raw_post = parse(await res.json())
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
 
 class Inverter:
@@ -1967,13 +1981,16 @@ class MySenecWebPortal:
         async with self.websession.post(self._SENEC_CLASSIC_AUTH_URL, json=auth_payload) as res:
             res.raise_for_status()
             if res.status == 200:
-                r_json = await res.json()
-                if "token" in r_json:
-                    self._token = r_json["token"]
-                    self._is_authenticated = True
-                    _LOGGER.info("Login successful")
-                    if do_update:
-                        self.update_classic()
+                try:
+                    r_json = await res.json()
+                    if "token" in r_json:
+                        self._token = r_json["token"]
+                        self._is_authenticated = True
+                        _LOGGER.info("Login successful")
+                        if do_update:
+                            self.update_classic()
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
             else:
                 _LOGGER.warning(f"Login failed with Code {res.status}")
 
@@ -1989,7 +2006,10 @@ class MySenecWebPortal:
         async with self.websession.get(self._SENEC_CLASSIC_API_OVERVIEW_URL, headers=headers) as res:
             res.raise_for_status()
             if res.status == 200:
-                r_json = await res.json()
+                try:
+                    r_json = await res.json()
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
             else:
                 self._is_authenticated = False
                 await self.update()
@@ -2053,18 +2073,16 @@ class MySenecWebPortal:
             try:
                 res.raise_for_status()
                 if res.status == 200:
-                    r_json = await res.json()
-
-                    # GET Data from JSON
-                    self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json[
-                        "einspeisebegrenzungKwpInPercent"]
-                    self._peak_shaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
-                    self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json[
-                        "peakShavingCapacityLimitInPercent"]
-                    self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(
-                        r_json["peakShavingEndDate"] / 1000)  # from miliseconds to seconds
-
-                    self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
+                    try:
+                        r_json = await res.json()
+                        # GET Data from JSON
+                        self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json["einspeisebegrenzungKwpInPercent"]
+                        self._peak_shaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
+                        self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json["peakShavingCapacityLimitInPercent"]
+                        self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(r_json["peakShavingEndDate"] / 1000)  # from miliseconds to seconds
+                        self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
+                    except JSONDecodeError as exc:
+                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
                 else:
                     self._is_authenticated = False
                     await self.update()
@@ -2161,37 +2179,40 @@ class MySenecWebPortal:
             try:
                 res.raise_for_status()
                 if res.status == 200:
-                    r_json = await res.json()
-                    self._raw = parse(r_json)
-                    for key in (self._API_KEYS + self._API_KEYS_EXTRA):
-                        if key in r_json:
-                            if key == "acculevel":
-                                if "now" in r_json[key]:
-                                    value_now = r_json[key]["now"]
-                                    entity_now_name = str(key + "_now")
-                                    self._battery_entities[entity_now_name] = value_now
+                    try:
+                        r_json = await res.json()
+                        self._raw = parse(r_json)
+                        for key in (self._API_KEYS + self._API_KEYS_EXTRA):
+                            if key in r_json:
+                                if key == "acculevel":
+                                    if "now" in r_json[key]:
+                                        value_now = r_json[key]["now"]
+                                        entity_now_name = str(key + "_now")
+                                        self._battery_entities[entity_now_name] = value_now
+                                    else:
+                                        _LOGGER.info(
+                                            f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
                                 else:
-                                    _LOGGER.info(
-                                        f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                                    if "now" in r_json[key]:
+                                        value_now = r_json[key]["now"]
+                                        entity_now_name = str(key + "_now")
+                                        self._power_entities[entity_now_name] = value_now
+                                    else:
+                                        _LOGGER.info(
+                                            f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+
+                                    if "today" in r_json[key]:
+                                        value_today = r_json[key]["today"]
+                                        entity_today_name = str(key + "_today")
+                                        self._energy_entities[entity_today_name] = value_today
+                                    else:
+                                        _LOGGER.info(
+                                            f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+
                             else:
-                                if "now" in r_json[key]:
-                                    value_now = r_json[key]["now"]
-                                    entity_now_name = str(key + "_now")
-                                    self._power_entities[entity_now_name] = value_now
-                                else:
-                                    _LOGGER.info(
-                                        f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
-
-                                if "today" in r_json[key]:
-                                    value_today = r_json[key]["today"]
-                                    entity_today_name = str(key + "_today")
-                                    self._energy_entities[entity_today_name] = value_today
-                                else:
-                                    _LOGGER.info(
-                                        f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
-
-                        else:
-                            _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
+                                _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
+                    except JSONDecodeError as exc:
+                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
                 else:
                     self._is_authenticated = False
@@ -2213,13 +2234,17 @@ class MySenecWebPortal:
                 try:
                     res.raise_for_status()
                     if res.status == 200:
-                        r_json = await res.json()
-                        if "fullkwh" in r_json:
-                            value = r_json["fullkwh"]
-                            entity_name = str(key + "_total")
-                            self._energy_entities[entity_name] = value
-                        else:
-                            _LOGGER.info(f"No 'fullkwh' in json: {r_json} when requesting: {api_url}")
+                        try:
+                            r_json = await res.json()
+                            if "fullkwh" in r_json:
+                                value = r_json["fullkwh"]
+                                entity_name = str(key + "_total")
+                                self._energy_entities[entity_name] = value
+                            else:
+                                _LOGGER.info(f"No 'fullkwh' in json: {r_json} when requesting: {api_url}")
+                        except JSONDecodeError as exc:
+                            _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
                     else:
                         self._is_authenticated = False
                         await self.update()
@@ -2254,15 +2279,18 @@ class MySenecWebPortal:
         async with self.websession.get(self._SENEC_API_GET_CUSTOMER_URL) as res:
             res.raise_for_status()
             if res.status == 200:
-                r_json = await res.json()
-                # self._raw = parse(r_json)
-                self._dev_number = r_json["devNumber"]
-                # anzahlAnlagen
-                # language
-                # emailAdresse
-                # meterReadingVisible
-                # vorname
-                # nachname
+                try:
+                    r_json = await res.json()
+                    # self._raw = parse(r_json)
+                    self._dev_number = r_json["devNumber"]
+                    # anzahlAnlagen
+                    # language
+                    # emailAdresse
+                    # meterReadingVisible
+                    # vorname
+                    # nachname
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
             else:
                 self._is_authenticated = False
                 await self.authenticate(do_update=False, throw401=False)
@@ -2274,10 +2302,27 @@ class MySenecWebPortal:
         async with self.websession.get(a_url) as res:
             res.raise_for_status()
             if res.status == 200:
-                r_json = await res.json()
-                if autodetect_mode:
-                    if "master" in r_json and r_json["master"]:
-                        # we are cool that's a master-system... so we store our counter...
+                try:
+                    r_json = await res.json()
+                    if autodetect_mode:
+                        if "master" in r_json and r_json["master"]:
+                            # we are cool that's a master-system... so we store our counter...
+                            self._serial_number = r_json["steuereinheitnummer"]
+                            self._product_name = r_json["produktName"]
+                            if "zoneId" in r_json:
+                                self._zone_id = r_json["zoneId"]
+                            else:
+                                self._zone_id = "UNKNOWN"
+                            self._master_plant_number = a_plant_number
+                        else:
+                            if not hasattr(self, "_serial_number_slave"):
+                                self._serial_number_slave = []
+                                self._product_name_slave = []
+                            self._serial_number_slave.append(r_json["steuereinheitnummer"])
+                            self._product_name_slave.append(r_json["produktName"])
+                            a_plant_number += 1
+                            await self.update_get_systems(a_plant_number, autodetect_mode)
+                    else:
                         self._serial_number = r_json["steuereinheitnummer"]
                         self._product_name = r_json["produktName"]
                         if "zoneId" in r_json:
@@ -2285,23 +2330,8 @@ class MySenecWebPortal:
                         else:
                             self._zone_id = "UNKNOWN"
                         self._master_plant_number = a_plant_number
-                    else:
-                        if not hasattr(self, "_serial_number_slave"):
-                            self._serial_number_slave = []
-                            self._product_name_slave = []
-                        self._serial_number_slave.append(r_json["steuereinheitnummer"])
-                        self._product_name_slave.append(r_json["produktName"])
-                        a_plant_number += 1
-                        await self.update_get_systems(a_plant_number, autodetect_mode)
-                else:
-                    self._serial_number = r_json["steuereinheitnummer"]
-                    self._product_name = r_json["produktName"]
-                    if "zoneId" in r_json:
-                        self._zone_id = r_json["zoneId"]
-                    else:
-                        self._zone_id = "UNKNOWN"
-                    self._master_plant_number = a_plant_number
-
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
             else:
                 self._is_authenticated = False
                 await self.authenticate(do_update=False, throw401=False)
