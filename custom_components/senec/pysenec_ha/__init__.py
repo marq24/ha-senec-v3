@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 
 import aiohttp
 import logging
@@ -2456,6 +2457,10 @@ class MySenecWebPortal:
         if hasattr(self, "_peakShaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingEndDate"]
 
+    def clear_jar(self):
+        self.websession._cookie_jar.clear()
+
+
 @staticmethod
 def _require_lib_patch() -> bool:
     need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
@@ -2466,6 +2471,7 @@ def _require_lib_patch() -> bool:
 class MySenecCookieJar(aiohttp.CookieJar):
 
     _require_filter_cookies_patch = _require_lib_patch()
+    _last_clear_warning_ts = 0
 
     # Overwriting the default 'filter_cookies' impl - since the original will always return the last stored
     # matching path... [but we need the 'best' path-matching cookie of our jar!]
@@ -2535,7 +2541,14 @@ class MySenecCookieJar(aiohttp.CookieJar):
     # survive the clearing... IMHO nobody should call clear anyhow
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         if predicate is None:
-            _LOGGER.warning(f"CookieJar.clear() have been called without ANY predicates! This would PURGE all cookies (IMHO nobody should do that inside a home assistant integration) - We will keep at least the mein.senec.de cookies! but any other integration might break cause of this call!")
+            # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+            try:
+                if self._last_clear_warning_ts + 86400 < time():
+                    _last_clear_warning_ts = time()
+                    item = traceback.format_stack(limit=2)[0].lstrip()
+                    _LOGGER.warning(f"aiohttp.CookieJar.clear() have been called by {item}\n---\nThis will PURGE all cookies of the current websession [IMHO (marq24) nobody should do that inside an home assistant integration] - We will keep at least the mein.senec.de & app-gateway-prod.senecops.com cookies - but any other integration might break cause of this call!\n---")
+            except:
+                pass
 
             mein_senec = self._get_all_for_domain("mein-senec.de")
             app_gateway = self._get_all_for_domain("app-gateway-prod.senecops.com")
