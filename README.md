@@ -18,13 +18,13 @@ Are you still customer of (IMHO totally overpriced) SENEC.Cloud as electricity p
 that's what I did in october 2023.
 
 If you want to join Tibber (become a customer), you might want to use my personal invitation link. When you use this
-link, Tibber will we grant you and me a bonus of 50,-€ for each of us. This bonus then can be used in the Tibber store
-(not for your power bill) - e.g. to buy a Tibber Bridge. If you are already a Tibber customer and have not used an
+link, Tibber will we grant you and me a bonus of 50,-€ for each of us. This bonus then can be used in the Tibber store (
+not for your power bill) - e.g. to buy a Tibber Bridge. If you are already a Tibber customer and have not used an
 invitation link yet, you can also enter one afterward in the Tibber App.
 
 Please consider [using my personal Tibber invitation link to join Tibber today](https://invite.tibber.com/6o0kqvzf) or
-Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterward in the Tibber
-App - TIA!
+Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterward in the Tibber App -
+TIA!
 
 ---
 
@@ -285,15 +285,10 @@ look into the [current developer documentation section](./DEVELOPER_DOCUMENTATIO
 | [@mchwalisz](https://github.com/mchwalisz)   | This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec) since with latest updates of the firmware introduced by SENEC the original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
 
 [hacs]: https://github.com/hacs/integration
-
 [hacsbadge]: https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
 
-[paypal]: https://paypal.me/marq24
-
 [buymecoffee]: https://www.buymeacoffee.com/marquardt24
-
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a-coffee-blue.svg?style=for-the-badge&logo=buymeacoffee&logoColor=ccc
 
 [paypal]: https://paypal.me/marq24
-
 [paypalbadge]: https://img.shields.io/badge/paypal-me-blue.svg?style=for-the-badge&logo=paypal&logoColor=ccc
