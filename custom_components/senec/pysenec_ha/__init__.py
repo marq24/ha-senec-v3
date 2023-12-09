@@ -2468,23 +2468,22 @@ class MySenecWebPortal:
 
     @property
     def gridexport_limit(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "einspeisebegrenzungKwpInPercent" in self._peak_shaving_entities:
+        if hasattr(self, "_peak_shaving_entities") and "einspeisebegrenzungKwpInPercent" in self._peak_shaving_entities:
             return self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"]
 
     @property
     def peakshaving_mode(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "peakShavingMode" in self._peak_shaving_entities:
+        if hasattr(self, "_peak_shaving_entities") and "peakShavingMode" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingMode"]
 
     @property
     def peakshaving_capacitylimit(self) -> int:
-        if hasattr(self,
-                   "_peakShaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
+        if hasattr(self,"_peak_shaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingCapacityLimitInPercent"]
 
     @property
     def peakshaving_enddate(self) -> int:
-        if hasattr(self, "_peakShaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
+        if hasattr(self, "_peak_shaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingEndDate"]
 
     def clear_jar(self):
