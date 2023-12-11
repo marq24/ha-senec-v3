@@ -112,3 +112,7 @@ dmypy.json
 
 # virtual environment
 .venv
+
+# Home Assistant configuration
+config/*
+!config/configuration.yaml

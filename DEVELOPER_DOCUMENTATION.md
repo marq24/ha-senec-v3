@@ -1,10 +1,10 @@
 # Development Documentation
 This document should give an overview regarding the used APIs and the possible data that can be queried.
 
-## Data that can be accessed in the local network from a Senec V3 device 
+## Data that can be accessed in the local network from a Senec V3 device
 Basis for this documentation is the firmware version 0826.
 
-The following information are provided by the device. Since no open acceccible API documentation exists, the following description is an assumption. 
+The following information are provided by the device. Since no open acceccible API documentation exists, the following description is an assumption.
 - The following information can be accessed sending a post request with a JSON-Payload to https://[IP of the senec device]/lala.cgi
 - As response a JSON String is returned
 - Please note: Depending on the firmware version the Request has to be via http or https. (https starting with the firmware version 825)
@@ -543,13 +543,13 @@ Information represented by the BAT1OBJ1-Object:
 |TEMP4|0||
 |TEMP5|0||
 |U_DC|54.85300064086914||
-  
+
   ### Category BAT1OBJ2
   Information represented by the BAT1OBJ2-Object:
    "BAT1OBJ2":{
       "OBJECT_NOT_FOUND":""
    },
-  
+
   ### Category BAT1OBJ3
   Information represented by the BAT1OBJ3-Object:
    "BAT1OBJ3":{
@@ -656,7 +656,7 @@ Information represented by the CASC-Object:
 |SOC|[100.0, 100.0, 100.0, 100.0, 100.0, 100.0]||
 |STATE|[0, 0, 0, 0, 0, 0]||
 |TARGET|[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]||
-  
+
 ### Category DISPLAY
 Returns an empty object
 
@@ -1049,7 +1049,7 @@ _Response_
 ```JSON
 
 {
-    "einspeisebegrenzungKwpInPercent": 100, #export limit in kwh in percent 
+    "einspeisebegrenzungKwpInPercent": 100, #export limit in kwh in percent
     "peakShavingMode": "DEACTIVATED", #Current mode DEACTIVATED, MANUAL, AUTO
     "peakShavingCapacityLimitInPercent": 0, #Battery capacity limit in percent
     "peakShavingLocalEndTime": [
@@ -1087,3 +1087,14 @@ To set the changed configuration call ("GET") the following URL and set the resp
 - Time of the day on which the capacity limitation should switch off again.
 
 
+## Test your code modification
+
+This custom component is based on [integration_blueprint template](https://github.com/ludeeus/integration_blueprint).
+
+It comes with development environment in a container, easy to launch
+if you use Visual Studio Code. With this container you will have a stand alone
+Home Assistant instance running and already configured with the included
+[`configuration.yaml`](./config/configuration.yaml)
+file.
+
+Inside the devcontainer run "scripts/develop" to start HA and test out your new integration. Use "Home Assistant: Attach Local" to attach debugger.
