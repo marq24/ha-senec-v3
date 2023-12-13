@@ -475,22 +475,37 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
                 # host did not change...
                 return self._update_options()
 
-        dataSchema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME)),
-                ): str,
-                vol.Required(
-                    CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
-                ): str,  # pylint: disable=line-too-long
-                vol.Required(
-                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
-                ): int,  # pylint: disable=line-too-long
-                vol.Required(
-                    CONF_IGNORE_SYSTEM_STATE, default=self.options.get(CONF_IGNORE_SYSTEM_STATE, self.data.get(CONF_IGNORE_SYSTEM_STATE, False)),
-                ): bool,  # pylint: disable=line-too-long
-            }
-        )
+        if CONF_TYPE in self.data and self.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
+            dataSchema = vol.Schema(
+                {
+                    vol.Required(
+                        CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME)),
+                    ): str,
+                    vol.Required(
+                        CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
+                    ): str,  # pylint: disable=line-too-long
+                    vol.Required(
+                        CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                    ): int
+                }
+            )
+        else:
+            dataSchema = vol.Schema(
+                {
+                    vol.Required(
+                        CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME)),
+                    ): str,
+                    vol.Required(
+                        CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
+                    ): str,  # pylint: disable=line-too-long
+                    vol.Required(
+                        CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                    ): int,  # pylint: disable=line-too-long
+                    vol.Required(
+                        CONF_IGNORE_SYSTEM_STATE, default=self.options.get(CONF_IGNORE_SYSTEM_STATE, self.data.get(CONF_IGNORE_SYSTEM_STATE, False)),
+                    ): bool,  # pylint: disable=line-too-long
+                }
+            )
         return self.async_show_form(
             step_id="system",
             data_schema=dataSchema,

@@ -10,7 +10,8 @@
         "data": {
           "name": "[%key:common::config_flow::data::name%]",
           "host": "[%key:common::config_flow::data::host%]",
-          "scan_interval": "[%key:common::config_flow::data::scan_interval%]"
+          "scan_interval": "[%key:common::config_flow::data::scan_interval%]",
+          "ignore_system_state": "[%key:common::config_flow::data::ignore_system_state%]"
         }
       },
       "websetup": {
