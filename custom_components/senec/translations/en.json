@@ -82,7 +82,8 @@
         "data": {
           "name": "Display name",
           "host": "IP or hostname of the SENEC.Home V3 System OR the Inverter",
-          "scan_interval": "Polling Interval in seconds"
+          "scan_interval": "Polling Interval in seconds",
+          "ignore_system_state": "The values for the battery charge/discharge sensors should not take the system status into account"
         }
       },
       "websetup": {

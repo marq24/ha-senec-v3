@@ -64,6 +64,7 @@ CONF_DEV_TYPE_INT: Final = "dtype_int"
 CONF_USE_HTTPS: Final = "use_https"
 CONF_SUPPORT_BDC: Final = "has_bdc_support"
 CONF_DEV_MASTER_NUM: Final = "master_plant_number"
+CONF_IGNORE_SYSTEM_STATE: Final = "ignore_system_state"
 
 CONF_DEV_TYPE: Final = "dtype"
 CONF_DEV_MODEL: Final = "dname"
@@ -95,6 +96,7 @@ QUERY_FANDATA_KEY = "query_fan_data"
 QUERY_WALLBOX_KEY = "query_wallbox_data"
 QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
+IGNORE_SYSTEM_STATE_KEY = CONF_IGNORE_SYSTEM_STATE
 
 # Peak Shaving Options
 PEAK_SHAVING_OPTIONS = ["deactivated", "manual", "auto"]

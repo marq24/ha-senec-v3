@@ -13,7 +13,6 @@ from packaging import version
 
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
-from aiohttp.abc import ClearCookiePredicate
 from http.cookies import BaseCookie, SimpleCookie, Morsel
 from aiohttp import ClientResponseError, ClientConnectorError
 from aiohttp.helpers import is_ip_address
@@ -26,6 +25,7 @@ from custom_components.senec.const import (
     QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
+    IGNORE_SYSTEM_STATE_KEY,
 )
 
 from custom_components.senec.pysenec_ha.util import parse
@@ -60,7 +60,7 @@ from custom_components.senec.pysenec_ha.constants import (
 # 14: "CHARGE",
 # 43: "CAPACITY TEST: CHARGE",
 # 71: "OFFPEAK-CHARGE",
-BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 23, 24, 25, 33, 43, 71}
+SYSTEM_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 23, 24, 25, 33, 43, 71}
 
 # 16: "DISCHARGE",
 # 17: "PV + DISCHARGE",
@@ -68,7 +68,7 @@ BAT_STATUS_CHARGE = {4, 5, 8, 10, 11, 12, 14, 23, 24, 25, 33, 43, 71}
 # 21: "OWN CONSUMPTION"
 # 44: "CAPACITY TEST: DISCHARGE",
 # 97: "SAFETY DISCHARGE",
-BAT_STATUS_DISCHARGE = {16, 17, 18, 21, 29, 44, 97}
+SYSTEM_STATUS_DISCHARGE = {16, 17, 18, 21, 29, 44, 97}
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ _LOGGER = logging.getLogger(__name__)
 class Senec:
     """Senec Home Battery Sensor"""
 
-    def __init__(self, host, use_https, websession, lang: str = "en", options: dict = None):
+    def __init__(self, host, use_https, web_session, lang: str = "en", options: dict = None):
         _LOGGER.info(f"restarting Senec lala.cgi integration... for host: '{host}' with options: {options}")
         self._lang = lang
         self._QUERY_STATS = True
@@ -95,8 +95,15 @@ class Senec:
         else:
             self._QUERY_FANDATA = False
 
+        if options is not None and IGNORE_SYSTEM_STATE_KEY in options:
+            self._IGNORE_SYSTEM_STATUS = options[IGNORE_SYSTEM_STATE_KEY]
+        else:
+            self._IGNORE_SYSTEM_STATUS = False
+
+
         self.host = host
-        self.websession: aiohttp.websession = websession
+        self.web_session: aiohttp.websession = web_session
+
         if use_https:
             self.url = f"https://{host}/lala.cgi"
         else:
@@ -167,7 +174,7 @@ class Senec:
             SENEC_SECTION_STATISTIC: {}
         }
 
-        async with self.websession.post(self.url, json=form, ssl=False) as res:
+        async with self.web_session.post(self.url, json=form, ssl=False) as res:
             try:
                 res.raise_for_status()
                 self._raw_version = parse(await res.json())
@@ -242,7 +249,7 @@ class Senec:
         """
         value = self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_POWER"]
         if value > 0:
-            if self.is_battery_state_charging():
+            if self._IGNORE_SYSTEM_STATUS or self.is_system_state_charging():
                 return value
         return 0
 
@@ -253,7 +260,7 @@ class Senec:
         """
         value = self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_POWER"]
         if value < 0:
-            if self.is_battery_state_discharging():
+            if self._IGNORE_SYSTEM_STATUS or self.is_system_state_discharging():
                 return abs(value)
         return 0
 
@@ -492,11 +499,11 @@ class Senec:
         bat_percent_is_zero = self._raw[SENEC_SECTION_ENERGY]["GUI_BAT_DATA_FUEL_CHARGE"] == 0
         return bat_state_is_empty or bat_percent_is_zero
 
-    def is_battery_state_charging(self) -> bool:
-        return self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"] in BAT_STATUS_CHARGE
+    def is_system_state_charging(self) -> bool:
+        return self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"] in SYSTEM_STATUS_CHARGE
 
-    def is_battery_state_discharging(self) -> bool:
-        return self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"] in BAT_STATUS_DISCHARGE
+    def is_system_state_discharging(self) -> bool:
+        return self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"] in SYSTEM_STATUS_DISCHARGE
 
     @property
     def bms_cell_temp_a1(self) -> float:
@@ -1492,7 +1499,7 @@ class Senec:
                 "SET_ICMAX": ""}
             })
 
-        async with self.websession.post(self.url, json=form, ssl=False) as res:
+        async with self.web_session.post(self.url, json=form, ssl=False) as res:
             try:
                 res.raise_for_status()
                 self._raw = parse(await res.json())
@@ -1512,7 +1519,7 @@ class Senec:
             }
         }
 
-        async with self.websession.post(self.url, json=form, ssl=False) as res:
+        async with self.web_session.post(self.url, json=form, ssl=False) as res:
             try:
                 res.raise_for_status()
                 self._energy_raw = parse(await res.json())
@@ -1605,7 +1612,7 @@ class Senec:
         await self.write_senec_v31(data)
 
     async def write_senec_v31(self, data):
-        async with self.websession.post(self.url, json=data, ssl=False) as res:
+        async with self.web_session.post(self.url, json=data, ssl=False) as res:
             try:
                 res.raise_for_status()
                 self._raw_post = parse(await res.json())
@@ -1616,9 +1623,9 @@ class Senec:
 class Inverter:
     """Senec Home Inverter addon"""
 
-    def __init__(self, host, websession):
+    def __init__(self, host, web_session):
         self.host = host
-        self.websession: aiohttp.websession = websession
+        self.web_session: aiohttp.websession = web_session
         self.url1 = f"http://{host}/all.xml"
         self.url2 = f"http://{host}/measurements.xml"
         self.url3 = f"http://{host}/versions.xml"
@@ -1629,7 +1636,7 @@ class Inverter:
         await self.read_inverter_version()
 
     async def read_inverter_version(self):
-        async with self.websession.get(self.url3) as res:
+        async with self.web_session.get(self.url3) as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw_version = xmltodict.parse(txt)
@@ -1662,7 +1669,7 @@ class Inverter:
                 await self.read_inverter_with_retry(retry=False)
 
     async def read_inverter(self):
-        async with self.websession.get(f"{self.url2}?{datetime.now()}") as res:
+        async with self.web_session.get(f"{self.url2}?{datetime.now()}") as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
@@ -1880,7 +1887,7 @@ class Inverter:
 
 class MySenecWebPortal:
 
-    def __init__(self, user, pwd, websession, master_plant_number: int = 0, options: dict = None):
+    def __init__(self, user, pwd, web_session, master_plant_number: int = 0, options: dict = None):
         _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' with options: {options}")
         # Check if spare capacity is in options
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
@@ -1896,14 +1903,15 @@ class MySenecWebPortal:
         # Variable to save latest update time for peak shaving
         self._QUERY_PEAK_SHAVING_TS = 0
 
-        self.websession: aiohttp.websession = websession
+        self.web_session: aiohttp.websession = web_session
 
-        loop = aiohttp.helpers.get_running_loop(websession.loop)
-        senec_jar = MySenecCookieJar(loop=loop)
-        if hasattr(websession, "_cookie_jar"):
-            old_jar = getattr(websession, "_cookie_jar")
-            senec_jar.update_cookies(old_jar._host_only_cookies)
-        setattr(self.websession, "_cookie_jar", senec_jar)
+        loop = aiohttp.helpers.get_running_loop(web_session.loop)
+        if _require_lib_patch:
+            senec_jar = MySenecCookieJar(loop=loop)
+            if hasattr(web_session, "_cookie_jar"):
+                old_jar = getattr(web_session, "_cookie_jar")
+                senec_jar.update_cookies(old_jar._host_only_cookies)
+            setattr(self.web_session, "_cookie_jar", senec_jar)
 
         self._master_plant_number = master_plant_number
 
@@ -1959,18 +1967,19 @@ class MySenecWebPortal:
         self._peak_shaving_entities = {}
 
     def check_cookie_jar_type(self):
-        if hasattr(self.websession, "_cookie_jar"):
-            old_jar = getattr(self.websession, "_cookie_jar")
-            if type(old_jar) is not MySenecCookieJar:
-                _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
-                loop = aiohttp.helpers.get_running_loop(self.websession.loop)
-                new_senec_jar = MySenecCookieJar(loop=loop);
-                new_senec_jar.update_cookies(old_jar._host_only_cookies)
-                setattr(self.websession, "_cookie_jar", new_senec_jar)
+        if _require_lib_patch:
+            if hasattr(self.web_session, "_cookie_jar"):
+                old_jar = getattr(self.web_session, "_cookie_jar")
+                if type(old_jar) is not MySenecCookieJar:
+                    _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
+                    loop = aiohttp.helpers.get_running_loop(self.web_session.loop)
+                    new_senec_jar = MySenecCookieJar(loop=loop);
+                    new_senec_jar.update_cookies(old_jar._host_only_cookies)
+                    setattr(self.web_session, "_cookie_jar", new_senec_jar)
 
     def purge_senec_cookies(self):
-        if hasattr(self.websession, "_cookie_jar"):
-            the_jar = getattr(self.websession, "_cookie_jar")
+        if hasattr(self.web_session, "_cookie_jar"):
+            the_jar = getattr(self.web_session, "_cookie_jar")
             the_jar.clear_domain("mein-senec.de")
 
     async def authenticate_classic(self, do_update: bool):
@@ -1978,7 +1987,7 @@ class MySenecWebPortal:
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.websession.post(self._SENEC_CLASSIC_AUTH_URL, json=auth_payload) as res:
+        async with self.web_session.post(self._SENEC_CLASSIC_AUTH_URL, json=auth_payload) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -2003,7 +2012,7 @@ class MySenecWebPortal:
 
     async def get_system_overview_classic(self):
         headers = {"Authorization": self._token}
-        async with self.websession.get(self._SENEC_CLASSIC_API_OVERVIEW_URL, headers=headers) as res:
+        async with self.web_session.get(self._SENEC_CLASSIC_API_OVERVIEW_URL, headers=headers) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -2021,7 +2030,7 @@ class MySenecWebPortal:
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.websession.post(self._SENEC_AUTH_URL, data=auth_payload, max_redirects=20) as res:
+        async with self.web_session.post(self._SENEC_AUTH_URL, data=auth_payload, max_redirects=20) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2069,7 +2078,7 @@ class MySenecWebPortal:
     async def update_peak_shaving(self):
         _LOGGER.info("***** update_peak_shaving(self) ********")
         a_url = f"{self._SENEC_API_GET_PEAK_SHAVING}{self._master_plant_number}"
-        async with self.websession.get(a_url) as res:
+        async with self.web_session.get(a_url) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2102,7 +2111,7 @@ class MySenecWebPortal:
         # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
         a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._master_plant_number}&mode={new_peak_shaving['mode'].upper()}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
 
-        async with self.websession.post(a_url, ssl=False) as res:
+        async with self.web_session.post(a_url, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2128,7 +2137,7 @@ class MySenecWebPortal:
     async def update_spare_capacity(self):
         _LOGGER.info("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
-        async with self.websession.get(a_url) as res:
+        async with self.web_session.get(a_url) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2151,7 +2160,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** set_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
 
-        async with self.websession.post(a_url, ssl=False) as res:
+        async with self.web_session.post(a_url, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2175,7 +2184,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_now_kW_stats(self) ********")
         # grab NOW and TODAY stats
         a_url = f"{self._SENEC_API_OVERVIEW_URL}" % str(self._master_plant_number)
-        async with self.websession.get(a_url) as res:
+        async with self.web_session.get(a_url) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2230,7 +2239,7 @@ class MySenecWebPortal:
         a_url = f"{self._SENEC_API_URL_END}" % str(self._master_plant_number)
         for key in self._API_KEYS:
             api_url = self._SENEC_API_URL_START + key + a_url
-            async with self.websession.get(api_url) as res:
+            async with self.web_session.get(api_url) as res:
                 try:
                     res.raise_for_status()
                     if res.status == 200:
@@ -2276,7 +2285,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
-        async with self.websession.get(self._SENEC_API_GET_CUSTOMER_URL) as res:
+        async with self.web_session.get(self._SENEC_API_GET_CUSTOMER_URL) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -2299,7 +2308,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_get_systems(self) ********")
 
         a_url = f"{self._SENEC_API_GET_SYSTEM_URL}" % str(a_plant_number)
-        async with self.websession.get(a_url) as res:
+        async with self.web_session.get(a_url) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -2487,10 +2496,11 @@ class MySenecWebPortal:
             return self._peak_shaving_entities["peakShavingEndDate"]
 
     def clear_jar(self):
-        self.websession._cookie_jar.clear()
+        self.web_session._cookie_jar.clear()
 
 
 @staticmethod
+@property
 def _require_lib_patch() -> bool:
     need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
     if need_patch:
@@ -2499,15 +2509,9 @@ def _require_lib_patch() -> bool:
 
 class MySenecCookieJar(aiohttp.CookieJar):
 
-    _require_filter_cookies_patch = _require_lib_patch()
-    _last_clear_warning_ts = 0
-
     # Overwriting the default 'filter_cookies' impl - since the original will always return the last stored
     # matching path... [but we need the 'best' path-matching cookie of our jar!]
     def filter_cookies(self, request_url: URL = URL()) -> Union["BaseCookie[str]", "SimpleCookie[str]"]:
-        if not self._require_filter_cookies_patch:
-            return super().filter_cookies(request_url)
-
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         request_url = URL(request_url)
@@ -2553,43 +2557,3 @@ class MySenecCookieJar(aiohttp.CookieJar):
             filtered[name] = mrsl_val
 
         return filtered
-
-    def _get_all_for_domain(self, domain):
-        filtered = []
-        for cookie in self._cookies.keys():
-            a_domain = cookie[0]
-            if a_domain == domain:
-                filtered.append(self._cookies[cookie])
-        return filtered
-
-    def _put_all(self, cookies_to_add):
-        for cookies in cookies_to_add:
-            self.update_cookies(cookies)
-
-    # Overwriting the default 'clear' impl - make sure that our senec cookies will
-    # survive the clearing... IMHO nobody should call clear anyhow
-    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
-        if predicate is None:
-            # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-            try:
-                if self._last_clear_warning_ts + 86400 < time():
-                    _last_clear_warning_ts = time()
-                    item = traceback.format_stack(limit=2)[0].lstrip()
-                    _LOGGER.warning(f"aiohttp.CookieJar.clear() have been called by {item}\n---\nThis will PURGE all cookies of the current websession [IMHO (marq24) nobody should do that inside an home assistant integration] - We will keep at least the mein.senec.de & app-gateway-prod.senecops.com cookies - but any other integration might break cause of this call!\n---")
-            except:
-                pass
-
-            mein_senec = self._get_all_for_domain("mein-senec.de")
-            app_gateway = self._get_all_for_domain("app-gateway-prod.senecops.com")
-
-            super().clear(predicate)
-
-            if len(mein_senec) > 0:
-                self._put_all(mein_senec)
-            if len(app_gateway) > 0:
-                self._put_all(app_gateway)
-
-            return None
-        else:
-            super().clear(predicate)
-            return None

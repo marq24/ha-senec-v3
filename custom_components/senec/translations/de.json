@@ -57,7 +57,8 @@
         "data": {
           "name": "Anzeige Name",
           "host": "IP oder Hostname des SENEC.Home V3 Systems bzw des Inverters",
-          "scan_interval": "Aktualisierungsintervall in Sekunden"
+          "scan_interval": "Aktualisierungsintervall in Sekunden",
+          "ignore_system_state": "Die Werte für die Batterie-LADE/ENTLADE Sensoren sollen den System Status nicht berücksichtigen"
         }
       },
       "websetup": {

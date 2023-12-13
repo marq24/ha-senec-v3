@@ -10,6 +10,7 @@ from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_N
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers import entity_registry, event
@@ -51,6 +52,7 @@ from .const import (
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
+    CONF_IGNORE_SYSTEM_STATE,
 
     MAIN_SENSOR_TYPES,
     MAIN_BIN_SENSOR_TYPES,
@@ -59,6 +61,7 @@ from .const import (
     QUERY_WALLBOX_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
+    IGNORE_SYSTEM_STATE_KEY,
 
     SERVICE_SET_PEAKSHAVING,
 )
@@ -85,9 +88,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                                                                                      DEFAULT_SCAN_INTERVAL_SENECV2)))
 
     _LOGGER.info("Starting " + str(config_entry.data.get(CONF_NAME)) + " with interval: " + str(SCAN_INTERVAL))
-    session = async_create_clientsession(hass)
 
-    coordinator = SenecDataUpdateCoordinator(hass, session, config_entry)
+    coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     await coordinator.async_refresh()
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady
@@ -136,13 +138,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     """Define an object to hold Senec data."""
 
-    def __init__(self, hass: HomeAssistant, session, config_entry):
+    def __init__(self, hass: HomeAssistant, config_entry):
         """Initialize."""
         # Build-In INVERTER
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
             # host can be changed in the options...
             self._host = config_entry.options.get(CONF_HOST, config_entry.data[CONF_HOST])
-            self.senec = Inverter(self._host, websession=session)
+            self.senec = Inverter(self._host, web_session=async_get_clientsession(hass))
 
         # WEB-API Version...
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
@@ -192,7 +194,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                             _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
                             opt[QUERY_PEAK_SHAVING_KEY] = True
 
-            self.senec = MySenecWebPortal(user=user, pwd=pwd, websession=session,
+            self.senec = MySenecWebPortal(user=user, pwd=pwd, web_session=async_create_clientsession(hass),
                                           master_plant_number=a_master_plant_number,
                                           options=opt)
         # lala.cgi Version...
@@ -204,9 +206,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             else:
                 self._use_https = False
 
+            opt = {
+                IGNORE_SYSTEM_STATE_KEY: config_entry.options.get(CONF_IGNORE_SYSTEM_STATE, False),
+                QUERY_WALLBOX_KEY: False,
+                QUERY_BMS_KEY: False,
+                QUERY_FANDATA_KEY: False
+            }
             # check if any of the wallbox-sensors is enabled... and only THEN
             # we will include the 'WALLBOX' in our POST to the lala.cgi
-            opt = {QUERY_WALLBOX_KEY: False, QUERY_BMS_KEY: False, QUERY_FANDATA_KEY: False}
             if hass is not None and config_entry.title is not None:
                 registry = entity_registry.async_get(hass)
                 if registry is not None:
@@ -250,7 +257,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                 _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
                                 opt[QUERY_FANDATA_KEY] = True
 
-            self.senec = Senec(host=self._host, use_https=self._use_https, websession=session,
+            self.senec = Senec(host=self._host, use_https=self._use_https, web_session=async_get_clientsession(hass),
                                lang=hass.config.language.lower(), options=opt)
 
         self.name = config_entry.title

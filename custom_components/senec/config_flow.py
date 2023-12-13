@@ -55,6 +55,7 @@ from .const import (
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
+    CONF_IGNORE_SYSTEM_STATE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -111,9 +112,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_connection_senec(self, host, use_https):
         """Check if we can connect to the Senec device."""
         self._errors = {}
-        websession = self.hass.helpers.aiohttp_client.async_create_clientsession(auto_cleanup=False)
+        web_session = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
-            senec_client = Senec(host=host, use_https=use_https, websession=websession)
+            senec_client = Senec(host=host, use_https=use_https, web_session=web_session)
             await senec_client.update_version()
             self._use_https = use_https
             self._device_type_internal = senec_client.device_type_internal
@@ -137,16 +138,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "Could not connect to SENEC.Home (using https? %s) at %s, check host ip address",
                 use_https, host,
             )
-        finally:
-            websession.detach()
         return False
 
     async def _test_connection_inverter(self, host):
         """Check if we can connect to the Senec device."""
         self._errors = {}
-        websession = self.hass.helpers.aiohttp_client.async_create_clientsession(auto_cleanup=False)
+        web_session = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
-            inverter_client = Inverter(host=host, websession=websession)
+            inverter_client = Inverter(host=host, web_session=web_session)
             await inverter_client.update_version()
             self._support_bdc = inverter_client.has_bdc
 
@@ -167,16 +166,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "Could not connect to build-in Inverter device at %s, check host ip address",
                 host,
             )
-        finally:
-            websession.detach()
         return False
 
     async def _test_connection_webapi(self, user: str, pwd: str, master_plant:int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
-        websession = self.hass.helpers.aiohttp_client.async_create_clientsession(auto_cleanup=False)
+        web_session = self.hass.helpers.aiohttp_client.async_create_clientsession(auto_cleanup=False)
         try:
-            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, websession=websession, master_plant_number=master_plant)
+            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session, master_plant_number=master_plant)
             await senec_web_client.authenticate(do_update=False, throw401=True)
             if senec_web_client._is_authenticated:
                 await senec_web_client.update_context()
@@ -199,7 +196,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._errors[CONF_PASSWORD] = "login_failed"
             _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials (exception)")
         finally:
-            websession.detach()
+            web_session.detach()
         return False
 
     async def async_step_user(self, user_input=None):
@@ -489,6 +486,9 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
                 ): int,  # pylint: disable=line-too-long
+                vol.Required(
+                    CONF_IGNORE_SYSTEM_STATE, default=self.options.get(CONF_IGNORE_SYSTEM_STATE, self.data.get(CONF_IGNORE_SYSTEM_STATE, False)),
+                ): bool,  # pylint: disable=line-too-long
             }
         )
         return self.async_show_form(
