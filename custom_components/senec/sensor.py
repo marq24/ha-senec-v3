@@ -97,10 +97,18 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
     @property
     def state(self):
         """Return the current state."""
-        sensor = self.entity_description.key
-        value = getattr(self.coordinator.senec, sensor)
+        if self.entity_description.array_key is not None:
+            #_LOGGER.debug(f"{self.entity_description.array_key} {self.entity_description.array_pos}")
+            #value = 0
+            value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos]
+        else:
+            value = getattr(self.coordinator.senec, self.entity_description.key)
+
         # _LOGGER.debug( str(sensor)+' '+ str(type(value)) +' '+str(value))
         if isinstance(value, bool):
+            return value
+
+        if isinstance(value, int):
             return value
 
         # always try to parse sensor value as float

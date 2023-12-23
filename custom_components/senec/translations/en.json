@@ -119,33 +119,74 @@
     }
   },
   "entity": {
-    "sensor": {
-      "gridexport_limit": {
-        "name": "Grid Export limit"
-      },
-      "peakshaving_mode": {
-        "name": "Peak Shaving Mode",
-        "state": {
-          "deactivated": "Deactivated",
-          "manual": "Manual",
-          "auto": "Automatic"
-        }
-      },
-      "peakshaving_capacitylimit": {
-        "name": "Peak Shaving battery capacity limit"
-      },
-      "peakshaving_enddate": {
-        "name": "Peak Shaving end time"
-      },
-      "spare_capacity": {
-        "name": "Spare Capacity"
-      },
+    "switch": {
       "safe_charge": {
         "name": "Load Battery"
       },
       "li_storage_mode": {
         "name": "Lithium Storage Mode - PV OFF"
       },
+      "sockets_1_force_on": {
+        "name": "Socket1 permanent on"
+      },
+      "sockets_2_force_on": {
+        "name": "Socket2 permanent on"
+      },
+      "sockets_1_enable": {
+        "name": "Socket1 automatic enable"
+      },
+      "sockets_2_enable": {
+        "name": "Socket2 automatic enable"
+      },
+      "sockets_1_use_time": {
+        "name": "Socket1 use timer"
+      },
+      "sockets_2_use_time": {
+        "name": "Socket2 use timer"
+      }
+    },
+    "number": {
+      "spare_capacity": {
+        "name": "Spare Capacity"
+      },
+      "sockets_1_lower_limit": {
+        "name": "Socket1 lower limit (W)"
+      },
+      "sockets_2_lower_limit": {
+        "name": "Socket2 lower limit (W)"
+      },
+      "sockets_1_upper_limit": {
+        "name": "Socket1 upper limit (W)"
+      },
+      "sockets_2_upper_limit": {
+        "name": "Socket2 upper limit (W)"
+      },
+      "sockets_1_time_limit": {
+        "name": "Socket1 time limit"
+      },
+      "sockets_2_time_limit": {
+        "name": "Socket2 time limit"
+      },
+      "sockets_1_switch_on_hour": {
+        "name": "Socket1 switch on hour"
+      },
+      "sockets_2_switch_on_hour": {
+        "name": "Socket2 switch on hour"
+      },
+      "sockets_1_switch_on_minute": {
+        "name": "Socket1 switch on minute"
+      },
+      "sockets_2_switch_on_minute": {
+        "name": "Socket2 switch on minute"
+      },
+      "sockets_1_power_on_time": {
+        "name": "Socket1 power on time"
+      },
+      "sockets_2_power_on_time": {
+        "name": "Socket2 power on time"
+      }
+    },
+    "binary_sensor": {
       "wallbox_l1_used": {
         "name": "Wallbox L1 used"
       },
@@ -187,6 +228,37 @@
       },
       "fan_inv_hv": {
         "name": "Fan HV-Inverter"
+      },
+      "sockets_1_already_switched": {
+        "name": "Socket1 already switched today"
+      },
+      "sockets_2_already_switched": {
+        "name": "Socket2 already switched today"
+      },
+      "sockets_1_power_on": {
+        "name": "Socket1 power on"
+      },
+      "sockets_2_power_on": {
+        "name": "Socket2 power on"
+      }
+    },
+    "sensor": {
+      "gridexport_limit": {
+        "name": "Grid Export limit"
+      },
+      "peakshaving_mode": {
+        "name": "Peak Shaving Mode",
+        "state": {
+          "deactivated": "Deactivated",
+          "manual": "Manual",
+          "auto": "Automatic"
+        }
+      },
+      "peakshaving_capacitylimit": {
+        "name": "Peak Shaving battery capacity limit"
+      },
+      "peakshaving_enddate": {
+        "name": "Peak Shaving end time"
       },
       "consumption_total": {
         "name": "House consumed"
@@ -838,6 +910,18 @@
       },
       "wallbox_4_set_icmax": {
         "name": "Wallbox IV set ICMAX"
+      },
+      "sockets_1_priority": {
+        "name": "Socket1 priority"
+      },
+      "sockets_2_priority": {
+        "name": "Socket2 priority"
+      },
+      "sockets_1_time_rem": {
+        "name": "Socket1 time remaining (min)"
+      },
+      "sockets_2_time_rem": {
+        "name": "Socket2 time remaining (min)"
       }
     }
   }

@@ -23,6 +23,7 @@ from custom_components.senec.const import (
     QUERY_BMS_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
+    QUERY_SOCKETS_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
@@ -43,6 +44,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_PV1,
     SENEC_SECTION_PM1OBJ1,
     SENEC_SECTION_PM1OBJ2,
+    SENEC_SECTION_SOCKETS,
     SENEC_SECTION_WALLBOX,
 
     SENEC_SECTION_FACTORY,
@@ -95,11 +97,15 @@ class Senec:
         else:
             self._QUERY_FANDATA = False
 
+        if options is not None and QUERY_SOCKETS_KEY in options:
+            self._QUERY_SOCKETSDATA = options[QUERY_SOCKETS_KEY]
+        else:
+            self._QUERY_SOCKETSDATA = False
+
         if options is not None and IGNORE_SYSTEM_STATE_KEY in options:
             self._IGNORE_SYSTEM_STATUS = options[IGNORE_SYSTEM_STATE_KEY]
         else:
             self._IGNORE_SYSTEM_STATUS = False
-
 
         self.host = host
         self.web_session: aiohttp.websession = web_session
@@ -112,8 +118,19 @@ class Senec:
         # evil HACK - since SENEC does not switch the property fast enough...
         # so for five seconds after the switch take place we will return
         # the 'faked' value
-        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS = 0
-        self._SAFE_CHARGE_RUNNING_OVERWRITE_TS = 0
+        self._OVERWRITES = {
+            "LI_STORAGE_MODE_RUNNING": { "TS": 0, "VALUE": False},
+            "SAFE_CHARGE_RUNNING": { "TS": 0, "VALUE": False},
+            "SOCKETS_FORCE_ON": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_ENABLE": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_USE_TIME": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_LOWER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_UPPER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_POWER_ON_TIME": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_SWITCH_ON_HOUR": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_SWITCH_ON_MINUTE": { "TS": 0, "VALUE": [0, 0]},
+            "SOCKETS_TIME_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+        }
 
     @property
     def device_id(self) -> str:
@@ -1389,6 +1406,26 @@ class Senec:
             SENEC_SECTION_FAN_SPEED]:
             return self._raw[SENEC_SECTION_FAN_SPEED]["INV_HV"] == 1
 
+    @property
+    def sockets_already_switched(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "ALREADY_SWITCHED" in self._raw[SENEC_SECTION_SOCKETS]:
+            return self._raw[SENEC_SECTION_SOCKETS]["ALREADY_SWITCHED"]
+
+    @property
+    def sockets_power_on(self) -> [float]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "POWER_ON" in self._raw[SENEC_SECTION_SOCKETS]:
+            return self._raw[SENEC_SECTION_SOCKETS]["POWER_ON"]
+
+    @property
+    def sockets_priority(self) -> [float]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "PRIORITY" in self._raw[SENEC_SECTION_SOCKETS]:
+            return self._raw[SENEC_SECTION_SOCKETS]["PRIORITY"]
+
+    @property
+    def sockets_time_rem(self) -> [float]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "TIME_REM" in self._raw[SENEC_SECTION_SOCKETS]:
+            return self._raw[SENEC_SECTION_SOCKETS]["TIME_REM"]
+
     async def update(self):
         await self.read_senec_lala_with_retry(retry=True)
 
@@ -1469,6 +1506,9 @@ class Senec:
         if self._QUERY_FANDATA:
             form.update({SENEC_SECTION_FAN_SPEED: {}})
 
+        if self._QUERY_SOCKETSDATA:
+            form.update({SENEC_SECTION_SOCKETS: {}})
+
         if self._QUERY_BMS:
             form.update({SENEC_SECTION_BMS: {
                 "CELL_TEMPERATURES_MODULE_A": "",
@@ -1526,7 +1566,6 @@ class Senec:
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
-
     ## LADEN...
     ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
 
@@ -1552,14 +1591,14 @@ class Senec:
         if hasattr(self, '_raw'):
             # if it just has been switched on/off we provide a FAKE value for 5 sec...
             # since senec unit do not react 'instant' on some requests...
-            if self._SAFE_CHARGE_RUNNING_OVERWRITE_TS + 5 > time():
-                return self._SAFE_CHARGE_RUNNING_OVERWRITE_VALUE
+            if self._OVERWRITES["SAFE_CHARGE_RUNNING"]["TS"] + 5 > time():
+                return self._OVERWRITES["SAFE_CHARGE_RUNNING"]["VALUE"]
             else:
                 return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
 
     async def switch_safe_charge(self, value: bool):
-        self._SAFE_CHARGE_RUNNING_OVERWRITE_VALUE = value
-        self._SAFE_CHARGE_RUNNING_OVERWRITE_TS = time()
+        self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"VALUE": value})
+        self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"TS": time()})
         post_data = {}
         if (value):
             self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
@@ -1581,14 +1620,14 @@ class Senec:
         if hasattr(self, '_raw'):
             # if it just has been switched on/off we provide a FAKE value for 5 sec...
             # since senec unit do not react 'instant' on some requests...
-            if self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS + 5 > time():
-                return self._LI_STORAGE_MODE_RUNNING_OVERWRITE_VALUE
+            if self._OVERWRITES["LI_STORAGE_MODE_RUNNING"]["TS"] + 5 > time():
+                return self._OVERWRITES["LI_STORAGE_MODE_RUNNING"]["VALUE"]
             else:
                 return self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] == 1
 
     async def switch_li_storage_mode(self, value: bool):
-        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_VALUE = value
-        self._LI_STORAGE_MODE_RUNNING_OVERWRITE_TS = time()
+        self._OVERWRITES["LI_STORAGE_MODE_RUNNING"].update({"VALUE": value})
+        self._OVERWRITES["LI_STORAGE_MODE_RUNNING"].update({"TS": time()})
         post_data = {}
         if (value):
             self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 1
@@ -1607,6 +1646,159 @@ class Senec:
 
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
+
+    """SWITCH ARRAY FROM HERE..."""
+
+    @property
+    def sockets_enable(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "ENABLE" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_ENABLE"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_ENABLE"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["ENABLE"]
+
+    async def switch_array_sockets_enable(self, pos: int, value: bool):
+        await self.switch_array_data("ENABLE", pos, value);
+
+    @property
+    def sockets_force_on(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "FORCE_ON" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_FORCE_ON"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_FORCE_ON"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["FORCE_ON"]
+
+    async def switch_array_sockets_force_on(self, pos: int, value: bool):
+        await self.switch_array_data("FORCE_ON", pos, value);
+
+    @property
+    def sockets_use_time(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "USE_TIME" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_USE_TIME"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_USE_TIME"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["USE_TIME"]
+
+    async def switch_array_sockets_use_time(self, pos: int, value: bool):
+        await self.switch_array_data("USE_TIME", pos, value);
+
+    async def switch_array_data(self, upper_key: str, pos: int, value: bool):
+        self._OVERWRITES["SOCKETS_" + upper_key].update({"VALUE": self._raw[SENEC_SECTION_SOCKETS][upper_key]})
+        self._OVERWRITES["SOCKETS_" + upper_key]["VALUE"][pos] = 1 if value else 0
+        self._OVERWRITES["SOCKETS_" + upper_key]["TS"] = time()
+        value_data = ["", ""]
+        if (value):
+            self._raw[SENEC_SECTION_SOCKETS][upper_key][pos] = 1
+            value_data[pos] = "u8_01"
+        else:
+            self._raw[SENEC_SECTION_SOCKETS][upper_key][pos] = 0
+            value_data[pos] = "u8_00"
+
+        post_data = {
+            SENEC_SECTION_SOCKETS: {
+                upper_key: value_data
+            }
+        }
+        await self.write(post_data)
+
+    async def switch_array(self, switch_array_key, array_pos, value):
+        return await getattr(self, 'switch_array_' + str(switch_array_key))(array_pos, value)
+
+    """NUMBER ARRAY VALUES FROM HERE..."""
+
+    @property
+    def sockets_lower_limit(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "LOWER_LIMIT" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_LOWER_LIMIT"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_LOWER_LIMIT"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["LOWER_LIMIT"]
+
+    async def set_number_value_array_sockets_lower_limit(self, pos: int, value: int):
+        await self.set_number_array_value_data("LOWER_LIMIT", pos, 4, value)
+
+    @property
+    def sockets_upper_limit(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "UPPER_LIMIT" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_UPPER_LIMIT"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_UPPER_LIMIT"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["UPPER_LIMIT"]
+
+    async def set_number_value_array_sockets_upper_limit(self, pos: int, value: int):
+        await self.set_number_array_value_data("UPPER_LIMIT", pos, 4, value)
+
+    @property
+    def sockets_power_on_time(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "POWER_ON_TIME" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_POWER_ON_TIME"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_POWER_ON_TIME"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["POWER_ON_TIME"]
+
+    async def set_number_value_array_sockets_power_on_time(self, pos: int, value: int):
+        await self.set_number_array_value_data("POWER_ON_TIME", pos, 4, value)
+
+    @property
+    def sockets_switch_on_hour(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "SWITCH_ON_HOUR" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_SWITCH_ON_HOUR"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_SWITCH_ON_HOUR"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["SWITCH_ON_HOUR"]
+
+    async def set_number_value_array_sockets_switch_on_hour(self, pos: int, value: int):
+        await self.set_number_array_value_data("SWITCH_ON_HOUR", pos, 2, value)
+
+    @property
+    def sockets_switch_on_minute(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "SWITCH_ON_MINUTE" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_SWITCH_ON_MINUTE"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_SWITCH_ON_MINUTE"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["SWITCH_ON_MINUTE"]
+
+    async def set_number_value_array_sockets_switch_on_minute(self, pos: int, value: int):
+        await self.set_number_array_value_data("SWITCH_ON_MINUTE", pos, 2, value)
+
+    @property
+    def sockets_time_limit(self) -> [int]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "TIME_LIMIT" in self._raw[SENEC_SECTION_SOCKETS]:
+            if self._OVERWRITES["SOCKETS_TIME_LIMIT"]["TS"] + 5 > time():
+                return self._OVERWRITES["SOCKETS_TIME_LIMIT"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_SOCKETS]["TIME_LIMIT"]
+
+    async def set_number_value_array_sockets_time_limit(self, pos: int, value: int):
+        await self.set_number_array_value_data("TIME_LIMIT", pos, 4, value)
+
+    async def set_number_array_value_data(self, upper_key: str, pos: int, data_len: int, value: int):
+        self._OVERWRITES["SOCKETS_" + upper_key].update({"VALUE": self._raw[SENEC_SECTION_SOCKETS][upper_key]})
+        self._OVERWRITES["SOCKETS_" + upper_key]["VALUE"][pos] = value
+        self._OVERWRITES["SOCKETS_" + upper_key]["TS"] = time()
+
+        value_data = ["", ""]
+        self._raw[SENEC_SECTION_SOCKETS][upper_key][pos] = value
+        if data_len == 4:
+            value_data[pos] = "u1_"+util.get_int_as_hex(value, data_len)
+        else:
+            value_data[pos] = "u8_"+util.get_int_as_hex(value, data_len)
+
+        post_data = {
+            SENEC_SECTION_SOCKETS: {
+                upper_key: value_data
+            }
+        }
+        await self.write(post_data)
+
+    async def set_number_value_array(self, array_key: str, array_pos: int, value: int):
+        return await getattr(self, 'set_number_value_array_' + str(array_key))(array_pos, value)
+
+    """NORMAL NUMBER HANDLING... currently no 'none-array' entities are implemented"""
+
+    async def set_number_value(self, array_key: str, value: int):
+        # this will cause a method not found exception...
+        return await getattr(self, 'set_number_value_' + str(array_key))(value)
 
     async def write(self, data):
         await self.write_senec_v31(data)
@@ -2085,10 +2277,13 @@ class MySenecWebPortal:
                     try:
                         r_json = await res.json()
                         # GET Data from JSON
-                        self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json["einspeisebegrenzungKwpInPercent"]
+                        self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json[
+                            "einspeisebegrenzungKwpInPercent"]
                         self._peak_shaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
-                        self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json["peakShavingCapacityLimitInPercent"]
-                        self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(r_json["peakShavingEndDate"] / 1000)  # from miliseconds to seconds
+                        self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json[
+                            "peakShavingCapacityLimitInPercent"]
+                        self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(
+                            r_json["peakShavingEndDate"] / 1000)  # from miliseconds to seconds
                         self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
                     except JSONDecodeError as exc:
                         _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
@@ -2487,7 +2682,8 @@ class MySenecWebPortal:
 
     @property
     def peakshaving_capacitylimit(self) -> int:
-        if hasattr(self,"_peak_shaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
+        if hasattr(self,
+                   "_peak_shaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingCapacityLimitInPercent"]
 
     @property
@@ -2504,8 +2700,10 @@ class MySenecWebPortal:
 def _require_lib_patch() -> bool:
     need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
     if need_patch:
-        _LOGGER.info(f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar.filter_cookies(...) need to be patched")
+        _LOGGER.info(
+            f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar.filter_cookies(...) need to be patched")
     return need_patch
+
 
 class MySenecCookieJar(aiohttp.CookieJar):
 

@@ -59,7 +59,10 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
         """Return true if the binary_sensor is on."""
         # return self.coordinator.data.get("title", "") == "foo"
         try:
-            value = getattr(self.coordinator.senec, self.entity_description.key)
+            if self.entity_description.array_key is not None:
+                value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos] == 1
+            else:
+                value = getattr(self.coordinator.senec, self.entity_description.key)
             if value is None or value == "":
                 value = None
             else:

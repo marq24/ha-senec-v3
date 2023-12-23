@@ -7,6 +7,10 @@ def parse_value(value: str):
         key, value = value.split("_")
     except ValueError:
         return value
+
+    #if key == "u8":
+    #    return unpack(">B", bytes.fromhex(value))[0]
+    #el
     if key.startswith("u") or key.startswith("i"):
         # Unsigned and signed int
         return int(value, 16)
@@ -29,3 +33,10 @@ def parse(raw: dict):
         elif isinstance(v, list):
             raw[k] = [parse_value(i) for i in v]
     return raw
+
+def get_int_as_hex(input: int, length:int) -> str:
+    out = f'{input:X}'
+    while len(out) < length:
+        out = '0' + out
+
+    return out;

@@ -119,33 +119,74 @@
     }
   },
   "entity": {
-    "sensor": {
-      "gridexport_limit": {
-        "name": "Einspeisebegrenzung"
-      },
-      "peakshaving_mode": {
-        "name": "Peak Shaving Modus",
-        "state": {
-          "deactivated": "Deaktiviert",
-          "manual": "Manuell",
-          "auto": "Automatisch"
-        }
-      },
-      "peakshaving_capacitylimit": {
-        "name": "Peak Shaving Akku Begrenzung"
-      },
-      "peakshaving_enddate": {
-        "name": "Peak Shaving Endzeit"
-      },
-      "spare_capacity": {
-        "name": "Reservekapazität"
-      },
+    "switch": {
       "safe_charge": {
         "name": "Akku Volladung"
       },
       "li_storage_mode": {
         "name": "Lithium Storage Mode - PV OFF"
       },
+      "sockets_1_force_on": {
+        "name": "Kontakt1 permanent ein"
+      },
+      "sockets_2_force_on": {
+        "name": "Kontakt2 permanent ein"
+      },
+      "sockets_1_enable": {
+        "name": "Kontakt1 Automatik aktiviert"
+      },
+      "sockets_2_enable": {
+        "name": "Kontakt2 Automatik aktiviert"
+      },
+      "sockets_1_use_time": {
+        "name": "Kontakt1 Schaltzeit aktivieren"
+      },
+      "sockets_2_use_time": {
+        "name": "Kontakt2 Schaltzeit aktivieren"
+      }
+    },
+    "number": {
+      "spare_capacity": {
+        "name": "Reservekapazität"
+      },
+      "sockets_1_lower_limit": {
+        "name": "Kontakt1 Einschaltschwelle (W)"
+      },
+      "sockets_2_lower_limit": {
+        "name": "Kontakt2 Einschaltschwelle (W)"
+      },
+      "sockets_1_upper_limit": {
+        "name": "Kontakt1 Abschaltschwelle (W)"
+      },
+      "sockets_2_upper_limit": {
+        "name": "Kontakt2 Abschaltschwelle (W)"
+      },
+      "sockets_1_time_limit": {
+        "name": "Kontakt1 Dauer Leistungsüberschuss (min)"
+      },
+      "sockets_2_time_limit": {
+        "name": "Kontakt2 Dauer Leistungsüberschuss (min)"
+      },
+      "sockets_1_switch_on_hour": {
+        "name": "Kontakt1 Einschaltzeit Stunde"
+      },
+      "sockets_2_switch_on_hour": {
+        "name": "Kontakt2 Einschaltzeit Stunde"
+      },
+      "sockets_1_switch_on_minute": {
+        "name": "Kontakt1 Einschaltzeit Minute"
+      },
+      "sockets_2_switch_on_minute": {
+        "name": "Kontakt2 Einschaltzeit Minute"
+      },
+      "sockets_1_power_on_time": {
+        "name": "Kontakt1 Dauer Steckdose ein (min)"
+      },
+      "sockets_2_power_on_time": {
+        "name": "Kontakt2 Dauer Steckdose ein (min)"
+      }
+    },
+    "binary_sensor": {
       "wallbox_l1_used": {
         "name": "Wallbox L1 in Verwendung"
       },
@@ -187,6 +228,37 @@
       },
       "fan_inv_hv": {
         "name": "Lüfter HV-Inverter"
+      },
+      "sockets_1_already_switched": {
+        "name": "Kontakt1 heute bereits geschaltet"
+      },
+      "sockets_2_already_switched": {
+        "name": "Kontakt2 heute bereits geschaltet"
+      },
+      "sockets_1_power_on": {
+        "name": "Kontakt1 Power ein"
+      },
+      "sockets_2_power_on": {
+        "name": "Kontakt2 Power ein"
+      }
+    },
+    "sensor": {
+      "gridexport_limit": {
+        "name": "Einspeisebegrenzung"
+      },
+      "peakshaving_mode": {
+        "name": "Peak Shaving Modus",
+        "state": {
+          "deactivated": "Deaktiviert",
+          "manual": "Manuell",
+          "auto": "Automatisch"
+        }
+      },
+      "peakshaving_capacitylimit": {
+        "name": "Peak Shaving Akku Begrenzung"
+      },
+      "peakshaving_enddate": {
+        "name": "Peak Shaving Endzeit"
       },
       "consumption_total": {
         "name": "Hausverbrauch"
@@ -838,6 +910,18 @@
       },
       "wallbox_4_set_icmax": {
         "name": "Wallbox IV set ICMAX"
+      },
+      "sockets_1_priority": {
+        "name": "Kontakt1 Priorität"
+      },
+      "sockets_2_priority": {
+        "name": "Kontakt2 Priorität"
+      },
+      "sockets_1_time_rem": {
+        "name": "Kontakt1 verbleibende Zeit (min)"
+      },
+      "sockets_2_time_rem": {
+        "name": "Kontakt2 verbleibende Zeit (min)"
       }
     }
   }

@@ -56,7 +56,10 @@ class SenecSwitch(SenecEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs):  # pylint: disable=unused-argument
         """Turn on the switch."""
         try:
-            await self.coordinator._async_switch_to_state(self.entity_description.key, True)
+            if self.entity_description.array_key is not None:
+                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key, self.entity_description.array_pos, True)
+            else:
+                await self.coordinator._async_switch_to_state(self.entity_description.key, True)
             self.async_schedule_update_ha_state(force_refresh=True)
             if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
@@ -69,7 +72,10 @@ class SenecSwitch(SenecEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs):  # pylint: disable=unused-argument
         """Turn off the switch."""
         try:
-            await self.coordinator._async_switch_to_state(self.entity_description.key, False)
+            if self.entity_description.array_key is not None:
+                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key, self.entity_description.array_pos, False)
+            else:
+                await self.coordinator._async_switch_to_state(self.entity_description.key, False)
             self.async_schedule_update_ha_state(force_refresh=True)
             if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
@@ -83,7 +89,10 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         """Return true if the binary_sensor is on."""
         # return self.coordinator.data.get("title", "") == "foo"
         try:
-            value = getattr(self.coordinator.senec, self.entity_description.key)
+            if self.entity_description.array_key is not None:
+                value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos] == 1
+            else:
+                value = getattr(self.coordinator.senec, self.entity_description.key)
             if value is None or value == "":
                 value = None
             else:

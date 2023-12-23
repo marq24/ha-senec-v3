@@ -26,6 +26,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_PM1OBJ2,
     SENEC_SECTION_PV1,
     SENEC_SECTION_PWR_UNIT,
+    SENEC_SECTION_SOCKETS,
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
@@ -56,9 +57,12 @@ from .const import (
 
     MAIN_SENSOR_TYPES,
     MAIN_BIN_SENSOR_TYPES,
+    MAIN_SWITCH_TYPES,
+    MAIN_NUMBER_SENSOR_TYPES,
     QUERY_BMS_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
+    QUERY_SOCKETS_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
@@ -133,6 +137,31 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     config_entry.add_update_listener(async_reload_entry)
 
     return True
+
+def check_for_options(registry, sluged_title:str, opt:dict, sensor_type:str, entity_description_list:list) -> dict:
+    for description in entity_description_list:
+        if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
+            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
+            a_entity = registry.async_get(a_sensor_id)
+            if a_entity is not None and a_entity.disabled_by is None:
+                _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
+                opt[QUERY_WALLBOX_KEY] = True
+
+        if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
+            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
+            a_entity = registry.async_get(a_sensor_id)
+            if a_entity is not None and a_entity.disabled_by is None:
+                _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
+                opt[QUERY_FANDATA_KEY] = True
+
+        if not opt[QUERY_SOCKETS_KEY] and SENEC_SECTION_SOCKETS == description.senec_lala_section:
+            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
+            a_entity = registry.async_get(a_sensor_id)
+            if a_entity is not None and a_entity.disabled_by is None:
+                _LOGGER.info("***** QUERY_SOCKETS-DATA ********")
+                opt[QUERY_SOCKETS_KEY] = True
+
+    return opt
 
 
 class SenecDataUpdateCoordinator(DataUpdateCoordinator):
@@ -210,7 +239,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 IGNORE_SYSTEM_STATE_KEY: config_entry.options.get(CONF_IGNORE_SYSTEM_STATE, False),
                 QUERY_WALLBOX_KEY: False,
                 QUERY_BMS_KEY: False,
-                QUERY_FANDATA_KEY: False
+                QUERY_FANDATA_KEY: False,
+                QUERY_SOCKETS_KEY: False
             }
             # check if any of the wallbox-sensors is enabled... and only THEN
             # we will include the 'WALLBOX' in our POST to the lala.cgi
@@ -218,44 +248,10 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 registry = entity_registry.async_get(hass)
                 if registry is not None:
                     sluged_title = slugify(config_entry.title)
-                    for description in MAIN_SENSOR_TYPES:
-                        if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
-                            a_sensor_id = f"sensor.{sluged_title}_{description.key}".lower()
-                            a_entity = registry.async_get(a_sensor_id)
-                            if a_entity is not None and a_entity.disabled_by is None:
-                                _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
-                                opt[QUERY_WALLBOX_KEY] = True
-
-                        if not opt[QUERY_BMS_KEY] and SENEC_SECTION_BMS == description.senec_lala_section:
-                            a_sensor_id = f"sensor.{sluged_title}_{description.key}".lower()
-                            a_entity = registry.async_get(a_sensor_id)
-                            if a_entity is not None and a_entity.disabled_by is None:
-                                _LOGGER.info("***** QUERY_BMS-DATA ********")
-                                opt[QUERY_BMS_KEY] = True
-
-                        # yes - currently only the 'MAIN_BIN_SENSOR's will contain the SENEC_SECTION_FAN_SPEED but
-                        # I want to have here the complete code/overview 'what should be checked'
-                        if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
-                            a_sensor_id = f"sensor.{sluged_title}_{description.key}".lower()
-                            a_entity = registry.async_get(a_sensor_id)
-                            if a_entity is not None and a_entity.disabled_by is None:
-                                _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
-                                opt[QUERY_FANDATA_KEY] = True
-
-                    for description in MAIN_BIN_SENSOR_TYPES:
-                        if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
-                            a_sensor_id = f"binary_sensor.{sluged_title}_{description.key}".lower()
-                            a_entity = registry.async_get(a_sensor_id)
-                            if a_entity is not None and a_entity.disabled_by is None:
-                                _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
-                                opt[QUERY_WALLBOX_KEY] = True
-
-                        if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
-                            a_sensor_id = f"binary_sensor.{sluged_title}_{description.key}".lower()
-                            a_entity = registry.async_get(a_sensor_id)
-                            if a_entity is not None and a_entity.disabled_by is None:
-                                _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
-                                opt[QUERY_FANDATA_KEY] = True
+                    opt = check_for_options(registry, sluged_title, opt, "sensor", MAIN_SENSOR_TYPES)
+                    opt = check_for_options(registry, sluged_title, opt, "binary_sensor", MAIN_BIN_SENSOR_TYPES)
+                    opt = check_for_options(registry, sluged_title, opt, "switch", MAIN_SWITCH_TYPES)
+                    opt = check_for_options(registry, sluged_title, opt, "number", MAIN_NUMBER_SENSOR_TYPES)
 
             self.senec = Senec(host=self._host, use_https=self._use_https, web_session=async_get_clientsession(hass),
                                lang=hass.config.language.lower(), options=opt)
@@ -286,6 +282,13 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_switch_to_state(self, switch_key, state):
         try:
             await self.senec.switch(switch_key, state)
+            return self.senec
+        except UpdateFailed as exception:
+            raise UpdateFailed() from exception
+
+    async def _async_switch_array_to_state(self, switch_array_key, array_pos, state):
+        try:
+            await self.senec.switch_array(switch_array_key, array_pos, state)
             return self.senec
         except UpdateFailed as exception:
             raise UpdateFailed() from exception

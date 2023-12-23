@@ -20,7 +20,9 @@ from homeassistant.const import (
     POWER_KILO_WATT,
     TEMP_CELSIUS,
     UnitOfElectricPotential,
-    UnitOfElectricCurrent, UnitOfFrequency,
+    UnitOfElectricCurrent,
+    UnitOfFrequency,
+    UnitOfTime,
 )
 from homeassistant.helpers.entity import EntityCategory
 
@@ -33,6 +35,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_PM1OBJ2,
     SENEC_SECTION_PV1,
     SENEC_SECTION_PWR_UNIT,
+    SENEC_SECTION_SOCKETS,
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
@@ -94,6 +97,7 @@ DEFAULT_SCAN_INTERVAL_WEB_SENECV4 = 60
 QUERY_BMS_KEY = "query_bms_data"
 QUERY_FANDATA_KEY = "query_fan_data"
 QUERY_WALLBOX_KEY = "query_wallbox_data"
+QUERY_SOCKETS_KEY = "query_sockets_data"
 QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
 IGNORE_SYSTEM_STATE_KEY = CONF_IGNORE_SYSTEM_STATE
@@ -108,21 +112,32 @@ SERVICE_SET_PEAKSHAVING: Final = "set_peakshaving"
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
     senec_lala_section: str | None = None
-
+    array_key: str | None = None
+    array_pos: int = -1
 
 @dataclass
 class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
     senec_lala_section: str | None = None
-
+    array_key: str | None = None
+    array_pos: int = -1
 
 @dataclass
 class ExtSwitchEntityDescription(SwitchEntityDescription):
     update_after_switch_delay_in_sec: int = 0
+    senec_lala_section: str | None = None
+    array_key: str | None = None
+    array_pos: int = -1
+
+@dataclass
+class ExtNumberEntityDescription(NumberEntityDescription):
+    update_after_switch_delay_in_sec: int = 0
+    senec_lala_section: str | None = None
+    array_key: str | None = None
+    array_pos: int = -1
 
 
-"""Supported number implementations"""
-WEB_NUMBER_SENYOR_TYPES = [
+WEB_NUMBER_SENSOR_TYPES = [
     NumberEntityDescription(
         entity_registry_enabled_default=False,
         key="spare_capacity",
@@ -134,142 +149,6 @@ WEB_NUMBER_SENYOR_TYPES = [
         native_step=1,
         native_unit_of_measurement=PERCENTAGE,
         icon="mdi:battery-lock",
-    ),
-]
-
-"""Supported main unit switch types."""
-MAIN_SWITCH_TYPES = [
-    ExtSwitchEntityDescription(
-        key="safe_charge",
-        name="Load Battery",
-        icon="mdi:battery-charging-high",
-        update_after_switch_delay_in_sec=2,
-    ),
-    ExtSwitchEntityDescription(
-        entity_registry_enabled_default=False,
-        key="li_storage_mode",
-        name="Lithium Storage Mode - PV OFF",
-        icon="mdi:solar-power",
-        update_after_switch_delay_in_sec=2,
-    ),
-]
-
-"""Supported main unit binary_sensor types."""
-MAIN_BIN_SENSOR_TYPES = [
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_l1_used",
-        name="Wallbox L1 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_l2_used",
-        name="Wallbox L2 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_l3_used",
-        name="Wallbox L3 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_2_l1_used",
-        name="Wallbox II L1 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_2_l2_used",
-        name="Wallbox II L2 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_2_l3_used",
-        name="Wallbox II L3 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_3_l1_used",
-        name="Wallbox III L1 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_3_l2_used",
-        name="Wallbox III L2 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_3_l3_used",
-        name="Wallbox III L3 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_4_l1_used",
-        name="Wallbox IV L1 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_4_l2_used",
-        name="Wallbox IV L2 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_4_l3_used",
-        name="Wallbox IV L3 used",
-        icon="mdi:car-electric",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_FAN_SPEED,
-        entity_registry_enabled_default=False,
-        key="fan_inv_lv",
-        name="Fan LV-Inverter",
-        icon="mdi:fan",
-        icon_off="mdi:fan-off",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    ExtBinarySensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_FAN_SPEED,
-        entity_registry_enabled_default=False,
-        key="fan_inv_hv",
-        name="Fan HV-Inverter",
-        icon="mdi:fan",
-        icon_off="mdi:fan-off",
-        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 ]
 
@@ -435,6 +314,604 @@ WEB_SENSOR_TYPES = [
         icon="mdi:calendar-clock",
         device_class=SensorDeviceClass.TIMESTAMP,
     ),
+]
+
+INVERTER_SENSOR_TYPES = [
+    ExtSensorEntityDescription(
+        key="ac_voltage",
+        name="AC Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        key="ac_current",
+        name="AC Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-ac",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        key="ac_power",
+        name="AC Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:solar-power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        key="ac_power_fast",
+        name="AC Power (fast)",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:solar-power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        key="ac_frequency",
+        name="AC Frequency",
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        icon="mdi:meter-electric",
+        device_class=SensorDeviceClass.FREQUENCY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
+        key="bdc_bat_voltage",
+        name="BDC Battery Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
+        key="bdc_bat_current",
+        name="BDC Battery Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
+        key="bdc_bat_power",
+        name="BDC Battery Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:battery-charging-100",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
+        key="bdc_link_voltage",
+        name="BDC Link Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
+        key="bdc_link_current",
+        name="BDC Link Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        controls=("bdc_only"),
+        key="bdc_link_power",
+        name="BDC Link Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:power-plug-outline",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        key="dc_voltage1",
+        name="DC Voltage 1",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="dc_voltage2",
+        name="DC Voltage 2",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="dc_current1",
+        name="DC Current 1",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="dc_current2",
+        name="DC Current 2",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        icon="mdi:current-dc",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="gridpower",
+        name="Grid Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:transmission-tower",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="gridconsumedpower",
+        name="Grid consumed Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:transmission-tower-import",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="gridinjectedpower",
+        name="Grid injected Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:transmission-tower-export",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="ownconsumedpower",
+        name="Own consumed Power",
+        native_unit_of_measurement=POWER_WATT,
+        icon="mdi:home-import-outline",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="derating",
+        name="Derating",
+        native_unit_of_measurement=PERCENTAGE,
+        icon="mdi:arrow-down-thin-circle-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+]
+
+"""Supported main unit switch types."""
+MAIN_SWITCH_TYPES = [
+    ExtSwitchEntityDescription(
+        key="safe_charge",
+        name="Load Battery",
+        icon="mdi:battery-charging-high",
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="li_storage_mode",
+        name="Lithium Storage Mode - PV OFF",
+        icon="mdi:solar-power",
+        update_after_switch_delay_in_sec=2,
+    ),
+    # PERMANENT ON
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_force_on",
+        array_pos=0,
+        key="sockets_1_force_on",
+        name="sockets_1_force_on",
+        icon="mdi:toggle-switch",
+    ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_force_on",
+        array_pos=1,
+        key="sockets_2_force_on",
+        name="sockets_2_force_on",
+        icon="mdi:toggle-switch",
+    ),
+    # Automatic ON
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_enable",
+        array_pos=0,
+        key="sockets_1_enable",
+        name="sockets_1_enable",
+        icon="mdi:toggle-switch"
+    ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_enable",
+        array_pos=1,
+        key="sockets_2_enable",
+        name="sockets_2_enable",
+        icon="mdi:toggle-switch"
+    ),
+    # Time Controlled ON
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_use_time",
+        array_pos=0,
+        key="sockets_1_use_time",
+        name="sockets_1_use_time",
+        icon="mdi:toggle-switch",
+    ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_use_time",
+        array_pos=1,
+        key="sockets_2_use_time",
+        name="sockets_2_use_time",
+        icon="mdi:toggle-switch",
+    )
+]
+
+"""Supported main unit binary_sensor types."""
+MAIN_BIN_SENSOR_TYPES = [
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l1_used",
+        name="Wallbox L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l2_used",
+        name="Wallbox L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_l3_used",
+        name="Wallbox L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l1_used",
+        name="Wallbox II L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l2_used",
+        name="Wallbox II L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_l3_used",
+        name="Wallbox II L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l1_used",
+        name="Wallbox III L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l2_used",
+        name="Wallbox III L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_l3_used",
+        name="Wallbox III L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l1_used",
+        name="Wallbox IV L1 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l2_used",
+        name="Wallbox IV L2 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_l3_used",
+        name="Wallbox IV L3 used",
+        icon="mdi:car-electric",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_FAN_SPEED,
+        entity_registry_enabled_default=False,
+        key="fan_inv_lv",
+        name="Fan LV-Inverter",
+        icon="mdi:fan",
+        icon_off="mdi:fan-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_FAN_SPEED,
+        entity_registry_enabled_default=False,
+        key="fan_inv_hv",
+        name="Fan HV-Inverter",
+        icon="mdi:fan",
+        icon_off="mdi:fan-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_power_on",
+        array_pos=0,
+        key="sockets_1_power_on",
+        name="sockets_1_power_on",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_power_on",
+        array_pos=1,
+        key="sockets_2_power_on",
+        name="sockets_2_power_on",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_already_switched",
+        array_pos=0,
+        key="sockets_1_already_switched",
+        name="sockets_1_already_switched",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_already_switched",
+        array_pos=1,
+        key="sockets_2_already_switched",
+        name="sockets_2_already_switched",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+]
+
+"""Supported main unit number implementations"""
+MAIN_NUMBER_SENSOR_TYPES = [
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_lower_limit",
+        array_pos=0,
+        key="sockets_1_lower_limit",
+        name="sockets_1_lower_limit",
+        icon="mdi:lightning-bolt-outline",
+        device_class=NumberDeviceClass.ENERGY,
+        mode=NumberMode.BOX,
+        native_max_value=65535,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=POWER_WATT,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_upper_limit",
+        array_pos=0,
+        key="sockets_1_upper_limit",
+        name="sockets_1_upper_limit",
+        icon="mdi:lightning-bolt",
+        device_class=NumberDeviceClass.ENERGY,
+        mode=NumberMode.BOX,
+        native_max_value=65535,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=POWER_WATT,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_power_on_time",
+        array_pos=0,
+        key="sockets_1_power_on_time",
+        name="sockets_1_power_on_time",
+        icon="mdi:power-socket-eu",
+        mode=NumberMode.SLIDER,
+        native_max_value=1440,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_switch_on_hour",
+        array_pos=0,
+        key="sockets_1_switch_on_hour",
+        name="sockets_1_switch_on_hour",
+        icon="mdi:timeline-clock-outline",
+        mode=NumberMode.BOX,
+        native_max_value=23,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_switch_on_minute",
+        array_pos=0,
+        key="sockets_1_switch_on_minute",
+        name="sockets_1_switch_on_minute",
+        icon="mdi:timeline-clock-outline",
+        mode=NumberMode.BOX,
+        native_max_value=59,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_time_limit",
+        array_pos=0,
+        key="sockets_1_time_limit",
+        name="sockets_1_time_limit",
+        icon="mdi:solar-power",
+        mode=NumberMode.BOX,
+        native_max_value=1440,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_lower_limit",
+        array_pos=1,
+        key="sockets_2_lower_limit",
+        name="sockets_2_lower_limit",
+        icon="mdi:lightning-bolt-outline",
+        device_class=NumberDeviceClass.ENERGY,
+        mode=NumberMode.BOX,
+        native_max_value=65535,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=POWER_WATT,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_upper_limit",
+        array_pos=1,
+        key="sockets_2_upper_limit",
+        name="sockets_2_upper_limit",
+        icon="mdi:lightning-bolt",
+        device_class=NumberDeviceClass.ENERGY,
+        mode=NumberMode.BOX,
+        native_max_value=65535,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=POWER_WATT,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_power_on_time",
+        array_pos=1,
+        key="sockets_2_power_on_time",
+        name="sockets_2_power_on_time",
+        icon="mdi:power-socket-eu",
+        mode=NumberMode.SLIDER,
+        native_max_value=1440,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_switch_on_hour",
+        array_pos=1,
+        key="sockets_2_switch_on_hour",
+        name="sockets_2_switch_on_hour",
+        icon="mdi:timeline-clock-outline",
+        mode=NumberMode.BOX,
+        native_max_value=23,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_switch_on_minute",
+        array_pos=1,
+        key="sockets_2_switch_on_minute",
+        name="sockets_2_switch_on_minute",
+        icon="mdi:timeline-clock-outline",
+        mode=NumberMode.BOX,
+        native_max_value=59,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
+        entity_registry_enabled_default=False,
+        array_key="sockets_time_limit",
+        array_pos=1,
+        key="sockets_2_time_limit",
+        name="sockets_2_time_limit",
+        icon="mdi:solar-power",
+        mode=NumberMode.BOX,
+        native_max_value=1440,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
+
 ]
 
 """Supported main unit sensor types."""
@@ -2189,189 +2666,45 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-]
-
-INVERTER_SENSOR_TYPES = [
     ExtSensorEntityDescription(
-        key="ac_voltage",
-        name="AC Voltage",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        icon="mdi:lightning-bolt",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        key="ac_current",
-        name="AC Current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-ac",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        key="ac_power",
-        name="AC Power",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:solar-power",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        key="ac_power_fast",
-        name="AC Power (fast)",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:solar-power",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        key="ac_frequency",
-        name="AC Frequency",
-        native_unit_of_measurement=UnitOfFrequency.HERTZ,
-        icon="mdi:meter-electric",
-        device_class=SensorDeviceClass.FREQUENCY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        controls=("bdc_only"),
-        key="bdc_bat_voltage",
-        name="BDC Battery Voltage",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        icon="mdi:lightning-bolt",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        controls=("bdc_only"),
-        key="bdc_bat_current",
-        name="BDC Battery Current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        controls=("bdc_only"),
-        key="bdc_bat_power",
-        name="BDC Battery Power",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:battery-charging-100",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        controls=("bdc_only"),
-        key="bdc_link_voltage",
-        name="BDC Link Voltage",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        icon="mdi:lightning-bolt",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        controls=("bdc_only"),
-        key="bdc_link_current",
-        name="BDC Link Current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        controls=("bdc_only"),
-        key="bdc_link_power",
-        name="BDC Link Power",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:power-plug-outline",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-
-    ExtSensorEntityDescription(
-        key="dc_voltage1",
-        name="DC Voltage 1",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        icon="mdi:lightning-bolt",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    ExtSensorEntityDescription(
-        key="dc_voltage2",
-        name="DC Voltage 2",
-        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
-        icon="mdi:lightning-bolt",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    ExtSensorEntityDescription(
-        key="dc_current1",
-        name="DC Current 1",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
-        key="dc_current2",
-        name="DC Current 2",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
+        array_key="sockets_priority",
+        array_pos=0,
+        key="sockets_1_priority",
+        name="sockets_1_priority",
+        icon="mdi:counter",
         state_class=SensorStateClass.MEASUREMENT,
     ),
-
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
-        key="gridpower",
-        name="Grid Power",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:transmission-tower",
-        device_class=SensorDeviceClass.POWER,
+        array_key="sockets_priority",
+        array_pos=1,
+        key="sockets_2_priority",
+        name="sockets_2_priority",
+        icon="mdi:counter",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
-        key="gridconsumedpower",
-        name="Grid consumed Power",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:transmission-tower-import",
-        device_class=SensorDeviceClass.POWER,
+        array_key="sockets_time_rem",
+        array_pos=0,
+        key="sockets_1_time_rem",
+        name="sockets_1_time_rem",
+        icon="mdi:counter",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
-        key="gridinjectedpower",
-        name="Grid injected Power",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:transmission-tower-export",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    ExtSensorEntityDescription(
-        entity_registry_enabled_default=False,
-        key="ownconsumedpower",
-        name="Own consumed Power",
-        native_unit_of_measurement=POWER_WATT,
-        icon="mdi:home-import-outline",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    ExtSensorEntityDescription(
-        key="derating",
-        name="Derating",
-        native_unit_of_measurement=PERCENTAGE,
-        icon="mdi:arrow-down-thin-circle-outline",
+        array_key="sockets_time_rem",
+        array_pos=1,
+        key="sockets_2_time_rem",
+        name="sockets_2_time_rem",
+        icon="mdi:counter",
         state_class=SensorStateClass.MEASUREMENT,
     ),
 ]
+
