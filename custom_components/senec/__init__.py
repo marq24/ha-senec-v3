@@ -140,6 +140,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
 def check_for_options(registry, sluged_title:str, opt:dict, sensor_type:str, entity_description_list:list) -> dict:
     for description in entity_description_list:
+        if not opt[QUERY_BMS_KEY] and SENEC_SECTION_BMS == description.senec_lala_section:
+            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
+            a_entity = registry.async_get(a_sensor_id)
+            if a_entity is not None and a_entity.disabled_by is None:
+                _LOGGER.info("***** QUERY_BMS-DATA ********")
+                opt[QUERY_BMS_KEY] = True
+
         if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
             a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
             a_entity = registry.async_get(a_sensor_id)

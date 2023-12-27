@@ -516,7 +516,45 @@ MAIN_SWITCH_TYPES = [
         icon="mdi:solar-power",
         update_after_switch_delay_in_sec=2,
     ),
-    # PERMANENT ON
+    # WALLBOX
+    # ExtSwitchEntityDescription(
+    #     senec_lala_section=SENEC_SECTION_WALLBOX,
+    #     entity_registry_enabled_default=False,
+    #     array_key="wallbox_prohibit_usage",
+    #     array_pos=0,
+    #     key="wallbox_1_prohibit_usage",
+    #     name="wallbox_1_prohibit_usage",
+    #     icon="mdi:toggle-switch",
+    # ),
+    # ExtSwitchEntityDescription(
+    #     senec_lala_section=SENEC_SECTION_WALLBOX,
+    #     entity_registry_enabled_default=False,
+    #     array_key="wallbox_prohibit_usage",
+    #     array_pos=1,
+    #     key="wallbox_2_prohibit_usage",
+    #     name="wallbox_2_prohibit_usage",
+    #     icon="mdi:toggle-switch",
+    # ),
+    # ExtSwitchEntityDescription(
+    #     senec_lala_section=SENEC_SECTION_WALLBOX,
+    #     entity_registry_enabled_default=False,
+    #     array_key="wallbox_prohibit_usage",
+    #     array_pos=2,
+    #     key="wallbox_3_prohibit_usage",
+    #     name="wallbox_3_prohibit_usage",
+    #     icon="mdi:toggle-switch",
+    # ),
+    # ExtSwitchEntityDescription(
+    #     senec_lala_section=SENEC_SECTION_WALLBOX,
+    #     entity_registry_enabled_default=False,
+    #     array_key="wallbox_prohibit_usage",
+    #     array_pos=3,
+    #     key="wallbox_4_prohibit_usage",
+    #     name="wallbox_4_prohibit_usage",
+    #     icon="mdi:toggle-switch",
+    # ),
+
+    # SOCKETS PERMANENT ON
     ExtSwitchEntityDescription(
         senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
@@ -535,7 +573,7 @@ MAIN_SWITCH_TYPES = [
         name="sockets_2_force_on",
         icon="mdi:toggle-switch",
     ),
-    # Automatic ON
+    # SOCKETS Automatic ON
     ExtSwitchEntityDescription(
         senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
@@ -554,7 +592,7 @@ MAIN_SWITCH_TYPES = [
         name="sockets_2_enable",
         icon="mdi:toggle-switch"
     ),
-    # Time Controlled ON
+    # SOCKETS Time Controlled ON
     ExtSwitchEntityDescription(
         senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
@@ -739,6 +777,67 @@ MAIN_BIN_SENSOR_TYPES = [
 
 """Supported main unit number implementations"""
 MAIN_NUMBER_SENSOR_TYPES = [
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_set_icmax",
+        array_pos=0,
+        key="wallbox_1_set_icmax",
+        name="Wallbox I set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.BOX,
+        native_max_value=30,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_set_icmax",
+        array_pos=1,
+        key="wallbox_2_set_icmax",
+        name="Wallbox II set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.BOX,
+        native_max_value=30,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_set_icmax",
+        array_pos=2,
+        key="wallbox_3_set_icmax",
+        name="Wallbox III set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.BOX,
+        native_max_value=30,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+    ExtNumberEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_set_icmax",
+        array_pos=3,
+        key="wallbox_4_set_icmax",
+        name="Wallbox IV set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.BOX,
+        native_max_value=30,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+
     ExtNumberEntityDescription(
         senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,
@@ -2419,16 +2518,6 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_set_icmax",
-        name="Wallbox set ICMAX",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
 
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
@@ -2493,16 +2582,6 @@ MAIN_SENSOR_TYPES = [
         entity_registry_enabled_default=False,
         key="wallbox_2_min_charging_current",
         name="Wallbox II MIN charging Current",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
-    ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_2_set_icmax",
-        name="Wallbox II set ICMAX",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2577,22 +2656,12 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_3_set_icmax",
-        name="Wallbox III set ICMAX",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
 
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
         key="wallbox_4_power",
-        name="Wallbox VI Power",
+        name="Wallbox IV Power",
         native_unit_of_measurement=POWER_WATT,
         icon="mdi:car-arrow-left",
         device_class=SensorDeviceClass.POWER,
@@ -2656,16 +2725,7 @@ MAIN_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    ExtSensorEntityDescription(
-        senec_lala_section=SENEC_SECTION_WALLBOX,
-        entity_registry_enabled_default=False,
-        key="wallbox_4_set_icmax",
-        name="Wallbox IV set ICMAX",
-        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        icon="mdi:current-dc",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.MEASUREMENT,
-    ),
+
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_SOCKETS,
         entity_registry_enabled_default=False,

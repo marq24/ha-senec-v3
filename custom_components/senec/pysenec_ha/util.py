@@ -1,4 +1,4 @@
-from struct import unpack
+from struct import unpack, pack
 
 
 def parse_value(value: str):
@@ -8,9 +8,9 @@ def parse_value(value: str):
     except ValueError:
         return value
 
-    #if key == "u8":
+    # if key == "u8":
     #    return unpack(">B", bytes.fromhex(value))[0]
-    #el
+    # el
     if key.startswith("u") or key.startswith("i"):
         # Unsigned and signed int
         return int(value, 16)
@@ -34,9 +34,15 @@ def parse(raw: dict):
             raw[k] = [parse_value(i) for i in v]
     return raw
 
-def get_int_as_hex(input: int, length:int) -> str:
+
+def get_as_hex(input, length: int) -> str:
     out = f'{input:X}'
     while len(out) < length:
         out = '0' + out
 
     return out;
+
+
+def get_float_as_IEEE754_hex(input: float) -> str:
+    val = unpack('I', pack('f', input))[0]
+    return get_as_hex(val, -1);

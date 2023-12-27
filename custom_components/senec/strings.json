@@ -41,6 +41,18 @@
       "li_storage_mode": {
         "name": "Lithium Storage Mode - PV OFF"
       },
+      "wallbox_1_prohibit_usage": {
+        "name": "Wallbox I prohibit usage"
+      },
+      "wallbox_2_prohibit_usage": {
+        "name": "Wallbox II prohibit usage"
+      },
+      "wallbox_3_prohibit_usage": {
+        "name": "Wallbox III prohibit usage"
+      },
+      "wallbox_4_prohibit_usage": {
+        "name": "Wallbox IV prohibit usage"
+      },
       "sockets_1_force_on": {
         "name": "Socket1 permanent on"
       },
@@ -63,6 +75,30 @@
     "number": {
       "spare_capacity": {
         "name": "Spare Capacity"
+      },
+      "wallbox_1_set_icmax": {
+        "name": "Wallbox I ICMAX"
+      },
+      "wallbox_2_set_icmax": {
+        "name": "Wallbox II ICMAX"
+      },
+      "wallbox_3_set_icmax": {
+        "name": "Wallbox III ICMAX"
+      },
+      "wallbox_4_set_icmax": {
+        "name": "Wallbox IV ICMAX"
+      },
+      "wallbox_1_set_idefault": {
+        "name": "Wallbox I IDEFAULT"
+      },
+      "wallbox_2_set_idefault": {
+        "name": "Wallbox II IDEFAULT"
+      },
+      "wallbox_3_set_idefault": {
+        "name": "Wallbox III IDEFAULT"
+      },
+      "wallbox_4_set_idefault": {
+        "name": "Wallbox IV IDEFAULT"
       },
       "sockets_1_lower_limit": {
         "name": "Socket1 lower limit (W)"
@@ -103,13 +139,13 @@
     },
     "binary_sensor": {
       "wallbox_l1_used": {
-        "name": "Wallbox L1 used"
+        "name": "Wallbox I L1 used"
       },
       "wallbox_l2_used": {
-        "name": "Wallbox L2 used"
+        "name": "Wallbox I L2 used"
       },
       "wallbox_l3_used": {
-        "name": "Wallbox L3 used"
+        "name": "Wallbox I L3 used"
       },
       "wallbox_2_l1_used": {
         "name": "Wallbox II L1 used"
@@ -731,28 +767,25 @@
         "name": "Module D: Cycles"
       },
       "wallbox_power": {
-        "name": "Wallbox Power"
+        "name": "Wallbox I Power"
       },
       "wallbox_ev_connected": {
-        "name": "Wallbox EV Connected"
+        "name": "Wallbox I EV Connected"
       },
       "wallbox_energy": {
-        "name": "Wallbox charged"
+        "name": "Wallbox I charged"
       },
       "wallbox_l1_charging_current": {
-        "name": "Wallbox L1 charging Current"
+        "name": "Wallbox I L1 charging Current"
       },
       "wallbox_l2_charging_current": {
-        "name": "Wallbox L2 charging Current"
+        "name": "Wallbox I L2 charging Current"
       },
       "wallbox_l3_charging_current": {
-        "name": "Wallbox L3 charging Current"
+        "name": "Wallbox I L3 charging Current"
       },
       "wallbox_min_charging_current": {
-        "name": "Wallbox MIN charging Current"
-      },
-      "wallbox_set_icmax": {
-        "name": "Wallbox set ICMAX"
+        "name": "Wallbox I MIN charging Current"
       },
       "wallbox_2_power": {
         "name": "Wallbox II Power"
@@ -775,9 +808,6 @@
       "wallbox_2_min_charging_current": {
         "name": "Wallbox II MIN charging Current"
       },
-      "wallbox_2_set_icmax": {
-        "name": "Wallbox II set ICMAX"
-      },
       "wallbox_3_power": {
         "name": "Wallbox III Power"
       },
@@ -799,11 +829,8 @@
       "wallbox_3_min_charging_current": {
         "name": "Wallbox III MIN charging Current"
       },
-      "wallbox_3_set_icmax": {
-        "name": "Wallbox III set ICMAX"
-      },
       "wallbox_4_power": {
-        "name": "Wallbox VI Power"
+        "name": "Wallbox IV Power"
       },
       "wallbox_4_ev_connected": {
         "name": "Wallbox IV EV Connected"
@@ -822,9 +849,6 @@
       },
       "wallbox_4_min_charging_current": {
         "name": "Wallbox IV MIN charging Current"
-      },
-      "wallbox_4_set_icmax": {
-        "name": "Wallbox IV set ICMAX"
       },
       "sockets_1_priority": {
         "name": "Socket1 priority"

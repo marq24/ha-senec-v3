@@ -121,15 +121,20 @@ class Senec:
         self._OVERWRITES = {
             "LI_STORAGE_MODE_RUNNING": { "TS": 0, "VALUE": False},
             "SAFE_CHARGE_RUNNING": { "TS": 0, "VALUE": False},
-            "SOCKETS_FORCE_ON": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_ENABLE": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_USE_TIME": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_LOWER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_UPPER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_POWER_ON_TIME": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_SWITCH_ON_HOUR": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_SWITCH_ON_MINUTE": { "TS": 0, "VALUE": [0, 0]},
-            "SOCKETS_TIME_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+
+            SENEC_SECTION_SOCKETS + "_FORCE_ON": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_ENABLE": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_USE_TIME": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_LOWER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_UPPER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_POWER_ON_TIME": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_SWITCH_ON_HOUR": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_SWITCH_ON_MINUTE": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_TIME_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+
+            SENEC_SECTION_WALLBOX + "_PROHIBIT_USAGE": { "TS": 0, "VALUE": [0, 0, 0, 0]},
+            SENEC_SECTION_WALLBOX + "_SET_ICMAX": { "TS": 0, "VALUE": [0, 0, 0, 0]},
+            SENEC_SECTION_WALLBOX + "_SET_IDEFAULT": { "TS": 0, "VALUE": [0, 0, 0, 0]},
         }
 
     @property
@@ -1125,12 +1130,6 @@ class Senec:
             return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][0]
 
     @property
-    def wallbox_set_icmax(self) -> float:
-        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
-            SENEC_SECTION_WALLBOX]:
-            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][0]
-
-    @property
     def wallbox_2_power(self) -> float:
         """
         Wallbox Total Charging Power (W)
@@ -1211,12 +1210,6 @@ class Senec:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][1]
-
-    @property
-    def wallbox_2_set_icmax(self) -> float:
-        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
-            SENEC_SECTION_WALLBOX]:
-            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][1]
 
     @property
     def wallbox_3_power(self) -> float:
@@ -1301,12 +1294,6 @@ class Senec:
             return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][2]
 
     @property
-    def wallbox_3_set_icmax(self) -> float:
-        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
-            SENEC_SECTION_WALLBOX]:
-            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][2]
-
-    @property
     def wallbox_4_power(self) -> float:
         """
         Wallbox Total Charging Power (W)
@@ -1387,12 +1374,6 @@ class Senec:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][3]
-
-    @property
-    def wallbox_4_set_icmax(self) -> float:
-        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "SET_ICMAX" in self._raw[
-            SENEC_SECTION_WALLBOX]:
-            return self._raw[SENEC_SECTION_WALLBOX]["SET_ICMAX"][3]
 
     @property
     def fan_inv_lv(self) -> bool:
@@ -1536,7 +1517,9 @@ class Senec:
                 "L3_USED": "",
                 "EV_CONNECTED": "",
                 "MIN_CHARGING_CURRENT": "",
-                "SET_ICMAX": ""}
+                "SET_ICMAX": "",
+                "SET_IDEFAULT": "",
+                "PROHIBIT_USAGE": ""}
             })
 
         async with self.web_session.post(self.url, json=form, ssl=False) as res:
@@ -1651,51 +1634,58 @@ class Senec:
 
     @property
     def sockets_enable(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "ENABLE" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_ENABLE"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_ENABLE"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["ENABLE"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "ENABLE")
 
     async def switch_array_sockets_enable(self, pos: int, value: bool):
-        await self.switch_array_data("ENABLE", pos, value);
+        await self.switch_array_post(SENEC_SECTION_SOCKETS, "ENABLE", pos, 2, value);
 
     @property
     def sockets_force_on(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "FORCE_ON" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_FORCE_ON"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_FORCE_ON"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["FORCE_ON"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "FORCE_ON")
 
     async def switch_array_sockets_force_on(self, pos: int, value: bool):
-        await self.switch_array_data("FORCE_ON", pos, value);
+        await self.switch_array_post(SENEC_SECTION_SOCKETS, "FORCE_ON", pos, 2, value);
 
     @property
     def sockets_use_time(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "USE_TIME" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_USE_TIME"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_USE_TIME"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["USE_TIME"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "USE_TIME")
 
     async def switch_array_sockets_use_time(self, pos: int, value: bool):
-        await self.switch_array_data("USE_TIME", pos, value);
+        await self.switch_array_post(SENEC_SECTION_SOCKETS, "USE_TIME", pos, 2, value);
 
-    async def switch_array_data(self, upper_key: str, pos: int, value: bool):
-        self._OVERWRITES["SOCKETS_" + upper_key].update({"VALUE": self._raw[SENEC_SECTION_SOCKETS][upper_key]})
-        self._OVERWRITES["SOCKETS_" + upper_key]["VALUE"][pos] = 1 if value else 0
-        self._OVERWRITES["SOCKETS_" + upper_key]["TS"] = time()
-        value_data = ["", ""]
+    @property
+    def wallbox_prohibit_usage(self) -> [int]:
+        return self.read_array_data(SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE")
+
+    async def switch_array_wallbox_prohibit_usage(self, pos: int, value: bool):
+        await self.switch_array_post(SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", pos, 4, value);
+
+    def read_array_data(self, section_key: str, array_values_key) -> []:
+        if hasattr(self, '_raw') and section_key in self._raw and array_values_key in self._raw[section_key]:
+            if self._OVERWRITES[section_key + "_" + array_values_key]["TS"] + 5 > time():
+                return self._OVERWRITES[section_key + "_" + array_values_key]["VALUE"]
+            else:
+                return self._raw[section_key][array_values_key]
+
+    async def switch_array_post(self, section_key: str, upper_key: str, pos: int, array_length: int, value: bool):
+        self._OVERWRITES[section_key + "_" + upper_key].update({"VALUE": self._raw[section_key][upper_key]})
+        self._OVERWRITES[section_key + "_" + upper_key]["VALUE"][pos] = 1 if value else 0
+        self._OVERWRITES[section_key + "_" + upper_key]["TS"] = time()
+
+        if array_length == 2:
+            value_data = ["", ""]
+        else:
+            value_data = ["", "", "", ""]
+
         if (value):
-            self._raw[SENEC_SECTION_SOCKETS][upper_key][pos] = 1
+            self._raw[section_key][upper_key][pos] = 1
             value_data[pos] = "u8_01"
         else:
-            self._raw[SENEC_SECTION_SOCKETS][upper_key][pos] = 0
+            self._raw[section_key][upper_key][pos] = 0
             value_data[pos] = "u8_00"
 
         post_data = {
-            SENEC_SECTION_SOCKETS: {
+            section_key: {
                 upper_key: value_data
             }
         }
@@ -1708,97 +1698,94 @@ class Senec:
 
     @property
     def sockets_lower_limit(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "LOWER_LIMIT" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_LOWER_LIMIT"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_LOWER_LIMIT"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["LOWER_LIMIT"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "LOWER_LIMIT")
 
-    async def set_number_value_array_sockets_lower_limit(self, pos: int, value: int):
-        await self.set_number_array_value_data("LOWER_LIMIT", pos, 4, value)
+    async def set_nva_sockets_lower_limit(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "LOWER_LIMIT", pos, 2, "u1", value)
 
     @property
     def sockets_upper_limit(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "UPPER_LIMIT" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_UPPER_LIMIT"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_UPPER_LIMIT"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["UPPER_LIMIT"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "UPPER_LIMIT")
 
-    async def set_number_value_array_sockets_upper_limit(self, pos: int, value: int):
-        await self.set_number_array_value_data("UPPER_LIMIT", pos, 4, value)
+    async def set_nva_sockets_upper_limit(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "UPPER_LIMIT", pos, 2, "u1", value)
 
     @property
     def sockets_power_on_time(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "POWER_ON_TIME" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_POWER_ON_TIME"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_POWER_ON_TIME"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["POWER_ON_TIME"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "POWER_ON_TIME")
 
-    async def set_number_value_array_sockets_power_on_time(self, pos: int, value: int):
-        await self.set_number_array_value_data("POWER_ON_TIME", pos, 4, value)
+    async def set_nva_sockets_power_on_time(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "POWER_ON_TIME", pos, 2, "u1", value)
 
     @property
     def sockets_switch_on_hour(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "SWITCH_ON_HOUR" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_SWITCH_ON_HOUR"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_SWITCH_ON_HOUR"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["SWITCH_ON_HOUR"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "SWITCH_ON_HOUR")
 
-    async def set_number_value_array_sockets_switch_on_hour(self, pos: int, value: int):
-        await self.set_number_array_value_data("SWITCH_ON_HOUR", pos, 2, value)
+    async def set_nva_sockets_switch_on_hour(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "SWITCH_ON_HOUR", pos, 2, "u8", value)
 
     @property
     def sockets_switch_on_minute(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "SWITCH_ON_MINUTE" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_SWITCH_ON_MINUTE"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_SWITCH_ON_MINUTE"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["SWITCH_ON_MINUTE"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "SWITCH_ON_MINUTE")
 
-    async def set_number_value_array_sockets_switch_on_minute(self, pos: int, value: int):
-        await self.set_number_array_value_data("SWITCH_ON_MINUTE", pos, 2, value)
+    async def set_nva_sockets_switch_on_minute(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "SWITCH_ON_MINUTE", pos, 2, "u8", value)
 
     @property
     def sockets_time_limit(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "TIME_LIMIT" in self._raw[SENEC_SECTION_SOCKETS]:
-            if self._OVERWRITES["SOCKETS_TIME_LIMIT"]["TS"] + 5 > time():
-                return self._OVERWRITES["SOCKETS_TIME_LIMIT"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_SOCKETS]["TIME_LIMIT"]
+        return self.read_array_data(SENEC_SECTION_SOCKETS, "TIME_LIMIT")
 
-    async def set_number_value_array_sockets_time_limit(self, pos: int, value: int):
-        await self.set_number_array_value_data("TIME_LIMIT", pos, 4, value)
+    async def set_nva_sockets_time_limit(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "TIME_LIMIT", pos, 2, "u1", value)
 
-    async def set_number_array_value_data(self, upper_key: str, pos: int, data_len: int, value: int):
-        self._OVERWRITES["SOCKETS_" + upper_key].update({"VALUE": self._raw[SENEC_SECTION_SOCKETS][upper_key]})
-        self._OVERWRITES["SOCKETS_" + upper_key]["VALUE"][pos] = value
-        self._OVERWRITES["SOCKETS_" + upper_key]["TS"] = time()
+    @property
+    def wallbox_set_icmax(self) -> [int]:
+        return self.read_array_data(SENEC_SECTION_WALLBOX, "SET_ICMAX")
 
-        value_data = ["", ""]
-        self._raw[SENEC_SECTION_SOCKETS][upper_key][pos] = value
-        if data_len == 4:
-            value_data[pos] = "u1_"+util.get_int_as_hex(value, data_len)
+    async def set_nva_wallbox_set_icmax(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_WALLBOX, "SET_ICMAX", pos, 4, "fl", value)
+
+    @property
+    def wallbox_set_idefault(self) -> [int]:
+        return self.read_array_data(SENEC_SECTION_WALLBOX, "SET_IDEFAULT")
+
+    async def set_nva_wallbox_set_idefault(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_WALLBOX, "SET_IDEFAULT", pos, 4, "fl", value)
+
+    async def set_nva_post(self, section_key: str, value_key: str, pos: int, array_length: int, data_type: str, value):
+        self._OVERWRITES[section_key + "_" + value_key].update({"VALUE": self._raw[section_key][value_key]})
+        self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
+        self._OVERWRITES[section_key + "_" + value_key]["TS"] = time()
+
+        if array_length == 2:
+            value_data = ["", ""]
         else:
-            value_data[pos] = "u8_"+util.get_int_as_hex(value, data_len)
+            value_data = ["", "", "", ""]
+
+        self._raw[section_key][value_key][pos] = value
+        if data_type == "u1":
+            value_data[pos] = "u1_"+util.get_as_hex(int(value), 4)
+        elif data_type == "u8":
+            value_data[pos] = "u8_"+util.get_as_hex(int(value), 2)
+        elif data_type == "fl":
+            value_data[pos] = "fl_"+util.get_float_as_IEEE754_hex(float(value))
 
         post_data = {
-            SENEC_SECTION_SOCKETS: {
-                upper_key: value_data
+            section_key: {
+                value_key: value_data
             }
         }
+        _LOGGER.info(f"post: {post_data}")
         await self.write(post_data)
 
     async def set_number_value_array(self, array_key: str, array_pos: int, value: int):
-        return await getattr(self, 'set_number_value_array_' + str(array_key))(array_pos, value)
+        return await getattr(self, 'set_nva_' + str(array_key))(array_pos, value)
 
     """NORMAL NUMBER HANDLING... currently no 'none-array' entities are implemented"""
 
     async def set_number_value(self, array_key: str, value: int):
         # this will cause a method not found exception...
-        return await getattr(self, 'set_number_value_' + str(array_key))(value)
+        return await getattr(self, 'set_nv_' + str(array_key))(value)
 
     async def write(self, data):
         await self.write_senec_v31(data)
