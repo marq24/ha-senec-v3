@@ -1,3 +1,5 @@
+from typing import Final
+
 SENEC_SECTION_BAT1 = "BAT1"
 SENEC_SECTION_BAT1OBJ1 = "BAT1OBJ1"
 SENEC_SECTION_BMS = "BMS"
@@ -42,7 +44,7 @@ BATT_TYPE_NAME = {
     2: "Senec Inverter V2",
     3: "SENEC.Inverter V2.1",
     4: "SENEC.Inverter V3 LV"
-};
+}
 
 SYSTEM_TYPE_NAME = {
     0: "Senec Home 8.0 / Blei",
@@ -65,7 +67,7 @@ SYSTEM_TYPE_NAME = {
     17: "SENEC.Home V3 hybrid",
     18: "SENEC.Home V3 hybrid duo",
     19: "SENEC.Home V3 hybrid",
-};
+}
 
 SYSTEM_STATE_NAME = {
     "en": {
@@ -371,4 +373,101 @@ SYSTEM_STATE_NAME = {
         97: "SCARICO DI SICUREZZA",
         98: "ERRORE BMS - SQUILIBRIO DEL MODULOTRANSLATE"
     }
+}
+
+WALLBOX_STATE_NAME = {
+    "en": {
+        0: "Invalid",
+        161: "Waiting for EV",
+        162: "Waiting for EV, but locked",
+        177: "EV is asking for charging",
+        178: "EV has the permission to charge",
+        193: "EV is asking for charging, but locked",
+        194: "EV is charged",
+        195: "C2 w. reduced current (error F16, F17)",
+        196: "C2 w. reduced current (imbalance F15)",
+        224: "Charging point disabled by enable input EN1 / key lock or for update",
+        225: "production test",
+        226: "EVCC can be programmed",
+        227: "Bus idle",
+        241: "Unintended closed contact (Welding)",
+        242: "Internal error",
+        243: "DC residual current detected",
+        244: "Upstream communication timeout",
+        245: "Lock of socket failed",
+        246: "CS out of range",
+        247: "State D requested by EV",
+        248: "CP out of range",
+        249: "Overcurrent detected",
+        250: "Temperature outside limits",
+        251: "Unintended opened contact",
+        252: "Reserved State",
+        253: "Reserved State",
+    },
+    "de": {
+        0: "Ungültig",
+        161: "Warte auf E-Fahrzeug",
+        162: "Warte auf E-Fahrzeug, aber Ladepunkt gesperrt",
+        177: "E-Fahrzeug fragt Ladung an",
+        178: "E-Fahrzeug kann geladen werden",
+        193: "E-Fahrzeug fragt Ladung an, aber Ladepunkt gesperrt",
+        194: "E-Fahrzeug lädt momentan",
+        195: "E-Fahrzeug lädt mit verringertem Strom (Fehler F16, F17)",
+        196: "E-Fahrzeug lädt mit verringertem Strom (Schieflast F15)",
+        224: "Wallbox deaktiviert durch EN1/Schlüsselschalter oder für Konfigurationsupdate",
+        225: "Test Production",
+        226: "Steuereinheit kann programmiert werden",
+        227: "Warte auf Kommunikation mit SENEC-Speicher",
+        241: "Unerwartet geschlossener Kontakt (verschweißt)",
+        242: "Interner Fehler",
+        243: "DC Fehlerstrom erkannt",
+        244: "Fehler Kommunikation",
+        245: "Sperren der Ladebuchse fehlgeschlagen",
+        246: "Kabelfehler",
+        247: "E-Fahrzeug meldet Übertemperatur",
+        248: "Kommunikationsfehler zum E-Fahrzeug",
+        249: "Überstrom erkannt",
+        250: "Temperaturgrenzwert überschritten",
+        251: "Unerwartet geöffneter Kontakt",
+        252: "Reserved State",
+        253: "Reserved State"
+    },
+    "it": {
+        0: "Stato non valido",
+        161: "Non collegato",
+        162: "Non collegato (locked)",
+        177: "Connesso",
+        178: "Pronto",
+        193: "Carica (locked)",
+        194: "Carica",
+        195: "Carica a potenza ridotta (temperatura elevata)",
+        196: "Carica a potenza ridotta (limitazione dello squilibrio di carico)",
+        224: "Disabilitato (contatto di abilitazione)",
+        225: "production test",
+        226: "EVCC can be programmed",
+        227: "Bus idle",
+        241: "Errore di contatto",
+        242: "Errore interno",
+        243: "Corrente di guasto rilevata",
+        244: "Errore di comunicazione Wallbox",
+        245: "Errore di blocco",
+        246: "Errore cavo",
+        247: "Sovratemperatura del veicolo",
+        248: "Veicolo di errore di comunicazione",
+        249: "Errore di alimentazione",
+        250: "Temperatura troppo alta",
+        251: "Errore di contatto",
+        252: "Reserved State",
+        253: "Reserved State",
+    }
+}
+
+APP_API_WEB_MODE_LOCKED = "locked"
+APP_API_WEB_MODE_SSGCM = "smart_self_generated_compatibility_mode"
+APP_API_WEB_MODE_FASTEST = "fastest"
+
+WALLBOX_CHARGING_MODES : Final = {
+    0: APP_API_WEB_MODE_LOCKED,
+    1: APP_API_WEB_MODE_SSGCM,
+    2: APP_API_WEB_MODE_FASTEST
 }

@@ -10,7 +10,7 @@ from homeassistant.const import CONF_TYPE
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import (
     DOMAIN,
-    MAIN_NUMBER_SENSOR_TYPES,
+    MAIN_NUMBER_TYPES,
     WEB_NUMBER_SENSOR_TYPES,
     CONF_SYSTYPE_WEB,
     CONF_SYSTYPE_INVERTER
@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
             entity = SenecNumber(coordinator, description)
             entities.append(entity)
     else:
-        for description in MAIN_NUMBER_SENSOR_TYPES:
+        for description in MAIN_NUMBER_TYPES:
             entity = SenecNumber(coordinator, description)
             entities.append(entity)
 

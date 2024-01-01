@@ -47,6 +47,8 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         key = self.entity_description.key.lower()
         name = self.entity_description.name
         self.entity_id = f"switch.{slugify(title)}_{key}"
+        self._attr_icon = self.entity_description.icon
+        self._attr_icon_off = self.entity_description.icon_off
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
         # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
@@ -57,11 +59,15 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         """Turn on the switch."""
         try:
             if self.entity_description.array_key is not None:
-                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key, self.entity_description.array_pos, True)
+                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key,
+                                                                    self.entity_description.array_pos,
+                                                                    False if self.entity_description.inverted else True)
             else:
-                await self.coordinator._async_switch_to_state(self.entity_description.key, True)
+                await self.coordinator._async_switch_to_state(self.entity_description.key,
+                                                              False if self.entity_description.inverted else True)
             self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+            if hasattr(self.entity_description,
+                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
                 self.async_schedule_update_ha_state(force_refresh=True)
 
@@ -73,11 +79,15 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         """Turn off the switch."""
         try:
             if self.entity_description.array_key is not None:
-                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key, self.entity_description.array_pos, False)
+                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key,
+                                                                    self.entity_description.array_pos,
+                                                                    True if self.entity_description.inverted else False)
             else:
-                await self.coordinator._async_switch_to_state(self.entity_description.key, False)
+                await self.coordinator._async_switch_to_state(self.entity_description.key,
+                                                              True if self.entity_description.inverted else False)
             self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+            if hasattr(self.entity_description,
+                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
                 self.async_schedule_update_ha_state(force_refresh=True)
 
@@ -90,9 +100,14 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         # return self.coordinator.data.get("title", "") == "foo"
         try:
             if self.entity_description.array_key is not None:
-                value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos] == 1
+                value = getattr(self.coordinator.senec, self.entity_description.array_key)[
+                            self.entity_description.array_pos] == 1
             else:
                 value = getattr(self.coordinator.senec, self.entity_description.key)
+
+            if value is not None and self.entity_description.inverted:
+                value = not value
+
             if value is None or value == "":
                 value = None
             else:
@@ -109,3 +124,11 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         if (is_on := self.is_on) is None:
             return None
         return STATE_ON if is_on else STATE_OFF
+
+    @property
+    def icon(self):
+        """Return the icon of the sensor."""
+        if self._attr_icon_off is not None and self.state == STATE_OFF:
+            return self._attr_icon_off
+        else:
+            return self._attr_icon

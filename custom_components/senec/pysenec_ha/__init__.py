@@ -23,6 +23,7 @@ from custom_components.senec.const import (
     QUERY_BMS_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
+    QUERY_WALLBOX_APPAPI_KEY,
     QUERY_SOCKETS_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
@@ -32,6 +33,7 @@ from custom_components.senec.const import (
 from custom_components.senec.pysenec_ha.util import parse
 from custom_components.senec.pysenec_ha.constants import (
     SYSTEM_STATE_NAME,
+    WALLBOX_STATE_NAME,
     SYSTEM_TYPE_NAME,
     BATT_TYPE_NAME,
 
@@ -51,6 +53,10 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_SYS_UPDATE,
     SENEC_SECTION_BAT1,
     SENEC_SECTION_WIZARD,
+
+    APP_API_WEB_MODE_LOCKED,
+    APP_API_WEB_MODE_FASTEST,
+    APP_API_WEB_MODE_SSGCM,
 )
 
 # 4: "INITIAL CHARGE",
@@ -92,6 +98,12 @@ class Senec:
         else:
             self._QUERY_WALLBOX = False
 
+        # do we need some additional information for our wallbox (that are only available via the app-api!
+        if options is not None and QUERY_WALLBOX_APPAPI_KEY in options:
+            self._QUERY_WALLBOX_APPAPI = options[QUERY_WALLBOX_APPAPI_KEY]
+        else:
+            self._QUERY_WALLBOX_APPAPI = False
+
         if options is not None and QUERY_FANDATA_KEY in options:
             self._QUERY_FANDATA = options[QUERY_FANDATA_KEY]
         else:
@@ -119,23 +131,37 @@ class Senec:
         # so for five seconds after the switch take place we will return
         # the 'faked' value
         self._OVERWRITES = {
-            "LI_STORAGE_MODE_RUNNING": { "TS": 0, "VALUE": False},
-            "SAFE_CHARGE_RUNNING": { "TS": 0, "VALUE": False},
+            "LI_STORAGE_MODE_RUNNING": {"TS": 0, "VALUE": False},
+            "SAFE_CHARGE_RUNNING": {"TS": 0, "VALUE": False},
 
-            SENEC_SECTION_SOCKETS + "_FORCE_ON": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_ENABLE": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_USE_TIME": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_LOWER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_UPPER_LIMIT": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_POWER_ON_TIME": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_SWITCH_ON_HOUR": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_SWITCH_ON_MINUTE": { "TS": 0, "VALUE": [0, 0]},
-            SENEC_SECTION_SOCKETS + "_TIME_LIMIT": { "TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_FORCE_ON": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_ENABLE": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_USE_TIME": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_LOWER_LIMIT": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_UPPER_LIMIT": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_POWER_ON_TIME": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_SWITCH_ON_HOUR": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_SWITCH_ON_MINUTE": {"TS": 0, "VALUE": [0, 0]},
+            SENEC_SECTION_SOCKETS + "_TIME_LIMIT": {"TS": 0, "VALUE": [0, 0]},
 
-            SENEC_SECTION_WALLBOX + "_PROHIBIT_USAGE": { "TS": 0, "VALUE": [0, 0, 0, 0]},
-            SENEC_SECTION_WALLBOX + "_SET_ICMAX": { "TS": 0, "VALUE": [0, 0, 0, 0]},
-            SENEC_SECTION_WALLBOX + "_SET_IDEFAULT": { "TS": 0, "VALUE": [0, 0, 0, 0]},
+            SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE": {"TS": 0, "VALUE": False},
+            SENEC_SECTION_WALLBOX + "_PROHIBIT_USAGE": {"TS": 0, "VALUE": [0, 0, 0, 0]},
+            SENEC_SECTION_WALLBOX + "_SET_ICMAX": {"TS": 0, "VALUE": [0, 0, 0, 0]},
+            SENEC_SECTION_WALLBOX + "_SET_IDEFAULT": {"TS": 0, "VALUE": [0, 0, 0, 0]},
+            SENEC_SECTION_WALLBOX + "_SMART_CHARGE_ACTIVE": {"TS": 0, "VALUE": [0, 0, 0, 0]},
         }
+
+        IntBridge.lala_cgi = self
+        if IntBridge.avail():
+            # ok mein-senec-web is already existing...
+            if self._QUERY_WALLBOX_APPAPI:
+                IntBridge.app_api._QUERY_WALLBOX = True
+                # ok let's force an UPDATE of the WEB-API
+                _LOGGER.debug("force refresh of wallbox-data via app-api...")
+                try:
+                    asyncio.create_task(IntBridge.app_api.update())
+                except Exception as exc:
+                    _LOGGER.debug(f"Exception while try to call 'IntBridge.app_api.update': {exc}")
 
     @property
     def device_id(self) -> str:
@@ -1048,7 +1074,16 @@ class Senec:
             return self._raw["BMS"]["FW"][3]
 
     @property
-    def wallbox_power(self) -> float:
+    def wallbox_1_state(self) -> str:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "STATE" in self._raw[SENEC_SECTION_WALLBOX]:
+            value = self._raw[SENEC_SECTION_WALLBOX]["STATE"][0]
+            if self._lang in WALLBOX_STATE_NAME:
+                return WALLBOX_STATE_NAME[self._lang].get(value, "UNKNOWN")
+            else:
+                return WALLBOX_STATE_NAME["en"].get(value, "UNKNOWN")
+
+    @property
+    def wallbox_1_power(self) -> float:
         """
         Wallbox Total Charging Power (W)
         Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
@@ -1070,7 +1105,7 @@ class Senec:
             return total
 
     @property
-    def wallbox_ev_connected(self) -> bool:
+    def wallbox_1_ev_connected(self) -> bool:
         """
         Wallbox EV Connected
         """
@@ -1079,7 +1114,7 @@ class Senec:
             return self._raw[SENEC_SECTION_WALLBOX]["EV_CONNECTED"][0]
 
     @property
-    def wallbox_energy(self) -> float:
+    def wallbox_1_energy(self) -> float:
         """
         Wallbox Total Energy
         """
@@ -1088,46 +1123,55 @@ class Senec:
             return self._raw[SENEC_SECTION_STATISTIC]["LIVE_WB_ENERGY"][0]
 
     @property
-    def wallbox_l1_used(self) -> bool:
+    def wallbox_1_l1_used(self) -> bool:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][0] == 1
 
     @property
-    def wallbox_l2_used(self) -> bool:
+    def wallbox_1_l2_used(self) -> bool:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L2_USED"][0] == 1
 
     @property
-    def wallbox_l3_used(self) -> bool:
+    def wallbox_1_l3_used(self) -> bool:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_USED" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L3_USED"][0] == 1
 
     @property
-    def wallbox_l1_charging_current(self) -> float:
+    def wallbox_1_l1_charging_current(self) -> float:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][0]
 
     @property
-    def wallbox_l2_charging_current(self) -> float:
+    def wallbox_1_l2_charging_current(self) -> float:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L2_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L2_CHARGING_CURRENT"][0]
 
     @property
-    def wallbox_l3_charging_current(self) -> float:
+    def wallbox_1_l3_charging_current(self) -> float:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "L3_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["L3_CHARGING_CURRENT"][0]
 
     @property
-    def wallbox_min_charging_current(self) -> float:
+    def wallbox_1_min_charging_current(self) -> float:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][0]
+
+    @property
+    def wallbox_2_state(self) -> str:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "STATE" in self._raw[SENEC_SECTION_WALLBOX]:
+            value = self._raw[SENEC_SECTION_WALLBOX]["STATE"][1]
+            if self._lang in WALLBOX_STATE_NAME:
+                return WALLBOX_STATE_NAME[self._lang].get(value, "UNKNOWN")
+            else:
+                return WALLBOX_STATE_NAME["en"].get(value, "UNKNOWN")
 
     @property
     def wallbox_2_power(self) -> float:
@@ -1212,6 +1256,15 @@ class Senec:
             return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][1]
 
     @property
+    def wallbox_3_state(self) -> str:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "STATE" in self._raw[SENEC_SECTION_WALLBOX]:
+            value = self._raw[SENEC_SECTION_WALLBOX]["STATE"][2]
+            if self._lang in WALLBOX_STATE_NAME:
+                return WALLBOX_STATE_NAME[self._lang].get(value, "UNKNOWN")
+            else:
+                return WALLBOX_STATE_NAME["en"].get(value, "UNKNOWN")
+
+    @property
     def wallbox_3_power(self) -> float:
         """
         Wallbox Total Charging Power (W)
@@ -1292,6 +1345,15 @@ class Senec:
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "MIN_CHARGING_CURRENT" in self._raw[
             SENEC_SECTION_WALLBOX]:
             return self._raw[SENEC_SECTION_WALLBOX]["MIN_CHARGING_CURRENT"][2]
+
+    @property
+    def wallbox_4_state(self) -> str:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "STATE" in self._raw[SENEC_SECTION_WALLBOX]:
+            value = self._raw[SENEC_SECTION_WALLBOX]["STATE"][3]
+            if self._lang in WALLBOX_STATE_NAME:
+                return WALLBOX_STATE_NAME[self._lang].get(value, "UNKNOWN")
+            else:
+                return WALLBOX_STATE_NAME["en"].get(value, "UNKNOWN")
 
     @property
     def wallbox_4_power(self) -> float:
@@ -1379,32 +1441,36 @@ class Senec:
     def fan_inv_lv(self) -> bool:
         if hasattr(self, '_raw') and SENEC_SECTION_FAN_SPEED in self._raw and "INV_LV" in self._raw[
             SENEC_SECTION_FAN_SPEED]:
-            return self._raw[SENEC_SECTION_FAN_SPEED]["INV_LV"] == 1
+            return self._raw[SENEC_SECTION_FAN_SPEED]["INV_LV"] > 0
 
     @property
     def fan_inv_hv(self) -> bool:
         if hasattr(self, '_raw') and SENEC_SECTION_FAN_SPEED in self._raw and "INV_HV" in self._raw[
             SENEC_SECTION_FAN_SPEED]:
-            return self._raw[SENEC_SECTION_FAN_SPEED]["INV_HV"] == 1
+            return self._raw[SENEC_SECTION_FAN_SPEED]["INV_HV"] > 0
 
     @property
     def sockets_already_switched(self) -> [int]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "ALREADY_SWITCHED" in self._raw[SENEC_SECTION_SOCKETS]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "ALREADY_SWITCHED" in self._raw[
+            SENEC_SECTION_SOCKETS]:
             return self._raw[SENEC_SECTION_SOCKETS]["ALREADY_SWITCHED"]
 
     @property
     def sockets_power_on(self) -> [float]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "POWER_ON" in self._raw[SENEC_SECTION_SOCKETS]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "POWER_ON" in self._raw[
+            SENEC_SECTION_SOCKETS]:
             return self._raw[SENEC_SECTION_SOCKETS]["POWER_ON"]
 
     @property
     def sockets_priority(self) -> [float]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "PRIORITY" in self._raw[SENEC_SECTION_SOCKETS]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "PRIORITY" in self._raw[
+            SENEC_SECTION_SOCKETS]:
             return self._raw[SENEC_SECTION_SOCKETS]["PRIORITY"]
 
     @property
     def sockets_time_rem(self) -> [float]:
-        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "TIME_REM" in self._raw[SENEC_SECTION_SOCKETS]:
+        if hasattr(self, '_raw') and SENEC_SECTION_SOCKETS in self._raw and "TIME_REM" in self._raw[
+            SENEC_SECTION_SOCKETS]:
             return self._raw[SENEC_SECTION_SOCKETS]["TIME_REM"]
 
     async def update(self):
@@ -1517,8 +1583,11 @@ class Senec:
                 "L3_USED": "",
                 "EV_CONNECTED": "",
                 "MIN_CHARGING_CURRENT": "",
+                "ALLOW_INTERCHARGE": "",
                 "SET_ICMAX": "",
                 "SET_IDEFAULT": "",
+                "SMART_CHARGE_ACTIVE": "",
+                "STATE": "",
                 "PROHIBIT_USAGE": ""}
             })
 
@@ -1627,6 +1696,35 @@ class Senec:
 
         await self.write(post_data)
 
+    @property
+    def wallbox_allow_intercharge(self) -> bool:
+        if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "ALLOW_INTERCHARGE" in self._raw[
+            SENEC_SECTION_WALLBOX]:
+            # if it just has been switched on/off we provide a FAKE value for 5 sec...
+            # since senec unit do not react 'instant' on some requests...
+            if self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"]["TS"] + 5 > time():
+                return self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1
+
+    async def switch_wallbox_allow_intercharge(self, value: bool, sync: bool = True):
+        self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"VALUE": value})
+        self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"TS": time()})
+        post_data = {}
+        if (value):
+            self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 1
+            post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_01"}}
+        else:
+            self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 0
+            post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_00"}}
+
+        await self.write(post_data)
+
+        if sync and IntBridge.avail():
+            # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting... so we need to push
+            # this to all 4 possible wallboxes...
+            await IntBridge.app_api.app_set_allow_intercharge_all(value_to_set=value, sync=False)
+
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
 
@@ -1654,11 +1752,30 @@ class Senec:
         await self.switch_array_post(SENEC_SECTION_SOCKETS, "USE_TIME", pos, 2, value);
 
     @property
+    def wallbox_smart_charge_active(self) -> [int]:
+        return self.read_array_data(SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE")
+
+    # SET the "switch" SMART_CHARGE_ACTIVE is a bit different, since the ON value is not 01 - it's (for what
+    # ever reason 03)...
+    async def switch_array_smart_charge_active(self, pos: int, value: int):
+        await self.set_nva_post(SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", pos, 4, "u8", value)
+
+    @property
     def wallbox_prohibit_usage(self) -> [int]:
         return self.read_array_data(SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE")
 
-    async def switch_array_wallbox_prohibit_usage(self, pos: int, value: bool):
+    async def switch_array_wallbox_prohibit_usage(self, pos: int, value: bool, sync: bool = True):
         await self.switch_array_post(SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", pos, 4, value);
+        if sync and IntBridge.avail():
+            mode = None
+            if value:
+                mode = APP_API_WEB_MODE_LOCKED
+            else:
+                mode = APP_API_WEB_MODE_SSGCM
+                if IntBridge.app_api._app_last_wallbox_modes[pos] is not None:
+                    mode = IntBridge.app_api._app_last_wallbox_modes[pos]
+
+            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=mode, wallbox_num=(pos + 1), sync=False)
 
     def read_array_data(self, section_key: str, array_values_key) -> []:
         if hasattr(self, '_raw') and section_key in self._raw and array_values_key in self._raw[section_key]:
@@ -1672,10 +1789,7 @@ class Senec:
         self._OVERWRITES[section_key + "_" + upper_key]["VALUE"][pos] = 1 if value else 0
         self._OVERWRITES[section_key + "_" + upper_key]["TS"] = time()
 
-        if array_length == 2:
-            value_data = ["", ""]
-        else:
-            value_data = ["", "", "", ""]
+        value_data = [""] * array_length
 
         if (value):
             self._raw[section_key][upper_key][pos] = 1
@@ -1739,11 +1853,13 @@ class Senec:
         await self.set_nva_post(SENEC_SECTION_SOCKETS, "TIME_LIMIT", pos, 2, "u1", value)
 
     @property
-    def wallbox_set_icmax(self) -> [int]:
+    def wallbox_set_icmax(self) -> [float]:
         return self.read_array_data(SENEC_SECTION_WALLBOX, "SET_ICMAX")
 
-    async def set_nva_wallbox_set_icmax(self, pos: int, value: int):
+    async def set_nva_wallbox_set_icmax(self, pos: int, value: float, sync: bool = True):
         await self.set_nva_post(SENEC_SECTION_WALLBOX, "SET_ICMAX", pos, 4, "fl", value)
+        if sync and IntBridge.avail():
+            await IntBridge.app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
 
     @property
     def wallbox_set_idefault(self) -> [int]:
@@ -1757,29 +1873,108 @@ class Senec:
         self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
         self._OVERWRITES[section_key + "_" + value_key]["TS"] = time()
 
-        if array_length == 2:
-            value_data = ["", ""]
-        else:
-            value_data = ["", "", "", ""]
+        value_data = [""] * array_length
 
         self._raw[section_key][value_key][pos] = value
         if data_type == "u1":
-            value_data[pos] = "u1_"+util.get_as_hex(int(value), 4)
+            value_data[pos] = "u1_" + util.get_as_hex(int(value), 4)
         elif data_type == "u8":
-            value_data[pos] = "u8_"+util.get_as_hex(int(value), 2)
+            value_data[pos] = "u8_" + util.get_as_hex(int(value), 2)
         elif data_type == "fl":
-            value_data[pos] = "fl_"+util.get_float_as_IEEE754_hex(float(value))
+            value_data[pos] = "fl_" + util.get_float_as_IEEE754_hex(float(value))
 
         post_data = {
             section_key: {
                 value_key: value_data
             }
         }
-        _LOGGER.info(f"post: {post_data}")
         await self.write(post_data)
 
     async def set_number_value_array(self, array_key: str, array_pos: int, value: int):
         return await getattr(self, 'set_nva_' + str(array_key))(array_pos, value)
+
+    @property
+    def wallbox_1_mode(self) -> str:
+        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[0] is not None:
+            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[0]:
+                return IntBridge.app_api._app_raw_wallbox[0]["chargingMode"].lower()
+
+    async def set_string_value_wallbox_1_mode(self, value: str):
+        if value == APP_API_WEB_MODE_LOCKED:
+            await self.switch_array_wallbox_prohibit_usage(pos=0, value=True, sync=False)
+        else:
+            await self.switch_array_wallbox_prohibit_usage(pos=0, value=False, sync=False)
+
+        if value == APP_API_WEB_MODE_SSGCM:
+            await self.switch_array_smart_charge_active(pos=0, value=3)
+        else:
+            await self.switch_array_smart_charge_active(pos=0, value=0)
+
+        if IntBridge.avail():
+            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=1, sync=False)
+
+    @property
+    def wallbox_2_mode(self) -> str:
+        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[1] is not None:
+            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[1]:
+                return IntBridge.app_api._app_raw_wallbox[1]["chargingMode"].lower()
+
+    async def set_string_value_wallbox_2_mode(self, value: str):
+        if value == APP_API_WEB_MODE_LOCKED:
+            await self.switch_array_wallbox_prohibit_usage(pos=1, value=True, sync=False)
+        else:
+            await self.switch_array_wallbox_prohibit_usage(pos=1, value=False, sync=False)
+
+        if value == APP_API_WEB_MODE_SSGCM:
+            await self.switch_array_smart_charge_active(pos=1, value=3)
+        else:
+            await self.switch_array_smart_charge_active(pos=1, value=0)
+
+        if IntBridge.avail():
+            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=2, sync=False)
+
+    @property
+    def wallbox_3_mode(self) -> str:
+        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[2] is not None:
+            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[2]:
+                return IntBridge.app_api._app_raw_wallbox[2]["chargingMode"].lower()
+
+    async def set_string_value_wallbox_3_mode(self, value: str):
+        if value == APP_API_WEB_MODE_LOCKED:
+            await self.switch_array_wallbox_prohibit_usage(pos=2, value=True, sync=False)
+        else:
+            await self.switch_array_wallbox_prohibit_usage(pos=2, value=False, sync=False)
+
+        if value == APP_API_WEB_MODE_SSGCM:
+            await self.switch_array_smart_charge_active(pos=2, value=3)
+        else:
+            await self.switch_array_smart_charge_active(pos=2, value=0)
+
+        if IntBridge.avail():
+            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=3, sync=False)
+
+    @property
+    def wallbox_4_mode(self) -> str:
+        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[3] is not None:
+            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[3]:
+                return IntBridge.app_api._app_raw_wallbox[3]["chargingMode"].lower()
+
+    async def set_string_value_wallbox_4_mode(self, value: str):
+        if value == APP_API_WEB_MODE_LOCKED:
+            await self.switch_array_wallbox_prohibit_usage(pos=3, value=True, sync=False)
+        else:
+            await self.switch_array_wallbox_prohibit_usage(pos=3, value=False, sync=False)
+
+        if value == APP_API_WEB_MODE_SSGCM:
+            await self.switch_array_smart_charge_active(pos=3, value=3)
+        else:
+            await self.switch_array_smart_charge_active(pos=3, value=0)
+
+        if IntBridge.avail():
+            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=4, sync=False)
+
+    async def set_string_value(self, key: str, value: str):
+        return await getattr(self, 'set_string_value_' + key)(value)
 
     """NORMAL NUMBER HANDLING... currently no 'none-array' entities are implemented"""
 
@@ -1791,6 +1986,7 @@ class Senec:
         await self.write_senec_v31(data)
 
     async def write_senec_v31(self, data):
+        _LOGGER.debug(f"posting data: {data}")
         async with self.web_session.post(self.url, json=data, ssl=False) as res:
             try:
                 res.raise_for_status()
@@ -2068,6 +2264,10 @@ class MySenecWebPortal:
 
     def __init__(self, user, pwd, web_session, master_plant_number: int = 0, options: dict = None):
         _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' with options: {options}")
+        # check if peak shaving is in options
+        if options is not None and QUERY_WALLBOX_KEY in options:
+            self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
+
         # Check if spare capacity is in options
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
             self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
@@ -2099,16 +2299,18 @@ class MySenecWebPortal:
         self._SENEC_PASSWORD = pwd
 
         # https://documenter.getpostman.com/view/10329335/UVCB9ihW#17e2c6c6-fe5e-4ca9-bc2f-dca997adaf90
-        self._SENEC_CLASSIC_AUTH_URL = "https://app-gateway-prod.senecops.com/v1/senec/login"
-        self._SENEC_CLASSIC_API_OVERVIEW_URL = "https://app-gateway-prod.senecops.com/v1/senec/anlagen"
+        # https://documenter.getpostman.com/view/10329335/UVCB9ihW#3e5a4286-c7d2-49d1-8856-12bba9fb5c6e
+        self._SENEC_APP_AUTH = "https://app-gateway-prod.senecops.com/v1/senec/login"
+        self._SENEC_APP_GET_SYSTEMS = "https://app-gateway-prod.senecops.com/v1/senec/anlagen"
+        self._SENEC_APP_GET_ABILITIES = "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/abilities"
+        self._SENEC_APP_SET_WALLBOX = "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/wallboxes/%s"
 
-        self._SENEC_AUTH_URL = "https://mein-senec.de/auth/login"
-        self._SENEC_API_GET_CUSTOMER_URL = "https://mein-senec.de/endkunde/api/context/getEndkunde"
-        self._SENEC_API_GET_SYSTEM_URL = "https://mein-senec.de/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=%s"
+        self._SENEC_WEB_AUTH = "https://mein-senec.de/auth/login"
+        self._SENEC_WEB_GET_CUSTOMER = "https://mein-senec.de/endkunde/api/context/getEndkunde"
+        self._SENEC_WEB_GET_SYSTEM_INFO = "https://mein-senec.de/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=%s"
 
-        self._SENEC_API_OVERVIEW_URL = "https://mein-senec.de/endkunde/api/status/getstatusoverview.php?anlageNummer=%s"
-        self._SENEC_API_URL_START = "https://mein-senec.de/endkunde/api/status/getstatus.php?type="
-        self._SENEC_API_URL_END = "&period=all&anlageNummer=%s"
+        self._SENEC_WEB_GET_OVERVIEW_URL = "https://mein-senec.de/endkunde/api/status/getstatusoverview.php?anlageNummer=%s"
+        self._SENEC_WEB_GET_STATUS = "https://mein-senec.de/endkunde/api/status/getstatus.php?type=%s&period=all&anlageNummer=%s"
 
         # Calls for spare capacity - Base URL has to be followed by master plant number
         self._SENEC_API_SPARE_CAPACITY_BASE_URL = "https://mein-senec.de/endkunde/api/senec/"
@@ -2145,6 +2347,21 @@ class MySenecWebPortal:
         self._is_authenticated = False
         self._peak_shaving_entities = {}
 
+        # APP-API...
+        self._app_is_authenticated = False
+        self._app_token = None
+        self._app_master_plant_id = None
+        self._app_raw_wallbox = [None, None, None, None]
+        self._app_last_wallbox_modes = [None, None, None, None]
+        self._app_wallbox_num_max = 4
+
+        IntBridge.app_api = self
+        if IntBridge.avail():
+            # ok mein-senec-web is already existing...
+            if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
+                self._QUERY_WALLBOX = True
+                _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
+
     def check_cookie_jar_type(self):
         if _require_lib_patch:
             if hasattr(self.web_session, "_cookie_jar"):
@@ -2161,46 +2378,384 @@ class MySenecWebPortal:
             the_jar = getattr(self.web_session, "_cookie_jar")
             the_jar.clear_domain("mein-senec.de")
 
-    async def authenticate_classic(self, do_update: bool):
+    async def app_authenticate(self, retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_authenticate(self) ********")
         auth_payload = {
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.web_session.post(self._SENEC_CLASSIC_AUTH_URL, json=auth_payload) as res:
-            res.raise_for_status()
-            if res.status == 200:
-                try:
-                    r_json = await res.json()
-                    if "token" in r_json:
-                        self._token = r_json["token"]
-                        self._is_authenticated = True
-                        _LOGGER.info("Login successful")
-                        if do_update:
-                            self.update_classic()
-                except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-            else:
-                _LOGGER.warning(f"Login failed with Code {res.status}")
+        async with self.web_session.post(self._SENEC_APP_AUTH, json=auth_payload) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    try:
+                        r_json = await res.json()
+                        if "token" in r_json:
+                            self._app_token = r_json["token"]
+                            self._app_is_authenticated = True
+                            await self.app_get_master_plant_id(retry)
+                            if self._app_master_plant_id is not None:
+                                _LOGGER.info("APP-API: Login successful")
+                            else:
+                                _LOGGER.error("APP-API: could not fetch master plant id (aka 'anlagen:id')")
+                    except JSONDecodeError as jsonexc:
+                        _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json(): {jsonexc}")
 
-    async def update_classic(self):
-        _LOGGER.debug("***** updateClassic(self) ********")
-        if self._is_authenticated:
-            await self.get_system_overview_classic()
+                    except ClientResponseError as ioexc:
+                        _LOGGER.warning(f"APP-API: ClientResponseError while 'await res.json(): {ioexc}")
+
+                else:
+                    _LOGGER.warning(f"APP-API: Login failed with Code {res.status}")
+
+            except ClientResponseError as ioexc:
+                _LOGGER.warning(f"APP-API: Could not login to APP-API: {ioexc}")
+
+    async def app_get_master_plant_id(self, retry: bool = True):
+        _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
+        if self._app_is_authenticated:
+            headers = {"Authorization": self._app_token}
+            async with self.web_session.get(self._SENEC_APP_GET_SYSTEMS, headers=headers) as res:
+                res.raise_for_status()
+                if res.status == 200:
+                    try:
+                        data = await res.json();
+                        idx = self._master_plant_number
+                        if len(data) >= idx:
+                            if "id" in data[idx]:
+                                self._app_master_plant_id = data[idx]["id"]
+                                _LOGGER.debug(f"APP-API set _app_master_plant_id to {self._app_master_plant_id}")
+
+                            if "wallboxIds" in data[idx]:
+                                self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
+                                _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {self._app_wallbox_num_max}")
+
+                    except JSONDecodeError as exc:
+                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                else:
+                    if retry:
+                        self._app_is_authenticated = False
+                        self._app_token = None
+                        self._app_master_plant_id = None
+                        await self.app_authenticate(retry=False)
         else:
-            await self.authenticate_classic(True)
+            if retry:
+                await self.app_authenticate(retry=False)
 
-    async def get_system_overview_classic(self):
-        headers = {"Authorization": self._token}
-        async with self.web_session.get(self._SENEC_CLASSIC_API_OVERVIEW_URL, headers=headers) as res:
-            res.raise_for_status()
-            if res.status == 200:
-                try:
-                    r_json = await res.json()
-                except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+    async def app_get_data(self, a_url: str) -> dict:
+        _LOGGER.debug("***** APP-API: app_get_data(self) ********")
+        if self._app_token is not None:
+            _LOGGER.debug(f"APP-API get {a_url}")
+            try:
+                headers = {"Authorization": self._app_token}
+                async with self.web_session.get(url=a_url, headers=headers) as res:
+                    res.raise_for_status()
+                    if res.status == 200:
+                        try:
+                            data = await res.json()
+                            return data
+                        except JSONDecodeError as exc:
+                            _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
+
+                    elif res.status == 500:
+                        _LOGGER.info(f"APP-API: Wallbox Not found {a_url} (http 500)")
+
+                    else:
+                        self._app_is_authenticated = False
+                        self._app_token = None
+                        self._app_master_plant_id = None
+
+                    return None
+
+            except Exception as exc:
+                if res.status == 500:
+                    _LOGGER.info(f"APP-API: Wallbox Not found {a_url} [HTTP 500]: {exc}")
+                if res.status == 400:
+                    _LOGGER.info(f"APP-API: Wallbox Not found {a_url} [HTTP 400]: {exc}")
+                if res.status == 401:
+                    _LOGGER.info(f"APP-API: Wallbox No permission {a_url} [HTTP 401]: {exc}")
+                    self._app_is_authenticated = False
+                    self._app_token = None
+                    self._app_master_plant_id = None
+                else:
+                    _LOGGER.warning(f"APP-API: Could not get data from {a_url} causing: {exc}")
+
+                return None
+        else:
+            # somehow we should pass a "callable"...
+            await self.app_authenticate()
+
+    async def app_get_wallbox_data(self, wallbox_num: int = 1, retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_get_wallbox_data(self) ********")
+        if self._app_master_plant_id is not None:
+            idx = wallbox_num - 1
+            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+            data = await self.app_get_data(a_url=wb_url)
+            if data is not None:
+                self._app_raw_wallbox[idx] = data
             else:
-                self._is_authenticated = False
-                await self.update()
+                self._app_raw_wallbox[idx] = None
+
+            # {
+            #     "id": 1,
+            #     "configurable": true,
+            #     "maxPossibleChargingCurrentInA": 16.02,
+            #     "minPossibleChargingCurrentInA": 6,
+            #     "chargingMode": "SMART_SELF_GENERATED_COMPATIBILITY_MODE",
+            #     "currentApparentChargingPowerInVa": 4928,
+            #     "electricVehicleConnected": true,
+            #     "hasError": false,
+            #     "statusText": "Lädt",
+            #     "configuredMaxChargingCurrentInA": 16.02,
+            #     "configuredMinChargingCurrentInA": 8,
+            #     "temperatureInCelsius": 17.284,
+            #     "numberOfElectricPowerPhasesUsed": 3,
+            #     "allowIntercharge": null,
+            #     "compatibilityMode": true
+            # }
+
+        else:
+            if retry:
+                await self.app_authenticate()
+                if self._app_wallbox_num_max >= wallbox_num:
+                    await self.app_get_wallbox_data(wallbox_num=wallbox_num, retry=False)
+                else:
+                    _LOGGER.debug(
+                        f"APP-API cancel 'app_get_wallbox_data' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+
+    async def app_update_wallboxes(self):
+        _LOGGER.debug(f"APP-API app_update_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
+        # ok we go through all possible wallboxes [1-4] and check, if we can receive some
+        # data - if there is no data, then we make sure, that next time we do not query
+        # this wallbox again...
+        if self._app_wallbox_num_max > 0:
+            await self.app_get_wallbox_data(wallbox_num=1)
+            if self._app_raw_wallbox[0] is None and self._app_wallbox_num_max > 0:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 0")
+                self._app_wallbox_num_max = 0
+
+        if self._app_wallbox_num_max > 1:
+            await self.app_get_wallbox_data(wallbox_num=2)
+            if self._app_raw_wallbox[1] is None and self._app_wallbox_num_max > 1:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 1")
+                self._app_wallbox_num_max = 1
+
+        if self._app_wallbox_num_max > 2:
+            await self.app_get_wallbox_data(wallbox_num=3)
+            if self._app_raw_wallbox[2] is None and self._app_wallbox_num_max > 2:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
+                self._app_wallbox_num_max = 2
+
+        if self._app_wallbox_num_max > 3:
+            await self.app_get_wallbox_data(wallbox_num=4)
+            if self._app_raw_wallbox[3] is None and self._app_wallbox_num_max > 3:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 3")
+                self._app_wallbox_num_max = 3
+
+    async def app_post_data(self, a_url: str, post_data: dict, read_response: bool = False) -> bool:
+        _LOGGER.debug("***** APP-API: app_post_data(self) ********")
+        if self._app_token is not None:
+            _LOGGER.debug(f"APP-API post {post_data} to {a_url}")
+            try:
+                headers = {"Authorization": self._app_token}
+                async with self.web_session.post(url=a_url, headers=headers, json=post_data) as res:
+                    res.raise_for_status()
+                    if res.status == 200:
+                        if read_response:
+                            try:
+                                data = await res.json()
+                                _LOGGER.debug(data)
+                                return True
+                            except JSONDecodeError as exc:
+                                _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
+                        else:
+                            _LOGGER.debug(f"OK - {a_url} with '{post_data}'")
+                            return True
+
+                    elif res.status == 500:
+                        _LOGGER.info(f"APP-API: Not found {a_url} (http 500)")
+
+                    else:
+                        self._app_is_authenticated = False
+                        self._app_token = None
+                        self._app_master_plant_id = None
+                        return False
+
+            except Exception as exc:
+                if res.status == 500:
+                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
+                if res.status == 400:
+                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
+                if res.status == 401:
+                    _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
+                    self._app_is_authenticated = False
+                    self._app_token = None
+                    self._app_master_plant_id = None
+                else:
+                    _LOGGER.warning(f"APP-API: Could not post to {a_url} data: {post_data} causing: {exc}")
+
+                return False
+
+        else:
+            # somehow we should pass a "callable"...
+            await self.app_authenticate()
+            return False
+
+    async def app_set_wallbox_mode(self, mode_to_set_in_lc: str, wallbox_num: int = 1, sync: bool = True,
+                                   retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
+        idx = wallbox_num - 1
+        if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED and self._app_raw_wallbox[idx] is not None:
+            self._app_last_wallbox_modes[idx] = self._app_raw_wallbox[idx]["chargingMode"].lower()
+        else:
+            self._app_last_wallbox_modes[idx] = None
+
+        if self._app_master_plant_id is not None:
+            data = {
+                "mode": mode_to_set_in_lc.upper()
+            }
+            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+            success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
+            if success:
+                # setting the internal storage value...
+                if self._app_raw_wallbox[idx] is not None:
+                    self._app_raw_wallbox[idx]["chargingMode"] = mode_to_set_in_lc
+
+                # do we need to sync the value back to the 'lala_cgi' integration?
+                if sync and IntBridge.avail():
+                    if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
+                        await IntBridge.lala_cgi.switch_array_wallbox_prohibit_usage(pos=idx, value=True, sync=False)
+                    else:
+                        await IntBridge.lala_cgi.switch_array_wallbox_prohibit_usage(pos=idx, value=False, sync=False)
+        else:
+            if retry:
+                await self.app_authenticate()
+                if self._app_wallbox_num_max >= wallbox_num:
+                    await self.app_set_wallbox_mode(mode_to_set_in_lc=mode_to_set_in_lc, wallbox_num=wallbox_num,
+                                                    sync=sync, retry=False)
+                else:
+                    _LOGGER.debug(
+                        f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+
+    async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True,
+                                    retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
+        if self._app_master_plant_id is not None:
+            idx = wallbox_num - 1
+            current_mode = APP_API_WEB_MODE_SSGCM
+            if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
+
+            data = {
+                "mode": current_mode.upper(),
+                "minChargingCurrentInA": float(round(value_to_set, 2))
+            }
+
+            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+            success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
+            if success:
+                # setting the internal storage value...
+                if self._app_raw_wallbox[idx] is not None:
+                    self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"] = value_to_set
+
+                # do we need to sync the value back to the 'lala_cgi' integration?
+                if sync and IntBridge.avail():
+                    await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
+        else:
+            if retry:
+                await self.app_authenticate()
+                if self._app_wallbox_num_max >= wallbox_num:
+                    await self.app_set_wallbox_icmax(value_to_set=value_to_set, wallbox_num=wallbox_num,
+                                                     sync=sync, retry=False)
+                else:
+                    _LOGGER.debug(
+                        f"APP-API cancel 'app_set_wallbox_icmax' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+
+    async def app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True,
+                                        retry: bool = True) -> bool:
+        _LOGGER.debug("***** APP-API: app_set_allow_intercharge(self) ********")
+        if self._app_master_plant_id is not None:
+            idx = wallbox_num - 1
+            current_mode = APP_API_WEB_MODE_LOCKED
+            if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
+
+            data = {
+                "mode": current_mode.upper(),
+                "allowIntercharge": value_to_set
+            }
+
+            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+            success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
+            if success:
+                # setting the internal storage value...
+                if self._app_raw_wallbox[idx] is not None:
+                    self._app_raw_wallbox[idx]["allowIntercharge"] = value_to_set
+
+                # do we need to sync the value back to the 'lala_cgi' integration?
+                if sync and IntBridge.avail():
+                    await IntBridge.lala_cgi.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
+            return success
+        else:
+            if retry:
+                await self.app_authenticate()
+                if self._app_wallbox_num_max >= wallbox_num:
+                    return await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=wallbox_num,
+                                                                sync=sync, retry=False)
+                else:
+                    _LOGGER.debug(
+                        f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+                    return False
+            else:
+                return False
+
+    async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
+        _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
+
+        if self._app_wallbox_num_max > 0:
+            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=1, sync=sync)
+            if not res and self._app_wallbox_num_max > 0:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 0")
+                self._app_wallbox_num_max = 0
+
+        if self._app_wallbox_num_max > 1:
+            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=2, sync=sync)
+            if not res and self._app_wallbox_num_max > 1:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
+                self._app_wallbox_num_max = 1
+
+        if self._app_wallbox_num_max > 2:
+            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=3, sync=sync)
+            if not res  and self._app_wallbox_num_max > 2:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
+                self._app_wallbox_num_max = 2
+
+        if self._app_wallbox_num_max > 3:
+            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=4, sync=sync)
+            if not res and self._app_wallbox_num_max > 3:
+                _LOGGER.debug("APP-API set _app_wallbox_num_max to 3")
+                self._app_wallbox_num_max = 3
+
+    async def app_get_system_abilities(self):
+        if self._app_master_plant_id is not None and self._app_token is not None:
+            headers = {"Authorization": self._app_token}
+            a_url = f"{self._SENEC_APP_GET_ABILITIES}" % str(self._app_master_plant_id)
+            async with self.web_session.get(url=a_url, headers=headers) as res:
+                res.raise_for_status()
+                if res.status == 200:
+                    try:
+                        data = await res.json()
+                        _LOGGER.info(data)
+                    except JSONDecodeError as exc:
+                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                else:
+                    self._app_is_authenticated = False
+                    # somehow we should pass a "callable"...
+                    await self.app_get_master_plant_id()
+        else:
+            # somehow we should pass a "callable"...
+            await self.app_get_master_plant_id()
+
+    """MEIN-SENEC.DE from here"""
 
     async def authenticate(self, do_update: bool, throw401: bool):
         _LOGGER.info("***** authenticate(self) ********")
@@ -2209,7 +2764,7 @@ class MySenecWebPortal:
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.web_session.post(self._SENEC_AUTH_URL, data=auth_payload, max_redirects=20) as res:
+        async with self.web_session.post(self._SENEC_WEB_AUTH, data=auth_payload, max_redirects=20) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2249,6 +2804,10 @@ class MySenecWebPortal:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
                     await self.update_peak_shaving()
+
+            if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
+                await self.app_update_wallboxes()
+
         else:
             await self.authenticate(do_update=True, throw401=False)
 
@@ -2365,7 +2924,7 @@ class MySenecWebPortal:
     async def update_now_kW_stats(self):
         _LOGGER.debug("***** update_now_kW_stats(self) ********")
         # grab NOW and TODAY stats
-        a_url = f"{self._SENEC_API_OVERVIEW_URL}" % str(self._master_plant_number)
+        a_url = f"{self._SENEC_WEB_GET_OVERVIEW_URL}" % str(self._master_plant_number)
         async with self.web_session.get(a_url) as res:
             try:
                 res.raise_for_status()
@@ -2418,9 +2977,9 @@ class MySenecWebPortal:
 
     async def update_full_kWh_stats(self):
         # grab TOTAL stats
-        a_url = f"{self._SENEC_API_URL_END}" % str(self._master_plant_number)
+
         for key in self._API_KEYS:
-            api_url = self._SENEC_API_URL_START + key + a_url
+            api_url = f"{self._SENEC_WEB_GET_STATUS}" % (key, str(self._master_plant_number))
             async with self.web_session.get(api_url) as res:
                 try:
                     res.raise_for_status()
@@ -2467,7 +3026,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
-        async with self.web_session.get(self._SENEC_API_GET_CUSTOMER_URL) as res:
+        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -2489,7 +3048,7 @@ class MySenecWebPortal:
     async def update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
         _LOGGER.debug("***** update_get_systems(self) ********")
 
-        a_url = f"{self._SENEC_API_GET_SYSTEM_URL}" % str(a_plant_number)
+        a_url = f"{self._SENEC_WEB_GET_SYSTEM_INFO}" % str(a_plant_number)
         async with self.web_session.get(a_url) as res:
             res.raise_for_status()
             if res.status == 200:
@@ -2742,3 +3301,12 @@ class MySenecCookieJar(aiohttp.CookieJar):
             filtered[name] = mrsl_val
 
         return filtered
+
+
+class IntBridge:
+    app_api: MySenecWebPortal = None
+    lala_cgi: Senec = None
+
+    @staticmethod
+    def avail() -> bool:
+        return IntBridge.app_api is not None and IntBridge.lala_cgi is not None

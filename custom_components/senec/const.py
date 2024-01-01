@@ -3,6 +3,7 @@ from typing import Final
 from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
+from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntityDescription,
@@ -11,7 +12,8 @@ from homeassistant.components.sensor import (
 from homeassistant.components.switch import SwitchEntityDescription
 from homeassistant.components.number import (
     NumberEntityDescription,
-    NumberDeviceClass, NumberMode
+    NumberDeviceClass,
+    NumberMode
 )
 from homeassistant.const import (
     ENERGY_KILO_WATT_HOUR,
@@ -37,7 +39,8 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_PWR_UNIT,
     SENEC_SECTION_SOCKETS,
     SENEC_SECTION_TEMPMEASURE,
-    SENEC_SECTION_WALLBOX
+    SENEC_SECTION_WALLBOX,
+    WALLBOX_CHARGING_MODES
 )
 
 DOMAIN: Final = "senec"
@@ -97,6 +100,7 @@ DEFAULT_SCAN_INTERVAL_WEB_SENECV4 = 60
 QUERY_BMS_KEY = "query_bms_data"
 QUERY_FANDATA_KEY = "query_fan_data"
 QUERY_WALLBOX_KEY = "query_wallbox_data"
+QUERY_WALLBOX_APPAPI_KEY = "query_wallbox_data_via_app_api"
 QUERY_SOCKETS_KEY = "query_sockets_data"
 QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
@@ -108,6 +112,7 @@ PEAK_SHAVING_OPTIONS = ["deactivated", "manual", "auto"]
 # Service names
 SERVICE_SET_PEAKSHAVING: Final = "set_peakshaving"
 
+
 @dataclass
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
@@ -115,12 +120,15 @@ class ExtSensorEntityDescription(SensorEntityDescription):
     array_key: str | None = None
     array_pos: int = -1
 
+
 @dataclass
 class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
     senec_lala_section: str | None = None
     array_key: str | None = None
     array_pos: int = -1
+    on_value: int = -1
+
 
 @dataclass
 class ExtSwitchEntityDescription(SwitchEntityDescription):
@@ -128,6 +136,18 @@ class ExtSwitchEntityDescription(SwitchEntityDescription):
     senec_lala_section: str | None = None
     array_key: str | None = None
     array_pos: int = -1
+    inverted: bool = False
+    icon_off: str | None = None
+
+
+@dataclass
+class ExtSelectEntityDescription(SelectEntityDescription):
+    update_after_switch_delay_in_sec: int = 0
+    controls: list[str] | None = None
+    senec_lala_section: str | None = None
+    array_key: str | None = None
+    array_pos: int = -1
+
 
 @dataclass
 class ExtNumberEntityDescription(NumberEntityDescription):
@@ -138,7 +158,7 @@ class ExtNumberEntityDescription(NumberEntityDescription):
 
 
 WEB_NUMBER_SENSOR_TYPES = [
-    NumberEntityDescription(
+    ExtNumberEntityDescription(
         entity_registry_enabled_default=False,
         key="spare_capacity",
         name="Spare Capacity",
@@ -216,7 +236,7 @@ WEB_SENSOR_TYPES = [
     # powergenerated_today
     # consumption_today
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="powergenerated_now",
         name="Solar Generated Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -225,7 +245,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="consumption_now",
         name="House Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -234,7 +254,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="accuimport_now",
         name="Battery Discharge Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -243,7 +263,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="accuexport_now",
         name="Battery Charge Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -252,7 +272,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="acculevel_now",
         name="Battery Charge Percent",
         native_unit_of_measurement=PERCENTAGE,
@@ -260,7 +280,7 @@ WEB_SENSOR_TYPES = [
         # device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="gridimport_now",
         name="Grid Imported Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -269,7 +289,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="gridexport_now",
         name="Grid Exported Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -279,7 +299,7 @@ WEB_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     # Peak Shaving
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="gridexport_limit",
         name="Grid Exported Limit",
@@ -289,7 +309,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_mode",
         name="Peak Shaving Mode",
@@ -297,7 +317,7 @@ WEB_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENUM,
         options=PEAK_SHAVING_OPTIONS
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_capacitylimit",
         name="Peak Shaving Capacity Limit",
@@ -307,7 +327,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_enddate",
         name="Peak Shaving End Time",
@@ -516,43 +536,56 @@ MAIN_SWITCH_TYPES = [
         icon="mdi:solar-power",
         update_after_switch_delay_in_sec=2,
     ),
+
     # WALLBOX
-    # ExtSwitchEntityDescription(
-    #     senec_lala_section=SENEC_SECTION_WALLBOX,
-    #     entity_registry_enabled_default=False,
-    #     array_key="wallbox_prohibit_usage",
-    #     array_pos=0,
-    #     key="wallbox_1_prohibit_usage",
-    #     name="wallbox_1_prohibit_usage",
-    #     icon="mdi:toggle-switch",
-    # ),
-    # ExtSwitchEntityDescription(
-    #     senec_lala_section=SENEC_SECTION_WALLBOX,
-    #     entity_registry_enabled_default=False,
-    #     array_key="wallbox_prohibit_usage",
-    #     array_pos=1,
-    #     key="wallbox_2_prohibit_usage",
-    #     name="wallbox_2_prohibit_usage",
-    #     icon="mdi:toggle-switch",
-    # ),
-    # ExtSwitchEntityDescription(
-    #     senec_lala_section=SENEC_SECTION_WALLBOX,
-    #     entity_registry_enabled_default=False,
-    #     array_key="wallbox_prohibit_usage",
-    #     array_pos=2,
-    #     key="wallbox_3_prohibit_usage",
-    #     name="wallbox_3_prohibit_usage",
-    #     icon="mdi:toggle-switch",
-    # ),
-    # ExtSwitchEntityDescription(
-    #     senec_lala_section=SENEC_SECTION_WALLBOX,
-    #     entity_registry_enabled_default=False,
-    #     array_key="wallbox_prohibit_usage",
-    #     array_pos=3,
-    #     key="wallbox_4_prohibit_usage",
-    #     name="wallbox_4_prohibit_usage",
-    #     icon="mdi:toggle-switch",
-    # ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_allow_intercharge",
+        name="Wallbox allow intercharge",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+    ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_prohibit_usage",
+        array_pos=0,
+        inverted=True,
+        key="wallbox_1_prohibit_usage",
+        name="wallbox_1_prohibit_usage",
+        icon="mdi:toggle-switch",
+    ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_prohibit_usage",
+        array_pos=1,
+        inverted=True,
+        key="wallbox_2_prohibit_usage",
+        name="wallbox_2_prohibit_usage",
+        icon="mdi:toggle-switch",
+    ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_prohibit_usage",
+        array_pos=2,
+        inverted=True,
+        key="wallbox_3_prohibit_usage",
+        name="wallbox_3_prohibit_usage",
+        icon="mdi:toggle-switch",
+    ),
+    ExtSwitchEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_prohibit_usage",
+        array_pos=3,
+        inverted=True,
+        key="wallbox_4_prohibit_usage",
+        name="wallbox_4_prohibit_usage",
+        icon="mdi:toggle-switch",
+    ),
 
     # SOCKETS PERMANENT ON
     ExtSwitchEntityDescription(
@@ -618,7 +651,7 @@ MAIN_BIN_SENSOR_TYPES = [
     ExtBinarySensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_l1_used",
+        key="wallbox_1_l1_used",
         name="Wallbox L1 used",
         icon="mdi:car-electric",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -626,7 +659,7 @@ MAIN_BIN_SENSOR_TYPES = [
     ExtBinarySensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_l2_used",
+        key="wallbox_1_l2_used",
         name="Wallbox L2 used",
         icon="mdi:car-electric",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -634,7 +667,7 @@ MAIN_BIN_SENSOR_TYPES = [
     ExtBinarySensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_l3_used",
+        key="wallbox_1_l3_used",
         name="Wallbox L3 used",
         icon="mdi:car-electric",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -712,6 +745,54 @@ MAIN_BIN_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_smart_charge_active",
+        array_pos=0,
+        on_value=3,
+        key="wallbox_1_smart_charge_active",
+        name="Wallbox I smart charge active",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_smart_charge_active",
+        array_pos=1,
+        on_value=3,
+        key="wallbox_2_smart_charge_active",
+        name="Wallbox II smart charge active",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_smart_charge_active",
+        array_pos=2,
+        on_value=3,
+        key="wallbox_3_smart_charge_active",
+        name="Wallbox III smart charge active",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        array_key="wallbox_smart_charge_active",
+        array_pos=3,
+        on_value=3,
+        key="wallbox_4_smart_charge_active",
+        name="Wallbox IV smart charge active",
+        icon="mdi:toggle-switch",
+        icon_off="mdi:toggle-switch-off",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtBinarySensorEntityDescription(
         senec_lala_section=SENEC_SECTION_FAN_SPEED,
         entity_registry_enabled_default=False,
         key="fan_inv_lv",
@@ -776,7 +857,7 @@ MAIN_BIN_SENSOR_TYPES = [
 ]
 
 """Supported main unit number implementations"""
-MAIN_NUMBER_SENSOR_TYPES = [
+MAIN_NUMBER_TYPES = [
     ExtNumberEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
@@ -786,7 +867,7 @@ MAIN_NUMBER_SENSOR_TYPES = [
         name="Wallbox I set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.BOX,
-        native_max_value=30,
+        native_max_value=64,
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -801,7 +882,7 @@ MAIN_NUMBER_SENSOR_TYPES = [
         name="Wallbox II set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.BOX,
-        native_max_value=30,
+        native_max_value=64,
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -816,7 +897,7 @@ MAIN_NUMBER_SENSOR_TYPES = [
         name="Wallbox III set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.BOX,
-        native_max_value=30,
+        native_max_value=64,
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -831,7 +912,7 @@ MAIN_NUMBER_SENSOR_TYPES = [
         name="Wallbox IV set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.BOX,
-        native_max_value=30,
+        native_max_value=64,
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
@@ -1009,6 +1090,50 @@ MAIN_NUMBER_SENSOR_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfTime.MINUTES,
+    ),
+
+]
+
+MAIN_SELECT_TYPES = [
+    ExtSelectEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_1_mode",
+        name="Wallbox I charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_mode",
+        name="Wallbox II charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_3_mode",
+        name="Wallbox III charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_mode",
+        name="Wallbox IV charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
     ),
 
 ]
@@ -2453,8 +2578,15 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_power",
-        name="Wallbox Power",
+        key="wallbox_1_state",
+        name="Wallbox I state",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_1_power",
+        name="Wallbox I Power",
         native_unit_of_measurement=POWER_WATT,
         icon="mdi:car-arrow-left",
         device_class=SensorDeviceClass.POWER,
@@ -2463,16 +2595,16 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_ev_connected",
-        name="Wallbox EV Connected",
+        key="wallbox_1_ev_connected",
+        name="Wallbox I EV Connected",
         icon="mdi:car-electric",
     ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_STATISTIC,
         entity_registry_enabled_default=False,
         controls=("require_stats_fields"),
-        key="wallbox_energy",
-        name="Wallbox charged",
+        key="wallbox_1_energy",
+        name="Wallbox I charged",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         icon="mdi:ev-station",
         device_class=SensorDeviceClass.ENERGY,
@@ -2481,8 +2613,8 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_l1_charging_current",
-        name="Wallbox L1 charging Current",
+        key="wallbox_1_l1_charging_current",
+        name="Wallbox I L1 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2491,8 +2623,8 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_l2_charging_current",
-        name="Wallbox L2 charging Current",
+        key="wallbox_1_l2_charging_current",
+        name="Wallbox I L2 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2501,8 +2633,8 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_l3_charging_current",
-        name="Wallbox L3 charging Current",
+        key="wallbox_1_l3_charging_current",
+        name="Wallbox I L3 charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
@@ -2511,14 +2643,21 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_min_charging_current",
-        name="Wallbox MIN charging Current",
+        key="wallbox_1_min_charging_current",
+        name="Wallbox I MIN charging Current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         icon="mdi:current-dc",
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_2_state",
+        name="Wallbox II state",
+        icon="mdi:car-electric",
+    ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
@@ -2591,6 +2730,13 @@ MAIN_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
+        key="wallbox_3_state",
+        name="Wallbox III state",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
         key="wallbox_3_power",
         name="Wallbox III Power",
         native_unit_of_measurement=POWER_WATT,
@@ -2657,6 +2803,13 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_WALLBOX,
+        entity_registry_enabled_default=False,
+        key="wallbox_4_state",
+        name="Wallbox IV state",
+        icon="mdi:car-electric",
+    ),
     ExtSensorEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
@@ -2767,4 +2920,3 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
 ]
-

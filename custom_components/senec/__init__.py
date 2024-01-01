@@ -58,10 +58,12 @@ from .const import (
     MAIN_SENSOR_TYPES,
     MAIN_BIN_SENSOR_TYPES,
     MAIN_SWITCH_TYPES,
-    MAIN_NUMBER_SENSOR_TYPES,
+    MAIN_NUMBER_TYPES,
+    MAIN_SELECT_TYPES,
     QUERY_BMS_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
+    QUERY_WALLBOX_APPAPI_KEY,
     QUERY_SOCKETS_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
@@ -74,7 +76,7 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
-PLATFORMS = ["sensor", "binary_sensor", "switch", "number"]
+PLATFORMS = ["sensor", "binary_sensor", "select", "switch", "number"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -138,8 +140,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     return True
 
-def check_for_options(registry, sluged_title:str, opt:dict, sensor_type:str, entity_description_list:list) -> dict:
-    for description in entity_description_list:
+
+def check_for_options(registry, sluged_title: str, opt: dict, sensor_type: str, entity_desc_list: list) -> dict:
+    for description in entity_desc_list:
         if not opt[QUERY_BMS_KEY] and SENEC_SECTION_BMS == description.senec_lala_section:
             a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
             a_entity = registry.async_get(a_sensor_id)
@@ -167,7 +170,18 @@ def check_for_options(registry, sluged_title:str, opt:dict, sensor_type:str, ent
             if a_entity is not None and a_entity.disabled_by is None:
                 _LOGGER.info("***** QUERY_SOCKETS-DATA ********")
                 opt[QUERY_SOCKETS_KEY] = True
+    return opt
 
+
+def need_query_app_api_wallbox(registry, sluged_title: str, opt: dict, sensor_type: str,
+                               entity_desc_list: list) -> dict:
+    for description in entity_desc_list:
+        if not opt[QUERY_WALLBOX_APPAPI_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
+            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
+            a_entity = registry.async_get(a_sensor_id)
+            if a_entity is not None and a_entity.disabled_by is None:
+                _LOGGER.info("***** QUERY_APPAPI-WALLBOX-DATA ********")
+                opt[QUERY_WALLBOX_APPAPI_KEY] = True
     return opt
 
 
@@ -195,14 +209,13 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             pwd = config_entry.options.get(CONF_PASSWORD, config_entry.data[CONF_PASSWORD])
 
             # we need to know if the 'spare_capacity' and 'peak_shaving' code should be called or not?!
-            opt = {QUERY_SPARE_CAPACITY_KEY: False, QUERY_PEAK_SHAVING_KEY: False}
-            if hass is not None and config_entry.title is not None:
-                sce_id = f"number.{slugify(config_entry.title)}_spare_capacity".lower()
-                ps_gridlimit_id = f"sensor.{slugify(config_entry.title)}_gridexport_limit".lower()
-                ps_mode_id = f"sensor.{slugify(config_entry.title)}_peakshaving_mode".lower()
-                ps_capacity_id = f"sensor.{slugify(config_entry.title)}_peakshaving_capacitylimit".lower()
-                ps_end_id = f"sensor.{slugify(config_entry.title)}_peakshaving_enddate".lower()
+            opt = {
+                QUERY_WALLBOX_KEY: False,
+                QUERY_SPARE_CAPACITY_KEY: False,
+                QUERY_PEAK_SHAVING_KEY: False
+            }
 
+            if hass is not None and config_entry.title is not None:
                 # we do not need to listen to changed to the entity - since the integration will be automatically
                 # restarted when an Entity of the integration will be disabled/enabled via the GUI (cool!) - but for
                 # now I keep this for debugging why during initial setup of the integration the control 'spare_capacity'
@@ -213,22 +226,37 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 registry = entity_registry.async_get(hass)
 
                 if registry is not None:
+                    slug_title = slugify(config_entry.title)
+
                     # Spare Capacity
+                    sce_id = f"number.{slug_title}_spare_capacity".lower()
                     spare_capacity_entity = registry.async_get(sce_id)
+
                     if spare_capacity_entity is not None:
                         if spare_capacity_entity.disabled_by is None:
                             _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
                             opt[QUERY_SPARE_CAPACITY_KEY] = True
-                    # Peak Shaving
-                    ps_gridlimit = registry.async_get(ps_gridlimit_id)
-                    ps_mode = registry.async_get(ps_mode_id)
-                    ps_capacity = registry.async_get(ps_capacity_id)
-                    ps_end = registry.async_get(ps_end_id)
 
-                    if ps_gridlimit is not None and ps_mode is not None and ps_capacity is not None and ps_end is not None:
-                        if ps_gridlimit.disabled_by is None or ps_mode.disabled_by is None or ps_capacity.disabled_by is None or ps_end is None:
+                    # Peak Shaving
+                    ps_gridlimit_id = f"sensor.{slug_title}_gridexport_limit".lower()
+                    ps_gridlimit_entity = registry.async_get(ps_gridlimit_id)
+
+                    ps_mode_id = f"sensor.{slug_title}_peakshaving_mode".lower()
+                    ps_mode_entity = registry.async_get(ps_mode_id)
+
+                    ps_capacity_id = f"sensor.{slug_title}_peakshaving_capacitylimit".lower()
+                    ps_capacity_entity = registry.async_get(ps_capacity_id)
+
+                    ps_end_id = f"sensor.{slug_title}_peakshaving_enddate".lower()
+                    ps_end_entity = registry.async_get(ps_end_id)
+
+                    if ps_gridlimit_entity is not None and ps_mode_entity is not None and ps_capacity_entity is not None and ps_end_entity is not None:
+                        if ps_gridlimit_entity.disabled_by is None or ps_mode_entity.disabled_by is None or ps_capacity_entity.disabled_by is None or ps_end_entity is None:
                             _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
                             opt[QUERY_PEAK_SHAVING_KEY] = True
+
+                    # we need to check, if there are any Wallbox entities...
+                    # opt[QUERY_WALLBOX_KEY] = True
 
             self.senec = MySenecWebPortal(user=user, pwd=pwd, web_session=async_create_clientsession(hass),
                                           master_plant_number=a_master_plant_number,
@@ -245,6 +273,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             opt = {
                 IGNORE_SYSTEM_STATE_KEY: config_entry.options.get(CONF_IGNORE_SYSTEM_STATE, False),
                 QUERY_WALLBOX_KEY: False,
+                QUERY_WALLBOX_APPAPI_KEY: False,
                 QUERY_BMS_KEY: False,
                 QUERY_FANDATA_KEY: False,
                 QUERY_SOCKETS_KEY: False
@@ -258,7 +287,12 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                     opt = check_for_options(registry, sluged_title, opt, "sensor", MAIN_SENSOR_TYPES)
                     opt = check_for_options(registry, sluged_title, opt, "binary_sensor", MAIN_BIN_SENSOR_TYPES)
                     opt = check_for_options(registry, sluged_title, opt, "switch", MAIN_SWITCH_TYPES)
-                    opt = check_for_options(registry, sluged_title, opt, "number", MAIN_NUMBER_SENSOR_TYPES)
+                    opt = check_for_options(registry, sluged_title, opt, "number", MAIN_NUMBER_TYPES)
+                    opt = check_for_options(registry, sluged_title, opt, "select", MAIN_SELECT_TYPES)
+
+                    # do we need to tell the mein-senec.de web integration to query the status of the wallbox?
+                    # this 'hack' only works while the MAIN_SELECT_TYPES are only WALLBOX related...
+                    opt = need_query_app_api_wallbox(registry, sluged_title, opt, "select", MAIN_SELECT_TYPES)
 
             self.senec = Senec(host=self._host, use_https=self._use_https, web_session=async_get_clientsession(hass),
                                lang=hass.config.language.lower(), options=opt)
@@ -300,6 +334,13 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         except UpdateFailed as exception:
             raise UpdateFailed() from exception
 
+    async def _async_set_string_value(self, set_str_key, value: str):
+        try:
+            await self.senec.set_string_value(set_str_key, value)
+            return self.senec
+        except UpdateFailed as exception:
+            raise UpdateFailed() from exception
+
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload Senec config entry."""
@@ -313,7 +354,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     )
     if unload_ok:
         hass.data[DOMAIN].pop(config_entry.entry_id)
-        hass.services.async_remove(DOMAIN, SERVICE_SET_PEAKSHAVING) # Remove Service on unload
+        hass.services.async_remove(DOMAIN, SERVICE_SET_PEAKSHAVING)  # Remove Service on unload
     return unload_ok
 
 

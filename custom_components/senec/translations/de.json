@@ -126,17 +126,20 @@
       "li_storage_mode": {
         "name": "Lithium Storage Mode - PV OFF"
       },
+      "wallbox_allow_intercharge": {
+        "name": "Wallbox laden aus Speicher"
+      },
       "wallbox_1_prohibit_usage": {
-        "name": "Wallbox I PROHIBIT_USAGE"
+        "name": "Wallbox I aktiv"
       },
       "wallbox_2_prohibit_usage": {
-        "name": "Wallbox II PROHIBIT_USAGE"
+        "name": "Wallbox II aktiv"
       },
       "wallbox_3_prohibit_usage": {
-        "name": "Wallbox III PROHIBIT_USAGE"
+        "name": "Wallbox III aktiv"
       },
       "wallbox_4_prohibit_usage": {
-        "name": "Wallbox IV PROHIBIT_USAGE"
+        "name": "Wallbox IV aktiv"
       },
       "sockets_1_force_on": {
         "name": "Kontakt1 permanent ein"
@@ -155,6 +158,40 @@
       },
       "sockets_2_use_time": {
         "name": "Kontakt2 Schaltzeit aktivieren"
+      }
+    },
+    "select": {
+      "wallbox_1_mode": {
+        "name": "Wallbox I Modus",
+        "state": {
+          "locked": "AUS",
+          "smart_self_generated_compatibility_mode": "OPTIMIERT",
+          "fastest": "SCHNELL"
+        }
+      },
+      "wallbox_2_mode": {
+        "name": "Wallbox II Modus",
+        "state": {
+          "locked": "AUS",
+          "smart_self_generated_compatibility_mode": "OPTIMIERT",
+          "fastest": "SCHNELL"
+        }
+      },
+      "wallbox_3_mode": {
+        "name": "Wallbox III Modus",
+        "state": {
+          "locked": "AUS",
+          "smart_self_generated_compatibility_mode": "OPTIMIERT",
+          "fastest": "SCHNELL"
+        }
+      },
+      "wallbox_4_mode": {
+        "name": "Wallbox IV Modus",
+        "state": {
+          "locked": "AUS",
+          "smart_self_generated_compatibility_mode": "OPTIMIERT",
+          "fastest": "SCHNELL"
+        }
       }
     },
     "number": {
@@ -223,13 +260,13 @@
       }
     },
     "binary_sensor": {
-      "wallbox_l1_used": {
+      "wallbox_1_l1_used": {
         "name": "Wallbox I L1 in Verwendung"
       },
-      "wallbox_l2_used": {
+      "wallbox_1_l2_used": {
         "name": "Wallbox I L2 in Verwendung"
       },
-      "wallbox_l3_used": {
+      "wallbox_1_l3_used": {
         "name": "Wallbox I L3 in Verwendung"
       },
       "wallbox_2_l1_used": {
@@ -258,6 +295,18 @@
       },
       "wallbox_4_l3_used": {
         "name": "Wallbox IV L3 in Verwendung"
+      },
+      "wallbox_1_smart_charge_active": {
+        "name": "Wallbox I Smart-Charge aktiv"
+      },
+      "wallbox_2_smart_charge_active": {
+        "name": "Wallbox II Smart-Charge aktiv"
+      },
+      "wallbox_3_smart_charge_active": {
+        "name": "Wallbox III Smart-Charge aktiv"
+      },
+      "wallbox_4_smart_charge_active": {
+        "name": "Wallbox IV Smart-Charge aktiv"
       },
       "fan_inv_lv": {
         "name": "Lüfter LV-Inverter"
@@ -851,26 +900,32 @@
       "bms_cycles_d": {
         "name": "Module D: Zyklen"
       },
-      "wallbox_power": {
+      "wallbox_1_state": {
+        "name": "Wallboxstatus I"
+      },
+      "wallbox_1_power": {
         "name": "Wallbox I Leistung"
       },
-      "wallbox_ev_connected": {
+      "wallbox_1_ev_connected": {
         "name": "Wallbox I EV angeschlossen"
       },
-      "wallbox_energy": {
+      "wallbox_1_energy": {
         "name": "Wallbox I Energie"
       },
-      "wallbox_l1_charging_current": {
+      "wallbox_1_l1_charging_current": {
         "name": "Wallbox I L1 Ladestrom"
       },
-      "wallbox_l2_charging_current": {
+      "wallbox_1_l2_charging_current": {
         "name": "Wallbox I L2 Ladestrom"
       },
-      "wallbox_l3_charging_current": {
+      "wallbox_1_l3_charging_current": {
         "name": "Wallbox I L3 Ladestrom"
       },
-      "wallbox_min_charging_current": {
+      "wallbox_1_min_charging_current": {
         "name": "Wallbox I MIN Ladestrom"
+      },
+      "wallbox_2_state": {
+        "name": "Wallboxstatus II"
       },
       "wallbox_2_power": {
         "name": "Wallbox II Leistung"
@@ -893,6 +948,9 @@
       "wallbox_2_min_charging_current": {
         "name": "Wallbox II MIN Ladestrom"
       },
+      "wallbox_3_state": {
+        "name": "Wallboxstatus III"
+      },
       "wallbox_3_power": {
         "name": "Wallbox III Leistung"
       },
@@ -913,6 +971,9 @@
       },
       "wallbox_3_min_charging_current": {
         "name": "Wallbox III MIN Ladestrom"
+      },
+      "wallbox_4_state": {
+        "name": "Wallboxstatus IV"
       },
       "wallbox_4_power": {
         "name": "Wallbox IV Leistung"
