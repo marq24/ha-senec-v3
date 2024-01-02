@@ -138,7 +138,7 @@ class ExtNumberEntityDescription(NumberEntityDescription):
 
 
 WEB_NUMBER_SENSOR_TYPES = [
-    NumberEntityDescription(
+    ExtNumberEntityDescription(
         entity_registry_enabled_default=False,
         key="spare_capacity",
         name="Spare Capacity",
@@ -216,7 +216,7 @@ WEB_SENSOR_TYPES = [
     # powergenerated_today
     # consumption_today
 
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="powergenerated_now",
         name="Solar Generated Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -225,7 +225,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="consumption_now",
         name="House Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -234,7 +234,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="accuimport_now",
         name="Battery Discharge Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -243,7 +243,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="accuexport_now",
         name="Battery Charge Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -252,7 +252,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="acculevel_now",
         name="Battery Charge Percent",
         native_unit_of_measurement=PERCENTAGE,
@@ -260,7 +260,7 @@ WEB_SENSOR_TYPES = [
         # device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="gridimport_now",
         name="Grid Imported Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -269,7 +269,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         key="gridexport_now",
         name="Grid Exported Power",
         native_unit_of_measurement=POWER_KILO_WATT,
@@ -279,7 +279,7 @@ WEB_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
     ),
     # Peak Shaving
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="gridexport_limit",
         name="Grid Exported Limit",
@@ -289,7 +289,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_mode",
         name="Peak Shaving Mode",
@@ -297,7 +297,7 @@ WEB_SENSOR_TYPES = [
         device_class=SensorDeviceClass.ENUM,
         options=PEAK_SHAVING_OPTIONS
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_capacitylimit",
         name="Peak Shaving Capacity Limit",
@@ -307,7 +307,7 @@ WEB_SENSOR_TYPES = [
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    SensorEntityDescription(
+    ExtSensorEntityDescription(
         entity_registry_enabled_default=False,
         key="peakshaving_enddate",
         name="Peak Shaving End Time",
