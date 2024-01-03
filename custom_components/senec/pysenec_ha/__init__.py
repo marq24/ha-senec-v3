@@ -1698,6 +1698,7 @@ class Senec:
 
     @property
     def wallbox_allow_intercharge(self) -> bool:
+        # please note this is not ARRAY data - so we code it here again...
         if hasattr(self, '_raw') and SENEC_SECTION_WALLBOX in self._raw and "ALLOW_INTERCHARGE" in self._raw[
             SENEC_SECTION_WALLBOX]:
             # if it just has been switched on/off we provide a FAKE value for 5 sec...
@@ -1708,6 +1709,7 @@ class Senec:
                 return self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1
 
     async def switch_wallbox_allow_intercharge(self, value: bool, sync: bool = True):
+        # please note this is not ARRAY data - so we code it here again...
         self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"VALUE": value})
         self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"TS": time()})
         post_data = {}
@@ -1784,27 +1786,6 @@ class Senec:
             else:
                 return self._raw[section_key][array_values_key]
 
-    async def switch_array_post(self, section_key: str, upper_key: str, pos: int, array_length: int, value: bool):
-        self._OVERWRITES[section_key + "_" + upper_key].update({"VALUE": self._raw[section_key][upper_key]})
-        self._OVERWRITES[section_key + "_" + upper_key]["VALUE"][pos] = 1 if value else 0
-        self._OVERWRITES[section_key + "_" + upper_key]["TS"] = time()
-
-        value_data = [""] * array_length
-
-        if (value):
-            self._raw[section_key][upper_key][pos] = 1
-            value_data[pos] = "u8_01"
-        else:
-            self._raw[section_key][upper_key][pos] = 0
-            value_data[pos] = "u8_00"
-
-        post_data = {
-            section_key: {
-                upper_key: value_data
-            }
-        }
-        await self.write(post_data)
-
     async def switch_array(self, switch_array_key, array_pos, value):
         return await getattr(self, 'switch_array_' + str(switch_array_key))(array_pos, value)
 
@@ -1868,28 +1849,6 @@ class Senec:
     async def set_nva_wallbox_set_idefault(self, pos: int, value: int):
         await self.set_nva_post(SENEC_SECTION_WALLBOX, "SET_IDEFAULT", pos, 4, "fl", value)
 
-    async def set_nva_post(self, section_key: str, value_key: str, pos: int, array_length: int, data_type: str, value):
-        self._OVERWRITES[section_key + "_" + value_key].update({"VALUE": self._raw[section_key][value_key]})
-        self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
-        self._OVERWRITES[section_key + "_" + value_key]["TS"] = time()
-
-        value_data = [""] * array_length
-
-        self._raw[section_key][value_key][pos] = value
-        if data_type == "u1":
-            value_data[pos] = "u1_" + util.get_as_hex(int(value), 4)
-        elif data_type == "u8":
-            value_data[pos] = "u8_" + util.get_as_hex(int(value), 2)
-        elif data_type == "fl":
-            value_data[pos] = "fl_" + util.get_float_as_IEEE754_hex(float(value))
-
-        post_data = {
-            section_key: {
-                value_key: value_data
-            }
-        }
-        await self.write(post_data)
-
     async def set_number_value_array(self, array_key: str, array_pos: int, value: int):
         return await getattr(self, 'set_nva_' + str(array_key))(array_pos, value)
 
@@ -1900,16 +1859,7 @@ class Senec:
                 return IntBridge.app_api._app_raw_wallbox[0]["chargingMode"].lower()
 
     async def set_string_value_wallbox_1_mode(self, value: str):
-        if value == APP_API_WEB_MODE_LOCKED:
-            await self.switch_array_wallbox_prohibit_usage(pos=0, value=True, sync=False)
-        else:
-            await self.switch_array_wallbox_prohibit_usage(pos=0, value=False, sync=False)
-
-        if value == APP_API_WEB_MODE_SSGCM:
-            await self.switch_array_smart_charge_active(pos=0, value=3)
-        else:
-            await self.switch_array_smart_charge_active(pos=0, value=0)
-
+        await self._set_wallbox_mode_post(0, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=1, sync=False)
 
@@ -1920,16 +1870,7 @@ class Senec:
                 return IntBridge.app_api._app_raw_wallbox[1]["chargingMode"].lower()
 
     async def set_string_value_wallbox_2_mode(self, value: str):
-        if value == APP_API_WEB_MODE_LOCKED:
-            await self.switch_array_wallbox_prohibit_usage(pos=1, value=True, sync=False)
-        else:
-            await self.switch_array_wallbox_prohibit_usage(pos=1, value=False, sync=False)
-
-        if value == APP_API_WEB_MODE_SSGCM:
-            await self.switch_array_smart_charge_active(pos=1, value=3)
-        else:
-            await self.switch_array_smart_charge_active(pos=1, value=0)
-
+        await self._set_wallbox_mode_post(1, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=2, sync=False)
 
@@ -1940,16 +1881,7 @@ class Senec:
                 return IntBridge.app_api._app_raw_wallbox[2]["chargingMode"].lower()
 
     async def set_string_value_wallbox_3_mode(self, value: str):
-        if value == APP_API_WEB_MODE_LOCKED:
-            await self.switch_array_wallbox_prohibit_usage(pos=2, value=True, sync=False)
-        else:
-            await self.switch_array_wallbox_prohibit_usage(pos=2, value=False, sync=False)
-
-        if value == APP_API_WEB_MODE_SSGCM:
-            await self.switch_array_smart_charge_active(pos=2, value=3)
-        else:
-            await self.switch_array_smart_charge_active(pos=2, value=0)
-
+        await self._set_wallbox_mode_post(2, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=3, sync=False)
 
@@ -1960,18 +1892,24 @@ class Senec:
                 return IntBridge.app_api._app_raw_wallbox[3]["chargingMode"].lower()
 
     async def set_string_value_wallbox_4_mode(self, value: str):
-        if value == APP_API_WEB_MODE_LOCKED:
-            await self.switch_array_wallbox_prohibit_usage(pos=3, value=True, sync=False)
-        else:
-            await self.switch_array_wallbox_prohibit_usage(pos=3, value=False, sync=False)
-
-        if value == APP_API_WEB_MODE_SSGCM:
-            await self.switch_array_smart_charge_active(pos=3, value=3)
-        else:
-            await self.switch_array_smart_charge_active(pos=3, value=0)
-
+        await self._set_wallbox_mode_post(3, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=4, sync=False)
+
+    async def _set_wallbox_mode_post(self, pos:int, value: str):
+        if value == APP_API_WEB_MODE_LOCKED:
+            await self.set_multi_post(4, pos,
+                                      SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 1,
+                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
+        elif value == APP_API_WEB_MODE_SSGCM:
+            await self.set_multi_post(4, pos,
+                                      SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
+                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 3)
+        else:
+            await self.set_multi_post(4, pos,
+                                      SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
+                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
+
 
     async def set_string_value(self, key: str, value: str):
         return await getattr(self, 'set_string_value_' + key)(value)
@@ -1982,6 +1920,47 @@ class Senec:
         # this will cause a method not found exception...
         return await getattr(self, 'set_nv_' + str(array_key))(value)
 
+    async def switch_array_post(self, section_key: str, value_key: str, pos: int, array_length: int, value: bool):
+        post_data = {}
+        post_data = self.prepare_post_data(post_data, array_length, pos, section_key, value_key, "u8",
+                                           value=(1 if value else 0))
+        await self.write(post_data)
+
+    async def set_nva_post(self, section_key: str, value_key: str, pos: int, array_length: int, data_type: str, value):
+        post_data = {}
+        post_data = self.prepare_post_data(post_data, array_length, pos, section_key, value_key, data_type, value)
+        await self.write(post_data)
+
+    async def set_multi_post(self, array_length: int, pos: int,
+                             section_key1: str, value_key1: str, data_type1: str, value1,
+                             section_key2: str, value_key2: str, data_type2: str, value2
+                             ):
+        post_data = {}
+        post_data = self.prepare_post_data(post_data, array_length, pos, section_key1, value_key1, data_type1, value1)
+        post_data = self.prepare_post_data(post_data, array_length, pos, section_key2, value_key2, data_type2, value2)
+        await self.write(post_data)
+
+    def prepare_post_data(self, post_data: dict, array_length: int, pos: int, section_key: str, value_key: str,
+                          data_type: str, value) -> dict:
+        self._OVERWRITES[section_key + "_" + value_key].update({"VALUE": self._raw[section_key][value_key]})
+        self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
+        self._OVERWRITES[section_key + "_" + value_key]["TS"] = time()
+
+        value_data = [""] * array_length
+        self._raw[section_key][value_key][pos] = value
+        if data_type == "u1":
+            value_data[pos] = "u1_" + util.get_as_hex(int(value), 4)
+        elif data_type == "u8":
+            value_data[pos] = "u8_" + util.get_as_hex(int(value), 2)
+        elif data_type == "fl":
+            value_data[pos] = "fl_" + util.get_float_as_IEEE754_hex(float(value))
+
+        if section_key in post_data:
+            post_data[section_key][value_key] = value_data
+        else:
+            post_data[section_key] = {value_key: value_data}
+        return post_data
+
     async def write(self, data):
         await self.write_senec_v31(data)
 
@@ -1991,6 +1970,7 @@ class Senec:
             try:
                 res.raise_for_status()
                 self._raw_post = parse(await res.json())
+                _LOGGER.debug(f"post result: {self._raw_post}")
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
@@ -2725,7 +2705,7 @@ class MySenecWebPortal:
 
         if self._app_wallbox_num_max > 2:
             res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=3, sync=sync)
-            if not res  and self._app_wallbox_num_max > 2:
+            if not res and self._app_wallbox_num_max > 2:
                 _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
                 self._app_wallbox_num_max = 2
 
