@@ -1922,13 +1922,12 @@ class Senec:
 
     async def switch_array_post(self, section_key: str, value_key: str, pos: int, array_length: int, value: bool):
         post_data = {}
-        post_data = self.prepare_post_data(post_data, array_length, pos, section_key, value_key, "u8",
-                                           value=(1 if value else 0))
+        self.prepare_post_data(post_data, array_length, pos, section_key, value_key, "u8", value=(1 if value else 0))
         await self.write(post_data)
 
     async def set_nva_post(self, section_key: str, value_key: str, pos: int, array_length: int, data_type: str, value):
         post_data = {}
-        post_data = self.prepare_post_data(post_data, array_length, pos, section_key, value_key, data_type, value)
+        self.prepare_post_data(post_data, array_length, pos, section_key, value_key, data_type, value)
         await self.write(post_data)
 
     async def set_multi_post(self, array_length: int, pos: int,
@@ -1936,12 +1935,12 @@ class Senec:
                              section_key2: str, value_key2: str, data_type2: str, value2
                              ):
         post_data = {}
-        post_data = self.prepare_post_data(post_data, array_length, pos, section_key1, value_key1, data_type1, value1)
-        post_data = self.prepare_post_data(post_data, array_length, pos, section_key2, value_key2, data_type2, value2)
+        self.prepare_post_data(post_data, array_length, pos, section_key1, value_key1, data_type1, value1)
+        self.prepare_post_data(post_data, array_length, pos, section_key2, value_key2, data_type2, value2)
         await self.write(post_data)
 
     def prepare_post_data(self, post_data: dict, array_length: int, pos: int, section_key: str, value_key: str,
-                          data_type: str, value) -> dict:
+                          data_type: str, value):
         self._OVERWRITES[section_key + "_" + value_key].update({"VALUE": self._raw[section_key][value_key]})
         self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
         self._OVERWRITES[section_key + "_" + value_key]["TS"] = time()
@@ -1959,7 +1958,6 @@ class Senec:
             post_data[section_key][value_key] = value_data
         else:
             post_data[section_key] = {value_key: value_data}
-        return post_data
 
     async def write(self, data):
         await self.write_senec_v31(data)
@@ -2543,12 +2541,12 @@ class MySenecWebPortal:
                         if read_response:
                             try:
                                 data = await res.json()
-                                _LOGGER.debug(data)
+                                _LOGGER.debug(f"APP-API HTTP:200 for post {post_data} to {a_url} returned: {data}")
                                 return True
                             except JSONDecodeError as exc:
                                 _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
                         else:
-                            _LOGGER.debug(f"OK - {a_url} with '{post_data}'")
+                            _LOGGER.debug(f"APP-API HTTP:200 for post {post_data} to {a_url}")
                             return True
 
                     elif res.status == 500:
