@@ -2331,6 +2331,7 @@ class MySenecWebPortal:
         self._app_master_plant_id = None
         self._app_raw_wallbox = [None, None, None, None]
         self._app_last_wallbox_modes = [None, None, None, None]
+        self._app_last_wallbox_min_current = [None, None, None, None]
         self._app_wallbox_num_max = 4
 
         IntBridge.app_api = self
@@ -2582,37 +2583,68 @@ class MySenecWebPortal:
                                    retry: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
         idx = wallbox_num - 1
-        if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED and self._app_raw_wallbox[idx] is not None:
-            self._app_last_wallbox_modes[idx] = self._app_raw_wallbox[idx]["chargingMode"].lower()
+        if self._app_raw_wallbox[idx] is not None:
+            cur_mode = self._app_raw_wallbox[idx]["chargingMode"].lower()
+            cur_current = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
+            max_current = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
+
+            # only if the ACTUAL mode is the smart mode we should keep/store also the min_current
+            if cur_mode == APP_API_WEB_MODE_SSGCM:
+                self._app_last_wallbox_min_current[idx]  = cur_current
+            else:
+                self._app_last_wallbox_min_current[idx]  = None
+
+            # and if the NEW mode will be the LOCKED mode we will keep/store the previous active mode
+            if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
+                self._app_last_wallbox_modes[idx] = cur_mode
+            else:
+                self._app_last_wallbox_modes[idx] = None
         else:
-            self._app_last_wallbox_modes[idx] = None
+            cur_mode = "unknown"
+            max_current = 32
 
-        if self._app_master_plant_id is not None:
-            data = {
-                "mode": mode_to_set_in_lc.upper()
-            }
-            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
-            success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
-            if success:
-                # setting the internal storage value...
-                if self._app_raw_wallbox[idx] is not None:
-                    self._app_raw_wallbox[idx]["chargingMode"] = mode_to_set_in_lc
+        if cur_mode == mode_to_set_in_lc:
+            _LOGGER.debug(f"APP-API skipp mode change since '{mode_to_set_in_lc}' already set")
+        else:
+            if self._app_last_wallbox_min_current[idx] is not None:
+                current_to_restore = self._app_last_wallbox_min_current[idx]
+            else:
+                if mode_to_set_in_lc == APP_API_WEB_MODE_SSGCM:
+                    _LOGGER.warning(f"APP-API no current_to_restore found! Will use {max_current}A !!!")
+                current_to_restore = max_current
 
-                # do we need to sync the value back to the 'lala_cgi' integration?
-                if sync and IntBridge.avail():
-                    if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
-                        await IntBridge.lala_cgi.switch_array_wallbox_prohibit_usage(pos=idx, value=True, sync=False)
+            if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
+                current_to_set = 0
+            elif mode_to_set_in_lc == APP_API_WEB_MODE_FASTEST:
+                current_to_set = float(round(max_current, 2))
+            else: # mode_to_set_in_lc == APP_API_WEB_MODE_SSGCM:
+                current_to_set = float(round(current_to_restore, 2))
+
+            if self._app_master_plant_id is not None:
+                data = {
+                    "mode": mode_to_set_in_lc.upper(),
+                    "minChargingCurrentInA": current_to_set
+                }
+                wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+                success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
+                if success:
+                    # setting the internal storage value...
+                    if self._app_raw_wallbox[idx] is not None:
+                        self._app_raw_wallbox[idx]["chargingMode"] = mode_to_set_in_lc.upper()
+                        self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"] = current_to_set
+
+                    # do we need to sync the value back to the 'lala_cgi' integration?
+                    if sync and IntBridge.avail():
+                        await IntBridge.lala_cgi._set_wallbox_mode_post(pos=idx, value=mode_to_set_in_lc)
+            else:
+                if retry:
+                    await self.app_authenticate()
+                    if self._app_wallbox_num_max >= wallbox_num:
+                        await self.app_set_wallbox_mode(mode_to_set_in_lc=mode_to_set_in_lc, wallbox_num=wallbox_num,
+                                                        sync=sync, retry=False)
                     else:
-                        await IntBridge.lala_cgi.switch_array_wallbox_prohibit_usage(pos=idx, value=False, sync=False)
-        else:
-            if retry:
-                await self.app_authenticate()
-                if self._app_wallbox_num_max >= wallbox_num:
-                    await self.app_set_wallbox_mode(mode_to_set_in_lc=mode_to_set_in_lc, wallbox_num=wallbox_num,
-                                                    sync=sync, retry=False)
-                else:
-                    _LOGGER.debug(
-                        f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+                        _LOGGER.debug(
+                            f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
 
     async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True,
                                     retry: bool = True):
@@ -2621,7 +2653,7 @@ class MySenecWebPortal:
             idx = wallbox_num - 1
             current_mode = APP_API_WEB_MODE_SSGCM
             if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
-                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"].lower()
 
             data = {
                 "mode": current_mode.upper(),
@@ -2655,7 +2687,7 @@ class MySenecWebPortal:
             idx = wallbox_num - 1
             current_mode = APP_API_WEB_MODE_LOCKED
             if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
-                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"].lower()
 
             data = {
                 "mode": current_mode.upper(),
