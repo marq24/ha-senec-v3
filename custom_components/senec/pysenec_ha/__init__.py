@@ -2331,7 +2331,6 @@ class MySenecWebPortal:
         self._app_master_plant_id = None
         self._app_raw_wallbox = [None, None, None, None]
         self._app_last_wallbox_modes = [None, None, None, None]
-        self._app_last_wallbox_min_current = [None, None, None, None]
         self._app_wallbox_num_max = 4
 
         IntBridge.app_api = self
@@ -2585,45 +2584,20 @@ class MySenecWebPortal:
         idx = wallbox_num - 1
         if self._app_raw_wallbox[idx] is not None:
             cur_mode = self._app_raw_wallbox[idx]["chargingMode"].lower()
-            cur_current = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
-            max_current = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
-
-            # only if the ACTUAL mode is the smart mode we should keep/store also the min_current
-            if cur_mode == APP_API_WEB_MODE_SSGCM:
-                self._app_last_wallbox_min_current[idx]  = cur_current
-            else:
-                self._app_last_wallbox_min_current[idx]  = None
-
-            # and if the NEW mode will be the LOCKED mode we will keep/store the previous active mode
+            # if the NEW mode will be the LOCKED mode we will keep/store the previous active mode
             if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
                 self._app_last_wallbox_modes[idx] = cur_mode
             else:
                 self._app_last_wallbox_modes[idx] = None
         else:
             cur_mode = "unknown"
-            max_current = 32
 
         if cur_mode == mode_to_set_in_lc:
             _LOGGER.debug(f"APP-API skipp mode change since '{mode_to_set_in_lc}' already set")
         else:
-            if self._app_last_wallbox_min_current[idx] is not None:
-                current_to_restore = self._app_last_wallbox_min_current[idx]
-            else:
-                if mode_to_set_in_lc == APP_API_WEB_MODE_SSGCM:
-                    _LOGGER.warning(f"APP-API no current_to_restore found! Will use {max_current}A !!!")
-                current_to_restore = max_current
-
-            if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
-                current_to_set = 0
-            elif mode_to_set_in_lc == APP_API_WEB_MODE_FASTEST:
-                current_to_set = float(round(max_current, 2))
-            else: # mode_to_set_in_lc == APP_API_WEB_MODE_SSGCM:
-                current_to_set = float(round(current_to_restore, 2))
-
             if self._app_master_plant_id is not None:
                 data = {
-                    "mode": mode_to_set_in_lc.upper(),
-                    "minChargingCurrentInA": current_to_set
+                    "mode": mode_to_set_in_lc.upper()
                 }
                 wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
                 success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
@@ -2631,11 +2605,35 @@ class MySenecWebPortal:
                     # setting the internal storage value...
                     if self._app_raw_wallbox[idx] is not None:
                         self._app_raw_wallbox[idx]["chargingMode"] = mode_to_set_in_lc.upper()
-                        self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"] = current_to_set
 
                     # do we need to sync the value back to the 'lala_cgi' integration?
                     if sync and IntBridge.avail():
+                        # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
+                        # is no sync=False parameter here...
                         await IntBridge.lala_cgi._set_wallbox_mode_post(pos=idx, value=mode_to_set_in_lc)
+
+                    # when we changed the mode, the backend might have automatically adjusted the
+                    # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
+                    # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
+                    await asyncio.sleep(2)
+                    await self.app_get_wallbox_data(wallbox_num=wallbox_num)
+                    if self._app_raw_wallbox[idx] is not None:
+                        if mode_to_set_in_lc == APP_API_WEB_MODE_FASTEST:
+                            new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
+                        else:
+                            new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
+
+                        new_min_current = str(round(float(new_min_current_tmp), 2))
+                        cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+
+                        if cur_min_current != new_min_current:
+                            _LOGGER.debug(f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                            await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=float(new_min_current), sync=False)
+                        else:
+                            _LOGGER.debug(f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+
+                    else:
+                        _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
             else:
                 if retry:
                     await self.app_authenticate()

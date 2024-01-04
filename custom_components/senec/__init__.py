@@ -319,6 +319,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             return self.senec
         except UpdateFailed as exception:
             raise UpdateFailed() from exception
+        except Exception as fatal:
+            raise UpdateFailed() from fatal
 
     async def _async_switch_to_state(self, switch_key, state):
         try:
@@ -326,6 +328,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             return self.senec
         except UpdateFailed as exception:
             raise UpdateFailed() from exception
+        except Exception as fatal:
+            raise UpdateFailed() from fatal
 
     async def _async_switch_array_to_state(self, switch_array_key, array_pos, state):
         try:
@@ -333,6 +337,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             return self.senec
         except UpdateFailed as exception:
             raise UpdateFailed() from exception
+        except Exception as fatal:
+            raise UpdateFailed() from fatal
 
     async def _async_set_string_value(self, set_str_key, value: str):
         try:
@@ -340,6 +346,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             return self.senec
         except UpdateFailed as exception:
             raise UpdateFailed() from exception
+        except Exception as fatal:
+            raise UpdateFailed() from fatal
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
