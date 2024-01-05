@@ -39,7 +39,6 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry, 
 
 
 class SenecNumber(SenecEntity, NumberEntity):
-
     def __init__(
             self,
             coordinator: SenecDataUpdateCoordinator,
@@ -61,12 +60,32 @@ class SenecNumber(SenecEntity, NumberEntity):
         self._attr_translation_key = key
         self._attr_has_entity_name = True
 
+        self._internal_minmax_adjustment_needed = False
+        if key.endswith("set_icmax"):
+            self._internal_minmax_adjustment_needed = True
+            self._internal_check_minmax_adjustment()
+
+    def _internal_check_minmax_adjustment(self):
+        # a_pos = int(key[8:9])-1
+        try:
+            min_max = getattr(self.coordinator.senec, self.entity_description.key + "_extrema")
+            if min_max is not None:
+                self._internal_minmax_adjustment_needed = False
+                self.entity_description.native_min_value = round(float(min_max[0]), 1)
+                self.entity_description.native_max_value = round(float(min_max[1]), 1)
+        except Exception as err:
+            _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
+
     @property
     def state(self) -> int:
         if self.entity_description.array_key is not None:
-            value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos]
+            value = getattr(self.coordinator.senec, self.entity_description.array_key)[
+                self.entity_description.array_pos]
         else:
             value = getattr(self.coordinator.senec, self.entity_description.key)
+
+        if self._internal_minmax_adjustment_needed:
+            self._internal_check_minmax_adjustment()
 
         return int(value)
 
@@ -78,7 +97,8 @@ class SenecNumber(SenecEntity, NumberEntity):
             await api.set_spare_capacity(int(value))
         else:
             if self.entity_description.array_key is not None:
-                await api.set_number_value_array(self.entity_description.array_key, self.entity_description.array_pos, int(value))
+                await api.set_number_value_array(self.entity_description.array_key, self.entity_description.array_pos,
+                                                 int(value))
             else:
                 await api.set_number_value(self.entity_description.key, int(value))
         self.async_schedule_update_ha_state(force_refresh=True)

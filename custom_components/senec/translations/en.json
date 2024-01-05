@@ -129,18 +129,6 @@
       "wallbox_allow_intercharge": {
         "name": "Wallbox load from battery"
       },
-      "wallbox_1_prohibit_usage": {
-        "name": "Wallbox I activated"
-      },
-      "wallbox_2_prohibit_usage": {
-        "name": "Wallbox II activated"
-      },
-      "wallbox_3_prohibit_usage": {
-        "name": "Wallbox III activated"
-      },
-      "wallbox_4_prohibit_usage": {
-        "name": "Wallbox IV activated"
-      },
       "sockets_1_force_on": {
         "name": "Socket1 permanent on"
       },
@@ -307,6 +295,18 @@
       },
       "wallbox_4_smart_charge_active": {
         "name": "Wallbox IV Smart-Charge active"
+      },
+      "wallbox_1_prohibit_usage": {
+        "name": "Wallbox I locked"
+      },
+      "wallbox_2_prohibit_usage": {
+        "name": "Wallbox II locked"
+      },
+      "wallbox_3_prohibit_usage": {
+        "name": "Wallbox III locked"
+      },
+      "wallbox_4_prohibit_usage": {
+        "name": "Wallbox IV locked"
       },
       "fan_inv_lv": {
         "name": "Fan LV-Inverter"

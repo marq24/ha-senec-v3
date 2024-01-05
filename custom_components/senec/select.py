@@ -64,7 +64,8 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
     def current_option(self) -> str | None:
         try:
             if self.entity_description.array_key is not None:
-                value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos]
+                value = getattr(self.coordinator.senec, self.entity_description.array_key)[
+                    self.entity_description.array_pos]
             else:
                 value = getattr(self.coordinator.senec, self.entity_description.key)
 
@@ -87,13 +88,14 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
             if self.entity_description.array_key is not None:
                 # not implemented yet...
                 await self.coordinator._async_set_array_string_value(self.entity_description.array_key,
-                                                                    self.entity_description.array_pos,
-                                                                    option)
+                                                                     self.entity_description.array_pos,
+                                                                     option)
             else:
                 await self.coordinator._async_set_string_value(self.entity_description.key, option)
 
             self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description,'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+            if hasattr(self.entity_description,
+                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
                 self.async_schedule_update_ha_state(force_refresh=True)
 
@@ -169,5 +171,9 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
             last_sensor_data = await self.async_get_last_state()
             if last_sensor_data is not None and isinstance(last_sensor_data,
                                                            State) and last_sensor_data.state is not None:
-                _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
-                self._previous_value = str(last_sensor_data.state)
+                if str(last_sensor_data.state).lower() != "unknown":
+                    _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
+                    self._previous_value = str(last_sensor_data.state)
+                else:
+                    _LOGGER.debug(
+                        f"SKIPP restored prev value for key {self._attr_translation_key} cause value is :'{last_sensor_data.state}'")
