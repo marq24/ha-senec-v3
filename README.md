@@ -110,7 +110,7 @@ The following features are provided by the local polling:
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
 | Load Battery         | With this switch you can load the battery manually                                                                                                                                                                                                                                                                                                                                            | yes                |
 | Lithium Storage Mode | EXPERIMENTAL: Switch to enable 'storage mode' [state: LITHIUM SAFE MODE DONE'] [disabled by default]. The functionality of this switch is currently __not known__ - IMHO this will disable the functionality of the PV! __Please Note, that once enabled and then disable again the system will go into the 'INSULATION TEST' mode__ for a short while (before returning to normal operation) | no                 |
-| Wallbox I-IV Control | Requires the additionally the WebAPI to be installed - [please see the sepearte section for details](#wb-control)                                                                                                                                                                                                                                                                             | no                 |
+| Wallbox I-IV Control | Requires the additionally the WebAPI to be installed - [please see the separate section for details](#wb-control)                                                                                                                                                                                                                                                                             | no                 |
 
 #### Sensors
 
@@ -236,7 +236,7 @@ The following Sensors are provided by the Web API:
 | WEBAPI Peak Shaving Capacity Limit | When using the Manual Peak Shaving Mode this capacity limit will be used for your battery          | no                 |
 | WEBAPI Peak Shaving End Time       | When using the Manual Peak Shaving Mode, this time releases the capacity limit for the battery     | no                 |
 
-<a href="wb-control"/>
+<a href="wb-control"/></a>
 
 ### Wallbox Control
 
