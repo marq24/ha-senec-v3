@@ -3,6 +3,8 @@
 This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4 Systems.
 In addition and where possible functions are provided to control the system.
 
+## Disclaimer
+
 Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee.
 Therefore, use this integration **at your own risk**.
 
@@ -108,71 +110,92 @@ The following features are provided by the local polling:
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
 | Load Battery         | With this switch you can load the battery manually                                                                                                                                                                                                                                                                                                                                            | yes                |
 | Lithium Storage Mode | EXPERIMENTAL: Switch to enable 'storage mode' [state: LITHIUM SAFE MODE DONE'] [disabled by default]. The functionality of this switch is currently __not known__ - IMHO this will disable the functionality of the PV! __Please Note, that once enabled and then disable again the system will go into the 'INSULATION TEST' mode__ for a short while (before returning to normal operation) | no                 |
+| Wallbox I-IV Control | Requires the additionally the WebAPI to be installed - [please see the sepearte section for details](#wb-control)                                                                                                                                                                                                                                                                             | no                 |
 
 #### Sensors
 
 The following Sensors are provided by the local polling:
 
-<!-- You can find the [complete list with additional details in the SENSORS_DETAILS.md](./SENSORS_DETAILS.md) -->
+<!-- You can find the [complete list with additional details in the SENSORS_DETAILS.md](docs/SENSORS_DETAILS.md) -->
 
-| Sensor                                    | default entity name                                                                     | enabled by default | remark                                                                                   |
-|-------------------------------------------|-----------------------------------------------------------------------------------------|--------------------|------------------------------------------------------------------------------------------|
-| System State (translated to DE & IT)      | sensor.senec_system_state                                                               | yes                |                                                                                          |
-| Battery Temperature                       | sensor.senec_battery_temp                                                               | yes                |                                                                                          |
-| Case Temperature                          | sensor.senec_case_temp                                                                  | yes                |                                                                                          |
-| Controller Temperature                    | sensor.senec_mcu_temp                                                                   | yes                |                                                                                          |
-| Solar Generated Power                     | sensor.senec_solar_generated_power                                                      | yes                |                                                                                          |
-| House Power                               | sensor.senec_house_power                                                                | yes                |                                                                                          |
-| Battery State Power                       | sensor.senec_battery_state_power                                                        | yes                |                                                                                          |
-| Battery Charge Power                      | sensor.senec_battery_charge_power                                                       | yes                |                                                                                          |
-| Battery Discharge Power                   | sensor.senec_battery_discharge_power                                                    | yes                |                                                                                          |
-| Battery Charge Percent                    | sensor.senec_battery_charge_percent                                                     | yes                |                                                                                          |
-| Grid State Power                          | sensor.senec_grid_state_power                                                           | yes                |                                                                                          |
-| Grid Imported Power                       | sensor.senec_grid_imported_power                                                        | yes                |                                                                                          |
-| Grid Exported Power                       | sensor.senec_grid_exported_power                                                        | yes                |                                                                                          |
-| MPP1-MMP3 Voltage/Potential               | sensor.senec_solar_mpp1_potential - sensor.senec_solar_mpp3_potential                   | yes                |                                                                                          |
-| MPP1-MMP3 Current                         | sensor.senec_solar_mpp1_current - sensor.senec_solar_mpp3_current                       | yes                |                                                                                          |
-| MPP1-MMP3 Power                           | sensor.senec_solar_mpp1_power - sensor.senec_solar_mpp3_power                           | yes                |                                                                                          |
-| Enfluri Net Frequency                     | sensor.senec_enfluri_net_freq                                                           | yes                |                                                                                          |
-| Enfluri Net Total Power                   | sensor.senec_enfluri_net_power_total                                                    | yes                |                                                                                          |
-| Enfluri Net Voltage/Potential Phase 1-3   | sensor.senec_enfluri_net_potential_p1 - sensor.senec_enfluri_net_potential_p3           | yes                |                                                                                          |
-| Enfluri Net Current Phase 1-3             | sensor.senec_enfluri_net_current_p1 - sensor.senec_enfluri_net_current_p3               | yes                |                                                                                          |
-| Enfluri Net Power Phase 1-3               | sensor.senec_enfluri_net_power_p1 - sensor.senec_enfluri_net_power_p3                   | yes                |                                                                                          |
-| Enfluri Usage Frequency                   | sensor.senec_enfluri_usage_freq                                                         | no                 |                                                                                          |
-| Enfluri Usage Total Power                 | sensor.senec_enfluri_usage_power_total                                                  | no                 |                                                                                          |
-| Enfluri Usage Voltage/Potential Phase 1-3 | sensor.senec_enfluri_usage_potential_p1 - sensor.senec_enfluri_usage_potential_p3       | no                 |                                                                                          |
-| Enfluri Usage Current Phase 1-3           | sensor.senec_enfluri_usage_current_p1 - sensor.senec_enfluri_usage_current_p3           | no                 |                                                                                          |
-| Enfluri Usage Power Phase 1-3             | sensor.senec_enfluri_usage_power_p1 - sensor.senec_enfluri_usage_power_p3               | no                 |                                                                                          |
-| Battery Module A: Cell Temperature A1-A6  | sensor.senec_bms_cell_temp_a1 - sensor.senec_bms_cell_temp_a6                           | no                 |                                                                                          |
-| Battery Module B: Cell Temperature B1-B6  | sensor.senec_bms_cell_temp_b1 - sensor.senec_bms_cell_temp_b6                           | no                 |                                                                                          |
-| Battery Module C: Cell Temperature C1-C6  | sensor.senec_bms_cell_temp_c1 - sensor.senec_bms_cell_temp_c6                           | no                 |                                                                                          |
-| Battery Module D: Cell Temperature D1-D6  | sensor.senec_bms_cell_temp_d1 - sensor.senec_bms_cell_temp_d6                           | no                 |                                                                                          |
-| Battery Module A: Cell Voltage A1-A14     | sensor.senec_bms_cell_volt_a1 - sensor.senec_bms_cell_volt_a14                          | no                 |                                                                                          |
-| Battery Module B: Cell Voltage B1-B14     | sensor.senec_bms_cell_volt_b1 - sensor.senec_bms_cell_volt_a14                          | no                 |                                                                                          |
-| Battery Module C: Cell Voltage C1-C14     | sensor.senec_bms_cell_volt_c1 - sensor.senec_bms_cell_volt_a14                          | no                 |                                                                                          |
-| Battery Module D: Cell Voltage D1-D14     | sensor.senec_bms_cell_volt_d1 - sensor.senec_bms_cell_volt_d14                          | no                 |                                                                                          |
-| Battery Module A-D: Voltage               | sensor.senec_bms_voltage_a - sensor.senec_bms_voltage_d                                 | no                 |                                                                                          |
-| Battery Module A-D: Current               | sensor.senec_bms_current_a - sensor.senec_bms_current_d                                 | no                 |                                                                                          |
-| Battery Module A-D: State of Charge       | sensor.senec_bms_soc_a - sensor.senec_bms_soc_d                                         | no                 |                                                                                          |
-| Battery Module A-D: State of Health       | sensor.senec_bms_soh_a - sensor.senec_bms_soh_d                                         | no                 |                                                                                          |
-| Battery Module A-D: Cycles                | sensor.senec_bms_cycles_a - sensor.senec_bms_cycles_d                                   | no                 |                                                                                          |
-| Wallbox I-IV Power                        | sensor.senec_wallbox_power - sensor.senec_wallbox_4_power                               | no                 |                                                                                          |
-| Wallbox I-IV EV Connected                 | sensor.senec_wallbox_ev_connected - sensor.senec_wallbox_4_ev_connected                 | no                 |                                                                                          |
-| Wallbox I-IV L1 charging Current          | sensor.senec_wallbox_l1_charging_current - sensor.senec_wallbox_4_l1_charging_current   | no                 |                                                                                          |
-| Wallbox I-IV L2 charging Current          | sensor.senec_wallbox_l2_charging_current - sensor.senec_wallbox_4_l2_charging_current   | no                 |                                                                                          |
-| Wallbox I-IV L3 charging Current          | sensor.senec_wallbox_l3_charging_current - sensor.senec_wallbox_4_l3_charging_current   | no                 |                                                                                          |
-| Wallbox I-IV MIN charging Current         | sensor.senec_wallbox_min_charging_current - sensor.senec_wallbox_4_min_charging_current | no                 |                                                                                          |
-| Wallbox I-IV set ICMAX                    | number.senec_wallbox_1_set_icmax - number.senec_wallbox_4_set_icmax                     | no                 |                                                                                          |
-| Wallbox I-IV set IDEFAULT                 | number.senec_wallbox_1_set_idefault - number.senec_wallbox_4_set_idefault               | no                 |                                                                                          |
-| Fan LV-Inverter                           | binary_sensor.senec_fan_inv_lv                                                          | no                 | looks like that lala.cgi currently does not provide valid data                           |
-| Fan HV-Inverter                           | binary_sensor.senec_fan_inv_hv                                                          | no                 | looks like that lala.cgi currently does not provide valid data                           |
-| House consumed                            | sensor.senec_house_total_consumption                                                    | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi | 
-| Solar generated                           | sensor.senec_solar_total_generated                                                      | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi |
-| Battery charged                           | sensor.senec_battery_total_charged                                                      | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi |
-| Battery discharged                        | sensor.senec_battery_total_discharged                                                   | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi |
-| Grid Imported                             | sensor.senec_grid_total_import                                                          | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi |
-| Grid Exported                             | sensor.senec_grid_total_export                                                          | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi |
-| Wallbox I-IV total charged                | sensor.senec_wallbox_wallbox_energy - sensor.senec_wallbox_4_energy                     | no                 | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi |
+| Sensor                                       | default entity name                                                                                   | enabled by default | remark                                                                                      |
+|----------------------------------------------|-------------------------------------------------------------------------------------------------------|--------------------|---------------------------------------------------------------------------------------------|
+| System State (translated to DE & IT)         | sensor.senec_system_state                                                                             | yes                |                                                                                             |
+| Battery Temperature                          | sensor.senec_battery_temp                                                                             | yes                |                                                                                             |
+| Case Temperature                             | sensor.senec_case_temp                                                                                | yes                |                                                                                             |
+| Controller Temperature                       | sensor.senec_mcu_temp                                                                                 | yes                |                                                                                             |
+| Solar Generated Power                        | sensor.senec_solar_generated_power                                                                    | yes                |                                                                                             |
+| House Power                                  | sensor.senec_house_power                                                                              | yes                |                                                                                             |
+| Battery State Power                          | sensor.senec_battery_state_power                                                                      | yes                |                                                                                             |
+| Battery Charge Power                         | sensor.senec_battery_charge_power                                                                     | yes                |                                                                                             |
+| Battery Discharge Power                      | sensor.senec_battery_discharge_power                                                                  | yes                |                                                                                             |
+| Battery Charge Percent                       | sensor.senec_battery_charge_percent                                                                   | yes                |                                                                                             |
+| Grid State Power                             | sensor.senec_grid_state_power                                                                         | yes                |                                                                                             |
+| Grid Imported Power                          | sensor.senec_grid_imported_power                                                                      | yes                |                                                                                             |
+| Grid Exported Power                          | sensor.senec_grid_exported_power                                                                      | yes                |                                                                                             |
+| MPP1-MMP3 Voltage/Potential                  | sensor.senec_solar_mpp1_potential - sensor.senec_solar_mpp3_potential                                 | yes                |                                                                                             |
+| MPP1-MMP3 Current                            | sensor.senec_solar_mpp1_current - sensor.senec_solar_mpp3_current                                     | yes                |                                                                                             |
+| MPP1-MMP3 Power                              | sensor.senec_solar_mpp1_power - sensor.senec_solar_mpp3_power                                         | yes                |                                                                                             |
+| Enfluri Net Frequency                        | sensor.senec_enfluri_net_freq                                                                         | yes                |                                                                                             |
+| Enfluri Net Total Power                      | sensor.senec_enfluri_net_power_total                                                                  | yes                |                                                                                             |
+| Enfluri Net Voltage/Potential Phase 1-3      | sensor.senec_enfluri_net_potential_p1 - sensor.senec_enfluri_net_potential_p3                         | yes                |                                                                                             |
+| Enfluri Net Current Phase 1-3                | sensor.senec_enfluri_net_current_p1 - sensor.senec_enfluri_net_current_p3                             | yes                |                                                                                             |
+| Enfluri Net Power Phase 1-3                  | sensor.senec_enfluri_net_power_p1 - sensor.senec_enfluri_net_power_p3                                 | yes                |                                                                                             |
+| Enfluri Usage Frequency                      | sensor.senec_enfluri_usage_freq                                                                       | no                 |                                                                                             |
+| Enfluri Usage Total Power                    | sensor.senec_enfluri_usage_power_total                                                                | no                 |                                                                                             |
+| Enfluri Usage Voltage/Potential Phase 1-3    | sensor.senec_enfluri_usage_potential_p1 - sensor.senec_enfluri_usage_potential_p3                     | no                 |                                                                                             |
+| Enfluri Usage Current Phase 1-3              | sensor.senec_enfluri_usage_current_p1 - sensor.senec_enfluri_usage_current_p3                         | no                 |                                                                                             |
+| Enfluri Usage Power Phase 1-3                | sensor.senec_enfluri_usage_power_p1 - sensor.senec_enfluri_usage_power_p3                             | no                 |                                                                                             |
+| Load Battery                                 | switch.senec_safe_charge                                                                              | yes                |                                                                                             |
+| Lithium Storage Mode - PV OFF                | switch.senec_li_storage_mode                                                                          | no                 | current functionality is unknown yet                                                        |
+| Battery Module A: Cell Temperature A1-A6     | sensor.senec_bms_cell_temp_a1 - sensor.senec_bms_cell_temp_a6                                         | no                 |                                                                                             |
+| Battery Module B: Cell Temperature B1-B6     | sensor.senec_bms_cell_temp_b1 - sensor.senec_bms_cell_temp_b6                                         | no                 |                                                                                             |
+| Battery Module C: Cell Temperature C1-C6     | sensor.senec_bms_cell_temp_c1 - sensor.senec_bms_cell_temp_c6                                         | no                 |                                                                                             |
+| Battery Module D: Cell Temperature D1-D6     | sensor.senec_bms_cell_temp_d1 - sensor.senec_bms_cell_temp_d6                                         | no                 |                                                                                             |
+| Battery Module A: Cell Voltage A1-A14        | sensor.senec_bms_cell_volt_a1 - sensor.senec_bms_cell_volt_a14                                        | no                 |                                                                                             |
+| Battery Module B: Cell Voltage B1-B14        | sensor.senec_bms_cell_volt_b1 - sensor.senec_bms_cell_volt_a14                                        | no                 |                                                                                             |
+| Battery Module C: Cell Voltage C1-C14        | sensor.senec_bms_cell_volt_c1 - sensor.senec_bms_cell_volt_a14                                        | no                 |                                                                                             |
+| Battery Module D: Cell Voltage D1-D14        | sensor.senec_bms_cell_volt_d1 - sensor.senec_bms_cell_volt_d14                                        | no                 |                                                                                             |
+| Battery Module A-D: Voltage                  | sensor.senec_bms_voltage_a - sensor.senec_bms_voltage_d                                               | no                 |                                                                                             |
+| Battery Module A-D: Current                  | sensor.senec_bms_current_a - sensor.senec_bms_current_d                                               | no                 |                                                                                             |
+| Battery Module A-D: State of Charge          | sensor.senec_bms_soc_a - sensor.senec_bms_soc_d                                                       | no                 |                                                                                             |
+| Battery Module A-D: State of Health          | sensor.senec_bms_soh_a - sensor.senec_bms_soh_d                                                       | no                 |                                                                                             |
+| Battery Module A-D: Cycles                   | sensor.senec_bms_cycles_a - sensor.senec_bms_cycles_d                                                 | no                 | values seams to be not plausible                                                            |
+| Fan LV-Inverter                              | binary_sensor.senec_fan_inv_lv                                                                        | no                 | looks like that lala.cgi currently does not provide valid data                              |
+| Fan HV-Inverter                              | binary_sensor.senec_fan_inv_hv                                                                        | no                 | looks like that lala.cgi currently does not provide valid data                              |
+| House consumed                               | sensor.senec_house_total_consumption                                                                  | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi    | 
+| Solar generated                              | sensor.senec_solar_total_generated                                                                    | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi    |
+| Battery charged                              | sensor.senec_battery_total_charged                                                                    | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi    |
+| Battery discharged                           | sensor.senec_battery_total_discharged                                                                 | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi    |
+| Grid Imported                                | sensor.senec_grid_total_import                                                                        | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi    |
+| Grid Exported                                | sensor.senec_grid_total_export                                                                        | yes                | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi    |
+| Wallbox I-IV total charged                   | sensor.senec_wallbox_1_energy - sensor.senec_wallbox_4_energy                                         | no                 | "temp" not available since SENEC has decided to remove statistics data from the lala.cgi    |
+| Wallbox (All) allow intercharge              | switch.wallbox_allow_intercharge                                                                      | no                 | requires additional WebAPI to be configured                                                 |
+| Wallbox I-IV MODE (Locked/Fastest/Optimized) | select.senec_wallbox_1_mode - select.senec_wallbox_4_mode                                             | no                 | requires additional WebAPI to be configured                                                 |
+| Wallbox I-IV State                           | sensor.senec_wallbox_1_state - select.senec_wallbox_1_state                                           | no                 |                                                                                             |
+| Wallbox I-IV Power                           | sensor.senec_wallbox_1_power - sensor.senec_wallbox_4_power                                           | no                 |                                                                                             |
+| Wallbox I-IV EV Connected                    | sensor.senec_wallbox_1_ev_connected - sensor.senec_wallbox_4_ev_connected                             | no                 |                                                                                             |
+| Wallbox I-IV L1 charging Current             | sensor.senec_wallbox_1_l1_charging_current - sensor.senec_wallbox_4_l1_charging_current               | no                 |                                                                                             |
+| Wallbox I-IV L2 charging Current             | sensor.senec_wallbox_1_l2_charging_current - sensor.senec_wallbox_4_l2_charging_current               | no                 |                                                                                             |
+| Wallbox I-IV L3 charging Current             | sensor.senec_wallbox_1_l3_charging_current - sensor.senec_wallbox_4_l3_charging_current               | no                 |                                                                                             |
+| Wallbox I-IV MIN charging Current            | sensor.senec_wallbox_1_min_charging_current - sensor.senec_wallbox_4_min_charging_current             | no                 |                                                                                             |
+| Wallbox I-IV set ICMAX                       | number.senec_wallbox_1_set_icmax - number.senec_wallbox_4_set_icmax                                   | no                 | requires additional WebAPI to be configured - value can only be changed in mode 'optimized' |
+| Wallbox I-IV Phase L1 used                   | binary_sensor.senec_wallbox_1_l1_used - binary_sensor.senec_wallbox_4_l1_used                         | no                 |                                                                                             |
+| Wallbox I-IV Phase L2 used                   | binary_sensor.senec_wallbox_1_l2_used - binary_sensor.senec_wallbox_4_l2_used                         | no                 |                                                                                             |
+| Wallbox I-IV Phase L3 used                   | binary_sensor.senec_wallbox_1_l3_used - binary_sensor.senec_wallbox_4_l3_used                         | no                 |                                                                                             |
+| Wallbox I-IV Smart Charge active (by mode)   | binary_sensor.senec_wallbox_1_smart_charge_active - binary_sensor.senec_wallbox_4_smart_charge_active | no                 |                                                                                             |
+| Wallbox I-IV is locked (by mode)             | binary_sensor.senec_wallbox_1_prohibit_usage - binary_sensor.senec_wallbox_4_prohibit_usage           | no                 |                                                                                             |
+| Socket 1&2 already switched today            | binary_sensor.senec_sockets_1_already_switched & binary_sensor.senec_sockets_2_already_switched       | no                 |                                                                                             |
+| Socket 1&2 power on                          | binary_sensor.senec_sockets_1_power_on & binary_sensor.senec_sockets_2_power_on                       | no                 |                                                                                             |
+| Socket 1&2 permanent on                      | switch.senec_sockets_1_force_on & switch.senec_sockets_2_force_on                                     | no                 |                                                                                             |
+| Socket 1&2 automatic enable                  | switch.senec_sockets_1_enable & switch.senec_sockets_2_enable                                         | no                 |                                                                                             |
+| Socket 1&2 use timer                         | switch.senec_sockets_1_use_time & switch.senec_sockets_2_use_time                                     | no                 |                                                                                             |
+| Socket 1&2 lower limit (W)                   | number.senec_sockets_1_lower_limit & number.senec_sockets_2_lower_limit                               | no                 |                                                                                             |
+| Socket 1&2 upper limit (W)                   | number.senec_sockets_1_upper_limit & number.senec_sockets_2_upper_limit                               | no                 |                                                                                             |
+| Socket 1&2 time limit                        | number.senec_sockets_1_time_limit & number.senec_sockets_2_time_limit                                 | no                 |                                                                                             |
+| Socket 1&2 switch on hour                    | number.senec_sockets_1_switch_on_hour & number.senec_sockets_2_switch_on_hour                         | no                 |                                                                                             |
+| Socket 1&2 switch on minute                  | number.senec_sockets_1_switch_on_minute & number.senec_sockets_2_switch_on_minute                     | no                 |                                                                                             |
+| Socket 1&2 power on time (duration)          | number.senec_sockets_1_power_on_time & number.senec_sockets_2_power_on_time                           | no                 |                                                                                             |
 
 ### Web API
 
@@ -212,6 +235,48 @@ The following Sensors are provided by the Web API:
 | WEBAPI Peak Shaving Mode           | Shows the current Peak Shaving Mode (Deactivated, Automatic, Manual)                               | no                 |
 | WEBAPI Peak Shaving Capacity Limit | When using the Manual Peak Shaving Mode this capacity limit will be used for your battery          | no                 |
 | WEBAPI Peak Shaving End Time       | When using the Manual Peak Shaving Mode, this time releases the capacity limit for the battery     | no                 |
+
+<a href="wb-control"/>
+
+### Wallbox Control
+
+Before, owners of a SENEC wallbox, __must__ use the SENEC mobile app in order to control the wallbox device.
+This 'remote-control-functionality' implies, that it takes a certain amount of time till a change in the mobile app will
+be synced with your local device. I was not aware of this 'delay'-situation (since I do not have a wallbox installed -
+and probably I will not get one from SENEC). At the end of December (2023) I was contacted by Sigurd L. and was asked,
+if it would be possible to support wallbox control with this SENEC.Home Integration.
+
+The challenge for the integration is, that on the one hand it has to be ensured that the appropriate values in the local
+SENEC device will be set and make sure on the other hand that at the same time, that also the corresponding adjustments
+will be done in the SENEC Backend infrastructure (where the mobile app going to make the adjustments). And of course all
+that have to be done without any documentation and a really wired mix of parameter names - so please __use this
+functionality on your own risk!__.
+
+When the Integration would adjust the wallbox setting in the local SENEC device __only__, then these changes will be
+reverted/overwritten after a short while with the data provided by the central SENEC backend. So this Home Assistant
+integration will set values in your local SENEC device as well as via the APP-API (web based) __simultaneously__ - so
+that the central SENEC backend and your local SENEC device are in sync.
+
+Please Note: When you're going to adjust the Wallbox setting via the SENEC mobile app, your local SENEC device will
+still get synced with these adjustments after a short while (typically 5minutes). In such a case the values in the Home
+Assistant Integration will be also updated to your 'remote' adjustments.
+
+#### Supported wallbox control features:
+
+- Select the current Wallbox Mode: LOCKED / FASTEST / OPTIMIZED
+- When Mode OPTIMIZED is active you can adjust the charging current (IC_MAX)
+- When FASTEST is enabled you can switch 'allow intercharge' (use energy from your SENEC battery)
+
+#### Setup requirements
+
+When you want to control your wallbox via Home Assistant and this integration, you need to configure:
+
+1. the __LAN__: `SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older` __and__
+2. also the __WebAPI__: `mein-senec.de Portal (usable with all SENEC.Home variants)`
+
+__Only__ if both components are configured the Wallbox Control can work correctly!
+
+---
 
 # There is even more...
 
@@ -274,7 +339,7 @@ Resulting energy distribution card:
 # Developer information
 
 If you are interested in some details about this implementation and the current known fields you might like to take a
-look into the [current developer documentation section](./DEVELOPER_DOCUMENTATION.md).
+look into the [current developer documentation section](docs/DEVELOPER_DOCUMENTATION.md).
 
 # Credits / Kudos
 
@@ -286,10 +351,13 @@ look into the [current developer documentation section](./DEVELOPER_DOCUMENTATIO
 | [@mchwalisz](https://github.com/mchwalisz)   | This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec) since with latest updates of the firmware introduced by SENEC the original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
 
 [hacs]: https://github.com/hacs/integration
+
 [hacsbadge]: https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
 
 [buymecoffee]: https://www.buymeacoffee.com/marquardt24
+
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a-coffee-blue.svg?style=for-the-badge&logo=buymeacoffee&logoColor=ccc
 
 [paypal]: https://paypal.me/marq24
+
 [paypalbadge]: https://img.shields.io/badge/paypal-me-blue.svg?style=for-the-badge&logo=paypal&logoColor=ccc

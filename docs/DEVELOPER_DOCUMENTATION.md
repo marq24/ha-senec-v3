@@ -1094,7 +1094,7 @@ This custom component is based on [integration_blueprint template](https://githu
 It comes with development environment in a container, easy to launch
 if you use Visual Studio Code. With this container you will have a stand alone
 Home Assistant instance running and already configured with the included
-[`configuration.yaml`](./config/configuration.yaml)
+[`configuration.yaml`](../config/configuration.yaml)
 file.
 
 Inside the devcontainer run "scripts/develop" to start HA and test out your new integration. Use "Home Assistant: Attach Local" to attach debugger.

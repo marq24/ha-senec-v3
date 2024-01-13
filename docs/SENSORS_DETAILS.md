@@ -148,6 +148,6 @@
 | Module C: Cycles                | sensor.senec_bms_cycles_c               | no                 |                                                                |
 | Module D: Cycles                | sensor.senec_bms_cycles_d               | no                 |                                                                |
 | Wallbox Power                   | sensor.senec_wallbox_power              | no                 |                                                                |
-| Wallbox EV Connected            | sensor.senec_wallbox_ev_connected       | no                 |                                                                |
 | Fan LV-Inverter                 | binary_sensor.senec_fan_inv_lv          | no                 | looks like that lala.cgi currently does not provide valid data |
 | Fan HV-Inverter                 | binary_sensor.senec_fan_inv_hv          | no                 | looks like that lala.cgi currently does not provide valid data |
+| Wallbox I EV Connected          | sensor.senec_wallbox_1_ev_connected     | no                 |                                                                |
