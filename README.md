@@ -1,12 +1,10 @@
 # Home Assistant Integration for SENEC.Home V2.x/V3/V4 Systems
 
-This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4 Systems.
-In addition and where possible functions are provided to control the system.
+This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4 Systems. In addition and where possible functions are provided to control the system.
 
 ## Disclaimer
 
-Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee.
-Therefore, use this integration **at your own risk**.
+Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee. Therefore, use this integration **at your own risk**.
 
 [![hacs_badge][hacsbadge]][hacs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![PayPal][paypalbadge]][paypal]
 
@@ -16,17 +14,11 @@ Therefore, use this integration **at your own risk**.
 
 ### Switch to Tibber!
 
-Are you still customer of (IMHO totally overpriced) SENEC.Cloud as electricity provider? Be smart switch to Tibber -
-that's what I did in october 2023.
+Are you still customer of (IMHO totally overpriced) SENEC.Cloud as electricity provider? Be smart switch to Tibber - that's what I did in october 2023.
 
-If you want to join Tibber (become a customer), you might want to use my personal invitation link. When you use this
-link, Tibber will we grant you and me a bonus of 50,-€ for each of us. This bonus then can be used in the Tibber store (
-not for your power bill) - e.g. to buy a Tibber Bridge. If you are already a Tibber customer and have not used an
-invitation link yet, you can also enter one afterward in the Tibber App.
+If you want to join Tibber (become a customer), you might want to use my personal invitation link. When you use this link, Tibber will we grant you and me a bonus of 50,-€ for each of us. This bonus then can be used in the Tibber store (not for your power bill) - e.g. to buy a Tibber Bridge. If you are already a Tibber customer and have not used an invitation link yet, you can also enter one afterward in the Tibber App.
 
-Please consider [using my personal Tibber invitation link to join Tibber today](https://invite.tibber.com/6o0kqvzf) or
-Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterward in the Tibber App -
-TIA!
+Please consider [using my personal Tibber invitation link to join Tibber today](https://invite.tibber.com/6o0kqvzf) or Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterward in the Tibber App - TIA!
 
 ---
 
@@ -39,13 +31,11 @@ TIA!
     - Select latest version or `master`
 - Restart Home Assistant to install all dependencies
 
-__If you only find__ the `Senec solar system sensor` integration (which will not work any longer!) - please add this
-repo as custom repository https://github.com/marq24/ha-senec-v3 to HACS
+__If you only find__ the `Senec solar system sensor` integration (which will not work any longer!) - please add this repo as custom repository https://github.com/marq24/ha-senec-v3 to HACS
 
 ### Manual installation
 
-- Copy all files from `custom_components/senec/` to `custom_components/senec/` inside your config Home Assistant
-  directory.
+- Copy all files from `custom_components/senec/` to `custom_components/senec/` inside your config Home Assistant directory.
 - Restart Home Assistant to install all dependencies
 
 ## Adding or enabling the integration
@@ -58,8 +48,7 @@ Just click the following Button to start the configuration automatically:
 
 ### Manual
 
-Use the following steps for a manual configuration by adding the custom integration using the web interface and follow
-instruction on screen:
+Use the following steps for a manual configuration by adding the custom integration using the web interface and follow instruction on screen:
 
 - Go to `Configuration -> Integrations` and add "SENEC.Home" integration
 - Select the Integration Type (basically LAN ot WebApi)
@@ -79,8 +68,7 @@ You can repeat this to add additional Integration entries (e.g. LAN + WebAPI)
 
 ## Switching to this fork
 
-If you used the original integration by [@mchwalisz](https://github.com/mchwalisz), please look
-at "[Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)", before using this integration.
+If you used previously the source of this fork created by [@mchwalisz](https://github.com/mchwalisz), please look at "[Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)", before using this integration.
 
 ## Functional Overview
 
@@ -97,10 +85,9 @@ The following devices are currently supported:
 
 ### Local Polling
 
-The following features and sensors are provided by polling the build in webserver of your SENEC device: Since this is a
-long list, not everything is enabled by default.
-To enable a disabled function or sensor navigate to Settings -> Devices and Services, select the integration and click
-"configuration" of the device. In the list you can see the status and have also the option to enable/disable them.
+The following features and sensors are provided by polling the build in webserver of your SENEC device: Since this is a long list, not everything is enabled by default.
+
+To enable a disabled function or sensor navigate to Settings -> Devices and Services, select the integration and click "configuration" of the device. In the list you can see the status and have also the option to enable/disable them.
 
 #### Features
 
@@ -199,9 +186,7 @@ The following Sensors are provided by the local polling:
 
 ### Web API
 
-The following features and sensors are provided by the Web API Integration. Not all sensors are enabled by default.
-To enable a disabled function or sensor navigate to Settings -> Devices and Services, select the integration and click
-"configuration" of the device. In the list you can see the status and have also the option to enable/disable them.
+The following features and sensors are provided by the Web API Integration. Not all sensors are enabled by default. To enable a disabled function or sensor navigate to Settings -> Devices and Services, select the integration and click "configuration" of the device. In the list you can see the status and have also the option to enable/disable them.
 
 #### Features
 
@@ -240,26 +225,13 @@ The following Sensors are provided by the Web API:
 
 ### Wallbox Control
 
-Before, owners of a SENEC wallbox, __must__ use the SENEC mobile app in order to control the wallbox device.
-This 'remote-control-functionality' implies, that it takes a certain amount of time till a change in the mobile app will
-be synced with your local device. I was not aware of this 'delay'-situation (since I do not have a wallbox installed -
-and probably I will not get one from SENEC). At the end of December (2023) I was contacted by Sigurd L. and was asked,
-if it would be possible to support wallbox control with this SENEC.Home Integration.
+Without this integration owners of a SENEC wallbox, __must__ use the SENEC mobile app in order to control the wallbox device. This 'remote-control-functionality' implies, that it takes a certain amount of time till a change in the mobile app will be synced with your local device. I was not aware of this 'delay'-situation (since I do not have a wallbox installed - and probably I will not get one from SENEC). At the end of December (2023) I was contacted by Sigurd L. and was asked, if it would be possible to support wallbox control with this SENEC.Home Integration.
 
-The challenge for the integration is, that on the one hand it has to be ensured that the appropriate values in the local
-SENEC device will be set and make sure on the other hand that at the same time, that also the corresponding adjustments
-will be done in the SENEC Backend infrastructure (where the mobile app going to make the adjustments). And of course all
-that have to be done without any documentation and a really wired mix of parameter names - so please __use this
-functionality on your own risk!__.
+The challenge for the integration is, that on the one hand it has to be ensured that the appropriate values in the local SENEC device will be set and make sure on the other hand that at the same time, that also the corresponding adjustments will be done in the SENEC Backend infrastructure (where the mobile app going to make the adjustments). And of course all that have to be done without any documentation and a really wired mix of parameter names - so please __use this functionality on your own risk!__.
 
-When the Integration would adjust the wallbox setting in the local SENEC device __only__, then these changes will be
-reverted/overwritten after a short while with the data provided by the central SENEC backend. So this Home Assistant
-integration will set values in your local SENEC device as well as via the APP-API (web based) __simultaneously__ - so
-that the central SENEC backend and your local SENEC device are in sync.
+When the Integration would adjust the wallbox setting in the local SENEC device __only__, then these changes will be reverted/overwritten after a short while with the data provided by the central SENEC backend. So this Home Assistant integration will set values in your local SENEC device as well as via the APP-API (web based) __simultaneously__ - so that the central SENEC backend and your local SENEC device are in sync.
 
-Please Note: When you're going to adjust the Wallbox setting via the SENEC mobile app, your local SENEC device will
-still get synced with these adjustments after a short while (typically 5minutes). In such a case the values in the Home
-Assistant Integration will be also updated to your 'remote' adjustments.
+Please Note: When you're going to adjust the Wallbox setting via the SENEC mobile app, your local SENEC device will still get synced with these adjustments after a short while (typically 5minutes). In such a case the values in the Home Assistant Integration will be also updated to your 'remote' adjustments.
 
 #### Supported wallbox control features:
 
@@ -282,21 +254,17 @@ __Only__ if both components are configured the Wallbox Control can work correctl
 
 Here you will find additional information regarding setup and configuration.
 
-<a href="build-in-inverters"/>
+<a href="build-in-inverters"/></a>
 
 ## Connecting the internal (build in) SENEC Inverter Hardware to your LAN and use it in HA
 
-The __SENEC.Home V3 hybrid duo__ have build in two inverters - called LV and HV. This hardware has its own LAN
-connectors, but they have not been connected during the installation process (I guess by purpose).
+The __SENEC.Home V3 hybrid duo__ have build in two inverters - called LV and HV. This hardware has its own LAN connectors, but they have not been connected during the installation process (I guess by purpose).
 
 ### __DO THIS ON YOUR OWN RISK!__
 
-Nevertheless, when you dismount the front and the right hand side panels you simply can plug in RJ45 LAN cables into
-both of the inverters LAN connectors and after a short while you should be able to access the web frontends of the
-inverters via your browser.
+Nevertheless, when you dismount the front and the right hand side panels you simply can plug in RJ45 LAN cables into both of the inverters LAN connectors and after a short while you should be able to access the web frontends of the inverters via your browser.
 
-_Don't forget to assign fixed IP's to the additional inverter hardware. You can unplug the LAN cable for a short while
-in order to make sure that the inverters will make use of the fixed assigned IP's._
+_Don't forget to assign fixed IP's to the additional inverter hardware. You can unplug the LAN cable for a short while in order to make sure that the inverters will make use of the fixed assigned IP's._
 
 ### Position of SENEC.Inverter V3 LV LAN connector
 
@@ -310,8 +278,7 @@ On the right hand side of the device
 
 ### Adding Inverter(s) to your HA
 
-Once you have connected the inverter(s) with your LAN you can add another integration entry to your SENEC Integration in
-Home Assistant:
+Once you have connected the inverter(s) with your LAN you can add another integration entry to your SENEC Integration in Home Assistant:
 
 1. go to '__Settings__' -> '__Devices & Services__'
 2. select the '__SENEC.Home__' integration.
@@ -338,8 +305,7 @@ Resulting energy distribution card:
 
 # Developer information
 
-If you are interested in some details about this implementation and the current known fields you might like to take a
-look into the [current developer documentation section](docs/DEVELOPER_DOCUMENTATION.md).
+If you are interested in some details about this implementation and the current known fields you might like to take a look into the [current developer documentation section](docs/DEVELOPER_DOCUMENTATION.md).
 
 # Credits / Kudos
 
