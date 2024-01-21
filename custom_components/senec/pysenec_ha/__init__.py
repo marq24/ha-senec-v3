@@ -2335,7 +2335,7 @@ class MySenecWebPortal:
         APP_BASE_URL2 = "https://app-gateway.prod.senec.dev/"
         self._SENEC_APP_NOW = APP_BASE_URL2 + "v2/senec/systems/%s/dashboard"
         self._SENEC_APP_TOTAL = APP_BASE_URL2 + "v1/senec/monitor/%s/data/custom?startDate=2018-01-01&endDate=%s-%s-01&locale=de_DE&timezone=GMT"
-        # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/technical-data
+        self._SENEC_APP_TECHDATA = APP_BASE_URL2 + "v1/senec/systems/%s/technical-data"
         # https://app-gateway.prod.senec.dev/v2/senec/systems/%s/measurements?resolution=FULL&from=1705190400&to=1705236188
 
         # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/abilities
@@ -2391,13 +2391,14 @@ class MySenecWebPortal:
         self._app_raw_now = None
         self._app_raw_today = None
         self._app_raw_total = None
+        self._app_raw_tech_data = None
         self._app_wallbox_num_max = 4
         self._app_raw_wallbox = [None, None, None, None]
-        # self._app_last_wallbox_modes_lc = [None, None, None, None]
+        # self._QUERY_TECH_DATA_TS = 0
 
         IntBridge.app_api = self
         if IntBridge.avail():
-            # ok mein-senec-web is already existing...
+            # ok local-polling (lala.cgi) is already existing...
             if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
                 self._QUERY_WALLBOX = True
                 _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
@@ -2543,8 +2544,6 @@ class MySenecWebPortal:
     async def app_update_now(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_update_now(self) ********")
         if self._app_master_plant_id is not None:
-            today = datetime.today() + relativedelta(months=+1)
-
             status_url = f"{self._SENEC_APP_NOW}" % (str(self._app_master_plant_id))
             data = await self.app_get_data(a_url=status_url)
             if data is not None and "currently" in data:
@@ -2552,6 +2551,7 @@ class MySenecWebPortal:
             else:
                 self._app_raw_now = None
 
+            # even if there are no active 'today' sensors we want to capture already the data
             if data is not None and "today" in data:
                 self._app_raw_today = data["today"]
             else:
@@ -2561,6 +2561,22 @@ class MySenecWebPortal:
             if retry:
                 await self.app_authenticate()
                 await self.app_update_now(retry=False)
+
+    async def app_update_tech_data(self, retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_update_tech_data(self) ********")
+        if self._app_master_plant_id is not None:
+            status_url = f"{self._SENEC_APP_TECHDATA}" % (str(self._app_master_plant_id))
+            data = await self.app_get_data(a_url=status_url)
+            if data is not None:
+                self._app_raw_tech_data = data
+                # self._QUERY_TECH_DATA_TS = time()
+            else:
+                self._app_raw_tech_data = None
+                # self._QUERY_TECH_DATA_TS = 0
+        else:
+            if retry:
+                await self.app_authenticate()
+                await self.app_update_tech_data(retry=False)
 
     async def app_get_wallbox_data(self, wallbox_num: int = 1, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_get_wallbox_data(self) ********")
@@ -2600,34 +2616,18 @@ class MySenecWebPortal:
                     _LOGGER.debug(
                         f"APP-API cancel 'app_get_wallbox_data' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
 
-    async def app_update_wallboxes(self):
+    async def app_update_all_wallboxes(self):
         _LOGGER.debug(f"APP-API app_update_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
         # ok we go through all possible wallboxes [1-4] and check, if we can receive some
         # data - if there is no data, then we make sure, that next time we do not query
         # this wallbox again...
-        if self._app_wallbox_num_max > 0:
-            await self.app_get_wallbox_data(wallbox_num=1)
-            if self._app_raw_wallbox[0] is None and self._app_wallbox_num_max > 0:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 0")
-                self._app_wallbox_num_max = 0
-
-        if self._app_wallbox_num_max > 1:
-            await self.app_get_wallbox_data(wallbox_num=2)
-            if self._app_raw_wallbox[1] is None and self._app_wallbox_num_max > 1:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 1")
-                self._app_wallbox_num_max = 1
-
-        if self._app_wallbox_num_max > 2:
-            await self.app_get_wallbox_data(wallbox_num=3)
-            if self._app_raw_wallbox[2] is None and self._app_wallbox_num_max > 2:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
-                self._app_wallbox_num_max = 2
-
-        if self._app_wallbox_num_max > 3:
-            await self.app_get_wallbox_data(wallbox_num=4)
-            if self._app_raw_wallbox[3] is None and self._app_wallbox_num_max > 3:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 3")
-                self._app_wallbox_num_max = 3
+        # python: 'range(x, y)' will not include 'y'
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                await self.app_get_wallbox_data(wallbox_num=(idx + 1))
+                if self._app_raw_wallbox[idx] is None and self._app_wallbox_num_max > idx:
+                    _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
+                    self._app_wallbox_num_max = idx
 
     async def app_post_data(self, a_url: str, post_data: dict, read_response: bool = False) -> bool:
         _LOGGER.debug("***** APP-API: app_post_data(self) ********")
@@ -2821,32 +2821,15 @@ class MySenecWebPortal:
 
     async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
         _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
-
-        if self._app_wallbox_num_max > 0:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=1, sync=sync)
-            if not res and self._app_wallbox_num_max > 0:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 0")
-                self._app_wallbox_num_max = 0
-
-        if self._app_wallbox_num_max > 1:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=2, sync=sync)
-            if not res and self._app_wallbox_num_max > 1:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
-                self._app_wallbox_num_max = 1
-
-        if self._app_wallbox_num_max > 2:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=3, sync=sync)
-            if not res and self._app_wallbox_num_max > 2:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
-                self._app_wallbox_num_max = 2
-
-        if self._app_wallbox_num_max > 3:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=4, sync=sync)
-            if not res and self._app_wallbox_num_max > 3:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 3")
-                self._app_wallbox_num_max = 3
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
+                if not res and self._app_wallbox_num_max > idx:
+                    _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
+                    self._app_wallbox_num_max = idx
 
     async def app_get_system_abilities(self):
+        # 'app_get_system_abilities' not used (yet)
         if self._app_master_plant_id is not None and self._app_token is not None:
             headers = {"Authorization": self._app_token}
             a_url = f"{self._SENEC_APP_GET_ABILITIES}" % str(self._app_master_plant_id)
@@ -2906,6 +2889,11 @@ class MySenecWebPortal:
             self.check_cookie_jar_type()
             await self.app_update_now()
             await self.app_update_total()
+            # 30 min = 30 * 60 sec = 1800 sec
+            # if self._QUERY_TECH_DATA_TS + 1800 < time():
+            # well since we also get the system-state from the tech_data we call this
+            # monster object every time [I dislike this!]
+            await self.app_update_tech_data()
 
             # not used any longer... [going to use the App-API]
             # await self.update_now_kW_stats()
@@ -2922,7 +2910,7 @@ class MySenecWebPortal:
                     await self.update_peak_shaving()
 
             if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
-                await self.app_update_wallboxes()
+                await self.app_update_all_wallboxes()
 
         else:
             await self.authenticate(do_update=True, throw401=False)
@@ -3393,6 +3381,149 @@ class MySenecWebPortal:
     def peakshaving_enddate(self) -> int:
         if hasattr(self, "_peak_shaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingEndDate"]
+
+    #############################
+    # NEW APP-API SENSOR VALUES #
+    #############################
+    @property
+    def case_temp(self) -> float:
+        # 'casing': {'serial': 'XXX', 'temperatureInCelsius': 28.95928382873535},
+        if self._app_raw_tech_data is not None and "casing" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["casing"]["temperatureInCelsius"]
+
+    @property
+    def system_state(self) -> str:
+        # 'mcu': {'mainControllerSerial': 'XXX',
+        #        'mainControllerState': {'name': 'EIGENVERBRAUCH', 'severity': 'INFO'}, 'firmwareVersion': '123',
+        #        'guiVersion': 123}, 'warranty': {'endDate': 1700000000, 'warrantyTermInMonths': 123},
+        if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["mcu"]["mainControllerState"]["name"].replace('_', ' ')
+
+    #######################################################################################################
+    # 'batteryInverter': {'state': {'name': 'RUN_GRID', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'firmware': {'firmwareVersion': None,
+    #                                  'firmwareVersionHumanMachineInterface': '0.01',
+    #                                  'firmwareVersionPowerUnit': '0.01',
+    #                                  'firmwareVersionBidirectionalDcConverter': '0.01'},
+    #                     'temperatures': {'amb': 36.0, 'halfBridge1': None, 'halfBridge2': None,
+    #                                     'throttle': None, 'max': 41.0},
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #######################################################################################################
+    @property
+    def battery_inverter_state(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
+            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+            if "state" in bat_inv_obj:
+                return bat_inv_obj["state"]["name"].replace('_', ' ')
+
+    @property
+    def battery_temp(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
+            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+            if "temperatures" in bat_inv_obj:
+                return bat_inv_obj["temperatures"]["amb"]
+
+    @property
+    def battery_temp_max(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
+            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+            if "temperatures" in bat_inv_obj:
+                return bat_inv_obj["temperatures"]["max"]
+
+    #######################################################################################################
+    # 'batteryPack': {'numberOfBatteryModules': 4, 'technology': 'XXX', 'maxCapacityInKwh': 10.0,
+    #                 'maxChargingPowerInKw': 2.5, 'maxDischargingPowerInKw': 3.75,
+    #                 'currentChargingLevelInPercent': 4.040403842926025,
+    #                 'currentVoltageInV': 46.26100158691406, 'currentCurrentInA': -0.10999999940395355,
+    #                 'remainingCapacityInPercent': 99.9},
+    #######################################################################################################
+    @property
+    def _battery_module_count(self) -> int:
+        # internal use only...
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["numberOfBatteryModules"]
+        return 0
+
+    @property
+    def battery_state_voltage(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["currentVoltageInV"]
+
+    @property
+    def battery_state_current(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["currentCurrentInA"]
+
+    @property
+    def _not_used_currentChargingLevelInPercent(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["currentChargingLevelInPercent"]
+
+    @property
+    def battery_soh_remaining_capacity(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["remainingCapacityInPercent"]
+
+    #######################################################################################################
+    # 'batteryModules': [{'ordinal': 1, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1231', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 24.0, 'maxTemperature': 26.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #
+    #                    {'ordinal': 2, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1232', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 24.0, 'maxTemperature': 27.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #
+    #                    {'ordinal': 3, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1233', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 26.0, 'maxTemperature': 28.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #
+    #                    {'ordinal': 4, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1234', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 27.0, 'maxTemperature': 28.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []}],
+    #######################################################################################################
+    @property
+    def battery_module_state(self) -> [str]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = ["UNKNOWN"] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = bat_obj[idx]["state"]["state"].replace('_', ' ')
+            return data
+
+    @property
+    def battery_module_temperature_avg(self) -> [float]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = [-1] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = (bat_obj[idx]["minTemperature"] + bat_obj[idx]["maxTemperature"]) / 2
+            return data
+
+    @property
+    def battery_module_temperature_min(self) -> [float]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = [-1] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = bat_obj[idx]["minTemperature"]
+            return data
+
+    @property
+    def battery_module_temperature_max(self) -> [float]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = [-1] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = bat_obj[idx]["maxTemperature"]
+            return data
 
     def clear_jar(self):
         self.web_session._cookie_jar.clear()
