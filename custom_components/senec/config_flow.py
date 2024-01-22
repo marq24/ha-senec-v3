@@ -174,7 +174,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         web_session = self.hass.helpers.aiohttp_client.async_create_clientsession(auto_cleanup=False)
         try:
             senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session, master_plant_number=master_plant)
-            await senec_web_client.authenticate(do_update=False, throw401=True)
+            await senec_web_client.web_authenticate(do_update=False, throw401=True)
             if senec_web_client._is_authenticated:
                 await senec_web_client.update_context()
                 self._device_master_plant_number = senec_web_client.masterPlantNumber

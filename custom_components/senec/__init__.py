@@ -5,7 +5,7 @@ import voluptuous as vol
 
 from datetime import timedelta
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -87,7 +87,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
     global SCAN_INTERVAL
-
     # update_interval can be adjusted in the options (not for WebAPI)
     SCAN_INTERVAL = timedelta(seconds=config_entry.options.get(CONF_SCAN_INTERVAL,
                                                                config_entry.data.get(CONF_SCAN_INTERVAL,
@@ -106,23 +105,26 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # or not...
         coordinator._statistics_available = coordinator.senec.grid_total_export is not None
 
-        await coordinator.senec.update_version()
+        if coordinator.senec.device_type is None or coordinator.senec.batt_type is None:
+            await coordinator.senec.update_version()
         coordinator._device_type = SYSTYPE_NAME_SENEC
         coordinator._device_model = f"{coordinator.senec.device_type}  | {coordinator.senec.batt_type}"
         coordinator._device_serial = f"S{coordinator.senec.device_id}"
         coordinator._device_version = coordinator.senec.versions
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        await coordinator.senec.update_version()
+        if coordinator.senec.device_name is None or coordinator.senec.device_serial is None:
+            await coordinator.senec.update_version()
         coordinator._device_type = SYSTYPE_NAME_INVERTER
         coordinator._device_model = f"{coordinator.senec.device_name} Netbios: {coordinator.senec.device_netbiosname}"
         coordinator._device_serial = coordinator.senec.device_serial
         coordinator._device_version = coordinator.senec.device_versions
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        await coordinator.senec.update_context()
+        if coordinator.senec.product_name is None:
+            await coordinator.senec.app_update_context()
         coordinator._device_type = SYSTYPE_NAME_WEBAPI
-        coordinator._device_model = f"{coordinator.senec.product_name} | SENEC.Num: {coordinator.senec.senec_num}"
+        coordinator._device_model = f"{coordinator.senec.product_name} | SENEC.Case: {coordinator.senec.senec_num}"
         coordinator._device_serial = coordinator.senec.serial_number
         coordinator._device_version = None  # senec_web_client.firmwareVersion
 
@@ -130,13 +132,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         service = SenecService.SenecService(hass, config_entry, coordinator)
         hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, service.set_peakshaving)
 
-    hass.data.setdefault(DOMAIN, {})
+    if DOMAIN not in hass.data:
+        hass.data.setdefault(DOMAIN, {})
+
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
     for platform in PLATFORMS:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, platform))
 
-    config_entry.add_update_listener(async_reload_entry)
+    if config_entry.state != ConfigEntryState.LOADED:
+        config_entry.add_update_listener(async_reload_entry)
 
     return True
 
@@ -352,24 +357,32 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload Senec config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(config_entry, component)
-                for component in PLATFORMS
-            ]
-        )
-    )
+    # unload_ok = True
+    # for platform in PLATFORMS:
+    #    _LOGGER.warning(f"unloading... {platform}")
+    #    ret_val = await hass.config_entries.async_forward_entry_unload(config_entry, platform)
+    #    _LOGGER.warning(f"unload {platform} DONE! {ret_val}")
+
+    unload_ok = all(await asyncio.gather(*[
+        hass.config_entries.async_forward_entry_unload(config_entry, platform)
+        for platform in PLATFORMS
+    ]))
+
     if unload_ok:
-        hass.data[DOMAIN].pop(config_entry.entry_id)
-        hass.services.async_remove(DOMAIN, SERVICE_SET_PEAKSHAVING)  # Remove Service on unload
+        if DOMAIN in hass.data and config_entry.entry_id in hass.data[DOMAIN]:
+            hass.data[DOMAIN].pop(config_entry.entry_id)
+
+        if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+            hass.services.async_remove(DOMAIN, SERVICE_SET_PEAKSHAVING)  # Remove Service on unload
+
     return unload_ok
 
 
 async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Reload config entry."""
-    await async_unload_entry(hass, config_entry)
-    await async_setup_entry(hass, config_entry)
+    if await async_unload_entry(hass, config_entry):
+        await asyncio.sleep(2)
+        await async_setup_entry(hass, config_entry)
 
 
 class SenecEntity(Entity):

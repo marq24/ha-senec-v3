@@ -2419,7 +2419,7 @@ class MySenecWebPortal:
             the_jar = getattr(self.web_session, "_cookie_jar")
             the_jar.clear_domain("mein-senec.de")
 
-    async def app_authenticate(self, retry: bool = True):
+    async def app_authenticate(self, retry: bool = True, do_update: bool = False):
         _LOGGER.debug("***** APP-API: app_authenticate(self) ********")
         auth_payload = {
             "username": self._SENEC_USERNAME,
@@ -2437,6 +2437,8 @@ class MySenecWebPortal:
                             await self.app_get_master_plant_id(retry)
                             if self._app_master_plant_id is not None:
                                 _LOGGER.info("APP-API: Login successful")
+                                if do_update:
+                                    await self.update()
                             else:
                                 _LOGGER.error("APP-API: could not fetch master plant id (aka 'anlagen:id')")
                     except JSONDecodeError as jsonexc:
@@ -2450,6 +2452,15 @@ class MySenecWebPortal:
 
             except ClientResponseError as ioexc:
                 _LOGGER.warning(f"APP-API: Could not login to APP-API: {ioexc}")
+
+    async def app_update_context(self, retry: bool = True):
+        _LOGGER.debug("***** app_update_context(self) ********")
+        if self._app_is_authenticated:
+            await self.app_update_tech_data(retry=True)
+        else:
+            await self.app_authenticate()
+            if retry:
+                await self.app_update_context(retry=False)
 
     async def app_get_master_plant_id(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
@@ -2508,17 +2519,20 @@ class MySenecWebPortal:
                     return None
 
             except Exception as exc:
-                if res.status == 500:
-                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
-                if res.status == 400:
-                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
-                if res.status == 401:
-                    _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
-                    self._app_is_authenticated = False
-                    self._app_token = None
-                    self._app_master_plant_id = None
-                else:
-                    _LOGGER.warning(f"APP-API: Could not get data from {a_url} causing: {exc}")
+                try:
+                    if res.status == 500:
+                        _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
+                    if res.status == 400:
+                        _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
+                    if res.status == 401:
+                        _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
+                        self._app_is_authenticated = False
+                        self._app_token = None
+                        self._app_master_plant_id = None
+                    else:
+                        _LOGGER.warning(f"APP-API: Could not get data from {a_url} causing: {exc}")
+                except NameError:
+                    _LOGGER.warning(f"APP-API: NO RES - Could not get data from {a_url} causing: {exc}")
 
                 return None
         else:
@@ -2659,18 +2673,20 @@ class MySenecWebPortal:
                         return False
 
             except Exception as exc:
-                if res.status == 500:
-                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
-                if res.status == 400:
-                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
-                if res.status == 401:
-                    _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
-                    self._app_is_authenticated = False
-                    self._app_token = None
-                    self._app_master_plant_id = None
-                else:
-                    _LOGGER.warning(f"APP-API: Could not post to {a_url} data: {post_data} causing: {exc}")
-
+                try:
+                    if res.status == 500:
+                        _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
+                    if res.status == 400:
+                        _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
+                    if res.status == 401:
+                        _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
+                        self._app_is_authenticated = False
+                        self._app_token = None
+                        self._app_master_plant_id = None
+                    else:
+                        _LOGGER.warning(f"APP-API: Could not post to {a_url} data: {post_data} causing: {exc}")
+                except NameError:
+                    _LOGGER.warning(f"APP-API: NO RES - Could not post to {a_url} data: {post_data} causing: {exc}")
                 return False
 
         else:
@@ -2851,7 +2867,7 @@ class MySenecWebPortal:
 
     """MEIN-SENEC.DE from here"""
 
-    async def authenticate(self, do_update: bool, throw401: bool):
+    async def web_authenticate(self, do_update: bool, throw401: bool):
         _LOGGER.info("***** authenticate(self) ********")
         self.check_cookie_jar_type()
         auth_payload = {
@@ -2884,9 +2900,8 @@ class MySenecWebPortal:
                         self.purge_senec_cookies()
 
     async def update(self):
-        if self._is_authenticated:
+        if self._app_is_authenticated:
             _LOGGER.info("***** update(self) ********")
-            self.check_cookie_jar_type()
             await self.app_update_now()
             await self.app_update_total()
             # 30 min = 30 * 60 sec = 1800 sec
@@ -2895,6 +2910,9 @@ class MySenecWebPortal:
             # monster object every time [I dislike this!]
             await self.app_update_tech_data()
 
+            if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
+                await self.app_update_all_wallboxes()
+
             # not used any longer... [going to use the App-API]
             # await self.update_now_kW_stats()
             # await self.update_full_kWh_stats()
@@ -2902,18 +2920,22 @@ class MySenecWebPortal:
             if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_SPARE_CAPACITY_TS + 86400 < time():
-                    await self.update_spare_capacity()
+                    self.check_cookie_jar_type()
+                    if self._is_authenticated:
+                        await self.update_spare_capacity()
+                    else:
+                        await self.web_authenticate(do_update=True, throw401=False)
 
             if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
-                    await self.update_peak_shaving()
-
-            if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
-                await self.app_update_all_wallboxes()
-
+                    self.check_cookie_jar_type()
+                    if self._is_authenticated:
+                        await self.update_peak_shaving()
+                    else:
+                        await self.web_authenticate(do_update=True, throw401=False)
         else:
-            await self.authenticate(do_update=True, throw401=False)
+            await self.app_authenticate(do_update=True)
 
     """This function will update peak shaving information"""
 
@@ -2966,7 +2988,7 @@ class MySenecWebPortal:
 
                 else:
                     self._is_authenticated = False
-                    await self.authenticate(do_update=False, throw401=False)
+                    await self.web_authenticate(do_update=False, throw401=False)
                     await self.set_peak_shaving(new_peak_shaving)
 
             except ClientResponseError as exc:
@@ -2974,7 +2996,7 @@ class MySenecWebPortal:
                     self.purge_senec_cookies()
 
                 self._is_authenticated = False
-                await self.authenticate(do_update=False, throw401=True)
+                await self.web_authenticate(do_update=False, throw401=True)
                 await self.set_peak_shaving(new_peak_shaving)
 
     """This function will update the spare capacity over the web api"""
@@ -3014,7 +3036,7 @@ class MySenecWebPortal:
                     self._QUERY_SPARE_CAPACITY_TS = 0
                 else:
                     self._is_authenticated = False
-                    await self.authenticate(do_update=False, throw401=False)
+                    await self.web_authenticate(do_update=False, throw401=False)
                     await self.set_spare_capacity(new_spare_capacity)
 
             except ClientResponseError as exc:
@@ -3022,7 +3044,7 @@ class MySenecWebPortal:
                     self.purge_senec_cookies()
 
                 self._is_authenticated = False
-                await self.authenticate(do_update=False, throw401=True)
+                await self.web_authenticate(do_update=False, throw401=True)
                 await self.set_spare_capacity(new_spare_capacity)
 
     # async def update_now_kW_stats(self):
@@ -3124,7 +3146,7 @@ class MySenecWebPortal:
 
             await self.update_get_systems(a_plant_number=self._master_plant_number, autodetect_mode=is_autodetect)
         else:
-            await self.authenticate(do_update=False, throw401=False)
+            await self.web_authenticate(do_update=False, throw401=False)
 
     async def update_get_customer(self):
         _LOGGER.debug("***** update_get_customer(self) ********")
@@ -3147,7 +3169,7 @@ class MySenecWebPortal:
                     _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
             else:
                 self._is_authenticated = False
-                await self.authenticate(do_update=False, throw401=False)
+                await self.web_authenticate(do_update=False, throw401=False)
 
     async def update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
         _LOGGER.debug("***** update_get_systems(self) ********")
@@ -3188,7 +3210,7 @@ class MySenecWebPortal:
                     _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
             else:
                 self._is_authenticated = False
-                await self.authenticate(do_update=False, throw401=False)
+                await self.web_authenticate(do_update=False, throw401=False)
 
     @property
     def spare_capacity(self) -> int:
@@ -3197,17 +3219,23 @@ class MySenecWebPortal:
 
     @property
     def senec_num(self) -> str:
-        if hasattr(self, '_dev_number'):
+        if self._app_raw_tech_data is not None and "casing" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["casing"]["serial"]
+        elif hasattr(self, '_dev_number'):
             return str(self._dev_number)
 
     @property
     def serial_number(self) -> str:
-        if hasattr(self, '_serial_number'):
+        if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["mcu"]["mainControllerSerial"]
+        elif hasattr(self, '_serial_number'):
             return str(self._serial_number)
 
     @property
     def product_name(self) -> str:
-        if hasattr(self, '_product_name'):
+        if self._app_raw_tech_data is not None and "systemOverview" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["systemOverview"]["productName"]
+        elif hasattr(self, '_product_name'):
             return str(self._product_name)
 
     @property
@@ -3232,42 +3260,42 @@ class MySenecWebPortal:
     def accuimport_total(self) -> float:
         if self._app_raw_total is not None and "storageConsumption" in self._app_raw_total:
             return float(self._app_raw_total["storageConsumption"]["value"])
-        if hasattr(self, '_energy_entities') and "accuimport_total" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "accuimport_total" in self._energy_entities:
             return self._energy_entities["accuimport_total"]
 
     @property
     def accuexport_total(self) -> float:
         if self._app_raw_total is not None and "storageLoad" in self._app_raw_total:
             return float(self._app_raw_total["storageLoad"]["value"])
-        if hasattr(self, '_energy_entities') and "accuexport_total" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "accuexport_total" in self._energy_entities:
             return self._energy_entities["accuexport_total"]
 
     @property
     def gridimport_total(self) -> float:
         if self._app_raw_total is not None and "gridConsumption" in self._app_raw_total:
             return float(self._app_raw_total["gridConsumption"]["value"])
-        if hasattr(self, '_energy_entities') and "gridimport_total" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "gridimport_total" in self._energy_entities:
             return self._energy_entities["gridimport_total"]
 
     @property
     def gridexport_total(self) -> float:
         if self._app_raw_total is not None and "gridFeedIn" in self._app_raw_total:
             return float(self._app_raw_total["gridFeedIn"]["value"])
-        if hasattr(self, '_energy_entities') and "gridexport_total" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "gridexport_total" in self._energy_entities:
             return self._energy_entities["gridexport_total"]
 
     @property
     def powergenerated_total(self) -> float:
         if self._app_raw_total is not None and "generation" in self._app_raw_total:
             return float(self._app_raw_total["generation"]["value"])
-        if hasattr(self, '_energy_entities') and "powergenerated_total" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "powergenerated_total" in self._energy_entities:
             return self._energy_entities["powergenerated_total"]
 
     @property
     def consumption_total(self) -> float:
         if self._app_raw_total is not None and "totalUsage" in self._app_raw_total:
             return float(self._app_raw_total["totalUsage"]["value"])
-        if hasattr(self, '_energy_entities') and "consumption_total" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "consumption_total" in self._energy_entities:
             return self._energy_entities["consumption_total"]
 
     @property
@@ -3281,49 +3309,49 @@ class MySenecWebPortal:
     def accuexport_today(self) -> float:
         if self._app_raw_today is not None and "batteryChargeInWh" in self._app_raw_today:
             return float(self._app_raw_today["batteryChargeInWh"]) / 1000
-        if hasattr(self, '_energy_entities') and "accuexport_today" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "accuexport_today" in self._energy_entities:
             return self._energy_entities["accuexport_today"]
 
     @property
     def gridimport_today(self) -> float:
         if self._app_raw_today is not None and "gridDrawInWh" in self._app_raw_today:
             return float(self._app_raw_today["gridDrawInWh"]) / 1000
-        if hasattr(self, '_energy_entities') and "gridimport_today" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "gridimport_today" in self._energy_entities:
             return self._energy_entities["gridimport_today"]
 
     @property
     def gridexport_today(self) -> float:
         if self._app_raw_today is not None and "gridFeedInInWh" in self._app_raw_today:
             return float(self._app_raw_today["gridFeedInInWh"]) / 1000
-        if hasattr(self, '_energy_entities') and "gridexport_today" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "gridexport_today" in self._energy_entities:
             return self._energy_entities["gridexport_today"]
 
     @property
     def powergenerated_today(self) -> float:
         if self._app_raw_today is not None and "powerGenerationInWh" in self._app_raw_today:
             return float(self._app_raw_today["powerGenerationInWh"]) / 1000
-        if hasattr(self, '_energy_entities') and "powergenerated_today" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "powergenerated_today" in self._energy_entities:
             return self._energy_entities["powergenerated_today"]
 
     @property
     def consumption_today(self) -> float:
         if self._app_raw_today is not None and "powerConsumptionInWh" in self._app_raw_today:
             return float(self._app_raw_today["powerConsumptionInWh"]) / 1000
-        if hasattr(self, '_energy_entities') and "consumption_today" in self._energy_entities:
+        elif hasattr(self, '_energy_entities') and "consumption_today" in self._energy_entities:
             return self._energy_entities["consumption_today"]
 
     @property
     def accuimport_now(self) -> float:
         if self._app_raw_now is not None and "batteryDischargeInW" in self._app_raw_now:
             return float(self._app_raw_now["batteryDischargeInW"]) / 1000
-        if hasattr(self, "_power_entities") and "accuimport_now" in self._power_entities:
+        elif hasattr(self, "_power_entities") and "accuimport_now" in self._power_entities:
             return self._power_entities["accuimport_now"]
 
     @property
     def accuexport_now(self) -> float:
         if self._app_raw_now is not None and "batteryChargeInW" in self._app_raw_now:
             return float(self._app_raw_now["batteryChargeInW"]) / 1000
-        if hasattr(self, "_power_entities") and "accuexport_now" in self._power_entities:
+        elif hasattr(self, "_power_entities") and "accuexport_now" in self._power_entities:
             return self._power_entities["accuexport_now"]
 
     @property
@@ -3337,28 +3365,28 @@ class MySenecWebPortal:
     def gridexport_now(self) -> float:
         if self._app_raw_now is not None and "gridFeedInInW" in self._app_raw_now:
             return float(self._app_raw_now["gridFeedInInW"]) / 1000
-        if hasattr(self, "_power_entities") and "gridexport_now" in self._power_entities:
+        elif hasattr(self, "_power_entities") and "gridexport_now" in self._power_entities:
             return self._power_entities["gridexport_now"]
 
     @property
     def powergenerated_now(self) -> float:
         if self._app_raw_now is not None and "powerGenerationInW" in self._app_raw_now:
             return float(self._app_raw_now["powerGenerationInW"]) / 1000
-        if hasattr(self, "_power_entities") and "powergenerated_now" in self._power_entities:
+        elif hasattr(self, "_power_entities") and "powergenerated_now" in self._power_entities:
             return self._power_entities["powergenerated_now"]
 
     @property
     def consumption_now(self) -> float:
         if self._app_raw_now is not None and "powerConsumptionInW" in self._app_raw_now:
             return float(self._app_raw_now["powerConsumptionInW"]) / 1000
-        if hasattr(self, "_power_entities") and "consumption_now" in self._power_entities:
+        elif hasattr(self, "_power_entities") and "consumption_now" in self._power_entities:
             return self._power_entities["consumption_now"]
 
     @property
     def acculevel_now(self) -> int:
         if self._app_raw_now is not None and "batteryLevelInPercent" in self._app_raw_now:
             return float(self._app_raw_now["batteryLevelInPercent"])
-        if hasattr(self, "_battery_entities") and "acculevel_now" in self._battery_entities:
+        elif hasattr(self, "_battery_entities") and "acculevel_now" in self._battery_entities:
             return self._battery_entities["acculevel_now"]
 
     @property

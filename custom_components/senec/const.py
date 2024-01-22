@@ -126,7 +126,7 @@ class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     senec_lala_section: str | None = None
     array_key: str | None = None
     array_pos: int = -1
-    on_value: int = -1
+    on_values: [int] = None
 
 
 @dataclass
@@ -1000,7 +1000,7 @@ MAIN_BIN_SENSOR_TYPES = [
         entity_registry_enabled_default=False,
         array_key="wallbox_smart_charge_active",
         array_pos=0,
-        on_value=3,
+        on_values=[3, 4],
         key="wallbox_1_smart_charge_active",
         name="Wallbox I smart charge active",
         icon="mdi:toggle-switch",
@@ -1012,7 +1012,7 @@ MAIN_BIN_SENSOR_TYPES = [
         entity_registry_enabled_default=False,
         array_key="wallbox_smart_charge_active",
         array_pos=1,
-        on_value=3,
+        on_values=[3, 4],
         key="wallbox_2_smart_charge_active",
         name="Wallbox II smart charge active",
         icon="mdi:toggle-switch",
@@ -1024,7 +1024,7 @@ MAIN_BIN_SENSOR_TYPES = [
         entity_registry_enabled_default=False,
         array_key="wallbox_smart_charge_active",
         array_pos=2,
-        on_value=3,
+        on_values=[3, 4],
         key="wallbox_3_smart_charge_active",
         name="Wallbox III smart charge active",
         icon="mdi:toggle-switch",
@@ -1036,7 +1036,7 @@ MAIN_BIN_SENSOR_TYPES = [
         entity_registry_enabled_default=False,
         array_key="wallbox_smart_charge_active",
         array_pos=3,
-        on_value=3,
+        on_values=[3, 4],
         key="wallbox_4_smart_charge_active",
         name="Wallbox IV smart charge active",
         icon="mdi:toggle-switch",
