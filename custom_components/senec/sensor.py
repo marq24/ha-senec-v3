@@ -98,9 +98,11 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
     def state(self):
         """Return the current state."""
         if self.entity_description.array_key is not None:
-            #_LOGGER.debug(f"{self.entity_description.array_key} {self.entity_description.array_pos}")
-            #value = 0
-            value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos]
+            data = getattr(self.coordinator.senec, self.entity_description.array_key)
+            if len(data) > self.entity_description.array_pos:
+                value = data[self.entity_description.array_pos]
+            else:
+                value = None
         else:
             value = getattr(self.coordinator.senec, self.entity_description.key)
 
@@ -133,7 +135,6 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity about to be added to Home Assistant."""
         await super().async_added_to_hass()
-
         if self._is_total_increasing:
             # get the last known value
             last_sensor_data = await self.async_get_last_state()

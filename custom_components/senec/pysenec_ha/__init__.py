@@ -7,6 +7,7 @@ import logging
 import xmltodict
 from time import time
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 from orjson import JSONDecodeError
 from packaging import version
@@ -1837,6 +1838,7 @@ class Senec:
                     return [float(wb_data["minPossibleChargingCurrentInA"]),
                             float(wb_data["maxPossibleChargingCurrentInA"])]
         return None
+
     @property
     def wallbox_2_set_icmax_extrema(self) -> [float]:
         if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[1] is not None:
@@ -1846,6 +1848,7 @@ class Senec:
                     return [float(wb_data["minPossibleChargingCurrentInA"]),
                             float(wb_data["maxPossibleChargingCurrentInA"])]
         return None
+
     @property
     def wallbox_3_set_icmax_extrema(self) -> [float]:
         if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[2] is not None:
@@ -1882,7 +1885,7 @@ class Senec:
             if sync and IntBridge.avail():
                 await IntBridge.app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
         else:
-            _LOGGER.debug(f"Ignoring 'set_wallbox_{(pos+1)}_set_icmax' to '{value}' since current mode is: {mode}")
+            _LOGGER.debug(f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {mode}")
 
     @property
     def wallbox_set_idefault(self) -> [int]:
@@ -2319,10 +2322,24 @@ class MySenecWebPortal:
 
         # https://documenter.getpostman.com/view/10329335/UVCB9ihW#17e2c6c6-fe5e-4ca9-bc2f-dca997adaf90
         # https://documenter.getpostman.com/view/10329335/UVCB9ihW#3e5a4286-c7d2-49d1-8856-12bba9fb5c6e
-        self._SENEC_APP_AUTH = "https://app-gateway-prod.senecops.com/v1/senec/login"
-        self._SENEC_APP_GET_SYSTEMS = "https://app-gateway-prod.senecops.com/v1/senec/anlagen"
-        self._SENEC_APP_GET_ABILITIES = "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/abilities"
-        self._SENEC_APP_SET_WALLBOX = "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/wallboxes/%s"
+        # https://documenter.getpostman.com/view/932140/2s9YXib2td#4d0f84ac-f573-42e3-b155-9a17cef309ec
+        APP_BASE_URL = "https://app-gateway-prod.senecops.com/"
+        self._SENEC_APP_AUTH = APP_BASE_URL + "v1/senec/login"
+        self._SENEC_APP_GET_SYSTEMS = APP_BASE_URL + "v1/senec/anlagen"
+        self._SENEC_APP_GET_ABILITIES = APP_BASE_URL + "v1/senec/anlagen/%s/abilities"
+        self._SENEC_APP_SET_WALLBOX = APP_BASE_URL + "v1/senec/anlagen/%s/wallboxes/%s"
+        # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/technical-data"
+        # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/statistik?periode=JAHR&datum=2024-01-13&locale=de_DE&timezone=Europe/Berlin"
+        # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/zeitverlauf?periode=STUNDE&after=2024-01-14T12:00:00Z&locale=de_DE&timezone=Europe/Berlin"
+
+        APP_BASE_URL2 = "https://app-gateway.prod.senec.dev/"
+        self._SENEC_APP_NOW = APP_BASE_URL2 + "v2/senec/systems/%s/dashboard"
+        self._SENEC_APP_TOTAL = APP_BASE_URL2 + "v1/senec/monitor/%s/data/custom?startDate=2018-01-01&endDate=%s-%s-01&locale=de_DE&timezone=GMT"
+        self._SENEC_APP_TECHDATA = APP_BASE_URL2 + "v1/senec/systems/%s/technical-data"
+        # https://app-gateway.prod.senec.dev/v2/senec/systems/%s/measurements?resolution=FULL&from=1705190400&to=1705236188
+
+        # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/abilities
+        # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/operational-mode -> "COM70"
 
         self._SENEC_WEB_AUTH = "https://mein-senec.de/auth/login"
         self._SENEC_WEB_GET_CUSTOMER = "https://mein-senec.de/endkunde/api/context/getEndkunde"
@@ -2370,13 +2387,18 @@ class MySenecWebPortal:
         self._app_is_authenticated = False
         self._app_token = None
         self._app_master_plant_id = None
-        self._app_raw_wallbox = [None, None, None, None]
-        # self._app_last_wallbox_modes_lc = [None, None, None, None]
+
+        self._app_raw_now = None
+        self._app_raw_today = None
+        self._app_raw_total = None
+        self._app_raw_tech_data = None
         self._app_wallbox_num_max = 4
+        self._app_raw_wallbox = [None, None, None, None]
+        # self._QUERY_TECH_DATA_TS = 0
 
         IntBridge.app_api = self
         if IntBridge.avail():
-            # ok mein-senec-web is already existing...
+            # ok local-polling (lala.cgi) is already existing...
             if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
                 self._QUERY_WALLBOX = True
                 _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
@@ -2403,7 +2425,7 @@ class MySenecWebPortal:
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.web_session.post(self._SENEC_APP_AUTH, json=auth_payload) as res:
+        async with self.web_session.post(self._SENEC_APP_AUTH, json=auth_payload, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2433,7 +2455,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
         if self._app_is_authenticated:
             headers = {"Authorization": self._app_token}
-            async with self.web_session.get(self._SENEC_APP_GET_SYSTEMS, headers=headers) as res:
+            async with self.web_session.get(self._SENEC_APP_GET_SYSTEMS, headers=headers, ssl=False) as res:
                 res.raise_for_status()
                 if res.status == 200:
                     try:
@@ -2466,7 +2488,7 @@ class MySenecWebPortal:
             _LOGGER.debug(f"APP-API get {a_url}")
             try:
                 headers = {"Authorization": self._app_token}
-                async with self.web_session.get(url=a_url, headers=headers) as res:
+                async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
                     res.raise_for_status()
                     if res.status == 200:
                         try:
@@ -2476,7 +2498,7 @@ class MySenecWebPortal:
                             _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
 
                     elif res.status == 500:
-                        _LOGGER.info(f"APP-API: Wallbox Not found {a_url} (http 500)")
+                        _LOGGER.info(f"APP-API: Not found {a_url} (http 500)")
 
                     else:
                         self._app_is_authenticated = False
@@ -2487,11 +2509,11 @@ class MySenecWebPortal:
 
             except Exception as exc:
                 if res.status == 500:
-                    _LOGGER.info(f"APP-API: Wallbox Not found {a_url} [HTTP 500]: {exc}")
+                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
                 if res.status == 400:
-                    _LOGGER.info(f"APP-API: Wallbox Not found {a_url} [HTTP 400]: {exc}")
+                    _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
                 if res.status == 401:
-                    _LOGGER.info(f"APP-API: Wallbox No permission {a_url} [HTTP 401]: {exc}")
+                    _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
                     self._app_is_authenticated = False
                     self._app_token = None
                     self._app_master_plant_id = None
@@ -2502,6 +2524,59 @@ class MySenecWebPortal:
         else:
             # somehow we should pass a "callable"...
             await self.app_authenticate()
+
+    async def app_update_total(self, retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_update_total(self) ********")
+        if self._app_master_plant_id is not None:
+            today = datetime.today() + relativedelta(months=+1)
+            status_url = f"{self._SENEC_APP_TOTAL}" % (
+                str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
+            data = await self.app_get_data(a_url=status_url)
+            if data is not None and "aggregation" in data:
+                self._app_raw_total = data["aggregation"]
+            else:
+                self._app_raw_total = None
+        else:
+            if retry:
+                await self.app_authenticate()
+                await self.app_update_total(retry=False)
+
+    async def app_update_now(self, retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_update_now(self) ********")
+        if self._app_master_plant_id is not None:
+            status_url = f"{self._SENEC_APP_NOW}" % (str(self._app_master_plant_id))
+            data = await self.app_get_data(a_url=status_url)
+            if data is not None and "currently" in data:
+                self._app_raw_now = data["currently"]
+            else:
+                self._app_raw_now = None
+
+            # even if there are no active 'today' sensors we want to capture already the data
+            if data is not None and "today" in data:
+                self._app_raw_today = data["today"]
+            else:
+                self._app_raw_today = None
+
+        else:
+            if retry:
+                await self.app_authenticate()
+                await self.app_update_now(retry=False)
+
+    async def app_update_tech_data(self, retry: bool = True):
+        _LOGGER.debug("***** APP-API: app_update_tech_data(self) ********")
+        if self._app_master_plant_id is not None:
+            status_url = f"{self._SENEC_APP_TECHDATA}" % (str(self._app_master_plant_id))
+            data = await self.app_get_data(a_url=status_url)
+            if data is not None:
+                self._app_raw_tech_data = data
+                # self._QUERY_TECH_DATA_TS = time()
+            else:
+                self._app_raw_tech_data = None
+                # self._QUERY_TECH_DATA_TS = 0
+        else:
+            if retry:
+                await self.app_authenticate()
+                await self.app_update_tech_data(retry=False)
 
     async def app_get_wallbox_data(self, wallbox_num: int = 1, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_get_wallbox_data(self) ********")
@@ -2541,34 +2616,18 @@ class MySenecWebPortal:
                     _LOGGER.debug(
                         f"APP-API cancel 'app_get_wallbox_data' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
 
-    async def app_update_wallboxes(self):
+    async def app_update_all_wallboxes(self):
         _LOGGER.debug(f"APP-API app_update_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
         # ok we go through all possible wallboxes [1-4] and check, if we can receive some
         # data - if there is no data, then we make sure, that next time we do not query
         # this wallbox again...
-        if self._app_wallbox_num_max > 0:
-            await self.app_get_wallbox_data(wallbox_num=1)
-            if self._app_raw_wallbox[0] is None and self._app_wallbox_num_max > 0:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 0")
-                self._app_wallbox_num_max = 0
-
-        if self._app_wallbox_num_max > 1:
-            await self.app_get_wallbox_data(wallbox_num=2)
-            if self._app_raw_wallbox[1] is None and self._app_wallbox_num_max > 1:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 1")
-                self._app_wallbox_num_max = 1
-
-        if self._app_wallbox_num_max > 2:
-            await self.app_get_wallbox_data(wallbox_num=3)
-            if self._app_raw_wallbox[2] is None and self._app_wallbox_num_max > 2:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
-                self._app_wallbox_num_max = 2
-
-        if self._app_wallbox_num_max > 3:
-            await self.app_get_wallbox_data(wallbox_num=4)
-            if self._app_raw_wallbox[3] is None and self._app_wallbox_num_max > 3:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 3")
-                self._app_wallbox_num_max = 3
+        # python: 'range(x, y)' will not include 'y'
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                await self.app_get_wallbox_data(wallbox_num=(idx + 1))
+                if self._app_raw_wallbox[idx] is None and self._app_wallbox_num_max > idx:
+                    _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
+                    self._app_wallbox_num_max = idx
 
     async def app_post_data(self, a_url: str, post_data: dict, read_response: bool = False) -> bool:
         _LOGGER.debug("***** APP-API: app_post_data(self) ********")
@@ -2576,7 +2635,7 @@ class MySenecWebPortal:
             _LOGGER.debug(f"APP-API post {post_data} to {a_url}")
             try:
                 headers = {"Authorization": self._app_token}
-                async with self.web_session.post(url=a_url, headers=headers, json=post_data) as res:
+                async with self.web_session.post(url=a_url, headers=headers, json=post_data, ssl=False) as res:
                     res.raise_for_status()
                     if res.status == 200:
                         if read_response:
@@ -2762,36 +2821,19 @@ class MySenecWebPortal:
 
     async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
         _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
-
-        if self._app_wallbox_num_max > 0:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=1, sync=sync)
-            if not res and self._app_wallbox_num_max > 0:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 0")
-                self._app_wallbox_num_max = 0
-
-        if self._app_wallbox_num_max > 1:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=2, sync=sync)
-            if not res and self._app_wallbox_num_max > 1:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
-                self._app_wallbox_num_max = 1
-
-        if self._app_wallbox_num_max > 2:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=3, sync=sync)
-            if not res and self._app_wallbox_num_max > 2:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 2")
-                self._app_wallbox_num_max = 2
-
-        if self._app_wallbox_num_max > 3:
-            res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=4, sync=sync)
-            if not res and self._app_wallbox_num_max > 3:
-                _LOGGER.debug("APP-API set _app_wallbox_num_max to 3")
-                self._app_wallbox_num_max = 3
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
+                if not res and self._app_wallbox_num_max > idx:
+                    _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
+                    self._app_wallbox_num_max = idx
 
     async def app_get_system_abilities(self):
+        # 'app_get_system_abilities' not used (yet)
         if self._app_master_plant_id is not None and self._app_token is not None:
             headers = {"Authorization": self._app_token}
             a_url = f"{self._SENEC_APP_GET_ABILITIES}" % str(self._app_master_plant_id)
-            async with self.web_session.get(url=a_url, headers=headers) as res:
+            async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
                 res.raise_for_status()
                 if res.status == 200:
                     try:
@@ -2816,7 +2858,7 @@ class MySenecWebPortal:
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.web_session.post(self._SENEC_WEB_AUTH, data=auth_payload, max_redirects=20) as res:
+        async with self.web_session.post(self._SENEC_WEB_AUTH, data=auth_payload, max_redirects=20, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2845,20 +2887,30 @@ class MySenecWebPortal:
         if self._is_authenticated:
             _LOGGER.info("***** update(self) ********")
             self.check_cookie_jar_type()
-            await self.update_now_kW_stats()
-            await self.update_full_kWh_stats()
+            await self.app_update_now()
+            await self.app_update_total()
+            # 30 min = 30 * 60 sec = 1800 sec
+            # if self._QUERY_TECH_DATA_TS + 1800 < time():
+            # well since we also get the system-state from the tech_data we call this
+            # monster object every time [I dislike this!]
+            await self.app_update_tech_data()
+
+            # not used any longer... [going to use the App-API]
+            # await self.update_now_kW_stats()
+            # await self.update_full_kWh_stats()
+
             if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_SPARE_CAPACITY_TS + 86400 < time():
                     await self.update_spare_capacity()
-            #
+
             if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
                     await self.update_peak_shaving()
 
             if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
-                await self.app_update_wallboxes()
+                await self.app_update_all_wallboxes()
 
         else:
             await self.authenticate(do_update=True, throw401=False)
@@ -2868,7 +2920,7 @@ class MySenecWebPortal:
     async def update_peak_shaving(self):
         _LOGGER.info("***** update_peak_shaving(self) ********")
         a_url = f"{self._SENEC_API_GET_PEAK_SHAVING}{self._master_plant_number}"
-        async with self.web_session.get(a_url) as res:
+        async with self.web_session.get(a_url, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2930,7 +2982,7 @@ class MySenecWebPortal:
     async def update_spare_capacity(self):
         _LOGGER.info("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
-        async with self.web_session.get(a_url) as res:
+        async with self.web_session.get(a_url, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2973,90 +3025,90 @@ class MySenecWebPortal:
                 await self.authenticate(do_update=False, throw401=True)
                 await self.set_spare_capacity(new_spare_capacity)
 
-    async def update_now_kW_stats(self):
-        _LOGGER.debug("***** update_now_kW_stats(self) ********")
-        # grab NOW and TODAY stats
-        a_url = f"{self._SENEC_WEB_GET_OVERVIEW_URL}" % str(self._master_plant_number)
-        async with self.web_session.get(a_url) as res:
-            try:
-                res.raise_for_status()
-                if res.status == 200:
-                    try:
-                        r_json = await res.json()
-                        self._raw = parse(r_json)
-                        for key in (self._API_KEYS + self._API_KEYS_EXTRA):
-                            if key in r_json:
-                                if key == "acculevel":
-                                    if "now" in r_json[key]:
-                                        value_now = r_json[key]["now"]
-                                        entity_now_name = str(key + "_now")
-                                        self._battery_entities[entity_now_name] = value_now
-                                    else:
-                                        _LOGGER.info(
-                                            f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
-                                else:
-                                    if "now" in r_json[key]:
-                                        value_now = r_json[key]["now"]
-                                        entity_now_name = str(key + "_now")
-                                        self._power_entities[entity_now_name] = value_now
-                                    else:
-                                        _LOGGER.info(
-                                            f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
-
-                                    if "today" in r_json[key]:
-                                        value_today = r_json[key]["today"]
-                                        entity_today_name = str(key + "_today")
-                                        self._energy_entities[entity_today_name] = value_today
-                                    else:
-                                        _LOGGER.info(
-                                            f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
-
-                            else:
-                                _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
-                    except JSONDecodeError as exc:
-                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-
-                else:
-                    self._is_authenticated = False
-                    await self.update()
-
-            except ClientResponseError as exc:
-                if exc.status == 401:
-                    self.purge_senec_cookies()
-
-                self._is_authenticated = False
-                await self.update()
-
-    async def update_full_kWh_stats(self):
-        # grab TOTAL stats
-
-        for key in self._API_KEYS:
-            api_url = f"{self._SENEC_WEB_GET_STATUS}" % (key, str(self._master_plant_number))
-            async with self.web_session.get(api_url) as res:
-                try:
-                    res.raise_for_status()
-                    if res.status == 200:
-                        try:
-                            r_json = await res.json()
-                            if "fullkwh" in r_json:
-                                value = r_json["fullkwh"]
-                                entity_name = str(key + "_total")
-                                self._energy_entities[entity_name] = value
-                            else:
-                                _LOGGER.info(f"No 'fullkwh' in json: {r_json} when requesting: {api_url}")
-                        except JSONDecodeError as exc:
-                            _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-
-                    else:
-                        self._is_authenticated = False
-                        await self.update()
-
-                except ClientResponseError as exc:
-                    if exc.status == 401:
-                        self.purge_senec_cookies()
-
-                    self._is_authenticated = False
-                    await self.update()
+    # async def update_now_kW_stats(self):
+    #     _LOGGER.debug("***** update_now_kW_stats(self) ********")
+    #     # grab NOW and TODAY stats
+    #     a_url = f"{self._SENEC_WEB_GET_OVERVIEW_URL}" % str(self._master_plant_number)
+    #     async with self.web_session.get(a_url, ssl=False) as res:
+    #         try:
+    #             res.raise_for_status()
+    #             if res.status == 200:
+    #                 try:
+    #                     r_json = await res.json()
+    #                     self._raw = parse(r_json)
+    #                     for key in (self._API_KEYS + self._API_KEYS_EXTRA):
+    #                         if key in r_json:
+    #                             if key == "acculevel":
+    #                                 if "now" in r_json[key]:
+    #                                     value_now = r_json[key]["now"]
+    #                                     entity_now_name = str(key + "_now")
+    #                                     self._battery_entities[entity_now_name] = value_now
+    #                                 else:
+    #                                     _LOGGER.info(
+    #                                         f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+    #                             else:
+    #                                 if "now" in r_json[key]:
+    #                                     value_now = r_json[key]["now"]
+    #                                     entity_now_name = str(key + "_now")
+    #                                     self._power_entities[entity_now_name] = value_now
+    #                                 else:
+    #                                     _LOGGER.info(
+    #                                         f"No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+    #
+    #                                 if "today" in r_json[key]:
+    #                                     value_today = r_json[key]["today"]
+    #                                     entity_today_name = str(key + "_today")
+    #                                     self._energy_entities[entity_today_name] = value_today
+    #                                 else:
+    #                                     _LOGGER.info(
+    #                                         f"No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+    #
+    #                         else:
+    #                             _LOGGER.info(f"No '{key}' in json: {r_json} when requesting: {a_url}")
+    #                 except JSONDecodeError as exc:
+    #                     _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+    #
+    #             else:
+    #                 self._is_authenticated = False
+    #                 await self.update()
+    #
+    #         except ClientResponseError as exc:
+    #             if exc.status == 401:
+    #                 self.purge_senec_cookies()
+    #
+    #             self._is_authenticated = False
+    #             await self.update()
+    #
+    # async def update_full_kWh_stats(self):
+    #     # grab TOTAL stats
+    #
+    #     for key in self._API_KEYS:
+    #         api_url = f"{self._SENEC_WEB_GET_STATUS}" % (key, str(self._master_plant_number))
+    #         async with self.web_session.get(api_url, ssl=False) as res:
+    #             try:
+    #                 res.raise_for_status()
+    #                 if res.status == 200:
+    #                     try:
+    #                         r_json = await res.json()
+    #                         if "fullkwh" in r_json:
+    #                             value = r_json["fullkwh"]
+    #                             entity_name = str(key + "_total")
+    #                             self._energy_entities[entity_name] = value
+    #                         else:
+    #                             _LOGGER.info(f"No 'fullkwh' in json: {r_json} when requesting: {api_url}")
+    #                     except JSONDecodeError as exc:
+    #                         _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+    #
+    #                 else:
+    #                     self._is_authenticated = False
+    #                     await self.update()
+    #
+    #             except ClientResponseError as exc:
+    #                 if exc.status == 401:
+    #                     self.purge_senec_cookies()
+    #
+    #                 self._is_authenticated = False
+    #                 await self.update()
 
     async def update_context(self):
         _LOGGER.debug("***** update_context(self) ********")
@@ -3078,7 +3130,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
-        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER) as res:
+        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER, ssl=False) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -3101,7 +3153,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_get_systems(self) ********")
 
         a_url = f"{self._SENEC_WEB_GET_SYSTEM_INFO}" % str(a_plant_number)
-        async with self.web_session.get(a_url) as res:
+        async with self.web_session.get(a_url, ssl=False) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -3173,98 +3225,139 @@ class MySenecWebPortal:
         if hasattr(self, '_master_plant_number'):
             return int(self._master_plant_number)
 
-    @property
-    def accuimport_today(self) -> float:
-        if hasattr(self, '_energy_entities') and "accuimport_today" in self._energy_entities:
-            return self._energy_entities["accuimport_today"]
-
-    @property
-    def accuexport_today(self) -> float:
-        if hasattr(self, '_energy_entities') and "accuexport_today" in self._energy_entities:
-            return self._energy_entities["accuexport_today"]
-
-    @property
-    def gridimport_today(self) -> float:
-        if hasattr(self, '_energy_entities') and "gridimport_today" in self._energy_entities:
-            return self._energy_entities["gridimport_today"]
-
-    @property
-    def gridexport_today(self) -> float:
-        if hasattr(self, '_energy_entities') and "gridexport_today" in self._energy_entities:
-            return self._energy_entities["gridexport_today"]
-
-    @property
-    def powergenerated_today(self) -> float:
-        if hasattr(self, '_energy_entities') and "powergenerated_today" in self._energy_entities:
-            return self._energy_entities["powergenerated_today"]
-
-    @property
-    def consumption_today(self) -> float:
-        if hasattr(self, '_energy_entities') and "consumption_today" in self._energy_entities:
-            return self._energy_entities["consumption_today"]
-
+    ##############################################
+    # from here the "real" sensor data starts... #
+    ##############################################
     @property
     def accuimport_total(self) -> float:
+        if self._app_raw_total is not None and "storageConsumption" in self._app_raw_total:
+            return float(self._app_raw_total["storageConsumption"]["value"])
         if hasattr(self, '_energy_entities') and "accuimport_total" in self._energy_entities:
             return self._energy_entities["accuimport_total"]
 
     @property
     def accuexport_total(self) -> float:
+        if self._app_raw_total is not None and "storageLoad" in self._app_raw_total:
+            return float(self._app_raw_total["storageLoad"]["value"])
         if hasattr(self, '_energy_entities') and "accuexport_total" in self._energy_entities:
             return self._energy_entities["accuexport_total"]
 
     @property
     def gridimport_total(self) -> float:
+        if self._app_raw_total is not None and "gridConsumption" in self._app_raw_total:
+            return float(self._app_raw_total["gridConsumption"]["value"])
         if hasattr(self, '_energy_entities') and "gridimport_total" in self._energy_entities:
             return self._energy_entities["gridimport_total"]
 
     @property
     def gridexport_total(self) -> float:
+        if self._app_raw_total is not None and "gridFeedIn" in self._app_raw_total:
+            return float(self._app_raw_total["gridFeedIn"]["value"])
         if hasattr(self, '_energy_entities') and "gridexport_total" in self._energy_entities:
             return self._energy_entities["gridexport_total"]
 
     @property
     def powergenerated_total(self) -> float:
+        if self._app_raw_total is not None and "generation" in self._app_raw_total:
+            return float(self._app_raw_total["generation"]["value"])
         if hasattr(self, '_energy_entities') and "powergenerated_total" in self._energy_entities:
             return self._energy_entities["powergenerated_total"]
 
     @property
     def consumption_total(self) -> float:
+        if self._app_raw_total is not None and "totalUsage" in self._app_raw_total:
+            return float(self._app_raw_total["totalUsage"]["value"])
         if hasattr(self, '_energy_entities') and "consumption_total" in self._energy_entities:
             return self._energy_entities["consumption_total"]
 
     @property
+    def accuimport_today(self) -> float:
+        if self._app_raw_today is not None and "batteryDischargeInWh" in self._app_raw_today:
+            return float(self._app_raw_today["batteryDischargeInWh"]) / 1000
+        if hasattr(self, '_energy_entities') and "accuimport_today" in self._energy_entities:
+            return self._energy_entities["accuimport_today"]
+
+    @property
+    def accuexport_today(self) -> float:
+        if self._app_raw_today is not None and "batteryChargeInWh" in self._app_raw_today:
+            return float(self._app_raw_today["batteryChargeInWh"]) / 1000
+        if hasattr(self, '_energy_entities') and "accuexport_today" in self._energy_entities:
+            return self._energy_entities["accuexport_today"]
+
+    @property
+    def gridimport_today(self) -> float:
+        if self._app_raw_today is not None and "gridDrawInWh" in self._app_raw_today:
+            return float(self._app_raw_today["gridDrawInWh"]) / 1000
+        if hasattr(self, '_energy_entities') and "gridimport_today" in self._energy_entities:
+            return self._energy_entities["gridimport_today"]
+
+    @property
+    def gridexport_today(self) -> float:
+        if self._app_raw_today is not None and "gridFeedInInWh" in self._app_raw_today:
+            return float(self._app_raw_today["gridFeedInInWh"]) / 1000
+        if hasattr(self, '_energy_entities') and "gridexport_today" in self._energy_entities:
+            return self._energy_entities["gridexport_today"]
+
+    @property
+    def powergenerated_today(self) -> float:
+        if self._app_raw_today is not None and "powerGenerationInWh" in self._app_raw_today:
+            return float(self._app_raw_today["powerGenerationInWh"]) / 1000
+        if hasattr(self, '_energy_entities') and "powergenerated_today" in self._energy_entities:
+            return self._energy_entities["powergenerated_today"]
+
+    @property
+    def consumption_today(self) -> float:
+        if self._app_raw_today is not None and "powerConsumptionInWh" in self._app_raw_today:
+            return float(self._app_raw_today["powerConsumptionInWh"]) / 1000
+        if hasattr(self, '_energy_entities') and "consumption_today" in self._energy_entities:
+            return self._energy_entities["consumption_today"]
+
+    @property
     def accuimport_now(self) -> float:
+        if self._app_raw_now is not None and "batteryDischargeInW" in self._app_raw_now:
+            return float(self._app_raw_now["batteryDischargeInW"]) / 1000
         if hasattr(self, "_power_entities") and "accuimport_now" in self._power_entities:
             return self._power_entities["accuimport_now"]
 
     @property
     def accuexport_now(self) -> float:
+        if self._app_raw_now is not None and "batteryChargeInW" in self._app_raw_now:
+            return float(self._app_raw_now["batteryChargeInW"]) / 1000
         if hasattr(self, "_power_entities") and "accuexport_now" in self._power_entities:
             return self._power_entities["accuexport_now"]
 
     @property
     def gridimport_now(self) -> float:
+        if self._app_raw_now is not None and "gridDrawInW" in self._app_raw_now:
+            return float(self._app_raw_now["gridDrawInW"]) / 1000
         if hasattr(self, "_power_entities") and "gridimport_now" in self._power_entities:
             return self._power_entities["gridimport_now"]
 
     @property
     def gridexport_now(self) -> float:
+        if self._app_raw_now is not None and "gridFeedInInW" in self._app_raw_now:
+            return float(self._app_raw_now["gridFeedInInW"]) / 1000
         if hasattr(self, "_power_entities") and "gridexport_now" in self._power_entities:
             return self._power_entities["gridexport_now"]
 
     @property
     def powergenerated_now(self) -> float:
+        if self._app_raw_now is not None and "powerGenerationInW" in self._app_raw_now:
+            return float(self._app_raw_now["powerGenerationInW"]) / 1000
         if hasattr(self, "_power_entities") and "powergenerated_now" in self._power_entities:
             return self._power_entities["powergenerated_now"]
 
     @property
     def consumption_now(self) -> float:
+        if self._app_raw_now is not None and "powerConsumptionInW" in self._app_raw_now:
+            return float(self._app_raw_now["powerConsumptionInW"]) / 1000
         if hasattr(self, "_power_entities") and "consumption_now" in self._power_entities:
             return self._power_entities["consumption_now"]
 
     @property
     def acculevel_now(self) -> int:
+        if self._app_raw_now is not None and "batteryLevelInPercent" in self._app_raw_now:
+            return float(self._app_raw_now["batteryLevelInPercent"])
         if hasattr(self, "_battery_entities") and "acculevel_now" in self._battery_entities:
             return self._battery_entities["acculevel_now"]
 
@@ -3288,6 +3381,149 @@ class MySenecWebPortal:
     def peakshaving_enddate(self) -> int:
         if hasattr(self, "_peak_shaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
             return self._peak_shaving_entities["peakShavingEndDate"]
+
+    #############################
+    # NEW APP-API SENSOR VALUES #
+    #############################
+    @property
+    def case_temp(self) -> float:
+        # 'casing': {'serial': 'XXX', 'temperatureInCelsius': 28.95928382873535},
+        if self._app_raw_tech_data is not None and "casing" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["casing"]["temperatureInCelsius"]
+
+    @property
+    def system_state(self) -> str:
+        # 'mcu': {'mainControllerSerial': 'XXX',
+        #        'mainControllerState': {'name': 'EIGENVERBRAUCH', 'severity': 'INFO'}, 'firmwareVersion': '123',
+        #        'guiVersion': 123}, 'warranty': {'endDate': 1700000000, 'warrantyTermInMonths': 123},
+        if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["mcu"]["mainControllerState"]["name"].replace('_', ' ')
+
+    #######################################################################################################
+    # 'batteryInverter': {'state': {'name': 'RUN_GRID', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'firmware': {'firmwareVersion': None,
+    #                                  'firmwareVersionHumanMachineInterface': '0.01',
+    #                                  'firmwareVersionPowerUnit': '0.01',
+    #                                  'firmwareVersionBidirectionalDcConverter': '0.01'},
+    #                     'temperatures': {'amb': 36.0, 'halfBridge1': None, 'halfBridge2': None,
+    #                                     'throttle': None, 'max': 41.0},
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #######################################################################################################
+    @property
+    def battery_inverter_state(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
+            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+            if "state" in bat_inv_obj:
+                return bat_inv_obj["state"]["name"].replace('_', ' ')
+
+    @property
+    def battery_temp(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
+            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+            if "temperatures" in bat_inv_obj:
+                return bat_inv_obj["temperatures"]["amb"]
+
+    @property
+    def battery_temp_max(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
+            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+            if "temperatures" in bat_inv_obj:
+                return bat_inv_obj["temperatures"]["max"]
+
+    #######################################################################################################
+    # 'batteryPack': {'numberOfBatteryModules': 4, 'technology': 'XXX', 'maxCapacityInKwh': 10.0,
+    #                 'maxChargingPowerInKw': 2.5, 'maxDischargingPowerInKw': 3.75,
+    #                 'currentChargingLevelInPercent': 4.040403842926025,
+    #                 'currentVoltageInV': 46.26100158691406, 'currentCurrentInA': -0.10999999940395355,
+    #                 'remainingCapacityInPercent': 99.9},
+    #######################################################################################################
+    @property
+    def _battery_module_count(self) -> int:
+        # internal use only...
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["numberOfBatteryModules"]
+        return 0
+
+    @property
+    def battery_state_voltage(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["currentVoltageInV"]
+
+    @property
+    def battery_state_current(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["currentCurrentInA"]
+
+    @property
+    def _not_used_currentChargingLevelInPercent(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["currentChargingLevelInPercent"]
+
+    @property
+    def battery_soh_remaining_capacity(self) -> float:
+        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
+            return self._app_raw_tech_data["batteryPack"]["remainingCapacityInPercent"]
+
+    #######################################################################################################
+    # 'batteryModules': [{'ordinal': 1, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1231', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 24.0, 'maxTemperature': 26.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #
+    #                    {'ordinal': 2, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1232', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 24.0, 'maxTemperature': 27.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #
+    #                    {'ordinal': 3, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1233', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 26.0, 'maxTemperature': 28.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
+    #
+    #                    {'ordinal': 4, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
+    #                     'serialNumber': '1234', 'firmwareVersion': '0.01',
+    #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
+    #                     'minTemperature': 27.0, 'maxTemperature': 28.0,
+    #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []}],
+    #######################################################################################################
+    @property
+    def battery_module_state(self) -> [str]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = ["UNKNOWN"] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = bat_obj[idx]["state"]["state"].replace('_', ' ')
+            return data
+
+    @property
+    def battery_module_temperature_avg(self) -> [float]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = [-1] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = (bat_obj[idx]["minTemperature"] + bat_obj[idx]["maxTemperature"]) / 2
+            return data
+
+    @property
+    def battery_module_temperature_min(self) -> [float]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = [-1] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = bat_obj[idx]["minTemperature"]
+            return data
+
+    @property
+    def battery_module_temperature_max(self) -> [float]:
+        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+            data = [-1] * self._battery_module_count
+            bat_obj = self._app_raw_tech_data["batteryModules"]
+            for idx in range(self._battery_module_count):
+                data[idx] = bat_obj[idx]["maxTemperature"]
+            return data
 
     def clear_jar(self):
         self.web_session._cookie_jar.clear()

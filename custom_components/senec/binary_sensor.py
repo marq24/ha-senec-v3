@@ -66,7 +66,11 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
 
         try:
             if self.entity_description.array_key is not None:
-                value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos] == on_val
+                data = getattr(self.coordinator.senec, self.entity_description.array_key)
+                if len(data) > self.entity_description.array_pos:
+                    value = data[self.entity_description.array_pos] == on_val
+                else:
+                    value = None
             else:
                 value = getattr(self.coordinator.senec, self.entity_description.key)
                 if isinstance(value, int):

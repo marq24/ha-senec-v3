@@ -1007,6 +1007,87 @@
       },
       "sockets_2_time_rem": {
         "name": "Socket2 time remaining (min)"
+      },
+      "battery_inverter_state": {
+        "name": "Battery inverter status"
+      },
+      "battery_temp_max": {
+        "name": "Battery max. Temperature"
+      },
+      "battery_soh_remaining_capacity": {
+        "name": "Remaining battery capacity"
+      },
+      "battery_module_state_a": {
+        "name": "Module A: Status"
+      },
+      "battery_module_state_b": {
+        "name": "Module B: Status"
+      },
+      "battery_module_state_c": {
+        "name": "Module C: Status"
+      },
+      "battery_module_state_d": {
+        "name": "Module D: Status"
+      },
+      "battery_module_state_e": {
+        "name": "Module E: Status"
+      },
+      "battery_module_state_f": {
+        "name": "Module F: Status"
+      },
+      "battery_module_temperature_avg_a": {
+        "name": "Module A: Ø-Temp"
+      },
+      "battery_module_temperature_avg_b": {
+        "name": "Module B: Ø-Temp"
+      },
+      "battery_module_temperature_avg_c": {
+        "name": "Module C: Ø-Temp"
+      },
+      "battery_module_temperature_avg_d": {
+        "name": "Module D: Ø-Temp"
+      },
+      "battery_module_temperature_avg_e": {
+        "name": "Module E: Ø-Temp"
+      },
+      "battery_module_temperature_avg_f": {
+        "name": "Module F: Ø-Temp"
+      },
+      "battery_module_temperature_max_a": {
+        "name": "Module A: max. Temp"
+      },
+      "battery_module_temperature_max_b": {
+        "name": "Module B: max. Temp"
+      },
+      "battery_module_temperature_max_c": {
+        "name": "Module C: max. Temp"
+      },
+      "battery_module_temperature_max_d": {
+        "name": "Module D: max. Temp"
+      },
+      "battery_module_temperature_max_e": {
+        "name": "Module E: max. Temp"
+      },
+      "battery_module_temperature_max_f": {
+        "name": "Module F: max. Temp"
+      },
+      "battery_module_temperature_min_a": {
+        "name": "Module A: min. Temp"
+      },
+      "battery_module_temperature_min_b": {
+        "name": "Module B: min. Temp"
+      },
+      "battery_module_temperature_min_c": {
+        "name": "Module C: min. Temp"
+      },
+      "battery_module_temperature_min_d": {
+        "name": "Module D: min. Temp"
+      },
+      "battery_module_temperature_min_e": {
+        "name": "Module E: min. Temp"
+      },
+      "battery_module_temperature_min_f": {
+        "name": "Module F: min. Temp"
       }
     }
   }
