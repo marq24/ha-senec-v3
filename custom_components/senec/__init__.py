@@ -104,17 +104,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # after the refresh we should know if the lala.cgi return STATISTIC data
         # or not...
         coordinator._statistics_available = coordinator.senec.grid_total_export is not None
-
-        if coordinator.senec.device_type is None or coordinator.senec.batt_type is None:
-            await coordinator.senec.update_version()
+        await coordinator.senec.update_version()
         coordinator._device_type = SYSTYPE_NAME_SENEC
         coordinator._device_model = f"{coordinator.senec.device_type}  | {coordinator.senec.batt_type}"
         coordinator._device_serial = f"S{coordinator.senec.device_id}"
         coordinator._device_version = coordinator.senec.versions
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        if coordinator.senec.device_name is None or coordinator.senec.device_serial is None:
-            await coordinator.senec.update_version()
+        await coordinator.senec.update_version()
         coordinator._device_type = SYSTYPE_NAME_INVERTER
         coordinator._device_model = f"{coordinator.senec.device_name} Netbios: {coordinator.senec.device_netbiosname}"
         coordinator._device_serial = coordinator.senec.device_serial
