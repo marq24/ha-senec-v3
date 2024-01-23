@@ -1753,8 +1753,8 @@ class Senec:
 
     # SET the "switch" SMART_CHARGE_ACTIVE is a bit different, since the ON value is not 01 - it's (for what
     # ever reason 03)...
-    async def switch_array_smart_charge_active(self, pos: int, value: int):
-        await self.set_nva_post(SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", pos, 4, "u8", value)
+    #async def switch_array_smart_charge_active(self, pos: int, value: int):
+    #    await self.set_nva_post(SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", pos, 4, "u8", value)
 
     @property
     def wallbox_prohibit_usage(self) -> [int]:
@@ -1947,9 +1947,17 @@ class Senec:
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 1,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
         elif mode_to_set_in_lc == APP_API_WEB_MODE_SSGCM:
+            # depending on the wallbox flag 'compatibilityMode' we have to set either
+            # compatibilityMode = true -> set value 3
+            # compatibilityMode = false -> set value 4
+            if IntBridge.avail() and IntBridge.app_api.app_is_wallbox_compatibility_mode_off(pos):
+                value = 4
+            else:
+                value = 3
+
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
-                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 3)
+                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", value)
         else:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
@@ -2864,6 +2872,16 @@ class MySenecWebPortal:
         else:
             # somehow we should pass a "callable"...
             await self.app_get_master_plant_id()
+
+    def app_is_wallbox_compatibility_mode_off(self, idx:int):
+        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
+            if "compatibilityMode" in self._app_raw_wallbox[idx]:
+                val = self._app_raw_wallbox[idx]["compatibilityMode"]
+                if isinstance(val, bool):
+                    return not val
+                else:
+                    return str(val).lower() == 'false'
+        return False
 
     """MEIN-SENEC.DE from here"""
 
