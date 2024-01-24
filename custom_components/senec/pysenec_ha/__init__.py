@@ -55,9 +55,15 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BAT1,
     SENEC_SECTION_WIZARD,
 
-    APP_API_WEB_MODE_LOCKED,
-    APP_API_WEB_MODE_FASTEST,
-    APP_API_WEB_MODE_SSGCM,
+    APP_API_WB_MODE_LOCKED,
+    APP_API_WB_MODE_FASTEST,
+    APP_API_WB_MODE_SSGCM,
+
+    LOCAL_WB_MODE_LOCKED,
+    LOCAL_WB_MODE_SSGCM_3,
+    LOCAL_WB_MODE_SSGCM_4,
+    LOCAL_WB_MODE_FASTEST,
+    LOCAL_WB_MODE_UNKNOWN,
 )
 
 # 4: "INITIAL CHARGE",
@@ -1791,43 +1797,43 @@ class Senec:
     def sockets_lower_limit(self) -> [int]:
         return self.read_array_data(SENEC_SECTION_SOCKETS, "LOWER_LIMIT")
 
-    async def set_nva_sockets_lower_limit(self, pos: int, value: int):
-        await self.set_nva_post(SENEC_SECTION_SOCKETS, "LOWER_LIMIT", pos, 2, "u1", value)
+    async def set_nva_sockets_lower_limit(self, pos: int, value: float):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "LOWER_LIMIT", pos, 2, "u1", int(value))
 
     @property
     def sockets_upper_limit(self) -> [int]:
         return self.read_array_data(SENEC_SECTION_SOCKETS, "UPPER_LIMIT")
 
-    async def set_nva_sockets_upper_limit(self, pos: int, value: int):
-        await self.set_nva_post(SENEC_SECTION_SOCKETS, "UPPER_LIMIT", pos, 2, "u1", value)
+    async def set_nva_sockets_upper_limit(self, pos: int, value: float):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "UPPER_LIMIT", pos, 2, "u1", int(value))
 
     @property
     def sockets_power_on_time(self) -> [int]:
         return self.read_array_data(SENEC_SECTION_SOCKETS, "POWER_ON_TIME")
 
-    async def set_nva_sockets_power_on_time(self, pos: int, value: int):
-        await self.set_nva_post(SENEC_SECTION_SOCKETS, "POWER_ON_TIME", pos, 2, "u1", value)
+    async def set_nva_sockets_power_on_time(self, pos: int, value: float):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "POWER_ON_TIME", pos, 2, "u1", int(value))
 
     @property
     def sockets_switch_on_hour(self) -> [int]:
         return self.read_array_data(SENEC_SECTION_SOCKETS, "SWITCH_ON_HOUR")
 
-    async def set_nva_sockets_switch_on_hour(self, pos: int, value: int):
-        await self.set_nva_post(SENEC_SECTION_SOCKETS, "SWITCH_ON_HOUR", pos, 2, "u8", value)
+    async def set_nva_sockets_switch_on_hour(self, pos: int, value: float):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "SWITCH_ON_HOUR", pos, 2, "u8", int(value))
 
     @property
     def sockets_switch_on_minute(self) -> [int]:
         return self.read_array_data(SENEC_SECTION_SOCKETS, "SWITCH_ON_MINUTE")
 
-    async def set_nva_sockets_switch_on_minute(self, pos: int, value: int):
-        await self.set_nva_post(SENEC_SECTION_SOCKETS, "SWITCH_ON_MINUTE", pos, 2, "u8", value)
+    async def set_nva_sockets_switch_on_minute(self, pos: int, value: float):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "SWITCH_ON_MINUTE", pos, 2, "u8", int(value))
 
     @property
     def sockets_time_limit(self) -> [int]:
         return self.read_array_data(SENEC_SECTION_SOCKETS, "TIME_LIMIT")
 
-    async def set_nva_sockets_time_limit(self, pos: int, value: int):
-        await self.set_nva_post(SENEC_SECTION_SOCKETS, "TIME_LIMIT", pos, 2, "u1", value)
+    async def set_nva_sockets_time_limit(self, pos: int, value: float):
+        await self.set_nva_post(SENEC_SECTION_SOCKETS, "TIME_LIMIT", pos, 2, "u1", int(value))
 
     @property
     def wallbox_1_set_icmax_extrema(self) -> [float]:
@@ -1874,91 +1880,92 @@ class Senec:
         return self.read_array_data(SENEC_SECTION_WALLBOX, "SET_ICMAX")
 
     async def set_nva_wallbox_set_icmax(self, pos: int, value: float, sync: bool = True, verify_state: bool = True):
-        mode = APP_API_WEB_MODE_SSGCM
-        if verify_state and IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[pos] is not None:
-            mode = IntBridge.app_api._app_raw_wallbox[pos]["chargingMode"].lower()
+        if verify_state:
+            if IntBridge.avail():
+                local_mode = IntBridge.app_api.app_get_local_wallbox_mode_from_api_values(pos)
+            else:
+                local_mode = "no-bridge-avail"
+        else:
+            local_mode = LOCAL_WB_MODE_SSGCM_3
 
-        if mode == APP_API_WEB_MODE_SSGCM:
+        if local_mode == LOCAL_WB_MODE_SSGCM_3: # or local_mode == LOCAL_WB_MODE_SSGCM_4:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "SET_ICMAX", "fl", value,
                                       SENEC_SECTION_WALLBOX, "MIN_CHARGING_CURRENT", "fl", value)
+
             if sync and IntBridge.avail():
                 await IntBridge.app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
         else:
-            _LOGGER.debug(f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {mode}")
+            _LOGGER.debug(f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
 
     @property
-    def wallbox_set_idefault(self) -> [int]:
+    def wallbox_set_idefault(self) -> [float]:
         return self.read_array_data(SENEC_SECTION_WALLBOX, "SET_IDEFAULT")
 
-    async def set_nva_wallbox_set_idefault(self, pos: int, value: int):
+    async def set_nva_wallbox_set_idefault(self, pos: int, value: float):
         await self.set_nva_post(SENEC_SECTION_WALLBOX, "SET_IDEFAULT", pos, 4, "fl", value)
 
-    async def set_number_value_array(self, array_key: str, array_pos: int, value: int):
+    async def set_number_value_array(self, array_key: str, array_pos: int, value: float):
         return await getattr(self, 'set_nva_' + str(array_key))(array_pos, value)
 
     @property
     def wallbox_1_mode(self) -> str:
-        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[0] is not None:
-            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[0]:
-                return IntBridge.app_api._app_raw_wallbox[0]["chargingMode"].lower()
+        if IntBridge.avail():
+            return IntBridge.app_api.app_get_local_wallbox_mode_from_api_values(0)
+        return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_1_mode(self, value: str):
         await self._set_wallbox_mode_post(0, value)
         if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=1, sync=False)
+            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
 
     @property
     def wallbox_2_mode(self) -> str:
-        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[1] is not None:
-            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[1]:
-                return IntBridge.app_api._app_raw_wallbox[1]["chargingMode"].lower()
+        if IntBridge.avail():
+            return IntBridge.app_api.app_get_local_wallbox_mode_from_api_values(1)
+        return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_2_mode(self, value: str):
         await self._set_wallbox_mode_post(1, value)
         if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=2, sync=False)
+            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=False)
 
     @property
     def wallbox_3_mode(self) -> str:
-        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[2] is not None:
-            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[2]:
-                return IntBridge.app_api._app_raw_wallbox[2]["chargingMode"].lower()
+        if IntBridge.avail():
+            return IntBridge.app_api.app_get_local_wallbox_mode_from_api_values(2)
+        return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_3_mode(self, value: str):
         await self._set_wallbox_mode_post(2, value)
         if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=3, sync=False)
+            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=False)
 
     @property
     def wallbox_4_mode(self) -> str:
-        if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[3] is not None:
-            if "chargingMode" in IntBridge.app_api._app_raw_wallbox[3]:
-                return IntBridge.app_api._app_raw_wallbox[3]["chargingMode"].lower()
+        if IntBridge.avail():
+            return IntBridge.app_api.app_get_local_wallbox_mode_from_api_values(3)
+        return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_4_mode(self, value: str):
         await self._set_wallbox_mode_post(3, value)
         if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(mode_to_set_in_lc=value, wallbox_num=4, sync=False)
+            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=False)
 
-    async def _set_wallbox_mode_post(self, pos: int, mode_to_set_in_lc: str):
-        if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
+    async def _set_wallbox_mode_post(self, pos: int, local_value: str):
+        if local_value == LOCAL_WB_MODE_LOCKED:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 1,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
-        elif mode_to_set_in_lc == APP_API_WEB_MODE_SSGCM:
-            # depending on the wallbox flag 'compatibilityMode' we have to set either
-            # compatibilityMode = true -> set value 3
-            # compatibilityMode = false -> set value 4
-            if IntBridge.avail() and IntBridge.app_api.app_is_wallbox_compatibility_mode_off(pos):
-                value = 4
-            else:
-                value = 3
-
+        elif local_value == LOCAL_WB_MODE_SSGCM_3:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
-                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", value)
-        else:
+                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 3)
+        elif local_value == LOCAL_WB_MODE_SSGCM_4:
+            await self.set_multi_post(4, pos,
+                                      SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
+                                      SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 4)
+        elif local_value == LOCAL_WB_MODE_FASTEST:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
@@ -1968,7 +1975,7 @@ class Senec:
 
     """NORMAL NUMBER HANDLING... currently no 'none-array' entities are implemented"""
 
-    async def set_number_value(self, array_key: str, value: int):
+    async def set_number_value(self, array_key: str, value: float):
         # this will cause a method not found exception...
         return await getattr(self, 'set_nv_' + str(array_key))(value)
 
@@ -2702,70 +2709,91 @@ class MySenecWebPortal:
             await self.app_authenticate()
             return False
 
-    async def app_set_wallbox_mode(self, mode_to_set_in_lc: str, wallbox_num: int = 1, sync: bool = True,
-                                   retry: bool = True):
+    async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
         idx = wallbox_num - 1
-        if self._app_raw_wallbox[idx] is not None:
-            cur_mode = self._app_raw_wallbox[idx]["chargingMode"].lower()
-            # if the NEW mode will be the LOCKED mode we will keep/store the previous active mode
-            # if mode_to_set_in_lc == APP_API_WEB_MODE_LOCKED:
-            #    self._app_last_wallbox_modes_lc[idx] = cur_mode
-            # else:
-            #    self._app_last_wallbox_modes_lc[idx] = None
-        else:
-            cur_mode = "unknown"
-
-        if cur_mode == mode_to_set_in_lc:
-            _LOGGER.debug(f"APP-API skipp mode change since '{mode_to_set_in_lc}' already set")
+        cur_local_mode = self.app_get_local_wallbox_mode_from_api_values(idx)
+        if cur_local_mode == local_mode_to_set:
+            _LOGGER.debug(f"APP-API skipp mode change since '{local_mode_to_set}' already set")
         else:
             if self._app_master_plant_id is not None:
-                data = {
-                    "mode": mode_to_set_in_lc.upper()
-                }
-                wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
-                success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
-                if success:
-                    # setting the internal storage value...
-                    if self._app_raw_wallbox[idx] is not None:
-                        self._app_raw_wallbox[idx]["chargingMode"] = mode_to_set_in_lc.upper()
+                data = None
+                api_mode_to_set = None
+                compatibility_mode_to_set = None
 
-                    # do we need to sync the value back to the 'lala_cgi' integration?
-                    if sync and IntBridge.avail():
-                        # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
-                        # is no sync=False parameter here...
-                        await IntBridge.lala_cgi._set_wallbox_mode_post(pos=idx, mode_to_set_in_lc=mode_to_set_in_lc)
+                if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
+                    data = {
+                        "mode": APP_API_WB_MODE_LOCKED
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_LOCKED
+                elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_3:
+                    data = {
+                        "mode": APP_API_WB_MODE_SSGCM,
+                        "compatibilityMode": True
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_SSGCM
+                    compatibility_mode_to_set = True
+                elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
+                    data = {
+                        "mode": APP_API_WB_MODE_SSGCM,
+                        "compatibilityMode": False
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_SSGCM
+                    compatibility_mode_to_set = False
+                elif local_mode_to_set == LOCAL_WB_MODE_FASTEST:
+                    data = {
+                        "mode": APP_API_WB_MODE_FASTEST
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_FASTEST
 
-                    # when we changed the mode, the backend might have automatically adjusted the
-                    # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
-                    # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
-                    await asyncio.sleep(2)
-                    await self.app_get_wallbox_data(wallbox_num=wallbox_num)
-                    if self._app_raw_wallbox[idx] is not None:
-                        if mode_to_set_in_lc == APP_API_WEB_MODE_FASTEST:
-                            new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
+                if data is not None:
+                    wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+                    success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
+
+                    if success:
+                        # setting the internal storage value...
+                        if self._app_raw_wallbox[idx] is not None:
+                            self._app_raw_wallbox[idx]["chargingMode"] = api_mode_to_set
+                            if compatibility_mode_to_set is not None:
+                                self._app_raw_wallbox[idx]["compatibilityMode"] = compatibility_mode_to_set
+
+                        # do we need to sync the value back to the 'lala_cgi' integration?
+                        if sync and IntBridge.avail():
+                            # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
+                            # is no sync=False parameter here...
+                            await IntBridge.lala_cgi._set_wallbox_mode_post(pos=idx, local_value=local_mode_to_set)
+
+                        # when we changed the mode, the backend might have automatically adjusted the
+                        # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
+                        # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
+                        await asyncio.sleep(2)
+                        await self.app_get_wallbox_data(wallbox_num=wallbox_num)
+                        if self._app_raw_wallbox[idx] is not None:
+                            if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
+                                new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
+                            else:
+                                new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
+
+                            new_min_current = str(round(float(new_min_current_tmp), 2))
+                            cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+
+                            if cur_min_current != new_min_current:
+                                _LOGGER.debug(
+                                    f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=float(new_min_current),
+                                                                                   sync=False, verify_state=False)
+                            else:
+                                _LOGGER.debug(
+                                    f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+
                         else:
-                            new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
+                            _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
 
-                        new_min_current = str(round(float(new_min_current_tmp), 2))
-                        cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
-
-                        if cur_min_current != new_min_current:
-                            _LOGGER.debug(
-                                f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                            await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=float(new_min_current),
-                                                                               sync=False, verify_state=False)
-                        else:
-                            _LOGGER.debug(
-                                f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
-
-                    else:
-                        _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
             else:
                 if retry:
                     await self.app_authenticate()
                     if self._app_wallbox_num_max >= wallbox_num:
-                        await self.app_set_wallbox_mode(mode_to_set_in_lc=mode_to_set_in_lc, wallbox_num=wallbox_num,
+                        await self.app_set_wallbox_mode(local_mode_to_set=local_mode_to_set, wallbox_num=wallbox_num,
                                                         sync=sync, retry=False)
                     else:
                         _LOGGER.debug(
@@ -2776,12 +2804,13 @@ class MySenecWebPortal:
         _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
         if self._app_master_plant_id is not None:
             idx = wallbox_num - 1
-            current_mode = APP_API_WEB_MODE_SSGCM
+            current_mode = APP_API_WB_MODE_SSGCM
+
             if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
-                current_mode = self._app_raw_wallbox[idx]["chargingMode"].lower()
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
 
             data = {
-                "mode": current_mode.upper(),
+                "mode": current_mode,
                 "minChargingCurrentInA": float(round(value_to_set, 2))
             }
 
@@ -2810,12 +2839,13 @@ class MySenecWebPortal:
         _LOGGER.debug("***** APP-API: app_set_allow_intercharge(self) ********")
         if self._app_master_plant_id is not None:
             idx = wallbox_num - 1
-            current_mode = APP_API_WEB_MODE_LOCKED
+
+            current_mode = APP_API_WB_MODE_LOCKED
             if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
-                current_mode = self._app_raw_wallbox[idx]["chargingMode"].lower()
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
 
             data = {
-                "mode": current_mode.upper(),
+                "mode": current_mode,
                 "allowIntercharge": value_to_set
             }
 
@@ -2873,14 +2903,40 @@ class MySenecWebPortal:
             # somehow we should pass a "callable"...
             await self.app_get_master_plant_id()
 
-    def app_is_wallbox_compatibility_mode_off(self, idx:int):
+    def app_get_local_wallbox_mode_from_api_values(self, idx:int) -> str:
+        if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+            if "chargingMode" in self._app_raw_wallbox[idx]:
+                api_mode = self._app_raw_wallbox[idx]["chargingMode"]
+                if api_mode == APP_API_WB_MODE_SSGCM:
+                    if self.app_is_wallbox_compatibility_mode_on(idx=idx):
+                        return LOCAL_WB_MODE_SSGCM_3
+                    else:
+                        return LOCAL_WB_MODE_SSGCM_4
+                elif api_mode == APP_API_WB_MODE_FASTEST:
+                    return LOCAL_WB_MODE_FASTEST
+                elif api_mode == APP_API_WB_MODE_LOCKED:
+                    return LOCAL_WB_MODE_LOCKED
+        return LOCAL_WB_MODE_UNKNOWN
+
+    def app_get_api_wallbox_mode_from_local_value(self, local_mode:str) -> str:
+        if local_mode == LOCAL_WB_MODE_LOCKED:
+            return APP_API_WB_MODE_LOCKED
+        elif local_mode == LOCAL_WB_MODE_SSGCM_3:
+            return APP_API_WB_MODE_SSGCM
+        elif local_mode == LOCAL_WB_MODE_SSGCM_4:
+            return APP_API_WB_MODE_SSGCM
+        elif local_mode == LOCAL_WB_MODE_FASTEST:
+            return APP_API_WB_MODE_FASTEST
+        return local_mode
+
+    def app_is_wallbox_compatibility_mode_on(self, idx:int):
         if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
             if "compatibilityMode" in self._app_raw_wallbox[idx]:
                 val = self._app_raw_wallbox[idx]["compatibilityMode"]
                 if isinstance(val, bool):
-                    return not val
+                    return val
                 else:
-                    return str(val).lower() == 'false'
+                    return str(val).lower() == 'true'
         return False
 
     """MEIN-SENEC.DE from here"""

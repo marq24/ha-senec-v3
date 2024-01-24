@@ -13,6 +13,7 @@ from homeassistant.const import CONF_TYPE
 
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, ExtSelectEntityDescription
+from .pysenec_ha import LOCAL_WB_MODE_UNKNOWN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
             else:
                 value = getattr(self.coordinator.senec, self.entity_description.key)
 
-            if value is None and self._previous_value is not None:
+            if (value is None or str(value) == LOCAL_WB_MODE_UNKNOWN) and self._previous_value is not None:
                 value = self._previous_value
             else:
                 value = None
@@ -102,64 +103,6 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
                 self.async_schedule_update_ha_state(force_refresh=True)
 
             self._previous_value = option;
-
-        except ValueError:
-            return "unavailable"
-
-    @property
-    def XXXis_on(self) -> bool | None:
-        """Return true if the binary_sensor is on."""
-        # return self.coordinator.data.get("title", "") == "foo"
-        try:
-            if self.entity_description.array_key is not None:
-                value = getattr(self.coordinator.senec, self.entity_description.array_key)[
-                            self.entity_description.array_pos] == 1
-            else:
-                value = getattr(self.coordinator.senec, self.entity_description.key)
-            if value is None or value == "":
-                value = None
-            else:
-                self._attr_is_on = value
-        except KeyError:
-            value = None
-        except TypeError:
-            return None
-        return value
-
-    async def XXXasync_turn_on(self, **kwargs):  # pylint: disable=unused-argument
-        """Turn on the switch."""
-        try:
-            if self.entity_description.array_key is not None:
-                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key,
-                                                                    self.entity_description.array_pos,
-                                                                    False if self.entity_description.inverted else True)
-            else:
-                await self.coordinator._async_switch_to_state(self.entity_description.key,
-                                                              False if self.entity_description.inverted else True)
-            self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description,
-                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
-                await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
-                self.async_schedule_update_ha_state(force_refresh=True)
-
-        except ValueError:
-            return "unavailable"
-
-    async def XXXasync_turn_off(self, **kwargs):  # pylint: disable=unused-argument
-        """Turn off the switch."""
-        try:
-            if self.entity_description.array_key is not None:
-                await self.coordinator._async_switch_array_to_state(self.entity_description.array_key,
-                                                                    self.entity_description.array_pos,
-                                                                    True if self.entity_description.inverted else False)
-            else:
-                await self.coordinator._async_switch_to_state(self.entity_description.key,
-                                                              True if self.entity_description.inverted else False)
-            self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description,
-                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
-                await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
-                self.async_schedule_update_ha_state(force_refresh=True)
 
         except ValueError:
             return "unavailable"

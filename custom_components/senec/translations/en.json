@@ -153,7 +153,8 @@
         "name": "Wallbox I Mode",
         "state": {
           "locked": "OFF",
-          "smart_self_generated_compatibility_mode": "OPTIMIZED",
+          "optimized_3": "OPTIMIZED [charge interruption ON]",
+          "optimized_4": "OPTIMIZED [charge interruption OFF]",
           "fastest": "FASTEST"
         }
       },
@@ -161,7 +162,8 @@
         "name": "Wallbox II Mode",
         "state": {
           "locked": "OFF",
-          "smart_self_generated_compatibility_mode": "OPTIMIZED",
+          "optimized_3": "OPTIMIZED [charge interruption ON]",
+          "optimized_4": "OPTIMIZED [charge interruption OFF]",
           "fastest": "FASTEST"
         }
       },
@@ -169,7 +171,8 @@
         "name": "Wallbox III Mode",
         "state": {
           "locked": "OFF",
-          "smart_self_generated_compatibility_mode": "OPTIMIZED",
+          "optimized_3": "OPTIMIZED [charge interruption ON]",
+          "optimized_4": "OPTIMIZED [charge interruption OFF]",
           "fastest": "FASTEST"
         }
       },
@@ -177,7 +180,8 @@
         "name": "Wallbox IV Mode",
         "state": {
           "locked": "OFF",
-          "smart_self_generated_compatibility_mode": "OPTIMIZED",
+          "optimized_3": "OPTIMIZED [charge interruption ON]",
+          "optimized_4": "OPTIMIZED [charge interruption OFF]",
           "fastest": "FASTEST"
         }
       }

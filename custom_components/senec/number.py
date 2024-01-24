@@ -79,7 +79,7 @@ class SenecNumber(SenecEntity, NumberEntity):
             _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
 
     @property
-    def state(self) -> int:
+    def state(self) -> float:
         if self.entity_description.array_key is not None:
             data = getattr(self.coordinator.senec, self.entity_description.array_key)
             if len(data) > self.entity_description.array_pos:
@@ -92,9 +92,9 @@ class SenecNumber(SenecEntity, NumberEntity):
         if self._internal_minmax_adjustment_needed:
             self._internal_check_minmax_adjustment()
 
-        return int(value)
+        return float(value)
 
-    async def async_set_native_value(self, value: int) -> None:
+    async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
         api = self.coordinator.senec
         # this is quite an ugly hack - but it's xmas!
@@ -103,7 +103,7 @@ class SenecNumber(SenecEntity, NumberEntity):
         else:
             if self.entity_description.array_key is not None:
                 await api.set_number_value_array(self.entity_description.array_key, self.entity_description.array_pos,
-                                                 int(value))
+                                                 float(value))
             else:
-                await api.set_number_value(self.entity_description.key, int(value))
+                await api.set_number_value(self.entity_description.key, float(value))
         self.async_schedule_update_ha_state(force_refresh=True)
