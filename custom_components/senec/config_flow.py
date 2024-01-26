@@ -1,5 +1,7 @@
 """Config flow for senec integration."""
+import asyncio
 import logging
+
 import voluptuous as vol
 
 from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
@@ -56,17 +58,21 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
     CONF_IGNORE_SYSTEM_STATE,
+    CONF_APP_TOKEN,
+    CONF_APP_SYSTEMID,
+    CONF_APP_WALLBOX_COUNT,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-#@callback
-#def senec_entries_data(hass: HomeAssistant):
+
+# @callback
+# def senec_entries_data(hass: HomeAssistant):
 #    """Return the hosts already configured."""
 #    return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
 
-#@callback
-#def senec_entries_options(hass: HomeAssistant):
+# @callback
+# def senec_entries_options(hass: HomeAssistant):
 #    """Return the hosts already configured."""
 #    return {entry.options[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
 
@@ -80,6 +86,7 @@ def senec_entries(hass: HomeAssistant):
         else:
             conf_hosts.append(entry.data[CONF_HOST])
     return conf_hosts
+
 
 class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for senec."""
@@ -102,6 +109,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._device_serial = ""
         self._device_version = ""
         self._stats_available = False
+
+        self._app_token = None
+        self._app_master_plant_id = None
+        self._app_wallbox_num_max = None
 
     def _host_in_configuration_exists(self, host) -> bool:
         """Return True if host exists in configuration."""
@@ -168,12 +179,13 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         return False
 
-    async def _test_connection_webapi(self, user: str, pwd: str, master_plant:int):
+    async def _test_connection_webapi(self, user: str, pwd: str, master_plant: int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
         web_session = self.hass.helpers.aiohttp_client.async_create_clientsession(auto_cleanup=False)
         try:
-            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session, master_plant_number=master_plant)
+            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session,
+                                                master_plant_number=master_plant)
             await senec_web_client.web_authenticate(do_update=False, throw401=True)
             if senec_web_client._is_authenticated:
                 await senec_web_client.update_context()
@@ -183,14 +195,19 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._device_type = SYSTYPE_NAME_WEBAPI
                 self._device_model = senec_web_client.product_name + ' | SENEC.Num: ' + senec_web_client.senec_num
                 self._device_serial = senec_web_client.serial_number
-                self._device_version = None # senec_web_client.firmwareVersion
+                self._device_version = None  # senec_web_client.firmwareVersion
+                if senec_web_client._app_is_authenticated:
+                    self._app_token = senec_web_client._app_token
+                    self._app_master_plant_id = senec_web_client._app_master_plant_id
+                    self._app_wallbox_num_max = senec_web_client._app_wallbox_num_max
 
                 _LOGGER.info(f"Successfully connect to mein-senec.de with '{user}'")
                 return True
             else:
                 self._errors[CONF_USERNAME] = "login_failed"
                 self._errors[CONF_PASSWORD] = "login_failed"
-                _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials (! _is_authenticated)")
+                _LOGGER.warning(
+                    f"Could not connect to mein-senec.de with '{user}', check credentials (! _is_authenticated)")
         except (OSError, HTTPError, Timeout, ClientResponseError):
             self._errors[CONF_USERNAME] = "login_failed"
             self._errors[CONF_PASSWORD] = "login_failed"
@@ -371,19 +388,28 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._errors[CONF_USERNAME] = "already_configured"
             else:
                 if await self._test_connection_webapi(user, pwd, master_plant_num):
-                    return self.async_create_entry(title=name, data={CONF_NAME: name,
-                                                                     CONF_HOST: user,
-                                                                     CONF_USERNAME: user,
-                                                                     CONF_PASSWORD: pwd,
-                                                                     CONF_SCAN_INTERVAL: scan,
-                                                                     CONF_TYPE: CONF_SYSTYPE_WEB,
-                                                                     CONF_DEV_TYPE_INT: self._device_type_internal,
-                                                                     CONF_DEV_TYPE: self._device_type,
-                                                                     CONF_DEV_MODEL: self._device_model,
-                                                                     CONF_DEV_SERIAL: self._device_serial,
-                                                                     CONF_DEV_VERSION: self._device_version,
-                                                                     CONF_DEV_MASTER_NUM: self._device_master_plant_number
-                                                                     })
+                    data = {CONF_NAME: name,
+                            CONF_HOST: user,
+                            CONF_USERNAME: user,
+                            CONF_PASSWORD: pwd,
+                            CONF_SCAN_INTERVAL: scan,
+                            CONF_TYPE: CONF_SYSTYPE_WEB,
+                            CONF_DEV_TYPE_INT: self._device_type_internal,
+                            CONF_DEV_TYPE: self._device_type,
+                            CONF_DEV_MODEL: self._device_model,
+                            CONF_DEV_SERIAL: self._device_serial,
+                            CONF_DEV_VERSION: self._device_version,
+                            CONF_DEV_MASTER_NUM: self._device_master_plant_number
+                            }
+
+                    if self._app_token is not None and \
+                            self._app_master_plant_id is not None and \
+                            self._app_wallbox_num_max is not None:
+                        data[CONF_APP_TOKEN] = self._app_token
+                        data[CONF_APP_SYSTEMID] = self._app_master_plant_id
+                        data[CONF_APP_WALLBOX_COUNT] = self._app_wallbox_num_max
+
+                    return self.async_create_entry(title=name, data=data)
                 else:
                     _LOGGER.error("Could not connect to mein-senec.de with User '%s', check credentials", user)
                     self._errors[CONF_USERNAME]
@@ -424,6 +450,26 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_optional_websetup_required_info(self, user_input=None):
         return self.async_create_entry(title=self._xname, data=self._xdata)
+
+    async def async_step_reauth(self, user_input=None):
+        _LOGGER.debug(f"async_step_reauth called...")# with user_input: {user_input} and context: {self.context}")
+        _entry_to_edit = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+
+        if _entry_to_edit:
+            _options = dict(_entry_to_edit.options)
+            _data = dict(_entry_to_edit.data)
+            #if "dataAAAA" in _data:
+            #    del _data["dataAAAA"]
+            _data[CONF_APP_TOKEN] = self.context[CONF_APP_TOKEN]
+            _data[CONF_APP_SYSTEMID] = self.context[CONF_APP_SYSTEMID]
+            _data[CONF_APP_WALLBOX_COUNT] = self.context[CONF_APP_WALLBOX_COUNT]
+            # _data["dataAAAA"] = time()
+            await asyncio.sleep(5)
+            _LOGGER.debug(
+                f"finally saving new data to config_entry - add_update_listener will take care about the restart...")
+            self.hass.config_entries.async_update_entry(_entry_to_edit, data=_data, options=_options)
+
+        return self.async_abort(reason="reauth_successful")
 
     @staticmethod
     @callback
@@ -485,7 +531,9 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
                     ): str,  # pylint: disable=line-too-long
                     vol.Required(
-                        CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                        CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL,
+                                                                     self.data.get(CONF_SCAN_INTERVAL,
+                                                                                   DEFAULT_SCAN_INTERVAL)),
                     ): int
                 }
             )
@@ -499,10 +547,14 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
                     ): str,  # pylint: disable=line-too-long
                     vol.Required(
-                        CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                        CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL,
+                                                                     self.data.get(CONF_SCAN_INTERVAL,
+                                                                                   DEFAULT_SCAN_INTERVAL)),
                     ): int,  # pylint: disable=line-too-long
                     vol.Required(
-                        CONF_IGNORE_SYSTEM_STATE, default=self.options.get(CONF_IGNORE_SYSTEM_STATE, self.data.get(CONF_IGNORE_SYSTEM_STATE, False)),
+                        CONF_IGNORE_SYSTEM_STATE, default=self.options.get(CONF_IGNORE_SYSTEM_STATE,
+                                                                           self.data.get(CONF_IGNORE_SYSTEM_STATE,
+                                                                                         False)),
                     ): bool,  # pylint: disable=line-too-long
                 }
             )
@@ -529,13 +581,15 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME_WEB))
                 ): str,
                 vol.Required(
-                    CONF_USERNAME, default=self.options.get(CONF_USERNAME,  self.data.get(CONF_USERNAME, DEFAULT_USERNAME))
+                    CONF_USERNAME,
+                    default=self.options.get(CONF_USERNAME, self.data.get(CONF_USERNAME, DEFAULT_USERNAME))
                 ): str,
                 vol.Required(
-                    CONF_PASSWORD, default=self.options.get(CONF_PASSWORD,  self.data.get(CONF_PASSWORD, ""))
+                    CONF_PASSWORD, default=self.options.get(CONF_PASSWORD, self.data.get(CONF_PASSWORD, ""))
                 ): str,
                 vol.Required(
-                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
+                    CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL,
+                                                                                                   DEFAULT_SCAN_INTERVAL)),
                 ): int  # pylint: disable=line-too-long
             }
         )

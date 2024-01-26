@@ -29,6 +29,9 @@ from custom_components.senec.const import (
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
+    CONF_APP_TOKEN,
+    CONF_APP_SYSTEMID,
+    CONF_APP_WALLBOX_COUNT,
 )
 
 from custom_components.senec.pysenec_ha.util import parse
@@ -1759,7 +1762,7 @@ class Senec:
 
     # SET the "switch" SMART_CHARGE_ACTIVE is a bit different, since the ON value is not 01 - it's (for what
     # ever reason 03)...
-    #async def switch_array_smart_charge_active(self, pos: int, value: int):
+    # async def switch_array_smart_charge_active(self, pos: int, value: int):
     #    await self.set_nva_post(SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", pos, 4, "u8", value)
 
     @property
@@ -1888,7 +1891,7 @@ class Senec:
         else:
             local_mode = LOCAL_WB_MODE_SSGCM_3
 
-        if local_mode == LOCAL_WB_MODE_SSGCM_3: # or local_mode == LOCAL_WB_MODE_SSGCM_4:
+        if local_mode == LOCAL_WB_MODE_SSGCM_3:  # or local_mode == LOCAL_WB_MODE_SSGCM_4:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "SET_ICMAX", "fl", value,
                                       SENEC_SECTION_WALLBOX, "MIN_CHARGING_CURRENT", "fl", value)
@@ -1896,7 +1899,8 @@ class Senec:
             if sync and IntBridge.avail():
                 await IntBridge.app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
         else:
-            _LOGGER.debug(f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
+            _LOGGER.debug(
+                f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
 
     @property
     def wallbox_set_idefault(self) -> [float]:
@@ -2298,9 +2302,19 @@ class Inverter:
 
 
 class MySenecWebPortal:
-
     def __init__(self, user, pwd, web_session, master_plant_number: int = 0, options: dict = None):
-        _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' with options: {options}")
+        if options is not None:
+            logging_options = dict(options)
+            if CONF_APP_TOKEN in options:
+                del logging_options[CONF_APP_TOKEN]
+                logging_options[CONF_APP_TOKEN] = "<MASKED>"
+            if CONF_APP_SYSTEMID in options:
+                del logging_options[CONF_APP_SYSTEMID]
+                logging_options[CONF_APP_SYSTEMID] = "<MASKED>"
+            _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' with options: {logging_options}")
+        else:
+            _LOGGER.info(f"restarting MySenecWebPortal... for user: '{user}' without options")
+
         # check if peak shaving is in options
         if options is not None and QUERY_WALLBOX_KEY in options:
             self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
@@ -2399,15 +2413,21 @@ class MySenecWebPortal:
         self._peak_shaving_entities = {}
 
         # APP-API...
-        self._app_is_authenticated = False
-        self._app_token = None
-        self._app_master_plant_id = None
+        if options is not None and CONF_APP_TOKEN in options and CONF_APP_SYSTEMID in options and CONF_APP_WALLBOX_COUNT in options:
+            self._app_is_authenticated = True
+            self._app_token = options[CONF_APP_TOKEN]
+            self._app_master_plant_id = options[CONF_APP_SYSTEMID]
+            self._app_wallbox_num_max = options[CONF_APP_WALLBOX_COUNT]
+        else:
+            self._app_is_authenticated = False
+            self._app_token = None
+            self._app_master_plant_id = None
+            self._app_wallbox_num_max = 4
 
         self._app_raw_now = None
         self._app_raw_today = None
         self._app_raw_total = None
         self._app_raw_tech_data = None
-        self._app_wallbox_num_max = 4
         self._app_raw_wallbox = [None, None, None, None]
         # self._QUERY_TECH_DATA_TS = 0
 
@@ -2524,7 +2544,7 @@ class MySenecWebPortal:
                             _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
 
                     elif res.status == 500:
-                        _LOGGER.info(f"APP-API: Not found {a_url} (http 500)")
+                        _LOGGER.warning(f"APP-API: Not found {a_url} (http 500)")
 
                     else:
                         self._app_is_authenticated = False
@@ -2536,11 +2556,15 @@ class MySenecWebPortal:
             except Exception as exc:
                 try:
                     if res.status == 500:
-                        _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
-                    if res.status == 400:
-                        _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
-                    if res.status == 401:
-                        _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
+                        _LOGGER.warning(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
+                    elif res.status == 400:
+                        _LOGGER.warning(
+                            f"APP-API: Calling {a_url} caused [HTTP 400]: {exc} this is SO RIDICULOUS Senec - returning 400 when TOKEN is invalid")
+                        self._app_is_authenticated = False
+                        self._app_token = None
+                        self._app_master_plant_id = None
+                    elif res.status == 401:
+                        _LOGGER.warning(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
                         self._app_is_authenticated = False
                         self._app_token = None
                         self._app_master_plant_id = None
@@ -2691,9 +2715,9 @@ class MySenecWebPortal:
                 try:
                     if res.status == 500:
                         _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
-                    if res.status == 400:
+                    elif res.status == 400:
                         _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
-                    if res.status == 401:
+                    elif res.status == 401:
                         _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
                         self._app_is_authenticated = False
                         self._app_token = None
@@ -2709,7 +2733,8 @@ class MySenecWebPortal:
             await self.app_authenticate()
             return False
 
-    async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True, retry: bool = True):
+    async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True,
+                                   retry: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
         idx = wallbox_num - 1
         cur_local_mode = self.app_get_local_wallbox_mode_from_api_values(idx)
@@ -2780,7 +2805,8 @@ class MySenecWebPortal:
                             if cur_min_current != new_min_current:
                                 _LOGGER.debug(
                                     f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                                await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=float(new_min_current),
+                                await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
+                                                                                   value=float(new_min_current),
                                                                                    sync=False, verify_state=False)
                             else:
                                 _LOGGER.debug(
@@ -2903,7 +2929,7 @@ class MySenecWebPortal:
             # somehow we should pass a "callable"...
             await self.app_get_master_plant_id()
 
-    def app_get_local_wallbox_mode_from_api_values(self, idx:int) -> str:
+    def app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
         if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
             if "chargingMode" in self._app_raw_wallbox[idx]:
                 api_mode = self._app_raw_wallbox[idx]["chargingMode"]
@@ -2918,7 +2944,7 @@ class MySenecWebPortal:
                     return LOCAL_WB_MODE_LOCKED
         return LOCAL_WB_MODE_UNKNOWN
 
-    def app_get_api_wallbox_mode_from_local_value(self, local_mode:str) -> str:
+    def app_get_api_wallbox_mode_from_local_value(self, local_mode: str) -> str:
         if local_mode == LOCAL_WB_MODE_LOCKED:
             return APP_API_WB_MODE_LOCKED
         elif local_mode == LOCAL_WB_MODE_SSGCM_3:
@@ -2929,7 +2955,7 @@ class MySenecWebPortal:
             return APP_API_WB_MODE_FASTEST
         return local_mode
 
-    def app_is_wallbox_compatibility_mode_on(self, idx:int):
+    def app_is_wallbox_compatibility_mode_on(self, idx: int):
         if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
             if "compatibilityMode" in self._app_raw_wallbox[idx]:
                 val = self._app_raw_wallbox[idx]["compatibilityMode"]

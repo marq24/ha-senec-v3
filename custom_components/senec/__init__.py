@@ -5,7 +5,7 @@ import voluptuous as vol
 
 from datetime import timedelta
 
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState, SOURCE_REAUTH
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -54,6 +54,9 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
     CONF_IGNORE_SYSTEM_STATE,
+    CONF_APP_TOKEN,
+    CONF_APP_SYSTEMID,
+    CONF_APP_WALLBOX_COUNT,
 
     MAIN_SENSOR_TYPES,
     MAIN_BIN_SENSOR_TYPES,
@@ -96,6 +99,31 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     await coordinator.async_refresh()
+
+    # after an initial data-sync we check if our stored credentials are still the same...
+    # and if not we trigger an update of the config_entry (which is only possible via the
+    # conf_flow...
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+        app_token = coordinator.senec._app_token
+        app_master_plant_id = coordinator.senec._app_master_plant_id
+        app_wallbox_num_max = coordinator.senec._app_wallbox_num_max
+
+        if config_entry.data.get(CONF_APP_TOKEN, "") != app_token or \
+                config_entry.data.get(CONF_APP_SYSTEMID, "") != app_master_plant_id or \
+                config_entry.data.get(CONF_APP_WALLBOX_COUNT, -1) != app_wallbox_num_max:
+
+            _LOGGER.info("need to update config_entry with new data by calling async_start_reauth...")
+            context = {
+                "source": SOURCE_REAUTH,
+                "entry_id": config_entry.entry_id,
+                "title_placeholders": {"name": config_entry.title},
+                "unique_id": config_entry.unique_id,
+                CONF_APP_TOKEN: app_token,
+                CONF_APP_SYSTEMID: app_master_plant_id,
+                CONF_APP_WALLBOX_COUNT: app_wallbox_num_max
+            }
+            config_entry.async_start_reauth(hass=hass, context=context, data=config_entry.data)
+
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady
 
@@ -216,6 +244,15 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 QUERY_SPARE_CAPACITY_KEY: False,
                 QUERY_PEAK_SHAVING_KEY: False
             }
+
+            # additional (optional) APP-API credentials & settings...
+            token = config_entry.data.get(CONF_APP_TOKEN, None)
+            mpid = config_entry.data.get(CONF_APP_SYSTEMID, None)
+            wbmax = config_entry.data.get(CONF_APP_WALLBOX_COUNT, None)
+            if token is not None and mpid is not None and wbmax is not None:
+                opt[CONF_APP_TOKEN] = token
+                opt[CONF_APP_SYSTEMID] = mpid
+                opt[CONF_APP_WALLBOX_COUNT] = wbmax
 
             if hass is not None and config_entry.title is not None:
                 # we do not need to listen to changed to the entity - since the integration will be automatically

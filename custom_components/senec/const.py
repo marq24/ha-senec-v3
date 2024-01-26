@@ -81,6 +81,10 @@ CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"
 CONF_SYSTYPE_INVERTER: Final = "inverter"
 CONF_SYSTYPE_WEB: Final = "web"
 
+CONF_APP_TOKEN = "app_token"
+CONF_APP_SYSTEMID = "app_master_plant_id"
+CONF_APP_WALLBOX_COUNT = "app_wallbox_num_max"
+
 """Default config for Senec."""
 DEFAULT_SYSTEM = SYSTYPE_SENECV3
 DEFAULT_MODE = MODE_LOCAL

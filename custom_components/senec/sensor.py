@@ -101,7 +101,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
         """Return the current state."""
         if self.entity_description.array_key is not None:
             data = getattr(self.coordinator.senec, self.entity_description.array_key)
-            if len(data) > self.entity_description.array_pos:
+            if data is not None and len(data) > self.entity_description.array_pos:
                 value = data[self.entity_description.array_pos]
             else:
                 value = None
@@ -142,5 +142,10 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
             last_sensor_data = await self.async_get_last_state()
             if last_sensor_data is not None and isinstance(last_sensor_data,
                                                            State) and last_sensor_data.state is not None:
-                _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
-                self._previous_float_value = float(last_sensor_data.state)
+                try:
+                    self._previous_float_value = float(last_sensor_data.state)
+                    _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
+                except:
+                    _LOGGER.debug(f"ignoring prev value for key {self._attr_translation_key}: cause value is: {last_sensor_data.state}")
+                    self._previous_float_value = None
+                    pass
