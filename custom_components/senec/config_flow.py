@@ -196,12 +196,19 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._device_model = senec_web_client.product_name + ' | SENEC.Num: ' + senec_web_client.senec_num
                 self._device_serial = senec_web_client.serial_number
                 self._device_version = None  # senec_web_client.firmwareVersion
+
+                if not senec_web_client._app_is_authenticated:
+                    await senec_web_client.app_authenticate(retry=False, do_update=False)
+
                 if senec_web_client._app_is_authenticated:
                     self._app_token = senec_web_client._app_token
                     self._app_master_plant_id = senec_web_client._app_master_plant_id
                     self._app_wallbox_num_max = senec_web_client._app_wallbox_num_max
 
-                _LOGGER.info(f"Successfully connect to mein-senec.de with '{user}'")
+                    await senec_web_client.app_update_tech_data()
+                    self._device_version = senec_web_client.versions
+
+                _LOGGER.info(f"Successfully connect to mein-senec.de and APP-API with '{user}'")
                 return True
             else:
                 self._errors[CONF_USERNAME] = "login_failed"
@@ -450,26 +457,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_optional_websetup_required_info(self, user_input=None):
         return self.async_create_entry(title=self._xname, data=self._xdata)
-
-    async def async_step_reauth(self, user_input=None):
-        _LOGGER.debug(f"async_step_reauth called...")# with user_input: {user_input} and context: {self.context}")
-        _entry_to_edit = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-
-        if _entry_to_edit:
-            _options = dict(_entry_to_edit.options)
-            _data = dict(_entry_to_edit.data)
-            #if "dataAAAA" in _data:
-            #    del _data["dataAAAA"]
-            _data[CONF_APP_TOKEN] = self.context[CONF_APP_TOKEN]
-            _data[CONF_APP_SYSTEMID] = self.context[CONF_APP_SYSTEMID]
-            _data[CONF_APP_WALLBOX_COUNT] = self.context[CONF_APP_WALLBOX_COUNT]
-            # _data["dataAAAA"] = time()
-            await asyncio.sleep(5)
-            _LOGGER.debug(
-                f"finally saving new data to config_entry - add_update_listener will take care about the restart...")
-            self.hass.config_entries.async_update_entry(_entry_to_edit, data=_data, options=_options)
-
-        return self.async_abort(reason="reauth_successful")
 
     @staticmethod
     @callback

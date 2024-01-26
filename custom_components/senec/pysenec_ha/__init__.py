@@ -2558,8 +2558,11 @@ class MySenecWebPortal:
                     if res.status == 500:
                         _LOGGER.warning(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
                     elif res.status == 400:
+                        # please note, we do this 'shit' ONLY on GET (and not when POST data) - since when we reach
+                        # any post command to the API, we expect that the TOKEN is valid (because we did previously
+                        # already at least one GET call)
                         _LOGGER.warning(
-                            f"APP-API: Calling {a_url} caused [HTTP 400]: {exc} this is SO RIDICULOUS Senec - returning 400 when TOKEN is invalid")
+                            f"APP-API: Calling {a_url} caused [HTTP 400]: {exc} this is SO RIDICULOUS Senec - returning 400 without error code when TOKEN is invalid")
                         self._app_is_authenticated = False
                         self._app_token = None
                         self._app_master_plant_id = None
@@ -3343,10 +3346,37 @@ class MySenecWebPortal:
         if hasattr(self, '_zone_id'):
             return str(self._zone_id)
 
-    # @property
-    # def firmwareVersion(self) -> str:
-    #    if hasattr(self, '_raw') and "firmwareVersion" in self._raw:
-    #        return str(self._raw["firmwareVersion"])
+    @property
+    def versions(self) -> str:
+        a = None
+        b = None
+        c = None
+        d = None
+        e = None
+        f = None
+        if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
+            a = self._app_raw_tech_data["mcu"]["guiVersion"]
+            b = self._app_raw_tech_data["mcu"]["firmwareVersion"]
+
+        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
+            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+            if "firmware" in bat_inv_obj:
+                c = bat_inv_obj["firmware"]["firmwareVersion"]
+                d = bat_inv_obj["firmware"]["firmwareVersionHumanMachineInterface"]
+                e = bat_inv_obj["firmware"]["firmwareVersionPowerUnit"]
+                f = bat_inv_obj["firmware"]["firmwareVersionBidirectionalDcConverter"]
+        # _LOGGER.error(f"VERSION INFO **************** {a} {b} {c} {d} {e} {f} ")
+        if a is not None and b is not None:
+            if c is not None:
+                return f"App:{a} FW:{b} Inverter: v{c}"
+            elif d is not None:
+                return f"App:{a} FW:{b} Inverter: v{d}"
+            elif e is not None:
+                return f"App:{a} FW:{b} Inverter: v{e}"
+            elif f is not None:
+                return f"App:{a} FW:{b} Inverter: v{f}"
+        else:
+            return None
 
     @property
     def masterPlantNumber(self) -> int:

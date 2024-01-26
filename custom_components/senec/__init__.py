@@ -1,7 +1,6 @@
 """The senec integration."""
 import asyncio
 import logging
-import voluptuous as vol
 
 from datetime import timedelta
 
@@ -77,7 +76,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
-CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
 
 PLATFORMS = ["sensor", "binary_sensor", "select", "switch", "number"]
 
@@ -99,30 +97,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     await coordinator.async_refresh()
-
-    # after an initial data-sync we check if our stored credentials are still the same...
-    # and if not we trigger an update of the config_entry (which is only possible via the
-    # conf_flow...
-    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        app_token = coordinator.senec._app_token
-        app_master_plant_id = coordinator.senec._app_master_plant_id
-        app_wallbox_num_max = coordinator.senec._app_wallbox_num_max
-
-        if config_entry.data.get(CONF_APP_TOKEN, "") != app_token or \
-                config_entry.data.get(CONF_APP_SYSTEMID, "") != app_master_plant_id or \
-                config_entry.data.get(CONF_APP_WALLBOX_COUNT, -1) != app_wallbox_num_max:
-
-            _LOGGER.info("need to update config_entry with new data by calling async_start_reauth...")
-            context = {
-                "source": SOURCE_REAUTH,
-                "entry_id": config_entry.entry_id,
-                "title_placeholders": {"name": config_entry.title},
-                "unique_id": config_entry.unique_id,
-                CONF_APP_TOKEN: app_token,
-                CONF_APP_SYSTEMID: app_master_plant_id,
-                CONF_APP_WALLBOX_COUNT: app_wallbox_num_max
-            }
-            config_entry.async_start_reauth(hass=hass, context=context, data=config_entry.data)
 
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady
@@ -146,12 +120,29 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.device_versions
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+        # after an initial data-sync we check if our stored credentials are still the same...
+        # and if not we trigger an update of the config_entry (which is only possible via the
+        # conf_flow...
+        app_token = coordinator.senec._app_token
+        app_master_plant_id = coordinator.senec._app_master_plant_id
+        app_wallbox_num_max = coordinator.senec._app_wallbox_num_max
+
+        if config_entry.data.get(CONF_APP_TOKEN, "") != app_token or \
+                config_entry.data.get(CONF_APP_SYSTEMID, "") != app_master_plant_id or \
+                config_entry.data.get(CONF_APP_WALLBOX_COUNT, -1) != app_wallbox_num_max:
+            _LOGGER.info("need to update config_entry with new data by calling update_conf_entry in as task...")
+
+            hass.async_create_task(
+                update_conf_entry(hass, config_entry, app_token, app_master_plant_id, app_wallbox_num_max),
+                f"update_config_entry {config_entry.title} {config_entry.domain} {config_entry.entry_id}")
+
+
         if coordinator.senec.product_name is None:
             await coordinator.senec.app_update_context()
         coordinator._device_type = SYSTYPE_NAME_WEBAPI
         coordinator._device_model = f"{coordinator.senec.product_name} | SENEC.Case: {coordinator.senec.senec_num}"
         coordinator._device_serial = coordinator.senec.serial_number
-        coordinator._device_version = None  # senec_web_client.firmwareVersion
+        coordinator._device_version = coordinator.senec.versions
 
         # Register Services
         service = SenecService.SenecService(hass, config_entry, coordinator)
@@ -169,6 +160,30 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         config_entry.add_update_listener(async_reload_entry)
 
     return True
+
+
+async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_token: str, app_master_plant_id: str,
+                            app_wallbox_num_max: int):
+    if config_entry is not None:
+        _LOGGER.debug(f"update_conf_entry called...")  # with user_input: {user_input} and context: {self.context}")
+
+        _options = dict(config_entry.options)
+        _data = dict(config_entry.data)
+
+        # if "dataAAAA" in _data:
+        #    del _data["dataAAAA"]
+
+        _data[CONF_APP_TOKEN] = app_token
+        _data[CONF_APP_SYSTEMID] = app_master_plant_id
+        _data[CONF_APP_WALLBOX_COUNT] = app_wallbox_num_max
+
+        # _data["dataAAAA"] = time()
+
+        await asyncio.sleep(5)
+
+        _LOGGER.debug(
+            f"finally saving new data to config_entry - add_update_listener will take care about a possible the restart...")
+        hass.config_entries.async_update_entry(config_entry, data=_data, options=_options)
 
 
 def check_for_options(registry, sluged_title: str, opt: dict, sensor_type: str, entity_desc_list: list) -> dict:
@@ -452,6 +467,12 @@ class SenecEntity(Entity):
                                                                  self.coordinator._config_entry.data.get(
                                                                      CONF_DEV_SERIAL))
 
+        dversion = self.coordinator._device_version
+        if dversion is None:
+            dversion = self.coordinator._config_entry.options.get(CONF_DEV_VERSION,
+                                                                 self.coordinator._config_entry.data.get(
+                                                                     CONF_DEV_VERSION))
+
         device = self._name
 
         # "hw_version": self.coordinator._config_entry.options.get(CONF_DEV_NAME, self.coordinator._config_entry.data.get(CONF_DEV_NAME)),
@@ -459,9 +480,7 @@ class SenecEntity(Entity):
             "identifiers": {(DOMAIN, self.coordinator._host, device)},
             "name": f"{dtype}: {device}",
             "model": f"{dmodel} [Serial: {dserial}]",
-            "sw_version": self.coordinator._config_entry.options.get(CONF_DEV_VERSION,
-                                                                     self.coordinator._config_entry.data.get(
-                                                                         CONF_DEV_VERSION)),
+            "sw_version": dversion,
             "manufacturer": MANUFACTURE,
         }
 
