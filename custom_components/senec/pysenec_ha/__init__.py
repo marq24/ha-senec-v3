@@ -2501,29 +2501,45 @@ class MySenecWebPortal:
         _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
         if self._app_is_authenticated:
             headers = {"Authorization": self._app_token}
-            async with self.web_session.get(self._SENEC_APP_GET_SYSTEMS, headers=headers, ssl=False) as res:
-                res.raise_for_status()
-                if res.status == 200:
+            try:
+                async with self.web_session.get(self._SENEC_APP_GET_SYSTEMS, headers=headers, ssl=False) as res:
                     try:
-                        data = await res.json();
-                        idx = self._master_plant_number
-                        if len(data) >= idx:
-                            if "id" in data[idx]:
-                                self._app_master_plant_id = data[idx]["id"]
-                                _LOGGER.debug(f"APP-API set _app_master_plant_id to {self._app_master_plant_id}")
+                        res.raise_for_status()
+                        if res.status == 200:
+                            data = None
+                            try:
+                                data = await res.json();
+                                idx = self._master_plant_number
+                                if len(data) >= idx:
+                                    if "id" in data[idx]:
+                                        self._app_master_plant_id = data[idx]["id"]
+                                        _LOGGER.debug(f"APP-API set _app_master_plant_id to {self._app_master_plant_id}")
 
-                            if "wallboxIds" in data[idx]:
-                                self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
-                                _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {self._app_wallbox_num_max}")
-
-                    except JSONDecodeError as exc:
-                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-                else:
-                    if retry:
-                        self._app_is_authenticated = False
-                        self._app_token = None
-                        self._app_master_plant_id = None
-                        await self.app_authenticate(retry=False)
+                                    if "wallboxIds" in data[idx]:
+                                        self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
+                                        _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {self._app_wallbox_num_max}")
+                                else:
+                                    _LOGGER.warning(f"Index: {idx} not available in array data: '{data}'")
+                            except JSONDecodeError as jexc:
+                                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {jexc}")
+                            except Exception as exc:
+                                if data is not None:
+                                    _LOGGER.error(f"APP-API: Error when handling response '{res}' - Data: '{data}' - Exception:' {exc}' [retry={retry}]")
+                                else:
+                                    _LOGGER.error(f"APP-API: Error when handling response '{res}' - Exception:' {exc}' [retry={retry}]")
+                        else:
+                            if retry:
+                                self._app_is_authenticated = False
+                                self._app_token = None
+                                self._app_master_plant_id = None
+                                await self.app_authenticate(retry=False)
+                    except Exception as exc:
+                        if res is not None:
+                            _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' - Response is: '{res}' [retry={retry}]")
+                        else:
+                            _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
+            except Exception as exc:
+                _LOGGER.error(f"APP-API: Error when try to call 'self.web_session.get()' for {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
         else:
             if retry:
                 await self.app_authenticate(retry=False)

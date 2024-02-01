@@ -1,7 +1,7 @@
 """The senec integration."""
 import asyncio
 import logging
-
+import json
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState, SOURCE_REAUTH
@@ -70,7 +70,6 @@ from .const import (
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
-
     SERVICE_SET_PEAKSHAVING,
 )
 
@@ -87,13 +86,26 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
+    if DOMAIN not in hass.data:
+        value = "UNKOWN"
+        try:
+            basepath = __file__[:-11]
+            with open(f"{basepath}manifest.json") as f:
+                manifest = json.load(f)
+                value = manifest["version"]
+        except:
+            pass
+
+        hass.data.setdefault(DOMAIN, {"manifest_version": value})
+
     global SCAN_INTERVAL
     # update_interval can be adjusted in the options (not for WebAPI)
     SCAN_INTERVAL = timedelta(seconds=config_entry.options.get(CONF_SCAN_INTERVAL,
                                                                config_entry.data.get(CONF_SCAN_INTERVAL,
                                                                                      DEFAULT_SCAN_INTERVAL_SENECV2)))
 
-    _LOGGER.info("Starting " + str(config_entry.data.get(CONF_NAME)) + " with interval: " + str(SCAN_INTERVAL))
+    _LOGGER.info(
+        f"Starting SENEC.Home Integration v{hass.data.get(DOMAIN)['manifest_version']} '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {mask_map(dict(config_entry.as_dict()))}")
 
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     await coordinator.async_refresh()
@@ -136,7 +148,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 update_conf_entry(hass, config_entry, app_token, app_master_plant_id, app_wallbox_num_max),
                 f"update_config_entry {config_entry.title} {config_entry.domain} {config_entry.entry_id}")
 
-
         if coordinator.senec.product_name is None:
             await coordinator.senec.app_update_context()
         coordinator._device_type = SYSTYPE_NAME_WEBAPI
@@ -147,9 +158,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # Register Services
         service = SenecService.SenecService(hass, config_entry, coordinator)
         hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, service.set_peakshaving)
-
-    if DOMAIN not in hass.data:
-        hass.data.setdefault(DOMAIN, {})
 
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
@@ -228,6 +236,21 @@ def need_query_app_api_wallbox(registry, sluged_title: str, opt: dict, sensor_ty
                 _LOGGER.info("***** QUERY_APPAPI-WALLBOX-DATA ********")
                 opt[QUERY_WALLBOX_APPAPI_KEY] = True
     return opt
+
+
+def mask_map(d):
+    for k, v in d.copy().items():
+        if isinstance(v, dict):
+            d.pop(k)
+            d[k] = v
+            mask_map(v)
+        else:
+            lk = k.lower()
+            if lk == "host" or lk == "password" or lk == "app_token" or lk == "app_master_plant_id" or lk == 'dserial':
+                v = "<MASKED>"
+            d.pop(k)
+            d[k] = v
+    return d
 
 
 class SenecDataUpdateCoordinator(DataUpdateCoordinator):
@@ -470,8 +493,8 @@ class SenecEntity(Entity):
         dversion = self.coordinator._device_version
         if dversion is None:
             dversion = self.coordinator._config_entry.options.get(CONF_DEV_VERSION,
-                                                                 self.coordinator._config_entry.data.get(
-                                                                     CONF_DEV_VERSION))
+                                                                  self.coordinator._config_entry.data.get(
+                                                                      CONF_DEV_VERSION))
 
         device = self._name
 
