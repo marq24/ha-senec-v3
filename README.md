@@ -75,7 +75,7 @@ If you used previously the source of this fork created by [@mchwalisz](https://g
 Please use the [GitHub Issues](https://github.com/marq24/ha-senec-v3/issues) for reporting any issues you encounter with this integration. Please be so kind before creating a new issues, check the closed ones, if your problem have been already reported (& solved). Furthermore, I would kindly ask you to check:
 
 #### 1. Consider providing DEBUG Log output
-There is a short [tutorial/guide 'How to provide DEBUG log' here](https://github.com/marq24/ha-senec-v3/docs/HA_DEBUG.md) - please take the time to quickly go through it.
+There is a short [tutorial/guide 'How to provide DEBUG log' here](docs/HA_DEBUG.md) - please take the time to quickly go through it. [open link from external (HACS)](https://github.com/marq24/ha-senec-v3/blob/master/docs/HA_DEBUG.md)
 
 #### 2. In case of implausible data 
 It will happen, that the data that is displayed by this integration does not make much sense (to you) - Of course this could be always the case, that something in this integration has been messed up - but so far - in all reported issues the root cause of implausible data was/is, that the SENEC.Home device itself already provided this data. So we have the SHIT-__IN__ - SHIT-__OUT__ principle here.
