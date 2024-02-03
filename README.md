@@ -70,6 +70,19 @@ You can repeat this to add additional Integration entries (e.g. LAN + WebAPI)
 
 If you used previously the source of this fork created by [@mchwalisz](https://github.com/mchwalisz), please look at "[Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)", before using this integration.
 
+## Want to report an issue?
+
+Please use the [GitHub Issues](https://github.com/marq24/ha-senec-v3/issues) for reporting any issues you encounter with this integration. Please be so kind before creating a new issues, check the closed ones, if your problem have been already reported (& solved). Furthermore, I would kindly ask you to check:
+
+#### 1. Consider providing DEBUG Log output
+There is a short [tutorial/guide 'How to provide DEBUG log' here](https://github.com/marq24/ha-senec-v3/docs/HA_DEBUG.md) - please take the time to quickly go through it.
+
+#### 2. In case of implausible data 
+It will happen, that the data that is displayed by this integration does not make much sense (to you) - Of course this could be always the case, that something in this integration has been messed up - but so far - in all reported issues the root cause of implausible data was/is, that the SENEC.Home device itself already provided this data. So we have the SHIT-__IN__ - SHIT-__OUT__ principle here.
+
+So when you have implausible data - please open in the case of the local polling integration  `https://[YOUR-SENEC-IP-HERE]//vars.html` (the two `/` before the `vars.html` are important) and check, if the values are already implausible there. For the WebAPI integration, check the SENEC-App or use `https://mein-senec.de`.
+
+
 ## Functional Overview
 
 ### Supported Devices
