@@ -270,7 +270,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             a_master_plant_number = 0
             if CONF_DEV_MASTER_NUM in config_entry.data:
-                a_master_plant_number = config_entry.data[CONF_DEV_MASTER_NUM]
+                a_master_plant_number = int(config_entry.data[CONF_DEV_MASTER_NUM])
 
             # user & pwd can be changed via the options...
             user = config_entry.options.get(CONF_USERNAME, config_entry.data[CONF_USERNAME])
