@@ -186,27 +186,20 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session,
                                                 master_plant_number=master_plant)
-            await senec_web_client.web_authenticate(do_update=False, throw401=True)
-            if senec_web_client._is_authenticated:
-                await senec_web_client.update_context()
+            await senec_web_client.app_authenticate(retry=False, do_update=False)
+            if senec_web_client._app_is_authenticated:
+                await senec_web_client.app_update_context()
                 self._device_master_plant_number = senec_web_client.masterPlantNumber
 
+                await senec_web_client.app_update_tech_data()
                 # these values will also read with every restart...
                 self._device_type = SYSTYPE_NAME_WEBAPI
                 self._device_model = senec_web_client.product_name + ' | SENEC.Num: ' + senec_web_client.senec_num
                 self._device_serial = senec_web_client.serial_number
-                self._device_version = None  # senec_web_client.firmwareVersion
-
-                if not senec_web_client._app_is_authenticated:
-                    await senec_web_client.app_authenticate(retry=False, do_update=False)
-
-                if senec_web_client._app_is_authenticated:
-                    self._app_token = senec_web_client._app_token
-                    self._app_master_plant_id = senec_web_client._app_master_plant_id
-                    self._app_wallbox_num_max = senec_web_client._app_wallbox_num_max
-
-                    await senec_web_client.app_update_tech_data()
-                    self._device_version = senec_web_client.versions
+                self._app_token = senec_web_client._app_token
+                self._app_master_plant_id = senec_web_client._app_master_plant_id
+                self._app_wallbox_num_max = senec_web_client._app_wallbox_num_max
+                self._device_version = senec_web_client.versions
 
                 _LOGGER.info(f"Successfully connect to mein-senec.de and APP-API with '{user}'")
                 return True

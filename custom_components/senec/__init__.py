@@ -12,7 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers import entity_registry, event
+from homeassistant.helpers import config_validation as config_val, entity_registry, event
 from homeassistant.util import slugify
 
 from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal
@@ -77,7 +77,7 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
 
 PLATFORMS = ["sensor", "binary_sensor", "select", "switch", "number"]
-
+CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the senec component."""

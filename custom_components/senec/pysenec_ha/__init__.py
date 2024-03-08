@@ -2509,8 +2509,10 @@ class MySenecWebPortal:
                             data = None
                             try:
                                 data = await res.json();
+                                if self._master_plant_number == -1:
+                                    self._master_plant_number = 0
                                 idx = int(self._master_plant_number)
-                                if int(len(data)) >= idx:
+                                if len(data) > idx:
                                     if "id" in data[idx]:
                                         self._app_master_plant_id = data[idx]["id"]
                                         _LOGGER.debug(f"APP-API set _app_master_plant_id to {self._app_master_plant_id}")
