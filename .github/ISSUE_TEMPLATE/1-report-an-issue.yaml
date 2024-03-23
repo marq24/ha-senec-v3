@@ -1,0 +1,46 @@
+name: Problem Report
+description: please report any technical issue with this home assistant integration - please note this is not a official SENEC repository or service
+labels: bug
+body:
+  - type: dropdown
+    id: system
+    attributes:
+      label: With which version of the integration you have an issue?
+      multiple: false
+      options:
+        - "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo/SENEC.Home V2.1 (or older) "
+        - "SENEC.Home V4/SENEC.Home V4 hybrid"
+        - "WEB.API: mein-senec.de Portal"
+        - "Internal inverter build into SENEC.Home V3 hybrid/hybrid duo"
+    validations:
+      required: true
+  - type: checkboxes
+    id: is_multi_system
+    attributes:
+      label: Multiple Systems Environment?
+      options:
+        - label: I have multiple SENEC Systems (master/slave configuration)
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please go though this short checklist - TIA
+      options:
+        - label: I have installed the **latest** release (or BETA) version of the integration and home assistant.
+          required: true
+        - label: I have prepared DEBUG log output (for technical issues) | In most of the cases of a technical error/issue I would have the need to ask for DEBUG log output of the integration. There is a short [tutorial/guide 'How to provide DEBUG log' here](https://github.com/marq24/ha-senec-v3/blob/master/docs/HA_DEBUG.md)
+          required: true
+        - label: I understand the SHIT-__IN__ - SHIT-__OUT__ principle (in case of implausible data) | It will happen, that the data that is displayed by this integration does not make much sense (to you) - Of course this could be always the case, that something in this integration has been messed up - but so far - in all reported issues the root cause of implausible data was/is, that the SENEC.Home device itself already provided this data
+          required: true
+        - label: I confirm it's really an issue | In the case that you want to understand the functionality of a certain feature/sensor Please be so kind and make use if the discussion feature of this repo (and do not create an issue) - TIA
+  - type: textarea
+    id: content
+    attributes:
+      label: Add a description
+      placeholder: "Please provide details about your issue - in the best case a short step by step instruction how to reproduce the issue - TIA."
+  - type: textarea
+    id: logs
+    attributes:
+      label: Add your DEBUG log output
+      placeholder: "Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks."
+      render: shell
