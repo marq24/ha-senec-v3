@@ -2466,6 +2466,7 @@ class MySenecWebPortal:
                 if res.status == 200:
                     try:
                         r_json = await res.json()
+                        _LOGGER.debug(f"APP-API: response:{r_json}")
                         if "token" in r_json:
                             self._app_token = r_json["token"]
                             self._app_is_authenticated = True
@@ -2509,6 +2510,7 @@ class MySenecWebPortal:
                             data = None
                             try:
                                 data = await res.json();
+                                _LOGGER.debug(f"APP-API response: {data}")
                                 if self._master_plant_number == -1:
                                     self._master_plant_number = 0
                                 idx = int(self._master_plant_number)
@@ -2557,6 +2559,7 @@ class MySenecWebPortal:
                     if res.status == 200:
                         try:
                             data = await res.json()
+                            _LOGGER.debug(f"APP-API response: {data}")
                             return data
                         except JSONDecodeError as exc:
                             _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
@@ -2939,7 +2942,7 @@ class MySenecWebPortal:
                 if res.status == 200:
                     try:
                         data = await res.json()
-                        _LOGGER.info(data)
+                        _LOGGER.debug(f"APP-API response: {data}")
                     except JSONDecodeError as exc:
                         _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
                 else:
