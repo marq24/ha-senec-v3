@@ -2057,20 +2057,25 @@ class Inverter:
             txt = await res.text()
             self._raw_version = xmltodict.parse(txt)
             last_dev = ''
-            for a_entry in self._raw_version["root"]["Device"]["Versions"]["Software"]:
-                if '@Name' in a_entry:
-                    a_dev = a_entry["@Device"]
-                    if (not self._has_bdc):
-                        self._has_bdc = a_dev == 'BDC'
-                    if (a_dev != last_dev):
-                        if (len(self._version_infos) > 0):
-                            self._version_infos = self._version_infos + '\n'
-                        self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
-                    else:
-                        if (len(self._version_infos) > 0):
-                            self._version_infos = self._version_infos + '|'
-                    self._version_infos = self._version_infos + a_entry["@Name"] + ' v' + a_entry["@Version"]
-                    last_dev = a_dev
+            if self._raw_version is not None:
+                if "root" in self._raw_version:
+                    if "Device" in self._raw_version["root"]:
+                        if "Versions" in self._raw_version["root"]["Device"]:
+                            if "Software" in self._raw_version["root"]["Device"]["Versions"]:
+                                for a_entry in self._raw_version["root"]["Device"]["Versions"]["Software"]:
+                                    if '@Name' in a_entry:
+                                        a_dev = a_entry["@Device"]
+                                        if (not self._has_bdc):
+                                            self._has_bdc = a_dev == 'BDC'
+                                        if (a_dev != last_dev):
+                                            if (len(self._version_infos) > 0):
+                                                self._version_infos = self._version_infos + '\n'
+                                            self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
+                                        else:
+                                            if (len(self._version_infos) > 0):
+                                                self._version_infos = self._version_infos + '|'
+                                        self._version_infos = self._version_infos + a_entry["@Name"] + ' v' + a_entry["@Version"]
+                                        last_dev = a_dev
 
     async def update(self):
         await self.read_inverter_with_retry(retry=True)
@@ -2089,75 +2094,80 @@ class Inverter:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
-            for a_entry in self._raw["root"]["Device"]["Measurements"]["Measurement"]:
-                if '@Type' in a_entry:
-                    if a_entry["@Type"] == 'AC_Voltage':
-                        if '@Value' in a_entry:
-                            self._ac_voltage = a_entry["@Value"]
-                    if a_entry["@Type"] == 'AC_Current':
-                        if '@Value' in a_entry:
-                            self._ac_current = a_entry["@Value"]
-                    if a_entry["@Type"] == 'AC_Power':
-                        if '@Value' in a_entry:
-                            self._ac_power = a_entry["@Value"]
-                    if a_entry["@Type"] == 'AC_Power_fast':
-                        if '@Value' in a_entry:
-                            self._ac_power_fast = a_entry["@Value"]
-                    if a_entry["@Type"] == 'AC_Frequency':
-                        if '@Value' in a_entry:
-                            self._ac_frequency = a_entry["@Value"]
+            if self._raw is not None:
+                if "root" in self._raw:
+                    if "Device" in self._raw["root"]:
+                        if "Measurements" in self._raw["root"]["Device"]:
+                            if "Measurement" in self._raw["root"]["Device"]["Measurements"]:
+                                for a_entry in self._raw["root"]["Device"]["Measurements"]["Measurement"]:
+                                    if '@Type' in a_entry:
+                                        if a_entry["@Type"] == 'AC_Voltage':
+                                            if '@Value' in a_entry:
+                                                self._ac_voltage = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'AC_Current':
+                                            if '@Value' in a_entry:
+                                                self._ac_current = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'AC_Power':
+                                            if '@Value' in a_entry:
+                                                self._ac_power = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'AC_Power_fast':
+                                            if '@Value' in a_entry:
+                                                self._ac_power_fast = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'AC_Frequency':
+                                            if '@Value' in a_entry:
+                                                self._ac_frequency = a_entry["@Value"]
 
-                    if a_entry["@Type"] == 'BDC_BAT_Voltage':
-                        if '@Value' in a_entry:
-                            self._bdc_bat_voltage = a_entry["@Value"]
-                    if a_entry["@Type"] == 'BDC_BAT_Current':
-                        if '@Value' in a_entry:
-                            self._bdc_bat_current = a_entry["@Value"]
-                    if a_entry["@Type"] == 'BDC_BAT_Power':
-                        if '@Value' in a_entry:
-                            self._bdc_bat_power = a_entry["@Value"]
-                    if a_entry["@Type"] == 'BDC_LINK_Voltage':
-                        if '@Value' in a_entry:
-                            self._bdc_link_voltage = a_entry["@Value"]
-                    if a_entry["@Type"] == 'BDC_LINK_Current':
-                        if '@Value' in a_entry:
-                            self._bdc_link_current = a_entry["@Value"]
-                    if a_entry["@Type"] == 'BDC_LINK_Power':
-                        if '@Value' in a_entry:
-                            self._bdc_link_power = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'BDC_BAT_Voltage':
+                                            if '@Value' in a_entry:
+                                                self._bdc_bat_voltage = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'BDC_BAT_Current':
+                                            if '@Value' in a_entry:
+                                                self._bdc_bat_current = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'BDC_BAT_Power':
+                                            if '@Value' in a_entry:
+                                                self._bdc_bat_power = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'BDC_LINK_Voltage':
+                                            if '@Value' in a_entry:
+                                                self._bdc_link_voltage = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'BDC_LINK_Current':
+                                            if '@Value' in a_entry:
+                                                self._bdc_link_current = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'BDC_LINK_Power':
+                                            if '@Value' in a_entry:
+                                                self._bdc_link_power = a_entry["@Value"]
 
-                    if a_entry["@Type"] == 'DC_Voltage1':
-                        if '@Value' in a_entry:
-                            self._dc_voltage1 = a_entry["@Value"]
-                    if a_entry["@Type"] == 'DC_Voltage2':
-                        if '@Value' in a_entry:
-                            self._dc_voltage2 = a_entry["@Value"]
-                    if a_entry["@Type"] == 'DC_Current1':
-                        if '@Value' in a_entry:
-                            self._dc_current1 = a_entry["@Value"]
-                    if a_entry["@Type"] == 'DC_Current2':
-                        if '@Value' in a_entry:
-                            self._dc_current2 = a_entry["@Value"]
-                    if a_entry["@Type"] == 'LINK_Voltage':
-                        if '@Value' in a_entry:
-                            self._link_voltage = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'DC_Voltage1':
+                                            if '@Value' in a_entry:
+                                                self._dc_voltage1 = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'DC_Voltage2':
+                                            if '@Value' in a_entry:
+                                                self._dc_voltage2 = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'DC_Current1':
+                                            if '@Value' in a_entry:
+                                                self._dc_current1 = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'DC_Current2':
+                                            if '@Value' in a_entry:
+                                                self._dc_current2 = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'LINK_Voltage':
+                                            if '@Value' in a_entry:
+                                                self._link_voltage = a_entry["@Value"]
 
-                    if a_entry["@Type"] == 'GridPower':
-                        if '@Value' in a_entry:
-                            self._gridpower = a_entry["@Value"]
-                    if a_entry["@Type"] == 'GridConsumedPower':
-                        if '@Value' in a_entry:
-                            self._gridconsumedpower = a_entry["@Value"]
-                    if a_entry["@Type"] == 'GridInjectedPower':
-                        if '@Value' in a_entry:
-                            self._gridinjectedpower = a_entry["@Value"]
-                    if a_entry["@Type"] == 'OwnConsumedPower':
-                        if '@Value' in a_entry:
-                            self._ownconsumedpower = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'GridPower':
+                                            if '@Value' in a_entry:
+                                                self._gridpower = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'GridConsumedPower':
+                                            if '@Value' in a_entry:
+                                                self._gridconsumedpower = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'GridInjectedPower':
+                                            if '@Value' in a_entry:
+                                                self._gridinjectedpower = a_entry["@Value"]
+                                        if a_entry["@Type"] == 'OwnConsumedPower':
+                                            if '@Value' in a_entry:
+                                                self._ownconsumedpower = a_entry["@Value"]
 
-                    if a_entry["@Type"] == 'Derating':
-                        if '@Value' in a_entry:
-                            self._derating = float(100.0 - float(a_entry["@Value"]))
+                                        if a_entry["@Type"] == 'Derating':
+                                            if '@Value' in a_entry:
+                                                self._derating = float(100.0 - float(a_entry["@Value"]))
 
     @property
     def device_versions(self) -> str:
