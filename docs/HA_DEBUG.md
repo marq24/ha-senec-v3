@@ -6,8 +6,9 @@ This short guide can be used for all my integrations:
 - ha-senec-v3
 - ha-waterkotte
 - ha-tibber-pulse-local
+- ha-goecharger-api2
 
-## 1) Enable Debug logging for Integrations
+## 1) Enable Debug logging for the corrersponding integrations
 
 Open your home assistant `configurationl.yaml` and edit/add the `logging` section as shown below:
 
@@ -18,6 +19,7 @@ logger:
     custom_components.senec: debug
     custom_components.waterkotte_heatpump: debug
     custom_components.tibber_local: debug
+    custom_components.goecharger_api2: debug
 ```
 
 After you modified your configuration.yaml you need to restart home assistant. 
