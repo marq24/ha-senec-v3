@@ -4,7 +4,7 @@ import logging
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 from homeassistant.util import slugify
 from homeassistant.const import CONF_TYPE
 
@@ -20,7 +20,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry,
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]

@@ -4,7 +4,7 @@ import logging
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 from homeassistant.util import slugify
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 
@@ -16,7 +16,7 @@ from .const import DOMAIN, MAIN_BIN_SENSOR_TYPES, CONF_SYSTYPE_INVERTER, CONF_SY
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry,
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
