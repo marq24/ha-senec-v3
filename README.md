@@ -6,7 +6,7 @@ This Home Assistant Integration is providing information from SENEC.Home V2.x, S
 
 Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee. Therefore, use this integration **at your own risk**.
 
-[![hacs_badge][hacsbadge]][hacs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![PayPal][paypalbadge]][paypal]
+[![hacs_badge][hacsbadge]][hacs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![PayPal][paypalbadge]][paypal] [![hainstall][hainstallbadge]][hainstall]
 
 ---
 
@@ -322,21 +322,21 @@ If you are interested in some details about this implementation and the current 
 
 # Credits / Kudos
 
-| who                                          | what                                                                                                                                                                                                                                                                                                        |
-|----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [@marq24](https://github.com/marq24)         | @marq24 created this fork, e.g. added several sensors and functions and is maintaining the integration.                                                                                                                                                                                                     |
-| [@mstuettgen](https://github.com/mstuettgen) | Provided the initial WEB-API implementation for SENEC.Home V4 web access.                                                                                                                                                                                                                                   |
-| [@io-debug](https://github.com/io-debug)     | Provided the initial developer documentation and added functionality like the spare capacity management.                                                                                                                                                                                                    |
-| [@mchwalisz](https://github.com/mchwalisz)   | This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec) since with latest updates of the firmware introduced by SENEC the original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
+| who| what                                                                                                                                                                                                                                                                                              |
+|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|[@marq24](https://github.com/marq24)| @marq24 created this fork, e.g. added several sensors and functions and is maintaining the integration.                                                                                                                                                                                           |
+|[@mstuettgen](https://github.com/mstuettgen)| Provided the initial WEB-API implementation for SENEC.Home V4 web access.                                                                                                                                                                                                                         |
+|[@io-debug](https://github.com/io-debug)| Provided the initial developer documentation and added functionality like the spare capacity management.                                                                                                                                                                                          |
+|[@mchwalisz](https://github.com/mchwalisz)| This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec)<br/>After some firmware updates in 2023 (by SENEC) this original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
 
 [hacs]: https://github.com/hacs/integration
-
 [hacsbadge]: https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
 
 [buymecoffee]: https://www.buymeacoffee.com/marquardt24
-
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a-coffee-blue.svg?style=for-the-badge&logo=buymeacoffee&logoColor=ccc
 
 [paypal]: https://paypal.me/marq24
-
 [paypalbadge]: https://img.shields.io/badge/paypal-me-blue.svg?style=for-the-badge&logo=paypal&logoColor=ccc
+
+[hainstall]: https://my.home-assistant.io/redirect/config_flow_start/?domain=senec
+[hainstallbadge]: https://img.shields.io/badge/dynamic/json?style=for-the-badge&logo=home-assistant&logoColor=ccc&label=usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.senec.total
