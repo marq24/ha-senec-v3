@@ -1,10 +1,9 @@
 """The senec integration."""
 import asyncio
 import logging
-import json
 from datetime import timedelta
 
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState, SOURCE_REAUTH
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -12,7 +11,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers import config_validation as config_val, entity_registry, event
+from homeassistant.helpers import config_validation as config_val, entity_registry
 from homeassistant.util import slugify
 
 from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal
@@ -88,14 +87,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
     if DOMAIN not in hass.data:
         value = "UNKOWN"
-        try:
-            basepath = __file__[:-11]
-            with open(f"{basepath}manifest.json") as f:
-                manifest = json.load(f)
-                value = manifest["version"]
-        except:
-            pass
-
         hass.data.setdefault(DOMAIN, {"manifest_version": value})
 
     global SCAN_INTERVAL
@@ -105,7 +96,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                                                                                      DEFAULT_SCAN_INTERVAL_SENECV2)))
 
     _LOGGER.info(
-        f"Starting SENEC.Home Integration v{hass.data.get(DOMAIN)['manifest_version']} '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {mask_map(dict(config_entry.as_dict()))}")
+        f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {mask_map(dict(config_entry.as_dict()))}")
 
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     await coordinator.async_refresh()
