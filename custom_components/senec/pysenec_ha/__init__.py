@@ -1,24 +1,20 @@
 import asyncio
-import traceback
-
-import aiohttp
-import logging
-
-import xmltodict
-from time import time
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-from orjson import JSONDecodeError
-from packaging import version
-
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
+import logging
+from datetime import datetime
 from http.cookies import BaseCookie, SimpleCookie, Morsel
+from time import time
+from typing import Union, cast
+
+import aiohttp
+import xmltodict
 from aiohttp import ClientResponseError, ClientConnectorError
 from aiohttp.helpers import is_ip_address
+from dateutil.relativedelta import relativedelta
+from orjson import JSONDecodeError
+from packaging import version
 from yarl import URL
-from typing import Union, cast, Optional
 
 from custom_components.senec.const import (
     QUERY_BMS_KEY,
@@ -33,8 +29,6 @@ from custom_components.senec.const import (
     CONF_APP_SYSTEMID,
     CONF_APP_WALLBOX_COUNT,
 )
-
-from custom_components.senec.pysenec_ha.util import parse
 from custom_components.senec.pysenec_ha.constants import (
     SYSTEM_STATE_NAME,
     WALLBOX_STATE_NAME,
@@ -68,6 +62,7 @@ from custom_components.senec.pysenec_ha.constants import (
     LOCAL_WB_MODE_FASTEST,
     LOCAL_WB_MODE_UNKNOWN,
 )
+from custom_components.senec.pysenec_ha.util import parse
 
 # 4: "INITIAL CHARGE",
 # 5: "MAINTENANCE CHARGE",
@@ -3599,11 +3594,17 @@ class MySenecWebPortal:
     #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
     #######################################################################################################
     @property
-    def battery_inverter_state(self) -> float:
-        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
-            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
-            if "state" in bat_inv_obj:
-                return bat_inv_obj["state"]["name"].replace('_', ' ')
+    def battery_inverter_state(self) -> str:
+        if self._app_raw_tech_data is not None:
+            if "batteryInverter" in self._app_raw_tech_data:
+                bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+                if "state" in bat_inv_obj and "name" in bat_inv_obj["state"] and bat_inv_obj["state"]["name"] is not None:
+                    return bat_inv_obj["state"]["name"].replace('_', ' ')
+            if "mcu" in self._app_raw_tech_data:
+                mcu_obj = self._app_raw_tech_data["mcu"]
+                if "mainControllerState" in mcu_obj and "name" in mcu_obj["mainControllerState"] and mcu_obj["mainControllerState"]["name"] is not None:
+                    return mcu_obj["mainControllerState"]["name"].replace('_', ' ')
+
 
     @property
     def battery_temp(self) -> float:
