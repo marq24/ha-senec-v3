@@ -3600,6 +3600,8 @@ class MySenecWebPortal:
                 bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
                 if "state" in bat_inv_obj and "name" in bat_inv_obj["state"] and bat_inv_obj["state"]["name"] is not None:
                     return bat_inv_obj["state"]["name"].replace('_', ' ')
+
+            # just a fallback...
             if "mcu" in self._app_raw_tech_data:
                 mcu_obj = self._app_raw_tech_data["mcu"]
                 if "mainControllerState" in mcu_obj and "name" in mcu_obj["mainControllerState"] and mcu_obj["mainControllerState"]["name"] is not None:
@@ -3608,17 +3610,36 @@ class MySenecWebPortal:
 
     @property
     def battery_temp(self) -> float:
-        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
-            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
-            if "temperatures" in bat_inv_obj:
-                return bat_inv_obj["temperatures"]["amb"]
+        if self._app_raw_tech_data is not None:
+            if "batteryInverter" in self._app_raw_tech_data:
+                bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+                if "temperatures" in bat_inv_obj and "amb" in bat_inv_obj["temperatures"] and bat_inv_obj["temperatures"]["amb"] is not None:
+                    return bat_inv_obj["temperatures"]["amb"]
+
+            # just a fallback...
+            #if "casing" in self._app_raw_tech_data:
+            #    casing_obj = self._app_raw_tech_data["casing"]
+            #    if "temperatureInCelsius" in casing_obj and casing_obj["temperatureInCelsius"] is not None:
+            #        return casing_obj["temperatureInCelsius"]
 
     @property
     def battery_temp_max(self) -> float:
-        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
-            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
-            if "temperatures" in bat_inv_obj:
-                return bat_inv_obj["temperatures"]["max"]
+        if self._app_raw_tech_data is not None:
+            if "batteryInverter" in self._app_raw_tech_data:
+                bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+                if "temperatures" in bat_inv_obj and "max" in bat_inv_obj["temperatures"] and bat_inv_obj["temperatures"]["max"] is not None:
+                    return bat_inv_obj["temperatures"]["max"]
+
+            # just a fallback...
+            #if "batteryModules" in self._app_raw_tech_data:
+            #    bat_modules_obj = self._app_raw_tech_data["batteryModules"]
+            #    count = 0
+            #    temp_sum = 0
+            #    for a_mod in bat_modules_obj:
+            #        if "maxTemperature" in a_mod:
+            #            temp_sum = temp_sum + a_mod["maxTemperature"]
+            #            count = count + 1
+            #    return temp_sum/count
 
     #######################################################################################################
     # 'batteryPack': {'numberOfBatteryModules': 4, 'technology': 'XXX', 'maxCapacityInKwh': 10.0,
