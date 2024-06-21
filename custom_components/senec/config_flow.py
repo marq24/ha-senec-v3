@@ -1,23 +1,20 @@
 """Config flow for senec integration."""
-import asyncio
 import logging
 
 import voluptuous as vol
-
-from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
-from custom_components.senec.pysenec_ha import Inverter
-from requests.exceptions import HTTPError, Timeout
 from aiohttp import ClientResponseError
-
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from requests.exceptions import HTTPError, Timeout
 
+from custom_components.senec.pysenec_ha import Inverter
+from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
-    DEFAULT_MODE,
     DEFAULT_HOST,
     DEFAULT_HOST_INVERTER,
     DEFAULT_NAME,
@@ -34,9 +31,6 @@ from .const import (
     SYSTYPE_SENECV4,
     SYSTYPE_WEBAPI,
     SYSTYPE_INVERTV3,
-    SYSTEM_MODES,
-    MODE_WEB,
-
     MASTER_PLANT_NUMBERS,
 
     SYSTYPE_NAME_SENEC,
@@ -44,7 +38,6 @@ from .const import (
     SYSTYPE_NAME_WEBAPI,
 
     SETUP_SYS_TYPE,
-    SETUP_SYS_MODE,
     CONF_DEV_TYPE,
     CONF_DEV_TYPE_INT,
     CONF_USE_HTTPS,
@@ -53,7 +46,6 @@ from .const import (
     CONF_DEV_SERIAL,
     CONF_DEV_VERSION,
     CONF_SYSTYPE_SENEC,
-    CONF_SYSTYPE_SENEC_V2,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
@@ -123,9 +115,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_connection_senec(self, host, use_https):
         """Check if we can connect to the Senec device."""
         self._errors = {}
-        web_session = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
-            senec_client = Senec(host=host, use_https=use_https, web_session=web_session)
+            senec_client = Senec(host=host, use_https=use_https, web_session=async_get_clientsession(self.hass))
             await senec_client.update_version()
             self._use_https = use_https
             self._device_type_internal = senec_client.device_type_internal
@@ -154,9 +145,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_connection_inverter(self, host):
         """Check if we can connect to the Senec device."""
         self._errors = {}
-        web_session = self.hass.helpers.aiohttp_client.async_get_clientsession()
         try:
-            inverter_client = Inverter(host=host, web_session=web_session)
+            inverter_client = Inverter(host=host, web_session=async_get_clientsession(self.hass))
             await inverter_client.update_version()
             self._support_bdc = inverter_client.has_bdc
 
