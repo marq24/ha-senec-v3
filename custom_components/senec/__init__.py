@@ -85,10 +85,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
-    if DOMAIN not in hass.data:
-        value = "UNKOWN"
-        hass.data.setdefault(DOMAIN, {"manifest_version": value})
-
     global SCAN_INTERVAL
     # update_interval can be adjusted in the options (not for WebAPI)
     SCAN_INTERVAL = timedelta(seconds=config_entry.options.get(CONF_SCAN_INTERVAL,
@@ -98,11 +94,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     _LOGGER.info(
         f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {mask_map(dict(config_entry.as_dict()))}")
 
+    if DOMAIN not in hass.data:
+        value = "UNKOWN"
+        hass.data.setdefault(DOMAIN, {"manifest_version": value})
+
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     await coordinator.async_refresh()
-
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady
+    else:
+        # here we can do some init stuff (like read all data)...
+        pass
+
+    hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
     if CONF_TYPE not in config_entry.data or config_entry.data[CONF_TYPE] in (
             CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2):
@@ -149,8 +153,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # Register Services
         service = SenecService.SenecService(hass, config_entry, coordinator)
         hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, service.set_peakshaving)
-
-    hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
     for platform in PLATFORMS:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, platform))
