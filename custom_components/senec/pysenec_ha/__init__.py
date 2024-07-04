@@ -2519,6 +2519,13 @@ class MySenecWebPortal:
                                 if self._master_plant_number == -1:
                                     self._master_plant_number = 0
                                 idx = int(self._master_plant_number)
+
+                                # when SENEC API only return a single system in the 'v1/senec/anlagen' request (even if
+                                # there are multiple systems)...
+                                if len(data) == 1 and idx > 0:
+                                    _LOGGER.debug(f"APP-API IGNORE requested 'master_plant_number' {idx} will use 0 instead!")
+                                    idx = 0
+
                                 if len(data) > idx:
                                     if "id" in data[idx]:
                                         self._app_master_plant_id = data[idx]["id"]
