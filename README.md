@@ -304,11 +304,14 @@ Once you have connected the inverter(s) with your LAN you can add another integr
 
 Repeat step 3, 4 & 5 of this procedure, if you have build in two inverters into your SENEC.Home.
 
-## Home Assistant Energy Dashboard
+## Using the Home Assistant Energy Dashboard
 
 This integration supports Home Assistant's [Energy Management](https://www.home-assistant.io/docs/energy/).
-To use the Energy Dashboard please set up the Web API first.
-In the description of the Web API you will see which sensors you can use for the Energy Dashboard.
+To be able to use the Energy Dashboard __please set up the Web-API first__ or __use the Riemann Sum Integal Platform to create corresponding sensors__.
+
+Please check also the following links for details about the use of the [Riemann Sum Integal Platform (describing the problem a bit more in detail)](https://github.com/marq24/ha-senec-v3/issues/4) and [How to configure Energie Dashboards (after SENEC.Home have been updated to 0825+)](https://github.com/marq24/ha-senec-v3/issues/11).
+
+In the description of the Web-API you will see which sensors you can use for the Energy Dashboard.
 
 Example setup:
 
