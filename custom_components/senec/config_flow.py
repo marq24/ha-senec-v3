@@ -80,6 +80,14 @@ def senec_entries(hass: HomeAssistant):
     return conf_hosts
 
 
+@staticmethod
+def host_in_configuration_exists(hass: HomeAssistant, host: str) -> bool:
+    """Return True if host exists in configuration."""
+    if host in senec_entries(hass):
+        return True
+    return False
+
+
 class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for senec."""
 
@@ -105,12 +113,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._app_token = None
         self._app_master_plant_id = None
         self._app_wallbox_num_max = None
-
-    def _host_in_configuration_exists(self, host) -> bool:
-        """Return True if host exists in configuration."""
-        if host in senec_entries(self.hass):
-            return True
-        return False
 
     async def _test_connection_senec(self, host, use_https):
         """Check if we can connect to the Senec device."""
@@ -260,7 +262,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if host_entry.startswith('https://'):
                 host_entry = host_entry.replace("https://", "")
 
-            if self._host_in_configuration_exists(host_entry):
+            if host_in_configuration_exists(self.hass, host_entry):
                 self._errors[CONF_HOST] = "already_configured"
             else:
                 # Build-In Inverter stuff
@@ -374,7 +376,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 already_exist_ident = f"{user}_{master_plant_val}"
                 master_plant_num = int(master_plant_val)
 
-            if self._host_in_configuration_exists(already_exist_ident):
+            if host_in_configuration_exists(self.hass, already_exist_ident):
                 self._errors[CONF_USERNAME] = "already_configured"
             else:
                 if await self._test_connection_webapi(user, pwd, master_plant_num):
@@ -483,7 +485,7 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
             self.options.update(user_input)
             if self.data.get(CONF_HOST) != self.options.get(CONF_HOST):
                 # ok looks like the host has been changed... we need to do some things...
-                if self._host_in_configuration_exists(host_entry):
+                if host_in_configuration_exists(self.hass, host_entry):
                     self._errors[CONF_HOST] = "already_configured"
                 else:
                     return self._update_options()
