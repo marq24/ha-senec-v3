@@ -458,6 +458,12 @@ class SenecOptionsFlowHandler(config_entries.OptionsFlow):
         else:
             self.options = dict(config_entry.options)
 
+    def _host_in_configuration_exists(self, host) -> bool:
+        """Return True if host exists in configuration."""
+        if host in senec_entries(self.hass):
+            return True
+        return False
+
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the options."""
         if CONF_TYPE in self.data and self.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
