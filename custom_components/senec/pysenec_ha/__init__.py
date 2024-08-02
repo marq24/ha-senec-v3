@@ -2340,13 +2340,22 @@ class MySenecWebPortal:
 
         self.web_session: aiohttp.websession = web_session
 
-        loop = aiohttp.helpers.get_running_loop(web_session.loop)
         if _require_lib_patch:
-            senec_jar = MySenecCookieJar(loop=loop)
-            if hasattr(web_session, "_cookie_jar"):
-                old_jar = getattr(web_session, "_cookie_jar")
-                senec_jar.update_cookies(old_jar._host_only_cookies)
-            setattr(self.web_session, "_cookie_jar", senec_jar)
+            if hasattr(aiohttp.helpers, "get_running_loop"):
+                loop = aiohttp.helpers.get_running_loop(web_session.loop)
+            elif hasattr(asyncio, "get_running_loop"):
+                loop = asyncio.get_running_loop()
+            else:
+                loop = None
+
+            if loop is not None:
+                senec_jar = MySenecCookieJar(loop=loop)
+                if hasattr(web_session, "_cookie_jar"):
+                    old_jar = getattr(web_session, "_cookie_jar")
+                    senec_jar.update_cookies(old_jar._host_only_cookies)
+                setattr(self.web_session, "_cookie_jar", senec_jar)
+            else:
+                _LOGGER.warning("_require_lib_patch is True, but we could not get access to a loop object")
 
         self._master_plant_number = master_plant_number
 
