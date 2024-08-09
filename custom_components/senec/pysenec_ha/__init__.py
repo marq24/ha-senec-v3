@@ -960,123 +960,130 @@ class Senec:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
 
     @property
+    def _bms_modules_configured(self) -> int:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "MODULES_CONFIGURED" in self._raw["BMS"]:
+            return int(self._raw["BMS"]["MODULES_CONFIGURED"])
+        else:
+            return 0
+
+    @property
     def bms_soc_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 0:
             return self._raw["BMS"]["SOC"][0]
 
     @property
     def bms_soc_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 1:
             return self._raw["BMS"]["SOC"][1]
 
     @property
     def bms_soc_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 2:
             return self._raw["BMS"]["SOC"][2]
 
     @property
     def bms_soc_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 3:
             return self._raw["BMS"]["SOC"][3]
 
     @property
     def bms_soh_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 0:
             return self._raw["BMS"]["SOH"][0]
 
     @property
     def bms_soh_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 1:
             return self._raw["BMS"]["SOH"][1]
 
     @property
     def bms_soh_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 2:
             return self._raw["BMS"]["SOH"][2]
 
     @property
     def bms_soh_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 3:
             return self._raw["BMS"]["SOH"][3]
 
     @property
     def bms_voltage_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 0:
             return self._raw["BMS"]["VOLTAGE"][0]
 
     @property
     def bms_voltage_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 1:
             return self._raw["BMS"]["VOLTAGE"][1]
 
     @property
     def bms_voltage_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 2:
             return self._raw["BMS"]["VOLTAGE"][2]
 
     @property
     def bms_voltage_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 3:
             return self._raw["BMS"]["VOLTAGE"][3]
 
     @property
     def bms_current_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 0:
             return self._raw["BMS"]["CURRENT"][0]
 
     @property
     def bms_current_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 1:
             return self._raw["BMS"]["CURRENT"][1]
 
     @property
     def bms_current_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 2:
             return self._raw["BMS"]["CURRENT"][2]
 
     @property
     def bms_current_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 3:
             return self._raw["BMS"]["CURRENT"][3]
 
     @property
     def bms_cycles_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 0:
             return self._raw["BMS"]["CYCLES"][0]
 
     @property
     def bms_cycles_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 1:
             return self._raw["BMS"]["CYCLES"][1]
 
     @property
     def bms_cycles_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 2:
             return self._raw["BMS"]["CYCLES"][2]
 
     @property
     def bms_cycles_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 3:
             return self._raw["BMS"]["CYCLES"][3]
 
     @property
     def bms_fw_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 0:
             return self._raw["BMS"]["FW"][0]
 
     @property
     def bms_fw_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 1:
             return self._raw["BMS"]["FW"][1]
 
     @property
     def bms_fw_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 2:
             return self._raw["BMS"]["FW"][2]
 
     @property
     def bms_fw_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"]:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 3:
             return self._raw["BMS"]["FW"][3]
 
     @property
@@ -1568,7 +1575,8 @@ class Senec:
                 "VOLTAGE": "",
                 "SOC": "",
                 "SOH": "",
-                "CYCLES": ""}
+                "CYCLES": "",
+                "MODULES_CONFIGURED": ""}
             })
 
         if self._QUERY_WALLBOX:
