@@ -2348,7 +2348,7 @@ class MySenecWebPortal:
 
         self.web_session: aiohttp.websession = web_session
 
-        if _require_lib_patch:
+        if _require_lib_patch():
             if hasattr(aiohttp.helpers, "get_running_loop"):
                 loop = aiohttp.helpers.get_running_loop(web_session.loop)
             elif hasattr(asyncio, "get_running_loop"):
@@ -2461,7 +2461,7 @@ class MySenecWebPortal:
                 _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
 
     def check_cookie_jar_type(self):
-        if _require_lib_patch:
+        if _require_lib_patch():
             if hasattr(self.web_session, "_cookie_jar"):
                 old_jar = getattr(self.web_session, "_cookie_jar")
                 if type(old_jar) is not MySenecCookieJar:
@@ -3765,7 +3765,6 @@ class MySenecWebPortal:
 
 
 @staticmethod
-@property
 def _require_lib_patch() -> bool:
     need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
     if need_patch:
