@@ -968,122 +968,146 @@ class Senec:
 
     @property
     def bms_soc_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 0:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
+                self._bms_modules_configured > 0 or len(self._raw["BMS"]["SOC"]) > 0):
             return self._raw["BMS"]["SOC"][0]
 
     @property
     def bms_soc_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 1:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
+                self._bms_modules_configured > 1 or len(self._raw["BMS"]["SOC"]) > 1):
             return self._raw["BMS"]["SOC"][1]
 
     @property
     def bms_soc_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 2:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
+                self._bms_modules_configured > 2 or len(self._raw["BMS"]["SOC"]) > 2):
             return self._raw["BMS"]["SOC"][2]
 
     @property
     def bms_soc_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and self._bms_modules_configured > 3:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
+                self._bms_modules_configured > 3 or len(self._raw["BMS"]["SOC"]) > 3):
             return self._raw["BMS"]["SOC"][3]
 
     @property
     def bms_soh_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 0:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
+                self._bms_modules_configured > 0 or len(self._raw["BMS"]["SOH"]) > 0):
             return self._raw["BMS"]["SOH"][0]
 
     @property
     def bms_soh_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 1:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
+                self._bms_modules_configured > 1 or len(self._raw["BMS"]["SOH"]) > 1):
             return self._raw["BMS"]["SOH"][1]
 
     @property
     def bms_soh_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 2:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
+                self._bms_modules_configured > 2 or len(self._raw["BMS"]["SOH"]) > 2):
             return self._raw["BMS"]["SOH"][2]
 
     @property
     def bms_soh_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and self._bms_modules_configured > 3:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
+                self._bms_modules_configured > 3 or len(self._raw["BMS"]["SOH"]) > 3):
             return self._raw["BMS"]["SOH"][3]
 
     @property
     def bms_voltage_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 0:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
+                self._bms_modules_configured > 0 or len(self._raw["BMS"]["VOLTAGE"]) > 0):
             return self._raw["BMS"]["VOLTAGE"][0]
 
     @property
     def bms_voltage_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 1:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
+                self._bms_modules_configured > 1 or len(self._raw["BMS"]["VOLTAGE"]) > 1):
             return self._raw["BMS"]["VOLTAGE"][1]
 
     @property
     def bms_voltage_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 2:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
+                self._bms_modules_configured > 2 or len(self._raw["BMS"]["VOLTAGE"]) > 2):
             return self._raw["BMS"]["VOLTAGE"][2]
 
     @property
     def bms_voltage_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and self._bms_modules_configured > 3:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
+                self._bms_modules_configured > 3 or len(self._raw["BMS"]["VOLTAGE"]) > 3):
             return self._raw["BMS"]["VOLTAGE"][3]
 
     @property
     def bms_current_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 0:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
+                self._bms_modules_configured > 0 or len(self._raw["BMS"]["CURRENT"]) > 0):
             return self._raw["BMS"]["CURRENT"][0]
 
     @property
     def bms_current_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 1:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
+                self._bms_modules_configured > 1 or len(self._raw["BMS"]["CURRENT"]) > 1):
             return self._raw["BMS"]["CURRENT"][1]
 
     @property
     def bms_current_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 2:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
+                self._bms_modules_configured > 2 or len(self._raw["BMS"]["CURRENT"]) > 2):
             return self._raw["BMS"]["CURRENT"][2]
 
     @property
     def bms_current_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and self._bms_modules_configured > 3:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
+                self._bms_modules_configured > 3 or len(self._raw["BMS"]["CURRENT"]) > 3):
             return self._raw["BMS"]["CURRENT"][3]
 
     @property
     def bms_cycles_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 0:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
+                self._bms_modules_configured > 0 or len(self._raw["BMS"]["CYCLES"]) > 0):
             return self._raw["BMS"]["CYCLES"][0]
 
     @property
     def bms_cycles_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 1:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
+                self._bms_modules_configured > 1 or len(self._raw["BMS"]["CYCLES"]) > 1):
             return self._raw["BMS"]["CYCLES"][1]
 
     @property
     def bms_cycles_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 2:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
+                self._bms_modules_configured > 2 or len(self._raw["BMS"]["CYCLES"]) > 2):
             return self._raw["BMS"]["CYCLES"][2]
 
     @property
     def bms_cycles_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and self._bms_modules_configured > 3:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
+                self._bms_modules_configured > 3 or len(self._raw["BMS"]["CYCLES"]) > 3):
             return self._raw["BMS"]["CYCLES"][3]
 
     @property
     def bms_fw_a(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 0:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
+                self._bms_modules_configured > 0 or len(self._raw["BMS"]["FW"]) > 0):
             return self._raw["BMS"]["FW"][0]
 
     @property
     def bms_fw_b(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 1:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
+                self._bms_modules_configured > 1 or len(self._raw["BMS"]["FW"]) > 1):
             return self._raw["BMS"]["FW"][1]
 
     @property
     def bms_fw_c(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 2:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
+                self._bms_modules_configured > 2 or len(self._raw["BMS"]["FW"]) > 2):
             return self._raw["BMS"]["FW"][2]
 
     @property
     def bms_fw_d(self) -> float:
-        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and self._bms_modules_configured > 3:
+        if hasattr(self, '_raw') and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
+                self._bms_modules_configured > 3 or len(self._raw["BMS"]["FW"]) > 3):
             return self._raw["BMS"]["FW"][3]
 
     @property
@@ -3763,13 +3787,15 @@ class MySenecWebPortal:
     def clear_jar(self):
         self.web_session._cookie_jar.clear()
 
-
+need_patch: bool = None
 @staticmethod
 def _require_lib_patch() -> bool:
-    need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
-    if need_patch:
-        _LOGGER.info(
-            f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar.filter_cookies(...) need to be patched")
+    global need_patch
+    if need_patch is None:
+        need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
+        if need_patch:
+            _LOGGER.info(
+                f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar.filter_cookies(...) need to be patched")
     return need_patch
 
 
