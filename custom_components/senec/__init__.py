@@ -3,17 +3,6 @@ import asyncio
 import logging
 from datetime import timedelta
 
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, Event
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.entity import EntityDescription, Entity
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers import config_validation as config_val, entity_registry
-from homeassistant.util import slugify
-
 from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
@@ -28,8 +17,17 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as config_val, entity_registry
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity import EntityDescription, Entity
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import slugify
 from . import service as SenecService
-
 from .const import (
     DOMAIN,
     MANUFACTURE,
@@ -99,6 +97,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.data.setdefault(DOMAIN, {"manifest_version": value})
 
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+        await coordinator.senec.update_context()
+
     await coordinator.async_refresh()
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady
@@ -329,6 +330,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             self.senec = MySenecWebPortal(user=user, pwd=pwd, web_session=async_create_clientsession(hass),
                                           master_plant_number=a_master_plant_number,
+                                          lang=hass.config.language.lower(),
                                           options=opt)
         # lala.cgi Version...
         else:

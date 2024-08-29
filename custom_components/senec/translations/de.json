@@ -146,6 +146,9 @@
       },
       "sockets_2_use_time": {
         "name": "Kontakt2 Schaltzeit aktivieren"
+      },
+      "sgready_enabled": {
+        "name": "SGReady"
       }
     },
     "select": {
@@ -1092,6 +1095,12 @@
       },
       "battery_module_temperature_min_f": {
         "name": "Modul F: min. Temp"
+      },
+      "sgready_mode": {
+        "name": "SGReady Modus"
+      },
+      "sgready_mode_code": {
+        "name": "SGReady Modus [CODE]"
       }
     }
   }

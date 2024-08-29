@@ -1,8 +1,21 @@
 """Constants for the Senec integration."""
-from typing import Final
 from dataclasses import dataclass
+from typing import Final
 
+from custom_components.senec.pysenec_ha.constants import (
+    SENEC_SECTION_BMS,
+    SENEC_SECTION_FAN_SPEED,
+    SENEC_SECTION_STATISTIC,
+    SENEC_SECTION_SOCKETS,
+    SENEC_SECTION_WALLBOX,
+    WALLBOX_CHARGING_MODES
+)
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
+from homeassistant.components.number import (
+    NumberEntityDescription,
+    NumberDeviceClass,
+    NumberMode
+)
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -10,11 +23,6 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.components.switch import SwitchEntityDescription
-from homeassistant.components.number import (
-    NumberEntityDescription,
-    NumberDeviceClass,
-    NumberMode
-)
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfElectricPotential,
@@ -26,21 +34,6 @@ from homeassistant.const import (
     UnitOfPower
 )
 from homeassistant.helpers.entity import EntityCategory
-
-from custom_components.senec.pysenec_ha.constants import (
-    SENEC_SECTION_BMS,
-    SENEC_SECTION_ENERGY,
-    SENEC_SECTION_FAN_SPEED,
-    SENEC_SECTION_STATISTIC,
-    SENEC_SECTION_PM1OBJ1,
-    SENEC_SECTION_PM1OBJ2,
-    SENEC_SECTION_PV1,
-    SENEC_SECTION_PWR_UNIT,
-    SENEC_SECTION_SOCKETS,
-    SENEC_SECTION_TEMPMEASURE,
-    SENEC_SECTION_WALLBOX,
-    WALLBOX_CHARGING_MODES
-)
 
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
@@ -628,6 +621,30 @@ WEB_SENSOR_TYPES = [
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         icon="mdi:thermometer",
         entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+
+    ## SGReady stuff
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="sgready_mode",
+        name="SGReady State",
+        icon="mdi:state-machine",
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="sgready_mode_code",
+        name="SGReady State [CODE]",
+        icon="mdi:state-machine",
+    ),
+]
+
+"""Supported web switch types."""
+WEB_SWITCH_TYPES = [
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="sgready_enabled",
+        name="SGReady",
+        icon="mdi:toggle-switch",
     ),
 ]
 

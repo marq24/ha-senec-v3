@@ -481,3 +481,23 @@ WALLBOX_CHARGING_MODES : Final = {
     2: LOCAL_WB_MODE_SSGCM_4,
     3: LOCAL_WB_MODE_FASTEST
 }
+
+SGREADY_CONFKEY_ENABLED: Final = "enabled"
+SGREADY_CONFKEY_MODE_DELAY: Final = "modeChangeDelayInMinutes"
+SGREADY_CONFKEY_PON_PROPOSAL: Final = "powerOnProposalThresholdInWatt"
+SGREADY_CONFKEY_PON_COMMAND: Final = "powerOnCommandThresholdInWatt"
+SGREADY_CONF_KEYS: Final = [SGREADY_CONFKEY_ENABLED, SGREADY_CONFKEY_MODE_DELAY, SGREADY_CONFKEY_PON_PROPOSAL, SGREADY_CONFKEY_PON_COMMAND]
+SGREADY_MODES = {
+    "de": {
+        1: "Sperre",
+        2: "Normalbetrieb",
+        3: "Anlaufempfehlung",
+        4: "Anlaufbefehl"
+    },
+    "en": {
+        1: "Locked",
+        2: "Regular operation",
+        3: "Start suggested",
+        4: "Start requested"
+    }
+}

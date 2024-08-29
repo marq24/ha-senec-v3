@@ -1,17 +1,17 @@
 """Platform for Senec Switches."""
 import asyncio
 import logging
+from typing import Literal
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.core import HomeAssistant
-from homeassistant.util import slugify
 from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
-
-from typing import Literal
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import slugify
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_SWITCH_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, ExtSwitchEntityDescription
+from .const import DOMAIN, MAIN_SWITCH_TYPES, WEB_SWITCH_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
+    ExtSwitchEntityDescription
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +24,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No switches for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        _LOGGER.info("No switches for WebPortal...")
+        for description in WEB_SWITCH_TYPES:
+            entity = SenecSwitch(coordinator, description)
+            entities.append(entity)
     else:
         for description in MAIN_SWITCH_TYPES:
             entity = SenecSwitch(coordinator, description)

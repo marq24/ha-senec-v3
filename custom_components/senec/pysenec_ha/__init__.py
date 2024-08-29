@@ -61,6 +61,9 @@ from custom_components.senec.pysenec_ha.constants import (
     LOCAL_WB_MODE_SSGCM_4,
     LOCAL_WB_MODE_FASTEST,
     LOCAL_WB_MODE_UNKNOWN,
+
+    SGREADY_CONF_KEYS,
+    SGREADY_MODES, SGREADY_CONFKEY_ENABLED
 )
 from custom_components.senec.pysenec_ha.util import parse
 
@@ -2339,7 +2342,8 @@ class Inverter:
 
 
 class MySenecWebPortal:
-    def __init__(self, user, pwd, web_session, master_plant_number: int = 0, options: dict = None):
+    def __init__(self, user, pwd, web_session, master_plant_number: int = 0, lang: str = "en", options: dict = None):
+        self._lang = lang
         if options is not None:
             logging_options = dict(options)
             if CONF_APP_TOKEN in options:
@@ -2369,6 +2373,9 @@ class MySenecWebPortal:
 
         # Variable to save latest update time for peak shaving
         self._QUERY_PEAK_SHAVING_TS = 0
+
+        # Variable to save latest update time for SG-Ready configuration
+        self._QUERY_SGREADY_CONF_TS = 0
 
         self.web_session: aiohttp.websession = web_session
 
@@ -2434,6 +2441,11 @@ class MySenecWebPortal:
         self._SENEC_API_GET_PEAK_SHAVING = "https://mein-senec.de/endkunde/api/peakshaving/getSettings?anlageNummer="
         # Call to set spare capacity information - Base URL
         self._SENEC_API_SET_PEAK_SHAVING_BASE_URL = "https://mein-senec.de/endkunde/api/peakshaving/saveSettings?anlageNummer="
+        #
+        self._SENEC_API_GET_SGREADY_STATE = "https://mein-senec.de/endkunde/api/senec/%s/sgready/state"
+        self._SENEC_API_GET_SGREADY_CONF = "https://mein-senec.de/endkunde/api/senec/%s/sgready/config"
+        # {"enabled":false,"modeChangeDelayInMinutes":20,"powerOnProposalThresholdInWatt":2000,"powerOnCommandThresholdInWatt":2500}
+        self._SENEC_API_SET_SGREADY_CONF = "https://mein-senec.de/endkunde/api/senec/%s/sgready"
 
         # can be used in all api calls, names come from senec website
         self._API_KEYS = [
@@ -2451,12 +2463,15 @@ class MySenecWebPortal:
         ]
 
         # WEBDATA STORAGE
+        self._is_authenticated = False
         self._energy_entities = {}
         self._power_entities = {}
         self._battery_entities = {}
         self._spare_capacity = 0  # initialize the spare_capacity with 0
-        self._is_authenticated = False
         self._peak_shaving_entities = {}
+        self._sgready_conf_data = {}
+        self._sgready_mode_code = 0
+        self._sgready_mode = None
 
         # APP-API...
         if options is not None and CONF_APP_TOKEN in options and CONF_APP_SYSTEMID in options and CONF_APP_WALLBOX_COUNT in options:
@@ -2475,6 +2490,9 @@ class MySenecWebPortal:
         self._app_raw_total = None
         self._app_raw_tech_data = None
         self._app_raw_wallbox = [None, None, None, None]
+
+        self.SGREADY_SUPPORTED = False
+
         # self._QUERY_TECH_DATA_TS = 0
 
         IntBridge.app_api = self
@@ -3111,6 +3129,23 @@ class MySenecWebPortal:
                         await self.update_peak_shaving()
                     else:
                         await self.web_authenticate(do_update=True, throw401=False)
+
+            if self.SGREADY_SUPPORTED:
+                self.check_cookie_jar_type()
+                if self._is_authenticated:
+                    await self.update_sgready_state()
+                else:
+                    await self.web_authenticate(do_update=True, throw401=False)
+
+                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                if self._QUERY_SGREADY_CONF_TS + 86400 < time():
+                    self.check_cookie_jar_type()
+                    if self._is_authenticated:
+                        await self.update_sgready_conf()
+                    else:
+                        await self.web_authenticate(do_update=True, throw401=False)
+
+
         else:
             await self.app_authenticate(do_update=True)
 
@@ -3309,6 +3344,104 @@ class MySenecWebPortal:
     #                 self._is_authenticated = False
     #                 await self.update()
 
+    async def update_sgready_state(self):
+        if self.SGREADY_SUPPORTED:
+            _LOGGER.info("***** update_update_sgready_state(self) ********")
+            a_url = f"{self._SENEC_API_GET_SGREADY_STATE}" % (str(self._master_plant_number))
+            async with self.web_session.get(a_url, ssl=False) as res:
+                try:
+                    res.raise_for_status()
+                    if res.status == 200:
+                        try:
+                            r_json = await res.json()
+                            plain = str(r_json)
+                            if len(plain) > 4 and plain[0:4] == "MODE":
+                                self._sgready_mode_code = int(plain[4:])
+                                if self._sgready_mode_code > 0:
+                                    if self._lang in SGREADY_MODES:
+                                        self._sgready_mode = SGREADY_MODES[self._lang].get(self._sgready_mode_code, "UNKNOWN")
+                                    else:
+                                        self._sgready_mode = SGREADY_MODES["en"].get(self._sgready_mode_code, "UNKNOWN")
+
+                        except JSONDecodeError as exc:
+                            _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                    else:
+                        self._is_authenticated = False
+                        await self.update()
+
+                except ClientResponseError as exc:
+                    if exc.status == 401:
+                        self.purge_senec_cookies()
+
+                    self._is_authenticated = False
+                    await self.update()
+
+    async def update_sgready_conf(self):
+        if self.SGREADY_SUPPORTED:
+            _LOGGER.info("***** update_update_sgready_conf(self) ********")
+            a_url = f"{self._SENEC_API_GET_SGREADY_CONF}" % (str(self._master_plant_number))
+            async with self.web_session.get(a_url, ssl=False) as res:
+                try:
+                    res.raise_for_status()
+                    if res.status == 200:
+                        try:
+                            r_json = await res.json()
+                            self._sgready_conf_data = r_json
+                            self._QUERY_SGREADY_CONF_TS = time()
+
+                        except JSONDecodeError as exc:
+                            _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                    else:
+                        self._is_authenticated = False
+                        await self.update()
+
+                except ClientResponseError as exc:
+                    if exc.status == 401:
+                        self.purge_senec_cookies()
+
+                    self._is_authenticated = False
+                    await self.update()
+
+    async def set_sgready_conf(self, new_sgready_data: dict):
+        if self.SGREADY_SUPPORTED:
+            _LOGGER.debug(f"***** set_sgready_conf(self, new_sgready_data {new_sgready_data}) ********")
+
+            a_url = f"{self._SENEC_API_SET_SGREADY_CONF}" % (str(self._master_plant_number))
+
+            post_data_to_backend = False
+            post_data = {}
+            for a_key in SGREADY_CONF_KEYS:
+                if a_key in new_sgready_data:
+                    if self._sgready_conf_data[a_key] != new_sgready_data[a_key]:
+                        post_data[a_key] = new_sgready_data[a_key]
+                        post_data_to_backend = True
+                elif a_key in self._sgready_conf_data:
+                    post_data[a_key] = self._sgready_conf_data[a_key]
+
+            if len(post_data) > 0 and post_data_to_backend:
+                async with self.web_session.post(a_url, ssl=False, json=post_data) as res:
+                    try:
+                        res.raise_for_status()
+                        if res.status == 200:
+                            _LOGGER.debug("***** Set SG-Ready CONF successfully ********")
+                            # Reset the timer in order that the Peak Shaving is updated immediately after the change
+                            self._QUERY_SGREADY_CONF_TS = 0
+
+                        else:
+                            self._is_authenticated = False
+                            await self.web_authenticate(do_update=False, throw401=False)
+                            await self.set_sgready_conf(new_sgready_data)
+
+                    except ClientResponseError as exc:
+                        if exc.status == 401:
+                            self.purge_senec_cookies()
+
+                        self._is_authenticated = False
+                        await self.web_authenticate(do_update=False, throw401=True)
+                        await self.set_sgready_conf(new_sgready_data)
+            else:
+                _LOGGER.debug(f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._sgready_conf_data}")
+
     async def update_context(self):
         _LOGGER.debug("***** update_context(self) ********")
         if self._is_authenticated:
@@ -3324,6 +3457,8 @@ class MySenecWebPortal:
             await self.update_get_systems(a_plant_number=self._master_plant_number, autodetect_mode=is_autodetect)
         else:
             await self.web_authenticate(do_update=False, throw401=False)
+            if self._is_authenticated:
+                await self.update_context()
 
     async def update_get_customer(self):
         _LOGGER.debug("***** update_get_customer(self) ********")
@@ -3383,6 +3518,12 @@ class MySenecWebPortal:
                         else:
                             self._zone_id = "UNKNOWN"
                         self._master_plant_number = a_plant_number
+
+                    # let's check if the sytem support's SG-Read...
+                    if "sgReadyVisible" in r_json and r_json["sgReadyVisible"]:
+                        _LOGGER.debug("System is SGReady")
+                        self.SGREADY_SUPPORTED = True
+
                 except JSONDecodeError as exc:
                     _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
             else:
@@ -3783,6 +3924,28 @@ class MySenecWebPortal:
             for idx in range(self._battery_module_count):
                 data[idx] = bat_obj[idx]["maxTemperature"]
             return data
+
+    @property
+    def sgready_mode_code(self) -> int:
+        if self.SGREADY_SUPPORTED and self._sgready_mode_code > 0:
+            return self._sgready_mode_code
+
+    @property
+    def sgready_mode(self) -> str:
+        if self.SGREADY_SUPPORTED and self._sgready_mode is not None:
+            return self._sgready_mode
+
+    @property
+    def sgready_enabled(self) -> bool:
+        if self.SGREADY_SUPPORTED and len(self._sgready_conf_data) > 0 and SGREADY_CONFKEY_ENABLED in self._sgready_conf_data:
+            return self._sgready_conf_data[SGREADY_CONFKEY_ENABLED]
+
+    async def switch_sgready_enabled(self, enabled:bool) -> bool:
+        if self.SGREADY_SUPPORTED:
+            await self.set_sgready_conf(new_sgready_data={SGREADY_CONFKEY_ENABLED: enabled})
+
+    async def switch(self, switch_key, value):
+        return await getattr(self, 'switch_' + str(switch_key))(value)
 
     def clear_jar(self):
         self.web_session._cookie_jar.clear()

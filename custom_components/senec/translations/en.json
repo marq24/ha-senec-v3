@@ -146,6 +146,9 @@
       },
       "sockets_2_use_time": {
         "name": "Socket2 use timer"
+      },
+      "sgready_enabled": {
+        "name": "SGReady"
       }
     },
     "select": {
@@ -1092,6 +1095,12 @@
       },
       "battery_module_temperature_min_f": {
         "name": "Module F: min. Temp"
+      },
+      "sgready_mode": {
+        "name": "SGReady mode"
+      },
+      "sgready_mode_code": {
+        "name": "SGReady mode [CODE]"
       }
     }
   }
