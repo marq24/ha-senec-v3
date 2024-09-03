@@ -79,7 +79,7 @@ class SenecNumber(SenecEntity, NumberEntity):
             _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
 
     @property
-    def state(self) -> float:
+    def native_value(self) -> float:
         if self.entity_description.array_key is not None:
             data = getattr(self.coordinator.senec, self.entity_description.array_key)
             if data is not None and len(data) > self.entity_description.array_pos:

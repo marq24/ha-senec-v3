@@ -97,7 +97,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
             description, "controls") and description.controls is not None and "only_increasing" in description.controls
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the current state."""
         if self.entity_description.array_key is not None:
             data = getattr(self.coordinator.senec, self.entity_description.array_key)
@@ -111,28 +111,26 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
         # _LOGGER.debug( str(sensor)+' '+ str(type(value)) +' '+str(value))
         if isinstance(value, bool):
             return value
-
-        if isinstance(value, int):
+        elif isinstance(value, int):
             return value
-
-        # always try to parse sensor value as float
-        try:
-            value = round(float(value), 2)
-        except (ValueError, TypeError):
-            return value
-
-        # do not update if value is lower than current state
-        # this is only an issue for _total sensors
-        # since the API may return false values in this case
-        if not self._is_total_increasing:
-            return value
-        elif (self._previous_float_value is not None) and (value < self._previous_float_value):
-            _LOGGER.debug(
-                f"Thanks for nothing Senec! prev>new for key {self._attr_translation_key} - prev:{self._previous_float_value} new: {value}")
-            return self._previous_float_value
         else:
-            self._previous_float_value = value
-            return value
+            # always try to parse sensor value as float
+            try:
+                value = float(value)
+            except (ValueError, TypeError):
+                return value
+
+            # do not update if value is lower than current state
+            # this is only an issue for _total sensors
+            # since the API may return false values in this case
+            if not self._is_total_increasing:
+                return value
+            elif (self._previous_float_value is not None) and (value < self._previous_float_value):
+                _LOGGER.debug(f"Thanks for nothing Senec! prev>new for key {self._attr_translation_key} - prev:{self._previous_float_value} new: {value}")
+                return self._previous_float_value
+            else:
+                self._previous_float_value = value
+                return value
 
     async def async_added_to_hass(self) -> None:
         """Call when entity about to be added to Home Assistant."""
