@@ -7,7 +7,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_get_clientsession, async_create_clientsession
 from requests.exceptions import HTTPError, Timeout
 
 from custom_components.senec.pysenec_ha import Inverter
@@ -174,7 +174,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_connection_webapi(self, user: str, pwd: str, master_plant: int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
-        web_session = self.hass.helpers.aiohttp_client.async_create_clientsession(auto_cleanup=False)
+        web_session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session,
                                                 master_plant_number=master_plant)
