@@ -4,6 +4,7 @@ There are __four steps__ that you need to do in order to provide debug log infor
 
 This short guide can be used for all my integrations:
 - ha-senec-v3
+- ha-evcc
 - ha-waterkotte
 - ha-tibber-pulse-local
 - ha-goecharger-api2
@@ -17,6 +18,7 @@ logger:
   default: warning
   logs:
     custom_components.senec: debug
+    custom_components.evcc_intg: debug
     custom_components.waterkotte_heatpump: debug
     custom_components.tibber_local: debug
     custom_components.goecharger_api2: debug
