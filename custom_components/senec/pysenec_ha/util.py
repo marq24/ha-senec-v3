@@ -3,8 +3,15 @@ from struct import unpack, pack
 
 def parse_value(value: str):
     """Parses numeric values, Senec supplies them as hex."""
+
     try:
-        key, value = value.split("_")
+        parts = value.split("_")
+        key = parts[0]
+        if len(parts) > 2:
+            value = '_'.join(parts[1:])
+        else:
+            value = parts[1]
+
     except ValueError:
         return value
 

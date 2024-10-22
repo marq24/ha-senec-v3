@@ -1627,9 +1627,32 @@ class Senec:
         async with self.web_session.post(self.url, json=form, ssl=False) as res:
             try:
                 res.raise_for_status()
-                self._raw = parse(await res.json())
+                data = await res.json()
+                self._raw = parse(data)
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+    async def read_all_fields(self) -> []:
+        async with self.web_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                data = await res.json()
+                obj = parse(data);
+                form = {}
+                for section in obj["DEBUG"]["SECTIONS"]:
+                    form[section] = {}
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+        async with self.web_session.post(self.url, json=form, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                data = await res.json()
+                return parse(data)
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+        return None
 
     async def read_senec_energy(self):
         form = {
