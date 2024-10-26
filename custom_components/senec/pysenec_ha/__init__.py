@@ -3434,12 +3434,13 @@ class MySenecWebPortal:
             post_data_to_backend = False
             post_data = {}
             for a_key in SGREADY_CONF_KEYS:
-                if a_key in new_sgready_data:
-                    if self._sgready_conf_data[a_key] != new_sgready_data[a_key]:
-                        post_data[a_key] = new_sgready_data[a_key]
-                        post_data_to_backend = True
-                elif a_key in self._sgready_conf_data:
-                    post_data[a_key] = self._sgready_conf_data[a_key]
+                if a_key in self._sgready_conf_data:
+                    if a_key in new_sgready_data:
+                        if self._sgready_conf_data[a_key] != new_sgready_data[a_key]:
+                            post_data[a_key] = new_sgready_data[a_key]
+                            post_data_to_backend = True
+                    else:
+                        post_data[a_key] = self._sgready_conf_data[a_key]
 
             if len(post_data) > 0 and post_data_to_backend:
                 async with self.web_session.post(a_url, ssl=False, json=post_data) as res:
