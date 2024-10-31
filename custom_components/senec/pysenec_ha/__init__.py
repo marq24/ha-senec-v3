@@ -2115,9 +2115,10 @@ class Inverter:
                     if "Device" in self._raw_version["root"]:
                         if "Versions" in self._raw_version["root"]["Device"]:
                             if "Software" in self._raw_version["root"]["Device"]["Versions"]:
-                                for a_entry in self._raw_version["root"]["Device"]["Versions"]["Software"]:
+                                a_dict = self._raw_version["root"]["Device"]["Versions"]["Software"]
+                                for a_entry in a_dict.keys():
                                     if '@Name' in a_entry:
-                                        a_dev = a_entry["@Device"]
+                                        a_dev = a_dict["@Device"]
                                         if (not self._has_bdc):
                                             self._has_bdc = a_dev == 'BDC'
                                         if (a_dev != last_dev):
@@ -2127,7 +2128,8 @@ class Inverter:
                                         else:
                                             if (len(self._version_infos) > 0):
                                                 self._version_infos = self._version_infos + '|'
-                                        self._version_infos = self._version_infos + a_entry["@Name"] + ' v' + a_entry["@Version"]
+                                        self._version_infos = self._version_infos + a_dict["@Name"] + ' v' + a_dict[
+                                            "@Version"]
                                         last_dev = a_dev
 
     async def update(self):
@@ -2152,75 +2154,56 @@ class Inverter:
                     if "Device" in self._raw["root"]:
                         if "Measurements" in self._raw["root"]["Device"]:
                             if "Measurement" in self._raw["root"]["Device"]["Measurements"]:
-                                for a_entry in self._raw["root"]["Device"]["Measurements"]["Measurement"]:
-                                    if '@Type' in a_entry:
-                                        if a_entry["@Type"] == 'AC_Voltage':
-                                            if '@Value' in a_entry:
-                                                self._ac_voltage = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'AC_Current':
-                                            if '@Value' in a_entry:
-                                                self._ac_current = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'AC_Power':
-                                            if '@Value' in a_entry:
-                                                self._ac_power = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'AC_Power_fast':
-                                            if '@Value' in a_entry:
-                                                self._ac_power_fast = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'AC_Frequency':
-                                            if '@Value' in a_entry:
-                                                self._ac_frequency = a_entry["@Value"]
+                                m_dict = self._raw["root"]["Device"]["Measurements"]["Measurement"]
+                                for a_dict in m_dict:
+                                    if '@Type' in a_dict and '@Value' in a_dict:
+                                        match a_dict["@Type"]:
+                                            case 'AC_Voltage':
+                                                self._ac_voltage = a_dict["@Value"]
+                                            case 'AC_Current':
+                                                self._ac_current = a_dict["@Value"]
+                                            case 'AC_Power':
+                                                self._ac_power = a_dict["@Value"]
+                                            case 'AC_Power_fast':
+                                                self._ac_power_fast = a_dict["@Value"]
+                                            case 'AC_Frequency':
+                                                self._ac_frequency = a_dict["@Value"]
 
-                                        if a_entry["@Type"] == 'BDC_BAT_Voltage':
-                                            if '@Value' in a_entry:
-                                                self._bdc_bat_voltage = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'BDC_BAT_Current':
-                                            if '@Value' in a_entry:
-                                                self._bdc_bat_current = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'BDC_BAT_Power':
-                                            if '@Value' in a_entry:
-                                                self._bdc_bat_power = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'BDC_LINK_Voltage':
-                                            if '@Value' in a_entry:
-                                                self._bdc_link_voltage = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'BDC_LINK_Current':
-                                            if '@Value' in a_entry:
-                                                self._bdc_link_current = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'BDC_LINK_Power':
-                                            if '@Value' in a_entry:
-                                                self._bdc_link_power = a_entry["@Value"]
+                                            case 'BDC_BAT_Voltage':
+                                                self._bdc_bat_voltage = a_dict["@Value"]
+                                            case 'BDC_BAT_Current':
+                                                self._bdc_bat_current = a_dict["@Value"]
+                                            case 'BDC_BAT_Power':
+                                                self._bdc_bat_power = a_dict["@Value"]
+                                            case 'BDC_LINK_Voltage':
+                                                self._bdc_link_voltage = a_dict["@Value"]
+                                            case 'BDC_LINK_Current':
+                                                self._bdc_link_current = a_dict["@Value"]
+                                            case 'BDC_LINK_Power':
+                                                self._bdc_link_power = a_dict["@Value"]
 
-                                        if a_entry["@Type"] == 'DC_Voltage1':
-                                            if '@Value' in a_entry:
-                                                self._dc_voltage1 = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'DC_Voltage2':
-                                            if '@Value' in a_entry:
-                                                self._dc_voltage2 = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'DC_Current1':
-                                            if '@Value' in a_entry:
-                                                self._dc_current1 = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'DC_Current2':
-                                            if '@Value' in a_entry:
-                                                self._dc_current2 = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'LINK_Voltage':
-                                            if '@Value' in a_entry:
-                                                self._link_voltage = a_entry["@Value"]
+                                            case 'DC_Voltage1':
+                                                self._dc_voltage1 = a_dict["@Value"]
+                                            case 'DC_Voltage2':
+                                                self._dc_voltage2 = a_dict["@Value"]
+                                            case 'DC_Current1':
+                                                self._dc_current1 = a_dict["@Value"]
+                                            case 'DC_Current2':
+                                                self._dc_current2 = a_dict["@Value"]
+                                            case 'LINK_Voltage':
+                                                self._link_voltage = a_dict["@Value"]
 
-                                        if a_entry["@Type"] == 'GridPower':
-                                            if '@Value' in a_entry:
-                                                self._gridpower = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'GridConsumedPower':
-                                            if '@Value' in a_entry:
-                                                self._gridconsumedpower = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'GridInjectedPower':
-                                            if '@Value' in a_entry:
-                                                self._gridinjectedpower = a_entry["@Value"]
-                                        if a_entry["@Type"] == 'OwnConsumedPower':
-                                            if '@Value' in a_entry:
-                                                self._ownconsumedpower = a_entry["@Value"]
+                                            case 'GridPower':
+                                                self._gridpower = a_dict["@Value"]
+                                            case 'GridConsumedPower':
+                                                self._gridconsumedpower = a_dict["@Value"]
+                                            case 'GridInjectedPower':
+                                                self._gridinjectedpower = a_dict["@Value"]
+                                            case 'OwnConsumedPower':
+                                                self._ownconsumedpower = a_dict["@Value"]
 
-                                        if a_entry["@Type"] == 'Derating':
-                                            if '@Value' in a_entry:
-                                                self._derating = float(100.0 - float(a_entry["@Value"]))
+                                            case 'Derating':
+                                                self._derating = float(100.0 - float(a_dict["@Value"]))
 
     @property
     def device_versions(self) -> str:
@@ -2605,26 +2588,31 @@ class MySenecWebPortal:
                                 # when SENEC API only return a single system in the 'v1/senec/anlagen' request (even if
                                 # there are multiple systems)...
                                 if len(data) == 1 and idx > 0:
-                                    _LOGGER.debug(f"APP-API IGNORE requested 'master_plant_number' {idx} will use 0 instead!")
+                                    _LOGGER.debug(
+                                        f"APP-API IGNORE requested 'master_plant_number' {idx} will use 0 instead!")
                                     idx = 0
 
                                 if len(data) > idx:
                                     if "id" in data[idx]:
                                         self._app_master_plant_id = data[idx]["id"]
-                                        _LOGGER.debug(f"APP-API set _app_master_plant_id to {self._app_master_plant_id}")
+                                        _LOGGER.debug(
+                                            f"APP-API set _app_master_plant_id to {self._app_master_plant_id}")
 
                                     if "wallboxIds" in data[idx]:
                                         self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
-                                        _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {self._app_wallbox_num_max}")
+                                        _LOGGER.debug(
+                                            f"APP-API set _app_wallbox_num_max to {self._app_wallbox_num_max}")
                                 else:
                                     _LOGGER.warning(f"Index: {idx} not available in array data: '{data}'")
                             except JSONDecodeError as jexc:
                                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {jexc}")
                             except Exception as exc:
                                 if data is not None:
-                                    _LOGGER.error(f"APP-API: Error when handling response '{res}' - Data: '{data}' - Exception:' {exc}' [retry={retry}]")
+                                    _LOGGER.error(
+                                        f"APP-API: Error when handling response '{res}' - Data: '{data}' - Exception:' {exc}' [retry={retry}]")
                                 else:
-                                    _LOGGER.error(f"APP-API: Error when handling response '{res}' - Exception:' {exc}' [retry={retry}]")
+                                    _LOGGER.error(
+                                        f"APP-API: Error when handling response '{res}' - Exception:' {exc}' [retry={retry}]")
                         else:
                             if retry:
                                 self._app_is_authenticated = False
@@ -2633,11 +2621,14 @@ class MySenecWebPortal:
                                 await self.app_authenticate(retry=False)
                     except Exception as exc:
                         if res is not None:
-                            _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' - Response is: '{res}' [retry={retry}]")
+                            _LOGGER.error(
+                                f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' - Response is: '{res}' [retry={retry}]")
                         else:
-                            _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
+                            _LOGGER.error(
+                                f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
             except Exception as exc:
-                _LOGGER.error(f"APP-API: Error when try to call 'self.web_session.get()' for {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
+                _LOGGER.error(
+                    f"APP-API: Error when try to call 'self.web_session.get()' for {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
         else:
             if retry:
                 await self.app_authenticate(retry=False)
@@ -3382,7 +3373,8 @@ class MySenecWebPortal:
                                 self._sgready_mode_code = int(plain[4:])
                                 if self._sgready_mode_code > 0:
                                     if self._lang in SGREADY_MODES:
-                                        self._sgready_mode = SGREADY_MODES[self._lang].get(self._sgready_mode_code, "UNKNOWN")
+                                        self._sgready_mode = SGREADY_MODES[self._lang].get(self._sgready_mode_code,
+                                                                                           "UNKNOWN")
                                     else:
                                         self._sgready_mode = SGREADY_MODES["en"].get(self._sgready_mode_code, "UNKNOWN")
 
@@ -3464,7 +3456,8 @@ class MySenecWebPortal:
                         await self.web_authenticate(do_update=False, throw401=True)
                         await self.set_sgready_conf(new_sgready_data)
             else:
-                _LOGGER.debug(f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._sgready_conf_data}")
+                _LOGGER.debug(
+                    f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._sgready_conf_data}")
 
     async def update_context(self):
         _LOGGER.debug("***** update_context(self) ********")
@@ -3811,7 +3804,8 @@ class MySenecWebPortal:
         if self._app_raw_tech_data is not None:
             if "batteryInverter" in self._app_raw_tech_data:
                 bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
-                if "state" in bat_inv_obj and "name" in bat_inv_obj["state"] and bat_inv_obj["state"]["name"] is not None:
+                if "state" in bat_inv_obj and "name" in bat_inv_obj["state"] and bat_inv_obj["state"][
+                    "name"] is not None:
                     return bat_inv_obj["state"]["name"].replace('_', ' ')
 
             # just a fallback...
@@ -3819,7 +3813,6 @@ class MySenecWebPortal:
                 mcu_obj = self._app_raw_tech_data["mcu"]
                 if "mainControllerState" in mcu_obj and "name" in mcu_obj["mainControllerState"] and mcu_obj["mainControllerState"]["name"] is not None:
                     return mcu_obj["mainControllerState"]["name"].replace('_', ' ')
-
 
     @property
     def battery_temp(self) -> float:
@@ -3830,7 +3823,7 @@ class MySenecWebPortal:
                     return bat_inv_obj["temperatures"]["amb"]
 
             # just a fallback...
-            #if "casing" in self._app_raw_tech_data:
+            # if "casing" in self._app_raw_tech_data:
             #    casing_obj = self._app_raw_tech_data["casing"]
             #    if "temperatureInCelsius" in casing_obj and casing_obj["temperatureInCelsius"] is not None:
             #        return casing_obj["temperatureInCelsius"]
@@ -3844,7 +3837,7 @@ class MySenecWebPortal:
                     return bat_inv_obj["temperatures"]["max"]
 
             # just a fallback...
-            #if "batteryModules" in self._app_raw_tech_data:
+            # if "batteryModules" in self._app_raw_tech_data:
             #    bat_modules_obj = self._app_raw_tech_data["batteryModules"]
             #    count = 0
             #    temp_sum = 0
@@ -3961,10 +3954,11 @@ class MySenecWebPortal:
 
     @property
     def sgready_enabled(self) -> bool:
-        if self.SGREADY_SUPPORTED and len(self._sgready_conf_data) > 0 and SGREADY_CONFKEY_ENABLED in self._sgready_conf_data:
+        if self.SGREADY_SUPPORTED and len(
+                self._sgready_conf_data) > 0 and SGREADY_CONFKEY_ENABLED in self._sgready_conf_data:
             return self._sgready_conf_data[SGREADY_CONFKEY_ENABLED]
 
-    async def switch_sgready_enabled(self, enabled:bool) -> bool:
+    async def switch_sgready_enabled(self, enabled: bool) -> bool:
         if self.SGREADY_SUPPORTED:
             await self.set_sgready_conf(new_sgready_data={SGREADY_CONFKEY_ENABLED: enabled})
 
@@ -3974,7 +3968,10 @@ class MySenecWebPortal:
     def clear_jar(self):
         self.web_session._cookie_jar.clear()
 
+
 need_patch: bool = None
+
+
 @staticmethod
 def _require_lib_patch() -> bool:
     global need_patch
