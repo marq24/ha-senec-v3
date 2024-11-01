@@ -2422,9 +2422,10 @@ class MySenecWebPortal:
 
         APP_BASE_URL2 = "https://app-gateway.prod.senec.dev/"
         self._SENEC_APP_NOW = APP_BASE_URL2 + "v2/senec/systems/%s/dashboard"
-        self._SENEC_APP_TOTAL = APP_BASE_URL2 + "v1/senec/monitor/%s/data/custom?startDate=2018-01-01&endDate=%s-%s-01&locale=de_DE&timezone=GMT"
+        self._SENEC_APP_TOTAL_V1_OUTDATED = APP_BASE_URL2 + "v1/senec/monitor/%s/data/custom?startDate=2018-01-01&endDate=%s-%s-01&locale=de_DE&timezone=GMT"
+        # 1514764800 = 2018-01-01 as UNIX epoche timestamp
+        self._SENEC_APP_TOTAL_V2 = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=YEAR&from=1514764800&to=%s"
         self._SENEC_APP_TECHDATA = APP_BASE_URL2 + "v1/senec/systems/%s/technical-data"
-        # https://app-gateway.prod.senec.dev/v2/senec/systems/%s/measurements?resolution=FULL&from=1705190400&to=1705236188
 
         # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/abilities
         # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/operational-mode -> "COM70"
@@ -2493,7 +2494,8 @@ class MySenecWebPortal:
 
         self._app_raw_now = None
         self._app_raw_today = None
-        self._app_raw_total = None
+        self._app_raw_total_v1_outdated = None
+        self._app_raw_total_v2 = None
         self._app_raw_tech_data = None
         self._app_raw_wallbox = [None, None, None, None]
 
@@ -2691,13 +2693,14 @@ class MySenecWebPortal:
         _LOGGER.debug("***** APP-API: app_update_total(self) ********")
         if self._app_master_plant_id is not None:
             today = datetime.today() + relativedelta(months=+1)
-            status_url = f"{self._SENEC_APP_TOTAL}" % (
-                str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
+            #status_url = f"{self._SENEC_APP_TOTAL}" % (
+            #    str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
+            status_url = f"{self._SENEC_APP_TOTAL_V2}" % (str(self._app_master_plant_id), str(int(today.timestamp())))
             data = await self.app_get_data(a_url=status_url)
-            if data is not None and "aggregation" in data:
-                self._app_raw_total = data["aggregation"]
+            if data is not None and "measurements" in data and "timeseries" in data:
+                self._app_raw_total_v2 = data
             else:
-                self._app_raw_total = None
+                self._app_raw_total_v2 = None
         else:
             if retry:
                 await self.app_authenticate()
@@ -3618,45 +3621,64 @@ class MySenecWebPortal:
     ##############################################
     # from here the "real" sensor data starts... #
     ##############################################
+    def _get_sum_for_index(self, index:int) -> float:
+        return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total_v2["timeseries"])
+
     @property
     def accuimport_total(self) -> float:
-        if self._app_raw_total is not None and "storageConsumption" in self._app_raw_total:
-            return float(self._app_raw_total["storageConsumption"]["value"])
+        if self._app_raw_total_v2 is not None:
+            # yes this sounds strange 'BATTERY_IMPORT' (but finally SENEC have inverted it's logic) - but we must keep
+            # the inverted stuff here!
+            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("BATTERY_EXPORT"))
+        elif self._app_raw_total_v1_outdated is not None and "storageConsumption" in self._app_raw_total_v1_outdated:
+            return float(self._app_raw_total_v1_outdated["storageConsumption"]["value"])
         elif hasattr(self, '_energy_entities') and "accuimport_total" in self._energy_entities:
             return self._energy_entities["accuimport_total"]
 
     @property
     def accuexport_total(self) -> float:
-        if self._app_raw_total is not None and "storageLoad" in self._app_raw_total:
-            return float(self._app_raw_total["storageLoad"]["value"])
+        if self._app_raw_total_v2 is not None:
+            # yes this sounds strange 'BATTERY_IMPORT' (but finally SENEC have inverted it's logic) - but we must keep
+            # the inverted stuff here!
+            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("BATTERY_IMPORT"))
+        elif self._app_raw_total_v1_outdated is not None and "storageLoad" in self._app_raw_total_v1_outdated:
+            return float(self._app_raw_total_v1_outdated["storageLoad"]["value"])
         elif hasattr(self, '_energy_entities') and "accuexport_total" in self._energy_entities:
             return self._energy_entities["accuexport_total"]
 
     @property
     def gridimport_total(self) -> float:
-        if self._app_raw_total is not None and "gridConsumption" in self._app_raw_total:
-            return float(self._app_raw_total["gridConsumption"]["value"])
+        if self._app_raw_total_v2 is not None:
+            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("GRID_IMPORT"))
+        elif self._app_raw_total_v1_outdated is not None and "gridConsumption" in self._app_raw_total_v1_outdated:
+            return float(self._app_raw_total_v1_outdated["gridConsumption"]["value"])
         elif hasattr(self, '_energy_entities') and "gridimport_total" in self._energy_entities:
             return self._energy_entities["gridimport_total"]
 
     @property
     def gridexport_total(self) -> float:
-        if self._app_raw_total is not None and "gridFeedIn" in self._app_raw_total:
-            return float(self._app_raw_total["gridFeedIn"]["value"])
+        if self._app_raw_total_v2 is not None:
+            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("GRID_EXPORT"))
+        elif self._app_raw_total_v1_outdated is not None and "gridFeedIn" in self._app_raw_total_v1_outdated:
+            return float(self._app_raw_total_v1_outdated["gridFeedIn"]["value"])
         elif hasattr(self, '_energy_entities') and "gridexport_total" in self._energy_entities:
             return self._energy_entities["gridexport_total"]
 
     @property
     def powergenerated_total(self) -> float:
-        if self._app_raw_total is not None and "generation" in self._app_raw_total:
-            return float(self._app_raw_total["generation"]["value"])
+        if self._app_raw_total_v2 is not None:
+            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("POWER_GENERATION"))
+        elif self._app_raw_total_v1_outdated is not None and "generation" in self._app_raw_total_v1_outdated:
+            return float(self._app_raw_total_v1_outdated["generation"]["value"])
         elif hasattr(self, '_energy_entities') and "powergenerated_total" in self._energy_entities:
             return self._energy_entities["powergenerated_total"]
 
     @property
     def consumption_total(self) -> float:
-        if self._app_raw_total is not None and "totalUsage" in self._app_raw_total:
-            return float(self._app_raw_total["totalUsage"]["value"])
+        if self._app_raw_total_v2 is not None:
+            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("POWER_CONSUMPTION"))
+        elif self._app_raw_total_v1_outdated is not None and "totalUsage" in self._app_raw_total_v1_outdated:
+            return float(self._app_raw_total_v1_outdated["totalUsage"]["value"])
         elif hasattr(self, '_energy_entities') and "consumption_total" in self._energy_entities:
             return self._energy_entities["consumption_total"]
 
