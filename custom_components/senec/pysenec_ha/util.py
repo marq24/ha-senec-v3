@@ -1,5 +1,7 @@
+import logging
 from struct import unpack, pack
 
+_LOGGER = logging.getLogger(__name__)
 
 def parse_value(value: str):
     """Parses numeric values, Senec supplies them as hex."""
@@ -9,10 +11,14 @@ def parse_value(value: str):
         key = parts[0]
         if len(parts) > 2:
             value = '_'.join(parts[1:])
-        else:
+        elif len(parts) > 1:
             value = parts[1]
+        else:
+            # looks like the value is 'not encoded' - no '_' present...
+            return value
 
-    except ValueError:
+    except Exception as e:
+        _LOGGER.error(f"Error parsing value: {value} - {e}")
         return value
 
     # if key == "u8":
