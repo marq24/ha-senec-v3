@@ -2108,7 +2108,7 @@ class Inverter:
         async with self.web_session.get(self.url3) as res:
             res.raise_for_status()
             txt = await res.text()
-            self._raw_version = xmltodict.parse(txt)
+            self._raw_version = xmltodict.parse(txt, force_list=('Software',))
             last_dev = ''
             if self._raw_version is not None:
                 if "root" in self._raw_version:
@@ -2116,21 +2116,36 @@ class Inverter:
                         if "Versions" in self._raw_version["root"]["Device"]:
                             if "Software" in self._raw_version["root"]["Device"]["Versions"]:
                                 a_dict = self._raw_version["root"]["Device"]["Versions"]["Software"]
-                                for a_entry in a_dict.keys():
-                                    if '@Name' in a_entry:
-                                        a_dev = a_dict["@Device"]
-                                        if (not self._has_bdc):
-                                            self._has_bdc = a_dev == 'BDC'
-                                        if (a_dev != last_dev):
-                                            if (len(self._version_infos) > 0):
-                                                self._version_infos = self._version_infos + '\n'
-                                            self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
-                                        else:
-                                            if (len(self._version_infos) > 0):
-                                                self._version_infos = self._version_infos + '|'
-                                        self._version_infos = self._version_infos + a_dict["@Name"] + ' v' + a_dict[
-                                            "@Version"]
-                                        last_dev = a_dev
+                                if isinstance(a_dict, list):
+                                    for a_entry in a_dict:
+                                        if '@Name' in a_entry:
+                                            a_dev = a_entry["@Device"]
+                                            if (not self._has_bdc):
+                                                self._has_bdc = a_dev == 'BDC'
+                                            if (a_dev != last_dev):
+                                                if (len(self._version_infos) > 0):
+                                                    self._version_infos = self._version_infos + '\n'
+                                                self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
+                                            else:
+                                                if (len(self._version_infos) > 0):
+                                                    self._version_infos = self._version_infos + '|'
+                                            self._version_infos = self._version_infos + a_entry["@Name"] + ' v' + a_entry["@Version"]
+                                            last_dev = a_dev
+                                elif isinstance(a_dict, dict):
+                                    for a_entry in a_dict.keys():
+                                        if '@Name' in a_entry:
+                                            a_dev = a_dict["@Device"]
+                                            if (not self._has_bdc):
+                                                self._has_bdc = a_dev == 'BDC'
+                                            if (a_dev != last_dev):
+                                                if (len(self._version_infos) > 0):
+                                                    self._version_infos = self._version_infos + '\n'
+                                                self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
+                                            else:
+                                                if (len(self._version_infos) > 0):
+                                                    self._version_infos = self._version_infos + '|'
+                                            self._version_infos = self._version_infos + a_dict["@Name"] + ' v' + a_dict["@Version"]
+                                            last_dev = a_dev
 
     async def update(self):
         await self.read_inverter_with_retry(retry=True)
