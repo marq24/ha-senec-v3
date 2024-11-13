@@ -1,0 +1,362 @@
+# Package to create and handle the cheapest hours from nord pool integration!
+# This is the SINGLE entry version.
+# For more details check out the blog post at https://www.creatingsmarthome.com/?p=1620
+
+# https://www.home-assistant.io/integrations/template
+# https://www.home-assistant.io/docs/configuration/templating/
+# https://community.home-assistant.io/t/global-template-variables/367611/4
+
+template:
+  - tiggers:
+      - trigger: state
+        entity_id:
+          - sensor.tibber_prices
+          - sensor.electricity_price_mmphome
+          - sensor.senec_battery_charge_percent
+          - sensor.energy_production_today_remaining_sum
+
+      - trigger: time_pattern
+        hours: "/1"
+        seconds: "36"
+
+  - variables:
+      # hours to look ahead for all our calculations
+      chk_hours: 12
+
+      # the capacity of the home battery in kW/h
+      accu_capacity: 12
+      accu_capacity_soc_factor: 0.12
+
+      # the incremental in one hour of battery charging (from the network) in kW/h
+      accu_charge_rate: 2.04
+
+      # the average home consumption per hour in kW/h
+      kw_per_hour: 0.75
+
+      accu_soc: "{{states('sensor.senec_battery_charge_percent')|int}}"
+
+      prices48: "{{(state_attr('sensor.tibber_prices', 'today')) | map(attribute='total') | list + (state_attr('sensor.tibber_prices', 'tomorrow')) | map(attribute='total') | list}}"
+      times48: "{{(state_attr('sensor.tibber_prices', 'today')) | map(attribute='startsAt') | map('as_datetime') | list + (state_attr('sensor.tibber_prices', 'tomorrow')) | map(attribute='startsAt') | map('as_datetime') | list}}"
+      tibb_avg_price: "{{state_attr('sensor.electricity_price_mmphome', 'avg_price')}"
+
+      now_idx: >
+        {{set ns = namespace(idx=-1)}}
+        { %- for i in range(0, times48|length) -% }
+          { %- if now() < times48[ i ] -% }
+            { %- set ns.idx = max(0, i-1) -% }
+            { %- break -% }
+          { %- endif -% }
+        { %- endfor -% }
+        {{nsnow.nowidx}}
+      now_idxmax: "{{min(now_idx + chk_hours, prices48|length)}}"
+
+      avgprice_ahead: "{{average(prices48[now_idx:now_idxmax], tibb_avg_price)|round(4)}}"
+      avgprice_min: "{{min(avgprice_ahead, tibb_avg_price)}}"
+      # avgprice_max: "{{max(avgprice_ahead, tibb_avg_price)}}"
+
+      low_price_startidx: >
+        {%- set ns = namespace(startidx=99, endidx=-1) -%}
+        {%- for i in range(now_idx, now_idxmax) -%}
+          {%- if avgprice_min > prices48[i] -%}
+            {%- set ns.startidx = min(i, ns.startidx) -%}
+            {%- set ns.endidx = max(i, ns.endidx) -%}
+          {%- elif ns.startidx == 99 -%}
+          {%- else -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if ns.startidx < 99 -%}
+        {{ns.startidx}}
+        {%- else -%}
+        {{'None'}}
+
+      low_price_endidx: >
+        {%- set ns = namespace(startidx=99, endidx=-1) -%}
+        {%- for i in range(now_idx, now_idxmax) -%}
+          {%- if avgprice_min > prices48[i] -%}
+            {%- set ns.startidx = min(i, ns.startidx) -%}
+            {%- set ns.endidx = max(i, ns.endidx) -%}
+          {%- elif ns.endidx == -1 -%}
+          {%- else -%}
+            {%- break -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if ns.endidx > -1 -%}
+        {{ns.endidx}}
+        {%- else -%}
+        {{'None'}}
+
+      low_price_duration: >
+        {%- if low_price_endidx not None and low_price_startidx not None -%}
+        {{(low_price_endidx - low_price_startidx)+1|round(0)}}
+        {%- else -%}
+        {{'None'}}
+        {%- endif -%}
+
+  - sensor:
+      - name: "POW average price all"
+        unique_id: pow_avg_price_all
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: "{{average(prices48, tibb_avg_price)|round(4)}}"
+
+  - sensor:
+      - name: "POW average price now"
+        unique_id: pow_avg_price_now
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: "{{avgprice_ahead}}"
+
+  - sensor:
+      - name: "POW low price start"
+        unique_id: pow_low_price_start
+        state_class: measurement
+        unit_of_measurement: "Uhr"
+        state: >
+          {%- if low_price_startidx not None -%}
+          {{times48[low_price_startidx].strftime('%H')|int}}
+          {%- else -%}
+          {{'None'}}
+          {%- endif -%}
+
+  - sensor:
+      - name: "POW low price end"
+        unique_id: pow_low_price_end
+        state_class: measurement
+        unit_of_measurement: "Uhr"
+        state: >
+          {%- if low_price_endidx not None -%}
+          {{times48[low_price_endidx].strftime('%H')|int+1}}
+          {%- else -%}
+          {{'None'}}
+          {%- endif -%}
+
+  - sensor:
+      - name: "POW low price duration"
+        unique_id: pow_low_price_duration
+        state_class: measurement
+        unit_of_measurement: "h"
+        state: "{{low_price_duration}}"
+
+  - binary_sensor:
+      - name: "POW low price phase"
+        unique_id: pow_low_price_phase
+        state: >
+          {%- if low_price_startidx is not None and low_price_endidx is not None and (low_price_startidx <= now_idx <= low_price_endidx) -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+
+
+
+
+
+  - sensor:
+      - name: "POW battery full charge duration"
+        unique_id: pow_battery_full_charge_duration
+        state_class: measurement
+        state: >
+          {%- set accu_soc = states('sensor.senec_battery_charge_percent')|int -%}
+          {%- set accu_need = (12 - 0.12*(accu_soc|float))|round(4) -%}
+          {%- if accu_soc < 95  -%}
+          {{max(1, (accu_need/2.04)|round(1))}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+  - binary_sensor:
+      - name: "POW PV power load battery"
+        unique_id: pow_pv_power_load_battery
+        state: >
+          {%- set pv_remain = states('sensor.energy_production_today_remaining_sum')|float -%}
+          {%- set accu_need = 12 - 0.12*states('sensor.senec_battery_charge_percent')|float -%}
+          {%- set home_usage_remain = (24 - (now().strftime('%H')|int) - 2) * 0.75 -%}
+          {%- if accu_need > 0 and (pv_remain - home_usage_remain) > accu_need -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+  - binary_sensor:
+      - name: "POW now in cheapest window"
+        unique_id: pow_now_in_cheapest_window
+        state: >
+          {%- set chk_hours=12 -%}
+          {%- set tibb_avg_price = state_attr('sensor.electricity_price_mmphome', 'avg_price') -%}
+          {%- set prices48 = (state_attr('sensor.tibber_prices', 'today')) | map(attribute='total') | list + (state_attr('sensor.tibber_prices', 'tomorrow')) | map(attribute='total') | list -%}
+          {%- set times48 = (state_attr('sensor.tibber_prices', 'today')) | map(attribute='startsAt') | map('as_datetime') | list + (state_attr('sensor.tibber_prices', 'tomorrow')) | map(attribute='startsAt') | map('as_datetime') | list -%}
+          {%- set ns48 = namespace(nowidx=-1, startidx=99, endidx=-1, maxidx=prices48|length) -%}
+          {%- for i in range(0, times48|length) -%}
+            {%- if now() < times48[i] -%}
+              {%- set ns48.nowidx = max(0, i-1) -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+
+          {%- set ns48.maxidx = min(ns48.nowidx + chk_hours, ns48.maxidx) -%}
+          {%- set avgprice_ahead48 = average(prices48[ns48.nowidx:ns48.maxidx], tibb_avg_price)|round(4) -%}
+          {%- set avgprice48 = min(avgprice_ahead48, tibb_avg_price) -%}
+          {%- for i in range(ns48.nowidx, ns48.maxidx) -%}
+            {%- if avgprice48 > prices48[i] -%}
+              {%- set ns48.startidx = min(i, ns48.startidx) -%}
+              {%- set ns48.endidx = max(i, ns48.endidx) -%}
+            {%- elif ns48.endidx == -1 -%}
+            {%- else -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns48.endidx > 0 and ns48.startidx < 99 -%}
+          {%- set low_price_window = (ns48.endidx - ns48.startidx)+1|round(0) -%}
+          {%- else -%}
+          {%- set low_price_window = 0|int -%}
+          {%- endif -%}
+
+          {%- set req_load_time = states('sensor.pow_battery_full_charge_duration')|float -%}
+          {%- if low_price_window > 1 and req_load_time > 0 and req_load_time < (low_price_window-1) -%}
+            {%- set ns = namespace(startidx=99, endidx=-1, maxidx=prices48|length) -%}
+            {%- set min_price = min(prices48[ns48.startidx:ns48.endidx]) -%}
+            {%- set min_price_idx = prices48.index(min_price) -%}
+            {%- set ns.startidx = min_price_idx -%}
+            {%- set ns.endidx = min_price_idx -%}
+            {%- for i in range(1, chk_hours)-%}
+              {%- set lowidx = max(0, ns.startidx - 1) -%}
+              {%- set highidx = min(ns.endidx + 1, ns.maxidx) -%}
+              {%- if prices48[lowidx] == prices48[highidx] -%}
+                {%- set ns.startidx = lowidx -%}
+                {%- set ns.endidx = highidx -%}
+              {%- elif prices48[lowidx] < prices48[highidx] -%}
+                {%- set ns.startidx = lowidx -%}
+              {%- else -%}
+                  {%- set ns.endidx = highidx -%}
+              {%- endif -%}
+              {%- if ns.endidx - ns.startidx >= req_load_time -%}
+                {%- break -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- if ns.startidx <= ns48.nowidx <= ns.endidx -%}
+          {{'on'}}
+            {%- else -%}
+          {{'off'}}
+            {%- endif -%}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+  - binary_sensor:
+      - name: "POW now in high cost window"
+        unique_id: pow_now_in_high_cost_window
+        state: >
+          {%- set chk_hours = 12 -%}
+          {%- set kw_per_hour = 0.75 -%}
+          {%- set tibb_avg_price = state_attr('sensor.electricity_price_mmphome', 'avg_price') -%}
+          {%- set prices48 = (state_attr('sensor.tibber_prices', 'today')) | map(attribute='total') | list + (state_attr('sensor.tibber_prices', 'tomorrow')) | map(attribute='total') | list -%}
+          {%- set times48 = (state_attr('sensor.tibber_prices', 'today')) | map(attribute='startsAt') | map('as_datetime') | list + (state_attr('sensor.tibber_prices', 'tomorrow')) | map(attribute='startsAt') | map('as_datetime') | list -%}
+          {%- set nsnow = namespace(nowidx=-1, maxidx=prices48|length) -%}
+          {%- for i in range(0, times48|length) -%}
+            {%- if now() < times48[i] -%}
+              {%- set nsnow.nowidx = max(0, i-1) -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- set nsnow.maxidx = min(nsnow.nowidx + chk_hours, nsnow.maxidx) -%}
+          {%- set avgprice_ahead48 = average(prices48[nsnow.nowidx:nsnow.maxidx], tibb_avg_price)|round(4) -%}
+
+          {%- set battery_energy = (0.12 * states('sensor.senec_battery_charge_percent')|int)|round(4) -%}
+          {%- set pv_remain = states('sensor.energy_production_today_remaining_sum')|float -%}
+          {%- set home_usage_remain = (24 - (now().strftime('%H')|int) - 2) * kw_per_hour -%}
+          {%- set remain_prod_energy = max(0, pv_remain - home_usage_remain)|round(3) -%}
+          {%- set max_energy_time = ((battery_energy + remain_prod_energy) / kw_per_hour)|round(3) -%}
+          {%- set max_energy_time_h = max_energy_time|round(0) -%}
+
+          {%- set max_price = max(prices48[nsnow.nowidx:nsnow.maxidx]) -%}
+          {%- set max_price_idx = prices48.index(max_price) -%}
+          {%- set ns = namespace(startidx=99, endidx=-1, maxidx=prices48|length) -%}
+          {%- set ns.startidx = max_price_idx -%}
+          {%- set ns.endidx = max_price_idx -%}
+          {%- set min_avg_price = min(avgprice_ahead48, tibb_avg_price) -%}
+          {%- for i in range(1, max(max_energy_time_h, chk_hours))-%}
+            {%- set lowidx = max(0, ns.startidx - 1) -%}
+            {%- set highidx = min(ns.endidx + 1, ns.maxidx) -%}
+            {%- set isLowCheaper = prices48[lowidx] < min_avg_price -%}
+            {%- set isHighCheaper = prices48[highidx] < min_avg_price -%}
+            {%- if (ns.endidx - ns.startidx >= max_energy_time) -%}
+              {%- break -%}
+            {%- endif -%}
+            {%- if prices48[lowidx] == prices48[highidx] -%}
+              {%- if not isLowCheaper -%}
+                {%- set ns.startidx = lowidx -%}
+              {%- endif -%}
+              {%- if not isHighCheaper -%}
+                {%- set ns.endidx = highidx -%}
+              {%- endif -%}
+            {%- elif prices48[lowidx] > prices48[highidx] -%}
+              {%- if not isLowCheaper -%}
+                {%- set ns.startidx = lowidx -%}
+              {%- endif -%}
+            {%- else -%}
+              {%- if not isHighCheaper -%}
+                {%- set ns.endidx = highidx -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.startidx <= nsnow.nowidx <= ns.endidx-%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+
+
+
+# OLD STUFF FROM HERE (we don't use anymore)
+
+  - binary_sensor:
+      - name: "POW Switch Price below average"
+        unique_id: pow_switch_price_below_average
+        state: >
+          {%- set number_of_hours = 3|int -%}
+          {%- set current_price = state_attr('sensor.tibber_prices', 'current').total -%}
+          {%- set avg_price = state_attr('sensor.electricity_price_mmphome', 'avg_price') -%}
+          {%- if current_price > avg_price -%}
+          {{'off'}}
+          {%- else -%}
+            {%- set today = state_attr('sensor.tibber_prices', 'today') -%}
+            {%- set tomorrow = state_attr('sensor.tibber_prices', 'tomorrow') -%}
+            {%- set prices = today | map(attribute='total') | list + tomorrow | map(attribute='total') | list -%}
+
+            {%- set t0 = today | map(attribute='startsAt') | map('as_datetime') | list -%}
+            {%- set t1 = tomorrow | map(attribute='startsAt') | map('as_datetime') | list -%}
+            {%- set times = t0 + t1 -%}
+
+            {%- set end_time = now() + timedelta(hours = number_of_hours) -%}
+            {%- set ns = namespace(is_cheaper_counter = 0) -%}
+            {%- for i in range(0, prices|length) -%}
+              {%- if now() < times[i] < end_time -%}
+                {%- if prices[i] <= avg_price -%}
+                  {%- set ns.is_cheaper_counter = ns.is_cheaper_counter + 1 -%}
+                {%- else -%}
+                  {%- break -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- if ns.is_cheaper_counter == number_of_hours -%}
+          {{'off'}}
+            {%- else -%}
+          {{'on'}}
+            {%- endif -%}
+          {%- endif -%}
+
+# We need a helper to know if the calendar mark(s) has already been set!
+input_boolean:
+  # These are the internal switches we need to activate when we have enough POW
+  # they are firing triggers that then will be handled by pyscript's [that will
+  # execute the final job's]
+  wkh_cheap_switch:
+    name: 'WKH WeHaveThePower Switch'
+    icon: mdi:radiator
+
+  wkh_hotwater_switch:
+    name: 'WKH Hotwater UP/Down Switch'
+    icon: mdi:thermometer-water
