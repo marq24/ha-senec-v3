@@ -1,0 +1,352 @@
+# https://www.home-assistant.io/integrations/template
+# https://www.home-assistant.io/docs/configuration/templating/
+
+template:
+  - trigger:
+      - trigger: state
+        entity_id:
+          - sensor.tibber_prices
+          - sensor.electricity_price_mmphome
+          - sensor.senec_battery_charge_percent
+          - sensor.energy_production_today_remaining_sum
+
+      - trigger: time_pattern
+        hours: "/1"
+        minutes: "0"
+        seconds: "36"
+
+    sensor:
+      - name: "POW last updated"
+        unique_id: pow_last_updated
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.update_data()|trim|as_datetime}}
+
+      - name: "POW average price all"
+        unique_id: pow_avg_price_all
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.average_price()|float|round(4)}}
+
+      - name: "POW Tibber average price"
+        unique_id: pow_tibber_avg_price
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.tibb_avg_price()|float|round(4)}}
+
+      - name: "POW average price from now"
+        unique_id: pow_avg_price_from_now
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.avgprice_ahead()|float|round(4)}}
+
+      - name: "POW low price duration"
+        unique_id: pow_low_price_duration
+        device_class: duration
+        unit_of_measurement: "h"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price_duration = i.low_price_duration() %}
+          {%- if a_price_duration|trim != 'None' -%}
+          {{a_price_duration|int}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW low price start"
+        unique_id: pow_low_price_start
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.low_price_start_time()|trim|as_datetime}}
+
+      - name: "POW low price end"
+        unique_id: pow_low_price_end
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.low_price_end_time()|trim|as_datetime}}
+
+      - name: "POW cheapest duration"
+        unique_id: pow_cheapest_duration
+        device_class: duration
+        unit_of_measurement: "h"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price_duration = i.min_price_duration() %}
+          {%- if a_price_duration|trim != 'None' -%}
+          {{a_price_duration|int}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW cheapest start"
+        unique_id: pow_cheapest_start
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.min_price_start_time()|trim|as_datetime}}
+
+      - name: "POW cheapest end"
+        unique_id: pow_cheapest_end
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.min_price_end_time()|trim|as_datetime}}
+
+      - name: "POW high price duration"
+        unique_id: pow_high_price_duration
+        device_class: duration
+        unit_of_measurement: "h"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price_duration = i.max_price_duration() %}
+          {%- if a_price_duration|trim != 'None' -%}
+          {{a_price_duration|int}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW high price start"
+        unique_id: pow_high_price_start
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.max_price_start_time()|trim|as_datetime}}
+
+      - name: "POW high price end"
+        unique_id: pow_high_price_end
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.max_price_end_time()|trim|as_datetime}}
+
+      - name: "POW high price (storage independent) duration"
+        unique_id: pow_high_price_storage_independent_duration
+        device_class: duration
+        unit_of_measurement: "h"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price_duration = i.max_price_energy_independent_duration() %}
+          {%- if a_price_duration|trim != 'None' -%}
+          {{a_price_duration|int}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW high price (storage independent) start"
+        unique_id: pow_high_price_storage_independent_start
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.max_price_energy_independent_start_time()|trim|as_datetime}}
+
+      - name: "POW high price (storage independent) end"
+        unique_id: pow_high_price_storage_independent_end
+        device_class: timestamp
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.max_price_energy_independent_end_time()|trim|as_datetime}}
+
+      - name: "POW PV (remaining prod - home usage)]"
+        unique_id: pow_pv_remaining_prod_home_usage
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.remain_prod_energy()|round(3)}}
+
+      - name: "POW storage full charge required energy"
+        unique_id: pow_storage_full_charge_required_energy
+        state_class: measurement
+        unit_of_measurement: "kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.storage_need()|round(4)}}
+
+      - name: "POW storage full charge duration"
+        unique_id: pow_storage_full_charge_duration
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price_duration = i.storage_full_charge_duration_in_h() %}
+          {%- if a_price_duration|trim != 'None' -%}
+          {{a_price_duration|float|round(2)}}
+          {%- else -%}
+          {{None}}
+          {%- endif -%}
+
+      - name: "POW available energy duration [storage + PV (remaining - home usage)]"
+        unique_id: pow_available_energy_duration_storage_pv_remaining_home_usage
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price_duration = i.max_energy_duration_in_h() %}
+          {%- if a_price_duration|trim != 'None' -%}
+          {{a_price_duration|float|round(2)}}
+          {%- else -%}
+          {{None}}
+          {%- endif -%}
+
+      - name: "POW Tibber today delta"
+        unique_id: pow_tibber_today_delta
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta()|trim  %}
+          {% if tpdelta != 'None' -%}
+          {{tpdelta|float|round(4)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW Tibber tomorrow delta"
+        unique_id: pow_tibber_tomorrow_delta
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_tomorrow()|trim  %}
+          {% if tpdelta != 'None' -%}
+          {{tpdelta|float|round(4)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW Tibber overall delta"
+        unique_id: pow_tibber_overall_delta
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_overall()|trim  %}
+          {% if tpdelta != 'None' -%}
+          {{tpdelta|float|round(4)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW storage charging cost"
+        unique_id: pow_storage_charging_cost
+        state_class: measurement
+        unit_of_measurement: "€"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price = i.storage_charging_cost() %}
+          {%- if a_price|trim != 'None' -%}
+          {{a_price|float|round(3)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW storage charging overhead cost"
+        unique_id: pow_storage_charging_overhead_cost
+        state_class: measurement
+        unit_of_measurement: "€"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price = i.storage_charging_overhead_cost() %}
+          {%- if a_price|trim != 'None' -%}
+          {{a_price|float|round(3)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW storage usage savings"
+        unique_id: pow_storage_usage_savings
+        state_class: measurement
+        unit_of_measurement: "€"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set a_price = i.storage_usage_savings() %}
+          {%- if a_price|trim != 'None' -%}
+          {{a_price|float|round(3)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+    binary_sensor:
+      - name: "POW PV power can fully load storage"
+        unique_id: pow_pv_power_can_fully_load_storage
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set storage_need_ = i.storage_need()|float %}
+          {%- if storage_need_ > 0 and i.remain_prod_energy()|float > storage_need_ -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+      - name: "POW significant price delta"
+        unique_id: pow_significant_price_delta
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set price_delta_ = i.tibb_price_delta() %}
+          {%- if price_delta_|trim != 'None' and price_delta_|float >= i.min_price_delta|float -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+      - name: "POW now in low price phase"
+        unique_id: pow_now_in_low_price_phase
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.now_in_low()|trim}}
+
+      - name: "POW now in cheapest phase"
+        unique_id: pow_now_in_cheapest_phase
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.now_in_min()|trim}}
+
+      - name: "POW now in high price phase"
+        unique_id: pow_now_in_high_price_phase
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.now_in_max()|trim}}
+
+      - name: "POW now in high price (storage independent) phase"
+        unique_id: pow_now_in_high_price_storage_independent_phase
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.now_in_max_energy_independent()|trim}}
+
+      - name: "POW Tibber today delta over limit"
+        unique_id: pow_tibber_today_delta_over_limit
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta()|trim  %}
+          {% if tpdelta != 'None' and tpdelta|float > i.min_price_delta -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+      - name: "POW Tibber tomorrow delta over limit"
+        unique_id: pow_tibber_tomorrow_delta_over_limit
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_tomorrow()|trim  %}
+          {% if tpdelta != 'None' and tpdelta|float > i.min_price_delta -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+      - name: "POW Tibber overall delta over limit"
+        unique_id: pow_tibber_overall_delta_over_limit
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_overall()|trim  %}
+          {% if tpdelta != 'None' and tpdelta|float > i.min_price_delta -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}

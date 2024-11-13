@@ -1,0 +1,27 @@
+{# hours to look ahead for all our calculations #}
+{% set chk_hours = "12"|int %}
+
+{# the capacity of the home battery in kW/h #}
+{% set accu_capacity = "12"|int %}
+
+{# the state of charge of the battery in percent that be considered as full #}
+{% set accu_min_full_soc = "95"|int %}
+
+{# the incremental in one hour of battery charging (from the network) in kW/h #}
+{% set accu_charge_rate = "2.04"|float %}
+
+{# the average home consumption per hour in kW/h #}
+{% set kw_per_hour = "0.75"|float %}
+
+{% set tibb_prices_rest_sensor = 'sensor.tibber_prices' %}
+{% set your_tibber_home_sensor = 'sensor.electricity_price_mmphome' %}
+{% set your_pv_prognose_sensor = 'sensor.energy_production_today_remaining_sum' %}
+{% set your_battery_soc_sensor = 'sensor.senec_battery_charge_percent' %}
+
+
+{# END-OF-CONFIGURATION-OPTIONS #}
+{% set accu_capacity_soc_factor = (accu_capacity/100)|float %}
+
+{% macro update_data() -%}
+    {{now()}}
+{%- endmacro %}

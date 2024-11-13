@@ -1,0 +1,929 @@
+{% set tibb_prices_rest_sensor = 'sensor.tibber_prices' %}
+{% set your_tibber_home_sensor = 'sensor.electricity_price_mmphome' %}
+{% set your_pv_prognose_sensor = 'sensor.energy_production_today_remaining_sum' %}
+{% set your_storage_soc_sensor = 'sensor.senec_battery_charge_percent' %}
+
+{# hours to look ahead for all our calculations #}
+{% set chk_hours = "12"|int %}
+
+{# the average home consumption per hour in kW/h #}
+{% set kw_per_hour_average = "1.225"|float %}
+{% set kw_per_hour_day = "1.5"|float %}
+{% set kw_per_hour_night = "0.4"|float %}
+{% set day_start = "5"|int %}
+{% set day_end = "22"|int %}
+
+{# the capacity of the home storage in kW/h #}
+{% set storage_capacity = "12"|int %}
+
+{# the state of charge of the storage in percent that be considered as full #}
+{% set storage_min_full_soc = "95"|int %}
+
+{# the increment in one hour of 'storage charging' (from the network) in kW/h #}
+{% set storage_charge_rate = "2.04"|float %}
+
+{# loss while charging the storage in kWh (SOC increment vs energy used to charge) #}
+{# In one hour the storage is charged with 2.04kWh, but during charging the storage #}
+{# consume 2.38kWh. - so we have a loss of 0.34kWh per hour #}
+{% set storage_charging_loss_per_hour = "0.34"|float %}
+
+{# additional costs per kW/h in € (if not already included!) #}
+{# Weitere Beschaffungskosten (s. §4 AGB)   1,81  ct/kWh #}
+{# Netznutzungsentgelt (variabel)          10,02  ct/kWh #}
+{# Konzessionsabgabe                        1,59  ct/kWh #}
+{# Stromsteuer                              2,05  ct/kWh #}
+{# Offshore Wind Umlage                     0,656 ct/kWh #}
+{# KWK Umlage                               0,275 ct/kWh #}
+{# Strom NEV Umlage                         0,643 ct/kWh #}
+{# set kwh_additional_fees = "0.17044"|float  #}
+{% set kwh_additional_fees = "0"|float %}
+
+{# the price delta between min and max price during the day in € (per kW/h) #}
+{% set min_price_delta = "0.05"|float %}
+
+{# ############################ #}
+{# END-OF-CONFIGURATION-OPTIONS #}
+{# ############################ #}
+{# DO NOT EDIT BELOW THIS LINE  #}
+{# ############################ #}
+{% set storage_capacity_soc_factor = (storage_capacity/100)|float|round(4) %}
+
+{% macro get_time_for_idx(idx_val_trimmed, add_one_hour) -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set times_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='startsAt') | map('as_datetime') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='startsAt') | map('as_datetime') | list %}
+    {%- else -%}
+        {% set times_data = [] %}
+    {%- endif %}
+    {%- if times_data|length > 0 and idx_val_trimmed != 'None' and times_data|length > idx_val_trimmed|int -%}
+        {% if add_one_hour %}
+{{times_data[idx_val_trimmed|int]|as_datetime + timedelta(minutes=59, seconds=59)}}
+        {%- else -%}
+{{times_data[idx_val_trimmed|int]|as_datetime}}
+        {%- endif %}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro home_consumption_remain() -%}
+    {% set nowi = now().strftime('%H')|int %}
+    {% set morning_hours = day_start - 1 %}
+    {% set night_hours = 24 - day_end %}
+    {% set day_hours = 24 - morning_hours - night_hours%}
+    {% if nowi < day_start -%}
+        {# early morning #}
+{{(morning_hours - nowi) * kw_per_hour_night + day_hours * kw_per_hour_day + night_hours * kw_per_hour_night}}
+    {% elif nowi >= day_end -%}
+        {# rest of the night (morning_hours + day_hours + night_hours = 24)#}
+{{(24 - nowi) * kw_per_hour_night}}
+    {%- else -%}
+        {# normal daytime #}
+{{(morning_hours + day_hours - nowi) * kw_per_hour_day + night_hours * kw_per_hour_night}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro kwh_per_time(nowi) -%}
+    {% if nowi < day_start or nowi >= day_end -%}
+        {# early morning or rest of the night#}
+{{kw_per_hour_night}}
+    {%- else -%}
+        {# normal daytime #}
+{{kw_per_hour_day}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro storage_soc() -%}
+    {% set val = states(your_storage_soc_sensor) %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+{{val}}
+    {%- else -%}
+{{0}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro storage_energy() -%}
+{{storage_capacity_soc_factor * (storage_soc()|float)|float}}
+{%- endmacro %}
+
+{% macro storage_need() -%}
+{{storage_capacity - (storage_capacity_soc_factor * (storage_soc()|float))}}
+{%- endmacro %}
+
+{% macro storage_full_charge_duration_in_h() -%}
+    {%- if storage_soc()|int < storage_min_full_soc  -%}
+{{max(1, (storage_need()|float / storage_charge_rate))}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro pv_production_remain() -%}
+    {% set val = states(your_pv_prognose_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+{{val}}
+    {%- else -%}
+{{0.0}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro remain_prod_energy() -%}
+{{max(0, pv_production_remain()|float - home_consumption_remain()|float)}}
+{%- endmacro %}
+
+{% macro max_energy_duration_in_h() -%}
+    {# old/simple calculation #}
+    {# ((storage_energy()|float + remain_prod_energy()|float) / kw_per_hour_average #}
+    {% set available_energy = storage_energy()|float + remain_prod_energy()|float %}
+    {% set calc = namespace( consumed = 0, nowi = now().strftime('%H')|int, fallback = True) %}
+    {% for h in range(0, 255) -%}
+        {% set next_hour_energy = kwh_per_time(calc.nowi)|float %}
+        {% set calc.consumed = calc.consumed + next_hour_energy %}
+        {% if calc.consumed > available_energy -%}
+            {# ok we do not have that much energy left... let's calculate the remaining fraction#}
+            {% set remain_available_energy = available_energy - (calc.consumed - next_hour_energy) %}
+{{(h|float + remain_available_energy/next_hour_energy)|round(4)}}
+            {% set calc.fallback = False %}
+            {% break %}
+        {%- endif %}
+        {# let the clock make a step ahead and make sure we pass the 24'h line #}
+        {% set calc.nowi = calc.nowi + 1 %}
+        {% if calc.nowi > 24 -%}
+            {% set calc.nowi = 0 %}
+        {%- endif %}
+    {%- endfor %}
+{# when we run through the complete for loop without reaching the available energy, then there must be #}
+{# something wrong with the energy consumption per hour - so we fall back to the simple calc #}
+    {% if calc.fallback -%}
+{{(available_energy/kw_per_hour_average)|round(4)}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_avg_price() -%}
+    {% set val = state_attr(your_tibber_home_sensor, 'avg_price')|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+{{val}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_min_price() -%}
+    {% set val = state_attr(your_tibber_home_sensor, 'min_price')|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+{{val}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_max_price() -%}
+    {% set val = state_attr(your_tibber_home_sensor, 'max_price')|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+{{val}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_price_delta() -%}
+    {% set val_min = state_attr(your_tibber_home_sensor, 'min_price')|lower %}
+    {% set val_max = state_attr(your_tibber_home_sensor, 'max_price')|lower %}
+    {% if val_min not in ['unknown', 'none', 'unavailable'] and val_max not in ['unknown', 'none', 'unavailable'] -%}
+{{(val_max|float - val_min|float)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro now_idx() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set times_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='startsAt') | map('as_datetime') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='startsAt') | map('as_datetime') | list %}
+    {%- else -%}
+        {% set times_data = [] %}
+    {%- endif %}
+    {{now_idx_internal(times_data)}}
+{%- endmacro %}
+
+{% macro now_idx_internal(times_data) -%}
+    {% set ns = namespace(idx=-1) %}
+    {%- for i in range(0, times_data|length) -%}
+        {%- if now() < times_data[ i ] -%}
+            {% set ns.idx = max(0, i-1) %}
+            {% break %}
+        {%- endif -%}
+    {%- endfor -%}
+{{ns.idx}}
+{%- endmacro %}
+
+{% macro now_max(prices_data_length) -%}
+{{min(now_idx()|int + chk_hours, prices_data_length)}}
+{%- endmacro %}
+
+{% macro average_price() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+{{average(prices_data)}}
+{%- endmacro %}
+
+{% macro avgprice_ahead() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+{{avgprice_ahead_internal(prices_data)}}
+{%- endmacro %}
+
+{% macro avgprice_ahead_internal(prices_data) -%}
+    {% if tibb_avg_price()|trim != 'None' -%}
+{{average(prices_data[now_idx()|int:now_max(prices_data|length)|int], tibb_avg_price()|float)|round(4)}}
+    {%- else -%}
+{{average(prices_data[now_idx()|int:now_max(prices_data|length)|int])|round(4)}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro avgprice_min_internal(prices_data) -%}
+    {% if tibb_avg_price()|trim != 'None' -%}
+{{min(avgprice_ahead_internal(prices_data)|float, tibb_avg_price()|float)}}
+    {%- else -%}
+{{avgprice_ahead_internal(prices_data)}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_min_price_tomorrow() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = state_attr(tibb_prices_rest_sensor, 'tomorrow') | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{min(prices_data)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_max_price_tomorrow() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = state_attr(tibb_prices_rest_sensor, 'tomorrow') | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{max(prices_data)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_price_delta_tomorrow() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = state_attr(tibb_prices_rest_sensor, 'tomorrow') | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{max(prices_data)-min(prices_data)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_price_delta_overall() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{max(prices_data) - min(prices_data)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro low_price_startidx() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+{{low_price_startidx_internal(prices_data)}}
+{%- endmacro %}
+
+{% macro low_price_startidx_internal(prices_data) -%}
+    {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
+    {% set ns_low = namespace(startidx=99) %}
+    {%- for i in range(now_idx()|int, now_max(prices_data|length)|int) -%}
+        {%- if avgprice_min > prices_data[i] -%}
+            {% set ns_low.startidx = min(i, ns_low.startidx) %}
+        {%- elif ns_low.startidx == 99 -%}
+        {%- else -%}
+            {% break %}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- if ns_low.startidx < 99 -%}
+{{ns_low.startidx}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro low_price_endidx() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+{{low_price_endidx_internal(prices_data)}}
+{%- endmacro %}
+
+{# the 'correct' implementation for the end index would be, that the 'range' will go from the #}
+{# now_idx()|int to now_max()|int -> but for the low price period we can ignore the 'chk_hours' #}
+{# and just run through the complete prices_data array... #}
+{# so instead of: #}
+{# {%- for i in range(now_idx()|int, now_max()|int) -%} #}
+{# we use: #}
+{# {%- for i in range(now_idx()|int, prices_data|length) -%} #}
+{% macro low_price_endidx_internal(prices_data) -%}
+    {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
+    {% set ns_low = namespace(endidx=-1) %}
+    {% set now_ = now_idx()|int %}
+    {%- for i in range(now_, prices_data|length) -%}
+        {%- if avgprice_min > prices_data[i] -%}
+            {% set ns_low.endidx = max(i, ns_low.endidx) %}
+        {%- elif ns_low.endidx == -1 -%}
+        {%- else -%}
+            {% break %}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- if ns_low.endidx > -1 -%}
+{{ns_low.endidx}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro low_price_start_time() -%}
+{{get_time_for_idx(low_price_startidx()|trim, false)}}
+{%- endmacro %}
+
+{% macro low_price_end_time() -%}
+{{get_time_for_idx(low_price_endidx()|trim, true)}}
+{%- endmacro %}
+
+{# LOW PRICE - DURATION #}
+{# #################### #}
+{% macro low_price_duration() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+{{low_price_duration_internal(prices_data)}}
+{%- endmacro %}
+
+{% macro low_price_duration_internal(prices_data) -%}
+    {% set price_startidx = low_price_startidx_internal(prices_data)|trim %}
+    {% set price_endidx = low_price_endidx_internal(prices_data)|trim %}
+    {%- if price_startidx != 'None' and price_endidx  != 'None' -%}
+        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+{{hval}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro low_price_duration_in_h(prices_data) -%}
+    {% set price_startidx = low_price_startidx_internal(prices_data)|trim %}
+    {% set price_endidx = low_price_endidx_internal(prices_data)|trim %}
+    {%- if price_startidx != 'None' and price_endidx  != 'None' -%}
+{{(price_endidx|int - price_startidx|int + 1)|round(1)}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro now_in_low() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% set low_price_startidx_ = low_price_startidx_internal(prices_data)|trim %}
+    {% set low_price_endidx_ = low_price_endidx_internal(prices_data)|trim %}
+    {%- if low_price_startidx_ != 'None' and low_price_endidx_  != 'None' -%}
+        {% if low_price_startidx_|int <= now_idx()|int <= low_price_endidx_|int -%}
+{{'on'}}
+        {%- else -%}
+{{'off'}}
+        {%- endif -%}
+    {%- else -%}
+{{'off'}}
+    {%- endif -%}
+{%- endmacro %}
+
+{# MIN PRICE STUFF  #}
+{# ################ #}
+{% macro min_price_minmax_index_internal() -%}
+{% set val = states(tibb_prices_rest_sensor)|lower %}
+{% if val not in ['unknown', 'none', 'unavailable'] -%}
+    {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+{%- else -%}
+    {% set prices_data = [] %}
+{%- endif %}
+{{min_price_minmax_index_internal2(prices_data)}}
+{%- endmacro %}
+
+{% macro min_price_minmax_index_internal2(prices_data) -%}
+    {% set val = storage_full_charge_duration_in_h()|trim %}
+    {%- if val != 'None' -%}
+        {% set storage_full_charge_duration_in_h_intern = val|float %}
+    {%- else -%}
+        {% set storage_full_charge_duration_in_h_intern = 0 %}
+    {%- endif -%}
+
+    {% set low_price_duration_intern = low_price_duration_in_h(prices_data)|trim %}
+    {# ...and storage_full_charge_duration_in_h_intern < (low_price_duration-1) #}
+    {# skip the check, if the possible window is large enough that the storage can be fully loaded #}
+    {%- if low_price_duration_intern != 'None' and low_price_duration_intern|float > 0 and storage_full_charge_duration_in_h_intern > 0 -%}
+        {% set ns_pmin = namespace(startidx=99, endidx=-1) %}
+        {% set si = now_idx()|int%}
+        {% set ei = now_max(prices_data|length)|int%}
+        {% set min_price = min(prices_data[si:ei]) %}
+        {% set min_price_idx = si + prices_data[si:ei].index(min_price) %}
+        {% set ns_pmin.startidx = min_price_idx %}
+        {% set ns_pmin.endidx = min_price_idx %}
+        {%- for i in range(1, chk_hours) -%}
+            {% set lowidx = max(0, ns_pmin.startidx - 1) %}
+            {% set highidx = min(ns_pmin.endidx + 1, (prices_data|length) - 1) %}
+            {# 'before price' and 'after price' are the same... we can step in both directions #}
+            {%- if prices_data[lowidx] == prices_data[highidx] -%}
+                {% set ns_pmin.startidx = lowidx %}
+                {% set ns_pmin.endidx = highidx %}
+            {# the 'before price' is larger then 'after price' #}
+            {%- elif (prices_data[lowidx] > prices_data[highidx] and highidx != prices_data|length - 1) or (ns_pmin.startidx == lowidx and lowidx == 0) -%}
+                {% set ns_pmin.endidx = highidx %}
+            {%- else -%}
+                {% set ns_pmin.startidx = lowidx %}
+            {%- endif -%}
+            {# have in mind if a index is selected (in range) then it will run for 1 hour... so if we have #}
+            {# a index delta of 2, then the time difference will be 3 hours! #}
+            {%- if (ns_pmin.endidx - ns_pmin.startidx) + 1 >= storage_full_charge_duration_in_h_intern -%}
+                {% break %}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if ns_pmin.endidx != ns_pmin.startidx -%}
+{{ns_pmin.startidx}}{{'@'}}{{ns_pmin.endidx}}
+        {%- else -%}
+{{None}}
+        {%- endif -%}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro min_price_startidx() -%}
+    {% set min_prices_data = min_price_minmax_index_internal()|trim %}
+    {%- if min_prices_data != 'None' -%}
+        {% set min_prices = min_prices_data.split('@') %}
+{{min_prices[0]|int}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro min_price_endidx() -%}
+    {% set min_prices_data = min_price_minmax_index_internal()|trim %}
+    {%- if min_prices_data != 'None' -%}
+        {% set min_prices = min_prices_data.split('@') %}
+        {{min_prices[1]|int}}
+    {%- else -%}
+        {{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro min_price_start_time() -%}
+{{get_time_for_idx(min_price_startidx()|trim, false)}}
+{%- endmacro %}
+
+{% macro min_price_end_time() -%}
+{{get_time_for_idx(min_price_endidx()|trim, true)}}
+{%- endmacro %}
+
+{% macro min_price_duration() -%}
+    {% set x_prices_data = min_price_minmax_index_internal()|trim %}
+    {%- if x_prices_data != 'None' -%}
+        {% set x_prices = x_prices_data.split('@') %}
+        {% set price_startidx = x_prices[0]|int %}
+        {% set price_endidx = x_prices[1]|int %}
+        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+{{hval}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro now_in_min() -%}
+    {% set min_prices_data = min_price_minmax_index_internal()|trim %}
+    {%- if min_prices_data != 'None' -%}
+        {% set min_prices = min_prices_data.split('@') %}
+        {% set min_price_startidx_ = min_prices[0]|int %}
+        {% set min_price_endidx_ = min_prices[1]|int %}
+        {% if min_price_startidx_ <= now_idx()|int <= min_price_endidx_ -%}
+{{'on'}}
+        {%- else -%}
+{{'off'}}
+        {%- endif -%}
+    {%- else -%}
+{{'off'}}
+    {%- endif -%}
+{%- endmacro %}
+
+{# MAX PRICE STUFF  #}
+{# ################ #}
+{% macro max_price_minmax_index_internal() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+{{max_price_minmax_index_internal2(prices_data, -1, 0)}}
+{%- endmacro %}
+
+{% macro max_price_minmax_index_internal2(prices_data, start_idx, energy_addon_hours) -%}
+    {% set start_max_energy_duration = max_energy_duration_in_h()|trim|float %}
+    {% if energy_addon_hours > 0 -%}
+        {% set final_max_energy_duration = min(storage_capacity/kw_per_hour_average + remain_prod_energy()|float, start_max_energy_duration +  energy_addon_hours|float) %}
+    {%- else -%}
+        {% set final_max_energy_duration = start_max_energy_duration|float %}
+    {%- endif %}
+
+    {% if start_idx|int > -1 -%}
+        {% set si = min(start_idx|int, prices_data|length - 1) %}
+        {% set ei = prices_data|length %}
+    {%- else -%}
+        {% set si = now_idx()|int%}
+        {% set ei = now_max(prices_data|length)|int %}
+    {%- endif %}
+
+    {% set max_energy_duration_h = final_max_energy_duration|round(0) %}
+    {% if max_energy_duration_h > 0 -%}
+        {% set max_price = max(prices_data[si:ei]) %}
+        {% set max_price_idx = si + prices_data[si:ei].index(max_price) %}
+        {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
+        {% set ns_pmax.startidx = max_price_idx %}
+        {% set ns_pmax.endidx = max_price_idx %}
+        {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
+        {%- for i in range(1, max(max_energy_duration_h, chk_hours))-%}
+            {% set lowidx = max(0, ns_pmax.startidx - 1) %}
+            {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
+            {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
+            {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
+            {%- if (ns_pmax.endidx - ns_pmax.startidx) + 1 >= final_max_energy_duration -%}
+                {% break %}
+            {%- endif -%}
+            {%- if prices_data[lowidx] == prices_data[highidx] -%}
+                {%- if not isLowCheaper -%}
+                    {% set ns_pmax.startidx = lowidx %}
+                {%- endif -%}
+                {%- if not isHighCheaper -%}
+                    {% set ns_pmax.endidx = highidx %}
+                {%- endif -%}
+            {%- elif prices_data[lowidx] > prices_data[highidx] -%}
+                {%- if not isLowCheaper -%}
+                    {% set ns_pmax.startidx = lowidx %}
+                {%- endif -%}
+            {%- else -%}
+                {%- if not isHighCheaper -%}
+                    {% set ns_pmax.endidx = highidx %}
+                {%- endif -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
+{{ns_pmax.startidx}}{{'@'}}{{ns_pmax.endidx}}
+        {%- else -%}
+{{None}}
+        {%- endif -%}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro max_price_startidx() -%}
+    {% set max_prices_data = max_price_minmax_index_internal()|trim %}
+    {%- if max_prices_data != 'None' -%}
+        {% set max_prices = max_prices_data.split('@') %}
+{{max_prices[0]|int}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro max_price_endidx() -%}
+    {% set max_prices_data = max_price_minmax_index_internal()|trim %}
+    {%- if max_prices_data != 'None' -%}
+        {% set max_prices = max_prices_data.split('@') %}
+{{max_prices[1]|int}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro max_price_start_time() -%}
+{{get_time_for_idx(max_price_startidx()|trim, false)}}
+{%- endmacro %}
+
+{% macro max_price_end_time() -%}
+{{get_time_for_idx(max_price_endidx()|trim, true)}}
+{%- endmacro %}
+
+{% macro max_price_duration() -%}
+    {% set x_prices_data = max_price_minmax_index_internal()|trim %}
+    {%- if x_prices_data != 'None' -%}
+        {% set x_prices = x_prices_data.split('@') %}
+        {% set price_startidx = x_prices[0]|int %}
+        {% set price_endidx = x_prices[1]|int %}
+        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+{{hval}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro now_in_max() -%}
+    {% set x_prices_data = max_price_minmax_index_internal()|trim %}
+    {%- if x_prices_data != 'None' -%}
+        {% set x_prices = x_prices_data.split('@') %}
+        {% set price_startidx = x_prices[0]|int %}
+        {% set price_endidx = x_prices[1]|int %}
+        {% if price_startidx <= now_idx()|int <= price_endidx -%}
+{{'on'}}
+        {%- else -%}
+{{'off'}}
+        {%- endif -%}
+    {%- else -%}
+{{'off'}}
+    {%- endif -%}
+{%- endmacro %}
+
+{# MAX (ENERGY INDEPENDENT) PRICE STUFF  #}
+{# ##################################### #}
+{% macro max_price_energy_independent_minmax_index_internal() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {%- if prices_data|length > 0 -%}
+        {% set si = now_idx()|int%}
+        {% set ei = prices_data|length %}
+        {% set max_price = max(prices_data[si:ei]) %}
+        {% set max_price_idx = si + prices_data[si:ei].index(max_price) %}
+        {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
+        {% set ns_pmax.startidx = max_price_idx %}
+        {% set ns_pmax.endidx = max_price_idx %}
+        {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
+        {%- for i in range(0, prices_data|length)-%}
+            {% set lowidx = max(0, ns_pmax.startidx - 1) %}
+            {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
+            {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
+            {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
+            {%- if prices_data[lowidx] == prices_data[highidx] -%}
+                {%- if not isLowCheaper -%}
+                    {% set ns_pmax.startidx = lowidx %}
+                {%- endif -%}
+                {%- if not isHighCheaper -%}
+                    {% set ns_pmax.endidx = highidx %}
+                {%- endif -%}
+            {%- elif prices_data[lowidx] > prices_data[highidx] -%}
+                {%- if not isLowCheaper -%}
+                    {% set ns_pmax.startidx = lowidx %}
+                {%- endif -%}
+            {%- else -%}
+                {%- if not isHighCheaper -%}
+                    {% set ns_pmax.endidx = highidx %}
+                {%- endif -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
+{{ns_pmax.startidx}}{{'@'}}{{ns_pmax.endidx}}
+        {%- else -%}
+{{None}}
+        {%- endif -%}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro max_price_energy_independent_startidx() -%}
+    {% set max_prices_data = max_price_energy_independent_minmax_index_internal()|trim %}
+    {%- if max_prices_data != 'None' -%}
+        {% set max_prices = max_prices_data.split('@') %}
+{{max_prices[0]|int}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro max_price_energy_independent_endidx() -%}
+    {% set max_prices_data = max_price_energy_independent_minmax_index_internal()|trim %}
+    {%- if max_prices_data != 'None' -%}
+        {% set max_prices = max_prices_data.split('@') %}
+{{max_prices[1]|int}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro max_price_energy_independent_start_time() -%}
+{{get_time_for_idx(max_price_energy_independent_startidx()|trim, false)}}
+{%- endmacro %}
+
+{% macro max_price_energy_independent_end_time() -%}
+{{get_time_for_idx(max_price_energy_independent_endidx()|trim, true)}}
+{%- endmacro %}
+
+{% macro max_price_energy_independent_duration() -%}
+    {% set x_prices_data = max_price_energy_independent_minmax_index_internal()|trim %}
+    {%- if x_prices_data != 'None' -%}
+        {% set x_prices = x_prices_data.split('@') %}
+        {% set price_startidx = x_prices[0]|int %}
+        {% set price_endidx = x_prices[1]|int %}
+        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+{{hval}}
+    {%- else -%}
+{{None}}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro now_in_max_energy_independent() -%}
+    {% set x_prices_data = max_price_energy_independent_minmax_index_internal()|trim %}
+    {%- if x_prices_data != 'None' -%}
+        {% set x_prices = x_prices_data.split('@') %}
+        {% set price_startidx = x_prices[0]|int %}
+        {% set price_endidx = x_prices[1]|int %}
+        {% if price_startidx <= now_idx()|int <= price_endidx -%}
+{{'on'}}
+        {%- else -%}
+{{'off'}}
+        {%- endif -%}
+    {%- else -%}
+{{'off'}}
+    {%- endif -%}
+{%- endmacro %}
+
+{# COST & SAVING STUFF  #}
+{# #################### #}
+{% macro storage_charging_overhead_cost() -%}
+    {#  calculating the loss cost we have while charging the storage #}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+        {% set min_prices_data = min_price_minmax_index_internal2(prices_data)|trim %}
+        {% if min_prices_data != 'None' -%}
+            {% set min_prices = min_prices_data.split('@') %}
+            {% set min_price_startidx_ = min_prices[0]|int %}
+            {% set min_price_endidx_ = min_prices[1]|int %}
+            {% set cost = namespace(sum = 0) %}
+            {% for pindex in range(min_price_startidx_, min_price_endidx_) -%}
+                {% set cost.sum = cost.sum + (prices_data[pindex] * storage_charging_loss_per_hour) %}
+            {%- endfor  %}
+{{cost.sum}}
+        {%- else -%}
+{{None}}
+        {%- endif %}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro storage_charging_cost() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+        {# we calculate the duration of the expected next charging #}
+        {% set a_prices_data = min_price_minmax_index_internal2(prices_data)|trim %}
+        {% if a_prices_data != 'None' -%}
+            {% set a_prices = a_prices_data.split('@') %}
+            {% set a_price_startidx = a_prices[0]|int %}
+            {% set a_price_endidx = a_prices[1]|int %}
+
+            {% if a_price_startidx < a_price_endidx -%}
+{{storage_charging_cost_internal(prices_data, a_price_startidx, a_price_endidx) }}
+            {%- else -%}
+{{None}}
+            {%- endif %}
+        {%- else -%}
+{{None}}
+        {%- endif %}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro storage_charging_cost_internal(prices_data, min_startidx, min_endidx) -%}
+    {% set cost = namespace(sum = 0) %}
+    {% for pindex in range(min_startidx, min_endidx) -%}
+        {% set cost.sum = cost.sum + ((prices_data[pindex] + kwh_additional_fees) * (storage_charge_rate + storage_charging_loss_per_hour)) %}
+    {%- endfor  %}
+{{cost.sum}}
+{%- endmacro %}
+
+{% macro storage_usage_savings() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+
+        {# we calculate the duration of the expected next charging #}
+        {% set a_prices_data = min_price_minmax_index_internal2(prices_data)|trim %}
+        {% if a_prices_data != 'None' -%}
+            {% set a_prices = a_prices_data.split('@') %}
+            {% set a_price_startidx = a_prices[0]|int %}
+            {% set a_price_endidx = a_prices[1]|int %}
+
+            {% if a_price_startidx < a_price_endidx -%}
+                {% set storage_charging_duration = 1 + a_price_endidx -  a_price_startidx %}
+                {% set storage_charging_cost = storage_charging_cost_internal(prices_data, a_price_startidx, a_price_endidx)|float %}
+                {% set max_price_start_index = a_price_endidx + 1 %}
+            {%- else -%}
+                {% set storage_charging_duration = 0 %}
+                {% set storage_charging_cost = 0 %}
+                {% set max_price_start_index = now_idx()|int %}
+            {%- endif %}
+        {%- else -%}
+            {% set storage_charging_duration = 0 %}
+            {% set storage_charging_cost = 0 %}
+            {% set max_price_start_index = now_idx()|int %}
+        {%- endif %}
+
+        {# finally the total amount of time we can use the storage (once it's loaded)... #}
+        {% set loaded_storage_usage_duration = min(storage_capacity, storage_charging_duration * storage_charge_rate) / kw_per_hour_average %}
+
+        {% set max_prices_data = max_price_minmax_index_internal2(prices_data, max_price_start_index, loaded_storage_usage_duration)|trim %}
+        {% if max_prices_data != 'None' -%}
+
+            {% set max_prices = max_prices_data.split('@') %}
+            {% set mx_price_startidx = max_prices[0]|int %}
+            {% set mx_price_endidx = max_prices[1]|int %}
+
+            {% set final_max_energy_duration = min((storage_capacity/kw_per_hour_average)|float, max_energy_duration_in_h()|trim|float + loaded_storage_usage_duration|float) %}
+
+            {% set high_period_cost = namespace(sum = 0, count = 0) %}
+            {% for pindex in range(mx_price_startidx, mx_price_endidx) -%}
+                {% if high_period_cost.count > final_max_energy_duration -%}
+                    {% break %}
+                {%- endif %}
+                {% set high_period_cost.sum = high_period_cost.sum + ((prices_data[pindex]|float + kwh_additional_fees) * kw_per_hour_average) %}
+                {% set high_period_cost.count = high_period_cost.count + 1 %}
+            {%- endfor  %}
+
+            {# if the energy was not fully used in the max-price phase, then we must add the remaining number of #}
+            {# hours (as potential savings...) - not so sure what price should be used for the calc?! #}
+            {% if high_period_cost.count < final_max_energy_duration|float -%}
+                {% set additional_hours = final_max_energy_duration|float - high_period_cost.count|float %}
+                {% set the_avg_price = avgprice_min_internal(max_prices_data)|float + kwh_additional_fees %}
+                {% set high_period_cost.sum = high_period_cost.sum + the_avg_price * additional_hours %}
+            {%- endif %}
+
+{{high_period_cost.sum - storage_charging_cost}}
+        {%- else -%}
+{{None}}
+        {%- endif %}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro update_data() -%}
+    {{now()}}
+{%- endmacro %}
