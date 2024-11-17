@@ -1,6 +1,5 @@
 # https://www.home-assistant.io/integrations/template
 # https://www.home-assistant.io/docs/configuration/templating/
-# https://community.home-assistant.io/t/global-template-variables/367611/4
 
 template:
   - trigger:
@@ -22,7 +21,7 @@ template:
         device_class: timestamp
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {{i.trigger_test()|as_datetime}}
+          {{i.update_data()|as_datetime}}
 
       - name: "POW average price all"
         unique_id: pow_avg_price_all
@@ -30,10 +29,10 @@ template:
         unit_of_measurement: "€/kWh"
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {% if i.tibb_avg_price is not none %}
-          {{average(i.prices_data, i.tibb_avg_price)|round(4)}}
-          {% else %}
+          {% if i.prices_data|length > 0 %}
           {{average(i.prices_data)|round(4)}}
+          {% else %}
+          {{'None'}}
           {% endif %}
 
       - name: "POW average price Tibber"
@@ -42,7 +41,11 @@ template:
         unit_of_measurement: "€/kWh"
         state: >
           {% import 'pow_vars.jinja' as i %}
+          {% if i.tibb_avg_price is not none %}
           {{i.tibb_avg_price}}
+          {% else %}
+          {{'None'}}
+          {% endif %}
 
       - name: "POW average price from now"
         unique_id: pow_avg_price_from_now
