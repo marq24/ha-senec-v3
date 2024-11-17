@@ -71,10 +71,10 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -103,10 +103,10 @@ template:
             {% set times_data = [] %}
           {%- endif %}
           
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -120,10 +120,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, now_max) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.startidx = min(i, ns_low.startidx)  %}
+                  {% set ns_low.startidx = min(i, ns_low.startidx) %}
               {%- elif ns_low.startidx == 99 -%}
               {%- else -%}
                   {% break %}
@@ -150,10 +150,10 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -167,10 +167,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, prices_data|length) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.endidx = max(i, ns_low.endidx)  %}
+                  {% set ns_low.endidx = max(i, ns_low.endidx) %}
               {%- elif ns_low.endidx == -1 -%}
               {%- else -%}
                   {% break %}
@@ -197,10 +197,10 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -214,10 +214,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, now_max) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.startidx = min(i, ns_low.startidx)  %}
+                  {% set ns_low.startidx = min(i, ns_low.startidx) %}
               {%- elif ns_low.startidx == 99 -%}
               {%- else -%}
                   {% break %}
@@ -230,7 +230,7 @@ template:
           {%- endif -%}
           {%- for i in range(now_idx, prices_data|length) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.endidx = max(i, ns_low.endidx)  %}
+                  {% set ns_low.endidx = max(i, ns_low.endidx) %}
               {%- elif ns_low.endidx == -1 -%}
               {%- else -%}
                   {% break %}
@@ -270,14 +270,14 @@ template:
           {%- endif %}
           {%- if accu_soc < i.accu_min_full_soc  -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
-              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1))  %}
+              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None  %}
+              {% set battery_full_charge_duration = None %}
           {%- endif -%}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -291,10 +291,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, now_max) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.startidx = min(i, ns_low.startidx)  %}
+                  {% set ns_low.startidx = min(i, ns_low.startidx) %}
               {%- elif ns_low.startidx == 99 -%}
               {%- else -%}
                   {% break %}
@@ -307,7 +307,7 @@ template:
           {%- endif -%}
           {%- for i in range(now_idx, prices_data|length) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.endidx = max(i, ns_low.endidx)  %}
+                  {% set ns_low.endidx = max(i, ns_low.endidx) %}
               {%- elif ns_low.endidx == -1 -%}
               {%- else -%}
                   {% break %}
@@ -326,21 +326,21 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-              {% set min_price = min(prices_data[now_idx:now_max])  %}
-              {% set min_price_idx = prices_data.index(min_price)  %}
-              {% set ns_pmin.startidx = min_price_idx  %}
-              {% set ns_pmin.endidx = min_price_idx  %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set min_price = min(prices_data[now_idx:now_max]) %}
+              {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
+              {% set ns_pmin.startidx = min_price_idx %}
+              {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
-                  {% set lowidx = max(0, ns_pmin.startidx - 1)  %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx)  %}
+                  {% set lowidx = max(0, ns_pmin.startidx - 1) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- elif prices_data[lowidx] < prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
                   {%- else -%}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- endif -%}
                   {%- if ns_pmin.endidx - ns_pmin.startidx >= battery_full_charge_duration -%}
                       {% break %}
@@ -381,14 +381,14 @@ template:
           {%- endif %}
           {%- if accu_soc < i.accu_min_full_soc  -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
-              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1))  %}
+              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None  %}
+              {% set battery_full_charge_duration = None %}
           {%- endif -%}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -402,10 +402,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, now_max) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.startidx = min(i, ns_low.startidx)  %}
+                  {% set ns_low.startidx = min(i, ns_low.startidx) %}
               {%- elif ns_low.startidx == 99 -%}
               {%- else -%}
                   {% break %}
@@ -418,7 +418,7 @@ template:
           {%- endif -%}
           {%- for i in range(now_idx, prices_data|length) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.endidx = max(i, ns_low.endidx)  %}
+                  {% set ns_low.endidx = max(i, ns_low.endidx) %}
               {%- elif ns_low.endidx == -1 -%}
               {%- else -%}
                   {% break %}
@@ -437,21 +437,21 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-              {% set min_price = min(prices_data[now_idx:now_max])  %}
-              {% set min_price_idx = prices_data.index(min_price)  %}
-              {% set ns_pmin.startidx = min_price_idx  %}
-              {% set ns_pmin.endidx = min_price_idx  %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set min_price = min(prices_data[now_idx:now_max]) %}
+              {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
+              {% set ns_pmin.startidx = min_price_idx %}
+              {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
-                  {% set lowidx = max(0, ns_pmin.startidx - 1)  %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx)  %}
+                  {% set lowidx = max(0, ns_pmin.startidx - 1) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- elif prices_data[lowidx] < prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
                   {%- else -%}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- endif -%}
                   {%- if ns_pmin.endidx - ns_pmin.startidx >= battery_full_charge_duration -%}
                       {% break %}
@@ -492,14 +492,14 @@ template:
           {%- endif %}
           {%- if accu_soc < i.accu_min_full_soc  -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
-              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1))  %}
+              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None  %}
+              {% set battery_full_charge_duration = None %}
           {%- endif -%}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -513,10 +513,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, now_max) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.startidx = min(i, ns_low.startidx)  %}
+                  {% set ns_low.startidx = min(i, ns_low.startidx) %}
               {%- elif ns_low.startidx == 99 -%}
               {%- else -%}
                   {% break %}
@@ -529,7 +529,7 @@ template:
           {%- endif -%}
           {%- for i in range(now_idx, prices_data|length) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.endidx = max(i, ns_low.endidx)  %}
+                  {% set ns_low.endidx = max(i, ns_low.endidx) %}
               {%- elif ns_low.endidx == -1 -%}
               {%- else -%}
                   {% break %}
@@ -548,21 +548,21 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-              {% set min_price = min(prices_data[now_idx:now_max])  %}
-              {% set min_price_idx = prices_data.index(min_price)  %}
-              {% set ns_pmin.startidx = min_price_idx  %}
-              {% set ns_pmin.endidx = min_price_idx  %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set min_price = min(prices_data[now_idx:now_max]) %}
+              {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
+              {% set ns_pmin.startidx = min_price_idx %}
+              {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
-                  {% set lowidx = max(0, ns_pmin.startidx - 1)  %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx)  %}
+                  {% set lowidx = max(0, ns_pmin.startidx - 1) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- elif prices_data[lowidx] < prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
                   {%- else -%}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- endif -%}
                   {%- if ns_pmin.endidx - ns_pmin.startidx >= battery_full_charge_duration -%}
                       {% break %}
@@ -602,7 +602,7 @@ template:
           {%- else -%}
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
-          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3)  %}
+          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
           {% set val = states(i.your_battery_soc_sensor) %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
@@ -610,12 +610,12 @@ template:
               {% set accu_soc = 0|int %}
           {%- endif %}
           {% set accu_energy = (i.accu_capacity_soc_factor * (accu_soc|float))|round(4) %}
-          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3)  %}
-          {% set max_energy_duration_h = max_energy_duration|round(0)  %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3) %}
+          {% set max_energy_duration_h = max_energy_duration|round(0) %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -629,41 +629,41 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set max_price = max(prices_data[now_idx:now_max])  %}
-          {% set max_price_idx = prices_data.index(max_price)  %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-          {% set ns_pmax.startidx = max_price_idx  %}
-          {% set ns_pmax.endidx = max_price_idx  %}
+          {% set max_price = max(prices_data[now_idx:now_max]) %}
+          {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax.startidx = max_price_idx %}
+          {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
-              {% set lowidx = max(0, ns_pmax.startidx - 1)  %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx)  %}
-              {% set isLowCheaper = prices_data[lowidx] < avgprice_min  %}
-              {% set isHighCheaper = prices_data[highidx] < avgprice_min  %}
+              {% set lowidx = max(0, ns_pmax.startidx - 1) %}
+              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
+              {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
                   {% break %}
               {%- endif -%}
               {%- if prices_data[lowidx] == prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- elif prices_data[lowidx] > prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
               {%- else -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- endif -%}
           {%- endfor -%}
           {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
-              {% set max_price_startidx = ns_pmax.startidx  %}
+              {% set max_price_startidx = ns_pmax.startidx %}
               {% set max_price_endidx = ns_pmax.endidx %}
           {%- else -%}
-              {% set max_price_startidx = None  %}
+              {% set max_price_startidx = None %}
               {% set max_price_endidx = None %}
           {%- endif -%}
 
@@ -694,7 +694,7 @@ template:
           {%- else -%}
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
-          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3)  %}
+          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
           {% set val = states(i.your_battery_soc_sensor) %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
@@ -702,12 +702,12 @@ template:
               {% set accu_soc = 0|int %}
           {%- endif %}
           {% set accu_energy = (i.accu_capacity_soc_factor * (accu_soc|float))|round(4) %}
-          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3)  %}
-          {% set max_energy_duration_h = max_energy_duration|round(0)  %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3) %}
+          {% set max_energy_duration_h = max_energy_duration|round(0) %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -721,41 +721,41 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set max_price = max(prices_data[now_idx:now_max])  %}
-          {% set max_price_idx = prices_data.index(max_price)  %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-          {% set ns_pmax.startidx = max_price_idx  %}
-          {% set ns_pmax.endidx = max_price_idx  %}
+          {% set max_price = max(prices_data[now_idx:now_max]) %}
+          {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax.startidx = max_price_idx %}
+          {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
-              {% set lowidx = max(0, ns_pmax.startidx - 1)  %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx)  %}
-              {% set isLowCheaper = prices_data[lowidx] < avgprice_min  %}
-              {% set isHighCheaper = prices_data[highidx] < avgprice_min  %}
+              {% set lowidx = max(0, ns_pmax.startidx - 1) %}
+              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
+              {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
                   {% break %}
               {%- endif -%}
               {%- if prices_data[lowidx] == prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- elif prices_data[lowidx] > prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
               {%- else -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- endif -%}
           {%- endfor -%}
           {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
-              {% set max_price_startidx = ns_pmax.startidx  %}
+              {% set max_price_startidx = ns_pmax.startidx %}
               {% set max_price_endidx = ns_pmax.endidx %}
           {%- else -%}
-              {% set max_price_startidx = None  %}
+              {% set max_price_startidx = None %}
               {% set max_price_endidx = None %}
           {%- endif -%}
 
@@ -786,7 +786,7 @@ template:
           {%- else -%}
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
-          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3)  %}
+          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
           {% set val = states(i.your_battery_soc_sensor) %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
@@ -794,12 +794,12 @@ template:
               {% set accu_soc = 0|int %}
           {%- endif %}
           {% set accu_energy = (i.accu_capacity_soc_factor * (accu_soc|float))|round(4) %}
-          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3)  %}
-          {% set max_energy_duration_h = max_energy_duration|round(0)  %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3) %}
+          {% set max_energy_duration_h = max_energy_duration|round(0) %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -813,41 +813,41 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set max_price = max(prices_data[now_idx:now_max])  %}
-          {% set max_price_idx = prices_data.index(max_price)  %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-          {% set ns_pmax.startidx = max_price_idx  %}
-          {% set ns_pmax.endidx = max_price_idx  %}
+          {% set max_price = max(prices_data[now_idx:now_max]) %}
+          {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax.startidx = max_price_idx %}
+          {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
-              {% set lowidx = max(0, ns_pmax.startidx - 1)  %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx)  %}
-              {% set isLowCheaper = prices_data[lowidx] < avgprice_min  %}
-              {% set isHighCheaper = prices_data[highidx] < avgprice_min  %}
+              {% set lowidx = max(0, ns_pmax.startidx - 1) %}
+              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
+              {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
                   {% break %}
               {%- endif -%}
               {%- if prices_data[lowidx] == prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- elif prices_data[lowidx] > prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
               {%- else -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- endif -%}
           {%- endfor -%}
           {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
-              {% set max_price_startidx = ns_pmax.startidx  %}
+              {% set max_price_startidx = ns_pmax.startidx %}
               {% set max_price_endidx = ns_pmax.endidx %}
           {%- else -%}
-              {% set max_price_startidx = None  %}
+              {% set max_price_startidx = None %}
               {% set max_price_endidx = None %}
           {%- endif -%}
           
@@ -870,7 +870,7 @@ template:
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
           {% set home_consumption_remain = (24 - (now().strftime('%H')|int) - 2) * i.kw_per_hour %}
-          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3)  %}
+          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
 
           {{remain_prod_energy}}
 
@@ -902,9 +902,9 @@ template:
           {%- endif %}
           {%- if accu_soc < i.accu_min_full_soc  -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
-              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1))  %}
+              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None  %}
+              {% set battery_full_charge_duration = None %}
           {%- endif -%}
 
           {{battery_full_charge_duration}}
@@ -922,7 +922,7 @@ template:
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
           {% set home_consumption_remain = (24 - (now().strftime('%H')|int) - 2) * i.kw_per_hour %}
-          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3)  %}
+          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
           {% set val = states(i.your_battery_soc_sensor) %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
@@ -953,7 +953,7 @@ template:
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
           {% set home_consumption_remain = (24 - (now().strftime('%H')|int) - 2) * i.kw_per_hour %}
-          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3)  %}
+          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
 
           {%- if accu_need > 0 and (remain_prod_energy) > accu_need -%}
           {{'on'}}
@@ -973,10 +973,10 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -990,10 +990,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, now_max) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.startidx = min(i, ns_low.startidx)  %}
+                  {% set ns_low.startidx = min(i, ns_low.startidx) %}
               {%- elif ns_low.startidx == 99 -%}
               {%- else -%}
                   {% break %}
@@ -1006,7 +1006,7 @@ template:
           {%- endif -%}
           {%- for i in range(now_idx, prices_data|length) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.endidx = max(i, ns_low.endidx)  %}
+                  {% set ns_low.endidx = max(i, ns_low.endidx) %}
               {%- elif ns_low.endidx == -1 -%}
               {%- else -%}
                   {% break %}
@@ -1044,14 +1044,14 @@ template:
           {%- endif %}
           {%- if accu_soc < i.accu_min_full_soc  -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
-              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1))  %}
+              {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None  %}
+              {% set battery_full_charge_duration = None %}
           {%- endif -%}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -1065,10 +1065,10 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set ns_low = namespace(startidx=99, endidx=-1)  %}
+          {% set ns_low = namespace(startidx=99, endidx=-1) %}
           {%- for i in range(now_idx, now_max) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.startidx = min(i, ns_low.startidx)  %}
+                  {% set ns_low.startidx = min(i, ns_low.startidx) %}
               {%- elif ns_low.startidx == 99 -%}
               {%- else -%}
                   {% break %}
@@ -1081,7 +1081,7 @@ template:
           {%- endif -%}
           {%- for i in range(now_idx, prices_data|length) -%}
               {%- if avgprice_min > prices_data[i] -%}
-                  {% set ns_low.endidx = max(i, ns_low.endidx)  %}
+                  {% set ns_low.endidx = max(i, ns_low.endidx) %}
               {%- elif ns_low.endidx == -1 -%}
               {%- else -%}
                   {% break %}
@@ -1100,21 +1100,21 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-              {% set min_price = min(prices_data[now_idx:now_max])  %}
-              {% set min_price_idx = prices_data.index(min_price)  %}
-              {% set ns_pmin.startidx = min_price_idx  %}
-              {% set ns_pmin.endidx = min_price_idx  %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set min_price = min(prices_data[now_idx:now_max]) %}
+              {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
+              {% set ns_pmin.startidx = min_price_idx %}
+              {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
-                  {% set lowidx = max(0, ns_pmin.startidx - 1)  %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx)  %}
+                  {% set lowidx = max(0, ns_pmin.startidx - 1) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- elif prices_data[lowidx] < prices_data[highidx] -%}
-                      {% set ns_pmin.startidx = lowidx  %}
+                      {% set ns_pmin.startidx = lowidx %}
                   {%- else -%}
-                      {% set ns_pmin.endidx = highidx  %}
+                      {% set ns_pmin.endidx = highidx %}
                   {%- endif -%}
                   {%- if ns_pmin.endidx - ns_pmin.startidx >= battery_full_charge_duration -%}
                       {% break %}
@@ -1156,7 +1156,7 @@ template:
           {%- else -%}
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
-          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3)  %}
+          {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
           {% set val = states(i.your_battery_soc_sensor) %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
@@ -1164,12 +1164,12 @@ template:
               {% set accu_soc = 0|int %}
           {%- endif %}
           {% set accu_energy = (i.accu_capacity_soc_factor * (accu_soc|float))|round(4) %}
-          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3)  %}
-          {% set max_energy_duration_h = max_energy_duration|round(0)  %}
-          {% set ns_now = namespace(idx=-1)  %}
+          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3) %}
+          {% set max_energy_duration_h = max_energy_duration|round(0) %}
+          {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
-                  {% set ns_now.idx = max(0, i-1)  %}
+                  {% set ns_now.idx = max(0, i-1) %}
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
@@ -1183,41 +1183,41 @@ template:
               {% set avgprice_ahead = average(prices_data[now_idx:now_max])|round(4) %}
               {% set avgprice_min = avgprice_ahead %}
           {%- endif %}
-          {% set max_price = max(prices_data[now_idx:now_max])  %}
-          {% set max_price_idx = prices_data.index(max_price)  %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length)  %}
-          {% set ns_pmax.startidx = max_price_idx  %}
-          {% set ns_pmax.endidx = max_price_idx  %}
+          {% set max_price = max(prices_data[now_idx:now_max]) %}
+          {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax.startidx = max_price_idx %}
+          {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
-              {% set lowidx = max(0, ns_pmax.startidx - 1)  %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx)  %}
-              {% set isLowCheaper = prices_data[lowidx] < avgprice_min  %}
-              {% set isHighCheaper = prices_data[highidx] < avgprice_min  %}
+              {% set lowidx = max(0, ns_pmax.startidx - 1) %}
+              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
+              {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
                   {% break %}
               {%- endif -%}
               {%- if prices_data[lowidx] == prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- elif prices_data[lowidx] > prices_data[highidx] -%}
                   {%- if not isLowCheaper -%}
-                      {% set ns_pmax.startidx = lowidx  %}
+                      {% set ns_pmax.startidx = lowidx %}
                   {%- endif -%}
               {%- else -%}
                   {%- if not isHighCheaper -%}
-                      {% set ns_pmax.endidx = highidx  %}
+                      {% set ns_pmax.endidx = highidx %}
                   {%- endif -%}
               {%- endif -%}
           {%- endfor -%}
           {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
-              {% set max_price_startidx = ns_pmax.startidx  %}
+              {% set max_price_startidx = ns_pmax.startidx %}
               {% set max_price_endidx = ns_pmax.endidx %}
           {%- else -%}
-              {% set max_price_startidx = None  %}
+              {% set max_price_startidx = None %}
               {% set max_price_endidx = None %}
           {%- endif -%}
           
