@@ -37,7 +37,7 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          
+
           {% if prices_data|length > 0 %}
           {{average(prices_data)|round(4)}}
           {% else %}
@@ -90,8 +90,7 @@ template:
 
       - name: "POW low price start"
         unique_id: pow_low_price_start
-        state_class: measurement
-        unit_of_measurement: "Uhr"
+        device_class: timestamp
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -102,7 +101,7 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          
+
           {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
               {%- if now() < times_data[ i ] -%}
@@ -129,17 +128,16 @@ template:
                   {% break %}
               {%- endif -%}
           {%- endfor -%}
-          
+
           {%- if ns_low.startidx < 99 -%}
-          {{times_data[ns_low.startidx].strftime('%H')|int}}
+          {{times_data[ns_low.startidx]|as_datetime}}
           {%- else -%}
           {{None}}
           {%- endif -%}
 
       - name: "POW low price end"
         unique_id: pow_low_price_end
-        state_class: measurement
-        unit_of_measurement: "Uhr"
+        device_class: timestamp
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -178,15 +176,14 @@ template:
           {%- endfor -%}
 
           {%- if ns_low.endidx > -1 -%}
-          {{times_data[ns_low.endidx].strftime('%H')|int+1}}
+          {{times_data[ns_low.endidx]|as_datetime + timedelta(minutes=59, seconds=59)}}
           {%- else -%}
           {{None}}
           {%- endif -%}
 
       - name: "POW low price duration"
         unique_id: pow_low_price_duration
-        state_class: measurement
-        unit_of_measurement: "h"
+        device_class: duration
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -241,7 +238,7 @@ template:
           {%- else -%}
               {% set low_price_endidx = None %}
           {%- endif -%}
-          
+
           {%- if low_price_endidx is not none and low_price_startidx is not none -%}
           {{ (low_price_endidx - low_price_startidx) + 1|round(0) }}
           {%- else -%}
@@ -250,8 +247,7 @@ template:
 
       - name: "POW cheapest start"
         unique_id: pow_cheapest_start
-        state_class: measurement
-        unit_of_measurement: "Uhr"
+        device_class: timestamp
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -262,17 +258,17 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
               {% set accu_soc = 0|int %}
           {%- endif %}
-          {%- if accu_soc < i.accu_min_full_soc  -%}
+          {%- if accu_soc < i.accu_min_full_soc -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
               {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None %}
+              {% set battery_full_charge_duration = 0 %}
           {%- endif -%}
           {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
@@ -326,14 +322,14 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1) %}
               {% set min_price = min(prices_data[now_idx:now_max]) %}
               {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
               {% set ns_pmin.startidx = min_price_idx %}
               {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
                   {% set lowidx = max(0, ns_pmin.startidx - 1) %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, (prices_data|length) - 1) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
                       {% set ns_pmin.startidx = lowidx %}
                       {% set ns_pmin.endidx = highidx %}
@@ -354,15 +350,14 @@ template:
           {%- endif -%}
 
           {%- if min_price_startidx is not none -%}
-          {{times_data[min_price_startidx].strftime('%H')|int}}
+          {{times_data[min_price_startidx]|as_datetime}}
           {%- else -%}
           {{None}}
           {%- endif -%}
 
       - name: "POW cheapest end"
         unique_id: pow_cheapest_end
-        state_class: measurement
-        unit_of_measurement: "Uhr"
+        device_class: timestamp
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -373,17 +368,17 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
               {% set accu_soc = 0|int %}
           {%- endif %}
-          {%- if accu_soc < i.accu_min_full_soc  -%}
+          {%- if accu_soc < i.accu_min_full_soc -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
               {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None %}
+              {% set battery_full_charge_duration = 0 %}
           {%- endif -%}
           {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
@@ -437,14 +432,14 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1) %}
               {% set min_price = min(prices_data[now_idx:now_max]) %}
               {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
               {% set ns_pmin.startidx = min_price_idx %}
               {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
                   {% set lowidx = max(0, ns_pmin.startidx - 1) %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, (prices_data|length) - 1) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
                       {% set ns_pmin.startidx = lowidx %}
                       {% set ns_pmin.endidx = highidx %}
@@ -465,15 +460,14 @@ template:
           {%- endif -%}
 
           {%- if min_price_endidx is not none -%}
-          {{times_data[min_price_endidx].strftime('%H')|int+1}}
+          {{times_data[min_price_endidx]|as_datetime + timedelta(minutes=59, seconds=59)}}
           {%- else -%}
           {{None}}
           {%- endif -%}
 
       - name: "POW cheapest duration"
         unique_id: pow_cheapest_duration
-        state_class: measurement
-        unit_of_measurement: "h"
+        device_class: duration
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -484,17 +478,17 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
               {% set accu_soc = 0|int %}
           {%- endif %}
-          {%- if accu_soc < i.accu_min_full_soc  -%}
+          {%- if accu_soc < i.accu_min_full_soc -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
               {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None %}
+              {% set battery_full_charge_duration = 0 %}
           {%- endif -%}
           {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
@@ -548,14 +542,14 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1) %}
               {% set min_price = min(prices_data[now_idx:now_max]) %}
               {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
               {% set ns_pmin.startidx = min_price_idx %}
               {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
                   {% set lowidx = max(0, ns_pmin.startidx - 1) %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, (prices_data|length) - 1) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
                       {% set ns_pmin.startidx = lowidx %}
                       {% set ns_pmin.endidx = highidx %}
@@ -583,8 +577,7 @@ template:
 
       - name: "POW high price start"
         unique_id: pow_high_price_start
-        state_class: measurement
-        unit_of_measurement: "Uhr"
+        device_class: timestamp
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -603,7 +596,7 @@ template:
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
           {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
@@ -631,12 +624,12 @@ template:
           {%- endif %}
           {% set max_price = max(prices_data[now_idx:now_max]) %}
           {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
           {% set ns_pmax.startidx = max_price_idx %}
           {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
               {% set lowidx = max(0, ns_pmax.startidx - 1) %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
               {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
               {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
@@ -668,15 +661,14 @@ template:
           {%- endif -%}
 
           {%- if max_price_startidx is not none -%}
-          {{times_data[max_price_startidx].strftime('%H')|int}}
+          {{times_data[max_price_startidx]|as_datetime}}
           {%- else -%}
           {{None}}
           {%- endif -%}
 
       - name: "POW high price end"
         unique_id: pow_high_price_end
-        state_class: measurement
-        unit_of_measurement: "Uhr"
+        device_class: timestamp
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -695,7 +687,7 @@ template:
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
           {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
@@ -723,12 +715,12 @@ template:
           {%- endif %}
           {% set max_price = max(prices_data[now_idx:now_max]) %}
           {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
           {% set ns_pmax.startidx = max_price_idx %}
           {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
               {% set lowidx = max(0, ns_pmax.startidx - 1) %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
               {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
               {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
@@ -760,15 +752,14 @@ template:
           {%- endif -%}
 
           {%- if max_price_endidx is not none -%}
-          {{times_data[max_price_endidx].strftime('%H')|int+1}}
+          {{times_data[max_price_endidx]|as_datetime + timedelta(minutes=59, seconds=59)}}
           {%- else -%}
           {{None}}
           {%- endif -%}
 
       - name: "POW high price duration"
         unique_id: pow_high_price_duration
-        state_class: measurement
-        unit_of_measurement: "h"
+        device_class: duration
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.tibb_prices_rest_sensor)|lower %}
@@ -787,7 +778,7 @@ template:
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
           {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
@@ -815,12 +806,12 @@ template:
           {%- endif %}
           {% set max_price = max(prices_data[now_idx:now_max]) %}
           {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
           {% set ns_pmax.startidx = max_price_idx %}
           {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
               {% set lowidx = max(0, ns_pmax.startidx - 1) %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
               {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
               {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
@@ -850,7 +841,7 @@ template:
               {% set max_price_startidx = None %}
               {% set max_price_endidx = None %}
           {%- endif -%}
-          
+
           {%- if max_price_endidx is not none and max_price_startidx is not none -%}
           {{((max_price_endidx - max_price_startidx) + 1)|round(0)}}
           {% else %}
@@ -880,7 +871,7 @@ template:
         unit_of_measurement: "kWh"
         state: >
           {% import 'powx_const.jinja' as i %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
@@ -890,29 +881,27 @@ template:
 
       - name: "POW battery full charge duration"
         unique_id: pow_battery_full_charge_duration
-        state_class: measurement
-        unit_of_measurement: "h"
+        device_class: duration
         state: >
           {% import 'powx_const.jinja' as i %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
               {% set accu_soc = 0|int %}
           {%- endif %}
-          {%- if accu_soc < i.accu_min_full_soc  -%}
+          {%- if accu_soc < i.accu_min_full_soc -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
               {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None %}
+              {% set battery_full_charge_duration = 0 %}
           {%- endif -%}
 
           {{battery_full_charge_duration}}
 
       - name: "POW available energy duration [Battery + PV (remaining - home usage)]"
         unique_id: pow_available_energy_duration_battery_pv_remaining_home_usage
-        state_class: measurement
-        unit_of_measurement: "h"
+        device_class: duration
         state: >
           {% import 'powx_const.jinja' as i %}
           {% set val = states(i.your_pv_prognose_sensor)|lower %}
@@ -923,15 +912,15 @@ template:
           {%- endif %}
           {% set home_consumption_remain = (24 - (now().strftime('%H')|int) - 2) * i.kw_per_hour %}
           {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
               {% set accu_soc = 0|int %}
           {%- endif %}
           {% set accu_energy = (i.accu_capacity_soc_factor * (accu_soc|float))|round(4) %}
-          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3) %}          
-          
+          {% set max_energy_duration = ((accu_energy + remain_prod_energy) / i.kw_per_hour)|round(3) %}
+
           {{max_energy_duration}}
 
     binary_sensor:
@@ -939,7 +928,7 @@ template:
         unique_id: pow_pv_power_can_fully_load_battery
         state: >
           {% import 'powx_const.jinja' as i %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
@@ -1036,17 +1025,17 @@ template:
             {% set prices_data = [] %}
             {% set times_data = [] %}
           {%- endif %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
               {% set accu_soc = 0|int %}
           {%- endif %}
-          {%- if accu_soc < i.accu_min_full_soc  -%}
+          {%- if accu_soc < i.accu_min_full_soc -%}
               {% set accu_need = (i.accu_capacity - (i.accu_capacity_soc_factor * (accu_soc|float)))|round(4) %}
               {% set battery_full_charge_duration = max(1, (accu_need / i.accu_charge_rate)|round(1)) %}
           {%- else -%}
-              {% set battery_full_charge_duration = None %}
+              {% set battery_full_charge_duration = 0 %}
           {%- endif -%}
           {% set ns_now = namespace(idx=-1) %}
           {%- for i in range(0, times_data|length) -%}
@@ -1100,14 +1089,14 @@ template:
           {# ...and battery_full_charge_duration < (low_price_duration-1) #}
           {# skip the check, if the possible window is large enough that the battery can be fully loaded #}
           {%- if low_price_duration is not none and low_price_duration > 0 and battery_full_charge_duration > 0 -%}
-              {% set ns_pmin = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+              {% set ns_pmin = namespace(startidx=99, endidx=-1) %}
               {% set min_price = min(prices_data[now_idx:now_max]) %}
               {% set min_price_idx = now_idx + prices_data[now_idx:now_max].index(min_price) %}
               {% set ns_pmin.startidx = min_price_idx %}
               {% set ns_pmin.endidx = min_price_idx %}
               {%- for i in range(1, i.chk_hours) -%}
                   {% set lowidx = max(0, ns_pmin.startidx - 1) %}
-                  {% set highidx = min(ns_pmin.endidx + 1, ns_pmin.maxidx) %}
+                  {% set highidx = min(ns_pmin.endidx + 1, (prices_data|length) - 1) %}
                   {%- if prices_data[lowidx] == prices_data[highidx] -%}
                       {% set ns_pmin.startidx = lowidx %}
                       {% set ns_pmin.endidx = highidx %}
@@ -1157,7 +1146,7 @@ template:
               {% set pv_production_remain = 0.0|float %}
           {%- endif %}
           {% set remain_prod_energy = max(0, pv_production_remain - home_consumption_remain)|round(3) %}
-          {% set val = states(i.your_battery_soc_sensor) %}
+          {% set val = states(i.your_battery_soc_sensor)|lower %}
           {% if val not in ['unknown', 'none', 'unavailable'] -%}
               {% set accu_soc = val|int %}
           {%- else -%}
@@ -1185,12 +1174,12 @@ template:
           {%- endif %}
           {% set max_price = max(prices_data[now_idx:now_max]) %}
           {% set max_price_idx = now_idx + prices_data[now_idx:now_max].index(max_price) %}
-          {% set ns_pmax = namespace(startidx=99, endidx=-1, maxidx=prices_data|length) %}
+          {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
           {% set ns_pmax.startidx = max_price_idx %}
           {% set ns_pmax.endidx = max_price_idx %}
           {%- for i in range(1, max(max_energy_duration_h, i.chk_hours))-%}
               {% set lowidx = max(0, ns_pmax.startidx - 1) %}
-              {% set highidx = min(ns_pmax.endidx + 1, ns_pmax.maxidx) %}
+              {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
               {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
               {% set isHighCheaper = prices_data[highidx] < avgprice_min %}
               {%- if (ns_pmax.endidx - ns_pmax.startidx >= max_energy_duration) -%}
@@ -1220,7 +1209,7 @@ template:
               {% set max_price_startidx = None %}
               {% set max_price_endidx = None %}
           {%- endif -%}
-          
+
           {%- if max_price_endidx is not none and max_price_startidx is not none -%}
             {%- if max_price_startidx <= now_idx <= max_price_endidx -%}
           {{'on'}}
