@@ -1,10 +1,33 @@
+{% set tibb_prices_rest_sensor = 'sensor.tibber_prices' %}
+{% set your_tibber_home_sensor = 'sensor.electricity_price_mmphome' %}
+{% set your_pv_prognose_sensor = 'sensor.energy_production_today_remaining_sum' %}
+{% set your_storage_soc_sensor = 'sensor.senec_battery_charge_percent' %}
+
 {# hours to look ahead for all our calculations #}
 {% set chk_hours = "12"|int %}
+
+{# the average home consumption per hour in kW/h #}
+{% set kw_per_hour_average = "1.225"|float %}
+{% set kw_per_hour_day = "1.5"|float %}
+{% set kw_per_hour_night = "0.4"|float %}
+{% set day_start = "5"|int %}
+{% set day_end = "22"|int %}
 
 {# the capacity of the home storage in kW/h #}
 {% set storage_capacity = "12"|int %}
 
-{# additional costs per kW/h in € #}
+{# the state of charge of the storage in percent that be considered as full #}
+{% set storage_min_full_soc = "95"|int %}
+
+{# the increment in one hour of 'storage charging' (from the network) in kW/h #}
+{% set storage_charge_rate = "2.04"|float %}
+
+{# loss while charging the storage in kWh (SOC increment vs energy used to charge) #}
+{# In one hour the storage is charged with 2.04kWh, but during charging the storage #}
+{# consume 2.38kWh. - so we have a loss of 0.34kWh per hour #}
+{% set storage_charging_loss_per_hour = "0.34"|float %}
+
+{# additional costs per kW/h in € (if not already included!) #}
 {# Weitere Beschaffungskosten (s. §4 AGB)   1,81 ct/kWh #}
 {# Netznutzungsentgelt (variabel)          10,02 ct/kWh #}
 {# Konzessionsabgabe                        1,59 ct/kWh #}
@@ -15,30 +38,13 @@
 {# set kwh_additional_fees = "0.17044"|float  #}
 {% set kwh_additional_fees = "0"|float %}
 
-{# the state of charge of the storage in percent that be considered as full #}
-{% set storage_min_full_soc = "95"|int %}
-
-{# the incremental in one hour of storage charging (from the network) in kW/h #}
-{% set storage_charge_rate = "2.04"|float %}
-
-{# loss while charging the storage in kWh (SOC increment vs energy used to charge) #}
-{# In one hour the storage is charged with 2.04kWh, but during charging the storage #}
-{# consume 2.38kWh. - so we have a loss of 0.34kWh per hour #}
-{% set storage_charging_loss_per_hour = "0.34"|float %}
-
-{# the average home consumption per hour in kW/h #}
-{% set kw_per_hour = "0.75"|float %}
-
 {# the price delta between min and max price during the day in € (per kW/h) #}
 {% set min_price_delta = "0.05"|float %}
 
-{% set tibb_prices_rest_sensor = 'sensor.tibber_prices' %}
-{% set your_tibber_home_sensor = 'sensor.electricity_price_mmphome' %}
-{% set your_pv_prognose_sensor = 'sensor.energy_production_today_remaining_sum' %}
-{% set your_storage_soc_sensor = 'sensor.senec_battery_charge_percent' %}
-
 {# ############################ #}
 {# END-OF-CONFIGURATION-OPTIONS #}
+{# ############################ #}
+{# DO NOT EDIT BELOW THIS LINE  #}
 {# ############################ #}
 {% set storage_capacity_soc_factor = (storage_capacity/100)|float|round(4) %}
 
@@ -61,7 +67,30 @@
 {%- endmacro %}
 
 {% macro home_consumption_remain() -%}
-{{((24 - (now().strftime('%H')|int) - 2) * kw_per_hour)|float}}
+    {% set nowi = now().strftime('%H')|int %}
+    {% set morning_hours = day_start - 1 %}
+    {% set night_hours = 24 - day_end %}
+    {% set day_hours = 24 - morning_hours - night_hours%}
+    {% if nowi < day_start -%}
+        {# early morning #}
+{{(morning_hours - nowi) * kw_per_hour_night + day_hours * kw_per_hour_day + night_hours * kw_per_hour_night}}
+    {% elif nowi >= day_end -%}
+        {# rest of the night (morning_hours + day_hours + night_hours = 24)#}
+{{(24 - nowi) * kw_per_hour_night}}
+    {%- else -%}
+        {# normal daytime #}
+{{(morning_hours + day_hours - nowi) * kw_per_hour_day + night_hours * kw_per_hour_night}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro kwh_per_time(nowi) -%}
+    {% if nowi < day_start or nowi >= day_end -%}
+        {# early morning or rest of the night#}
+{{kw_per_hour_night}}
+    {%- else -%}
+        {# normal daytime #}
+{{kw_per_hour_day}}
+    {%- endif %}
 {%- endmacro %}
 
 {% macro storage_soc() -%}
@@ -103,7 +132,31 @@
 {%- endmacro %}
 
 {% macro max_energy_duration_in_h() -%}
-{{((storage_energy()|float + remain_prod_energy()|float) / kw_per_hour)}}
+    {# old/simple calculation #}
+    {# ((storage_energy()|float + remain_prod_energy()|float) / kw_per_hour_average #}
+    {% set available_energy = storage_energy()|float + remain_prod_energy()|float %}
+    {% set calc = namespace( consumed = 0, nowi = now().strftime('%H')|int, fallback = True) %}
+    {% for h in range(0, 255) -%}
+        {% set next_hour_energy = kwh_per_time(calc.nowi)|float %}
+        {% set calc.consumed = calc.consumed + next_hour_energy %}
+        {% if calc.consumed > available_energy -%}
+            {# ok we do not have that much energy left... let's calculate the remaining fraction#}
+            {% set remain_available_energy = available_energy - (calc.consumed - next_hour_energy) %}
+{{(h|float + remain_available_energy/next_hour_energy)|round(4)}}
+            {% set calc.fallback = False %}
+            {% break %}
+        {%- endif %}
+        {# let the clock make a step ahead and make sure we pass the 24'h line #}
+        {% set calc.nowi = calc.nowi + 1 %}
+        {% if calc.nowi > 24 -%}
+            {% set calc.nowi = 0 %}
+        {%- endif %}
+    {%- endfor %}
+{# when we run through the complete for loop without reaching the available energy, then there must be #}
+{# something wrong with the energy consumption per hour - so we fall back to the simple calc #}
+    {% if calc.fallback -%}
+{{(available_energy/kw_per_hour_average)|round(4)}}
+    {%- endif %}
 {%- endmacro %}
 
 {% macro tibb_avg_price() -%}
@@ -363,13 +416,15 @@
         {%- for i in range(1, chk_hours) -%}
             {% set lowidx = max(0, ns_pmin.startidx - 1) %}
             {% set highidx = min(ns_pmin.endidx + 1, (prices_data|length) - 1) %}
+            {# 'before price' and 'after price' are the same... we can step in both directions #}
             {%- if prices_data[lowidx] == prices_data[highidx] -%}
                 {% set ns_pmin.startidx = lowidx %}
                 {% set ns_pmin.endidx = highidx %}
-            {%- elif prices_data[lowidx] < prices_data[highidx] -%}
-                {% set ns_pmin.startidx = lowidx %}
-            {%- else -%}
+            {# the 'before price' is larger then 'after price' #}
+            {%- elif (prices_data[lowidx] > prices_data[highidx] and highidx != prices_data|length - 1) or (ns_pmin.startidx == lowidx and lowidx == 0) -%}
                 {% set ns_pmin.endidx = highidx %}
+            {%- else -%}
+                {% set ns_pmin.startidx = lowidx %}
             {%- endif -%}
             {# have in mind if a index is selected (in range) then it will run for 1 hour... so if we have #}
             {# a index delta of 2, then the time difference will be 3 hours! #}
@@ -453,21 +508,22 @@
     {%- else -%}
         {% set prices_data = [] %}
     {%- endif %}
-{{max_price_minmax_index_internal2(prices_data, False, 0)}}
+{{max_price_minmax_index_internal2(prices_data, -1, 0)}}
 {%- endmacro %}
 
-{% macro max_price_minmax_index_internal2(prices_data, look_ahead_full, energy_addon_hours) -%}
-    {% set start_max_energy_duration = max_energy_duration_in_h()|float %}
+{% macro max_price_minmax_index_internal2(prices_data, start_idx, energy_addon_hours) -%}
+    {% set start_max_energy_duration = max_energy_duration_in_h()|trim|float %}
     {% if energy_addon_hours > 0 -%}
-        {% set final_max_energy_duration = min(storage_capacity/kw_per_hour + remain_prod_energy()|float, start_max_energy_duration +  energy_addon_hours|float) %}
+        {% set final_max_energy_duration = min(storage_capacity/kw_per_hour_average + remain_prod_energy()|float, start_max_energy_duration +  energy_addon_hours|float) %}
     {%- else -%}
         {% set final_max_energy_duration = start_max_energy_duration|float %}
     {%- endif %}
 
-    {% set si = now_idx()|int%}
-    {% if look_ahead_full -%}
+    {% if start_idx|int > -1 -%}
+        {% set si = min(start_idx|int, prices_data|length - 1) %}
         {% set ei = prices_data|length %}
     {%- else -%}
+        {% set si = now_idx()|int%}
         {% set ei = now_max(prices_data|length)|int %}
     {%- endif %}
 
@@ -759,38 +815,39 @@
             {% set a_price_startidx = a_prices[0]|int %}
             {% set a_price_endidx = a_prices[1]|int %}
 
-            {# we must check, if the next min price period will END before the max price #}
-            {# period will start! #}
             {% if a_price_startidx < a_price_endidx -%}
                 {% set storage_charging_duration = 1 + a_price_endidx -  a_price_startidx %}
                 {% set storage_charging_cost = storage_charging_cost_internal(prices_data, a_price_startidx, a_price_endidx)|float %}
+                {% set max_price_start_index = a_price_endidx + 1 %}
             {%- else -%}
                 {% set storage_charging_duration = 0 %}
                 {% set storage_charging_cost = 0 %}
+                {% set max_price_start_index = now_idx()|int %}
             {%- endif %}
         {%- else -%}
             {% set storage_charging_duration = 0 %}
             {% set storage_charging_cost = 0 %}
+            {% set max_price_start_index = now_idx()|int %}
         {%- endif %}
 
         {# finally the total amount of time we can use the storage (once it's loaded)... #}
-        {% set loaded_storage_usage_duration = min(storage_capacity, storage_charging_duration * storage_charge_rate) / kw_per_hour %}
+        {% set loaded_storage_usage_duration = min(storage_capacity, storage_charging_duration * storage_charge_rate) / kw_per_hour_average %}
 
-        {% set max_prices_data = max_price_minmax_index_internal2(prices_data, True, loaded_storage_usage_duration)|trim %}
+        {% set max_prices_data = max_price_minmax_index_internal2(prices_data, max_price_start_index, loaded_storage_usage_duration)|trim %}
         {% if max_prices_data != 'None' -%}
 
             {% set max_prices = max_prices_data.split('@') %}
             {% set mx_price_startidx = max_prices[0]|int %}
             {% set mx_price_endidx = max_prices[1]|int %}
 
-            {% set final_max_energy_duration = min((storage_capacity/kw_per_hour)|float, max_energy_duration_in_h()|float + loaded_storage_usage_duration|float) %}
+            {% set final_max_energy_duration = min((storage_capacity/kw_per_hour_average)|float, max_energy_duration_in_h()|trim|float + loaded_storage_usage_duration|float) %}
 
             {% set high_period_cost = namespace(sum = 0, count = 0) %}
             {% for pindex in range(mx_price_startidx, mx_price_endidx) -%}
                 {% if high_period_cost.count > final_max_energy_duration -%}
                     {% break %}
                 {%- endif %}
-                {% set high_period_cost.sum = high_period_cost.sum + ((prices_data[pindex]|float + kwh_additional_fees) * kw_per_hour) %}
+                {% set high_period_cost.sum = high_period_cost.sum + ((prices_data[pindex]|float + kwh_additional_fees) * kw_per_hour_average) %}
                 {% set high_period_cost.count = high_period_cost.count + 1 %}
             {%- endfor  %}
 
