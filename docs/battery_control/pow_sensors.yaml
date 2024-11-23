@@ -159,24 +159,24 @@ template:
           {% import 'pow_vars.jinja' as i %}
           {{i.remain_prod_energy}}
 
-      - name: "POW battery full charge required energy"
-        unique_id: pow_battery_full_charge_required_energy
+      - name: "POW storage full charge required energy"
+        unique_id: pow_storage_full_charge_required_energy
         state_class: measurement
         unit_of_measurement: "kWh"
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {{i.accu_need}}
+          {{i.storage_need}}
 
-      - name: "POW battery full charge duration"
-        unique_id: pow_battery_full_charge_duration
+      - name: "POW storage full charge duration"
+        unique_id: pow_storage_full_charge_duration
         state_class: measurement
         unit_of_measurement: "h"
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {{i.battery_full_charge_duration}}
+          {{i.storage_full_charge_duration}}
 
-      - name: "POW available energy duration [Battery + PV (remaining - home usage)]"
-        unique_id: pow_available_energy_duration_battery_pv_remaining_home_usage
+      - name: "POW available energy duration [storage + PV (remaining - home usage)]"
+        unique_id: pow_available_energy_duration_storage_pv_remaining_home_usage
         state_class: measurement
         unit_of_measurement: "h"
         state: >
@@ -184,11 +184,11 @@ template:
           {{i.max_energy_duration}}
 
     binary_sensor:
-      - name: "POW PV power can fully load battery"
-        unique_id: pow_pv_power_can_fully_load_battery
+      - name: "POW PV power can fully load storage"
+        unique_id: pow_pv_power_can_fully_load_storage
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {%- if i.accu_need > 0 and (i.remain_prod_energy) > i.accu_need -%}
+          {%- if i.storage_need > 0 and (i.remain_prod_energy) > i.storage_need -%}
           {{'on'}}
           {%- else -%}
           {{'off'}}
