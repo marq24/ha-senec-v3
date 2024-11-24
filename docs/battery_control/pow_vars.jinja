@@ -28,10 +28,10 @@
 {% set storage_charging_loss_per_hour = "0.34"|float %}
 
 {# additional costs per kW/h in € (if not already included!) #}
-{# Weitere Beschaffungskosten (s. §4 AGB)   1,81 ct/kWh #}
-{# Netznutzungsentgelt (variabel)          10,02 ct/kWh #}
-{# Konzessionsabgabe                        1,59 ct/kWh #}
-{# Stromsteuer                              2,05 ct/kWh #}
+{# Weitere Beschaffungskosten (s. §4 AGB)   1,81  ct/kWh #}
+{# Netznutzungsentgelt (variabel)          10,02  ct/kWh #}
+{# Konzessionsabgabe                        1,59  ct/kWh #}
+{# Stromsteuer                              2,05  ct/kWh #}
 {# Offshore Wind Umlage                     0,656 ct/kWh #}
 {# KWK Umlage                               0,275 ct/kWh #}
 {# Strom NEV Umlage                         0,643 ct/kWh #}
@@ -254,6 +254,62 @@
 {{min(avgprice_ahead_internal(prices_data)|float, tibb_avg_price()|float)}}
     {%- else -%}
 {{avgprice_ahead_internal(prices_data)}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_min_price_tomorrow() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = state_attr(tibb_prices_rest_sensor, 'tomorrow') | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{min(prices_data)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_max_price_tomorrow() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = state_attr(tibb_prices_rest_sensor, 'tomorrow') | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{max(prices_data)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_price_delta_tomorrow() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = state_attr(tibb_prices_rest_sensor, 'tomorrow') | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{max(prices_data)-min(prices_data)}}
+    {%- else -%}
+{{None}}
+    {%- endif %}
+{%- endmacro %}
+
+{% macro tibb_price_delta_overall() -%}
+    {% set val = states(tibb_prices_rest_sensor)|lower %}
+    {% if val not in ['unknown', 'none', 'unavailable'] -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+    {%- else -%}
+        {% set prices_data = [] %}
+    {%- endif %}
+    {% if prices_data|length > 0 -%}
+{{max(prices_data) - min(prices_data)}}
+    {%- else -%}
+{{None}}
     {%- endif %}
 {%- endmacro %}
 

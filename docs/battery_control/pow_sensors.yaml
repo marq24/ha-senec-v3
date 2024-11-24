@@ -31,8 +31,8 @@ template:
           {% import 'pow_vars.jinja' as i %}
           {{i.average_price()|float|round(4)}}
 
-      - name: "POW average price Tibber"
-        unique_id: pow_avg_price_tibber
+      - name: "POW Tibber average price"
+        unique_id: pow_tibber_avg_price
         state_class: measurement
         unit_of_measurement: "€/kWh"
         state: >
@@ -193,6 +193,45 @@ template:
           {{None}}
           {%- endif -%}
 
+      - name: "POW Tibber today delta"
+        unique_id: pow_tibber_today_delta
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta()|trim  %}
+          {% if tpdelta != 'None' -%}
+          {{tpdelta|float|round(4)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW Tibber tomorrow delta"
+        unique_id: pow_tibber_tomorrow_delta
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_tomorrow()|trim  %}
+          {% if tpdelta != 'None' -%}
+          {{tpdelta|float|round(4)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
+      - name: "POW Tibber overall delta"
+        unique_id: pow_tibber_overall_delta
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_overall()|trim  %}
+          {% if tpdelta != 'None' -%}
+          {{tpdelta|float|round(4)}}
+          {%- else -%}
+          {{0}}
+          {%- endif -%}
+
       - name: "POW storage charging cost"
         unique_id: pow_storage_charging_cost
         state_class: measurement
@@ -278,3 +317,36 @@ template:
         state: >
           {% import 'pow_vars.jinja' as i %}
           {{i.now_in_max_energy_independent()|trim}}
+
+      - name: "POW Tibber today delta over limit"
+        unique_id: pow_tibber_today_delta_over_limit
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta()|trim  %}
+          {% if tpdelta != 'None' and tpdelta|float > i.min_price_delta -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+      - name: "POW Tibber tomorrow delta over limit"
+        unique_id: pow_tibber_tomorrow_delta_over_limit
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_tomorrow()|trim  %}
+          {% if tpdelta != 'None' and tpdelta|float > i.min_price_delta -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
+
+      - name: "POW Tibber overall delta over limit"
+        unique_id: pow_tibber_overall_delta_over_limit
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {% set tpdelta = i.tibb_price_delta_overall()|trim  %}
+          {% if tpdelta != 'None' and tpdelta|float > i.min_price_delta -%}
+          {{'on'}}
+          {%- else -%}
+          {{'off'}}
+          {%- endif -%}
