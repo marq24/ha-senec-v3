@@ -325,6 +325,12 @@ Resulting energy distribution card:
 
 ![Energy Distribution](images/energy_distribution.png)
 
+## In the winter season: charge your SENEC Battery from grid (when stock price is low)
+
+When your grid supply depends on the hourly electricity price on the stock exchange, then it might be smart in the winter time (when almost no PV power is available) to charge your SENEC system with power from grid. If you are a little bit deeper into HA automations you might like to use my scripts to control the charging and discharging of your battery.
+
+See all the details in the [LOAD YOUR BATTERY_WITH_TIBBER](https://github.com/marq24/ha-senec-v3/blob/master/docs/battery_control/BATTERY_WITH_TIBBER.md).
+
 # Developer information
 
 If you are interested in some details about this implementation and the current known fields you might like to take a look into the [current developer documentation section](docs/DEVELOPER_DOCUMENTATION.md).

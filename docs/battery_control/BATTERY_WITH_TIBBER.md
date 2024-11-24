@@ -1,12 +1,14 @@
-# Charge your Storage/Battery/Accumulator with Tibber when pcice is low
+# Charge your Storage/Battery/Accumulator from grid when stock price is low
 
-As a Tibber customer, I am paying the stock market price based on my hourly consumption. Additionally, I am a owner of
-a 12 kWh Senec Storage/battery 'system', that will be charged via my PV, but can also be used to load power frm the
-grid. Beside the positive effect by helping to stabilize the overall power network (consuming less when the price is
-high), I can also benefit from the price when it is low.
+![Example Dashboard Setup](../../images/storage_board.png)
 
-In the past weeks I spend some time with finding a way to charge my storage/battery when the price is low. but consider
-other aspects (like expected PV production) as well.
+As a Tibber customer, I am paying the stock market price based on my hourly consumption. Additionally, I own 
+a 12 kWh Senec storage/battery 'system', that will be charged by default via my PV. But I can also load power from the
+grid and use the energy later (with a loss - energy input != energy output). But depending on the price gap it still can
+be worth to load the storage with grid power!
+
+In the past weeks I spend some time with finding a way to charge my storage/battery via HA automations when the price is
+low but also consider other aspects (like expected PV production) as well.
 
 _Please note, that this guide requires some basic knowledge about Home Assistant and some manual steps that are not very
 comfortable. But I hope it will help you to get started._
@@ -96,13 +98,13 @@ sensor.senec_battery_charge_percent
 ```
 
 ### Step 2: Get the files...
-You need to get the two files `pow_sensors.yaml` and `pow_vars.jinja2` here from gitgub:
-- [pow_sensors.yaml](https://raw.githubusercontent.com/marq24/ha-senec-v3/refs/heads/master/docs/battery_control/pow_sensors.jinja)
+You need to get the two files `pow_sensors.yaml` and `pow_vars.jinja2` here from github:
+- [pow_sensors.yaml](https://github.com/marq24/ha-senec-v3/raw/refs/heads/master/docs/battery_control/pow_sensors.yaml)
     
   Store this file in your HA configuration directory under `config` directory.
 
-
-- [pow_vars.jinja](https://raw.githubusercontent.com/marq24/ha-senec-v3/refs/heads/master/docs/battery_control/pow_vars.jinja)
+ 
+- [pow_vars.jinja](https://github.com/marq24/ha-senec-v3/raw/refs/heads/master/docs/battery_control/pow_vars.jinja)
 
   Store this file in your HA configuration directory in a subdirectory called `custom_templates` in your `config`
   directory. If such a `custom_templates` directory does not exist (which is very likly), create it first.
@@ -114,9 +116,11 @@ from the `custom_templates` and `config` directory of this repository and copy t
 If you haven't already a `homeassistant` section in your `configuration.yaml` file, then you can add the following lines
 to it (if you have already such a section just add the package):
 ```yaml
+...
 homeassistant:
   packages:
     power_calc: !include pow_sensors.yaml
+...
 ```
 
 #### The `pow_sensors.yaml` file [in `config` directory]
@@ -126,6 +130,7 @@ Open the `pow_sensors.yaml` file (e.g. with nano) and adjust the state triggers.
 Just take the block you have created in step 1 and paste it into the `pow_sensors.yaml` file [and don't forget to use the right intent and don't forget the `-` (dash)] 
 
 ```yaml
+...  
   - trigger:
       - trigger: state
         entity_id:
@@ -133,6 +138,7 @@ Just take the block you have created in step 1 and paste it into the `pow_sensor
           - sensor.electricity_price_mmphome
           - sensor.senec_battery_charge_percent
           - sensor.energy_production_today_remaining_sum
+...
 ```
 The save the file and close the editor.
 
@@ -145,6 +151,7 @@ can keep the default's but you must adjust the sensor entity section!
 {% set your_tibber_home_sensor = 'sensor.electricity_price_mmphome' %}
 {% set your_pv_prognose_sensor = 'sensor.energy_production_today_remaining_sum' %}
 {% set your_storage_soc_sensor = 'sensor.senec_battery_charge_percent' %}
+...
 ```
 
 The other part that you want to adjust are the average home consumption values. The script can use different values for
@@ -152,29 +159,39 @@ day and nighttime (e.g. here @ my home the heatpump is not running during the ni
 be estimated by you:
 
 ```yaml
+...
 {% set kw_per_hour_average = "1.225"|float %}
 {% set kw_per_hour_day = "1.5"|float %}
 {% set kw_per_hour_night = "0.4"|float %}
 {% set day_start = "5"|int %}
 {% set day_end = "22"|int %}
+...
 ```
-If you don't want to use this feature, just set the `kw_per_hour_day` values and
-`day_start = "0"|int` & `day_end = "0"|int`).
+If you don't want to use this feature, just set the `kw_per_hour_day` value to your average energy consumption per hour
+and set `day_start = "0"|int` & `day_end = "0"|int`). The `kw_per_hour_average` value will be only used in fallback
+scenarios.
 
 __Do not edit the rest of the file (below the lines)!__
 ```yaml
+...
 {# ############################ #}
 {# END-OF-CONFIGURATION-OPTIONS #}
 {# ############################ #}
 {# DO NOT EDIT BELOW THIS LINE  #}
 {# ############################ #}
+...
 ```
 
+The save the file and close the editor.
 
 ### Step 4: Restart HA
+After the restart check the log's if there are any errors. If not, you should see a bunch of new (template) entities in your HA
 
-### Step 5: An example Dashboard
+### Step 5: Create an example Dashboard
 ![Example Dashboard Setup](../../images/storage_board.png)
+
+So you can see all the different calculated values in one place in order to be able to judge yourself if the automations
+that will fire in the expected conditions. 
 
 This example dashboard requires the `custom:multiple-entity-row` card! https://github.com/benct/lovelace-multiple-entity-row
 ```yaml
@@ -347,8 +364,7 @@ description: ""
 triggers:
   - trigger: state
     entity_id:
-      - binary_sensor.pow_now_in_high_price_phase
-      - binary_sensor.pow_now_in_low_price_phase
+      - binary_sensor.pow_now_in_high_price_storage_independent_phase
       - binary_sensor.pow_pv_power_can_fully_load_storage
   - trigger: time_pattern
     hours: /1
@@ -360,8 +376,7 @@ actions:
       - condition: template
         value_template: >-
           {{
-          states('binary_sensor.pow_now_in_high_price_phase')|lower == 'on' or
-          states('binary_sensor.pow_now_in_low_price_phase')|lower == 'off' or
+          states('binary_sensor.pow_now_in_high_price_storage_independent_phase')|lower == 'on' or
           states('binary_sensor.pow_pv_power_can_fully_load_storage')|lower == 'on'
           }}
     then:
