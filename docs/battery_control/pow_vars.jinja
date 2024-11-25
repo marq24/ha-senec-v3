@@ -5,6 +5,7 @@
 
 {# hours to look ahead for all our calculations #}
 {% set chk_hours = "12"|int %}
+{% set max_hours = "23"|int %}
 
 {# the average home consumption per hour in kW/h #}
 {% set kw_per_hour_average = "1.225"|float %}
@@ -217,8 +218,8 @@
 {{ns.idx}}
 {%- endmacro %}
 
-{% macro now_max(prices_data_length) -%}
-{{min(now_idx()|int + chk_hours, prices_data_length)}}
+{% macro now_max(a_nowidx, prices_data_length) -%}
+{{min(a_nowidx|int + chk_hours, prices_data_length)}}
 {%- endmacro %}
 
 {% macro average_price() -%}
@@ -238,22 +239,27 @@
     {%- else -%}
         {% set prices_data = [] %}
     {%- endif %}
-{{avgprice_ahead_internal(prices_data)}}
+{{avgprice_ahead_internal(now_idx(), prices_data)}}
 {%- endmacro %}
 
-{% macro avgprice_ahead_internal(prices_data) -%}
+{% macro avgprice_ahead_internal(a_nowidx, prices_data) -%}
     {% if tibb_avg_price()|trim != 'None' -%}
-{{average(prices_data[now_idx()|int:now_max(prices_data|length)|int], tibb_avg_price()|float)|round(4)}}
+{{average(prices_data[a_nowidx|int:now_max(a_nowidx|int, prices_data|length)|int], tibb_avg_price()|float)|round(4)}}
     {%- else -%}
-{{average(prices_data[now_idx()|int:now_max(prices_data|length)|int])|round(4)}}
+{{average(prices_data[a_nowidx|int:now_max(a_nowidx|int, prices_data|length)|int])|round(4)}}
     {%- endif %}
 {%- endmacro %}
 
 {% macro avgprice_min_internal(prices_data) -%}
+{{avgprice_ahead_internal(now_idx(), prices_data)}}
+{%- endmacro %}
+
+{% macro xxx_avgprice_min_internal(prices_data) -%}
+    {% set a_nowidx = now_idx()|int %}
     {% if tibb_avg_price()|trim != 'None' -%}
-{{min(avgprice_ahead_internal(prices_data)|float, tibb_avg_price()|float)}}
+{{min(avgprice_ahead_internal(a_nowidx, prices_data)|float, tibb_avg_price()|float)}}
     {%- else -%}
-{{avgprice_ahead_internal(prices_data)}}
+{{avgprice_ahead_internal(a_nowidx, prices_data)}}
     {%- endif %}
 {%- endmacro %}
 
@@ -324,9 +330,11 @@
 {%- endmacro %}
 
 {% macro low_price_startidx_internal(prices_data) -%}
+    {% set nowidx = now_idx()|int %}
+    {% set maxidx = now_max(nowidx, prices_data|length)|int %}
     {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
     {% set ns_low = namespace(startidx=99) %}
-    {%- for i in range(now_idx()|int, now_max(prices_data|length)|int) -%}
+    {%- for i in range(nowidx, maxidx) -%}
         {%- if avgprice_min > prices_data[i] -%}
             {% set ns_low.startidx = min(i, ns_low.startidx) %}
         {%- elif ns_low.startidx == 99 -%}
@@ -359,10 +367,11 @@
 {# we use: #}
 {# {%- for i in range(now_idx()|int, prices_data|length) -%} #}
 {% macro low_price_endidx_internal(prices_data) -%}
+    {% set nowidx = now_idx()|int %}
+    {% set maxidx = now_max(nowidx, prices_data|length)|int %}
     {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
     {% set ns_low = namespace(endidx=-1) %}
-    {% set now_ = now_idx()|int %}
-    {%- for i in range(now_, prices_data|length) -%}
+    {%- for i in range(nowidx, prices_data|length) -%}
         {%- if avgprice_min > prices_data[i] -%}
             {% set ns_low.endidx = max(i, ns_low.endidx) %}
         {%- elif ns_low.endidx == -1 -%}
@@ -463,8 +472,8 @@
     {# skip the check, if the possible window is large enough that the storage can be fully loaded #}
     {%- if low_price_duration_intern != 'None' and low_price_duration_intern|float > 0 and storage_full_charge_duration_in_h_intern > 0 -%}
         {% set ns_pmin = namespace(startidx=99, endidx=-1) %}
-        {% set si = now_idx()|int%}
-        {% set ei = now_max(prices_data|length)|int%}
+        {% set si = now_idx()|int %}
+        {% set ei = now_max(si, prices_data|length)|int %}
         {% set min_price = min(prices_data[si:ei]) %}
         {% set min_price_idx = si + prices_data[si:ei].index(min_price) %}
         {% set ns_pmin.startidx = min_price_idx %}
@@ -579,8 +588,8 @@
         {% set si = min(start_idx|int, prices_data|length - 1) %}
         {% set ei = prices_data|length %}
     {%- else -%}
-        {% set si = now_idx()|int%}
-        {% set ei = now_max(prices_data|length)|int %}
+        {% set si = now_idx()|int %}
+        {% set ei = now_max(si, prices_data|length)|int %}
     {%- endif %}
 
     {% set max_energy_duration_h = final_max_energy_duration|round(0) %}
@@ -591,7 +600,7 @@
         {% set ns_pmax.startidx = max_price_idx %}
         {% set ns_pmax.endidx = max_price_idx %}
         {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
-        {%- for i in range(1, max(max_energy_duration_h, chk_hours))-%}
+        {%- for i in range(1, max(max_energy_duration_h, chk_hours)) -%}
             {% set lowidx = max(0, ns_pmax.startidx - 1) %}
             {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
             {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
@@ -693,8 +702,8 @@
         {% set prices_data = [] %}
     {%- endif %}
     {%- if prices_data|length > 0 -%}
-        {% set si = now_idx()|int%}
-        {% set ei = prices_data|length %}
+        {% set si = now_idx()|int %}
+        {% set ei = min(si + max_hours, prices_data|length) %}
         {% set max_price = max(prices_data[si:ei]) %}
         {% set max_price_idx = si + prices_data[si:ei].index(max_price) %}
         {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
