@@ -11,6 +11,7 @@ from custom_components.senec.pysenec_ha.constants import (
     WALLBOX_CHARGING_MODES
 )
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
+from homeassistant.components.button import ButtonEntityDescription
 from homeassistant.components.number import (
     NumberEntityDescription,
     NumberDeviceClass,
@@ -115,6 +116,13 @@ class ExtSensorEntityDescription(SensorEntityDescription):
     senec_lala_section: str | None = None
     array_key: str | None = None
     array_pos: int = -1
+    require_2408: bool = False
+
+
+@dataclass
+class ExtButtonEntityDescription(ButtonEntityDescription):
+    payload: str | None = None
+    require_2408: bool = False
 
 
 @dataclass
@@ -124,6 +132,7 @@ class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     array_key: str | None = None
     array_pos: int = -1
     on_values: [int] = None
+    require_2408: bool = False
 
 
 @dataclass
@@ -134,6 +143,7 @@ class ExtSwitchEntityDescription(SwitchEntityDescription):
     array_pos: int = -1
     inverted: bool = False
     icon_off: str | None = None
+    require_2408: bool = False
 
 
 @dataclass
@@ -143,6 +153,7 @@ class ExtSelectEntityDescription(SelectEntityDescription):
     senec_lala_section: str | None = None
     array_key: str | None = None
     array_pos: int = -1
+    require_2408: bool = False
 
 
 @dataclass
@@ -151,6 +162,7 @@ class ExtNumberEntityDescription(NumberEntityDescription):
     senec_lala_section: str | None = None
     array_key: str | None = None
     array_pos: int = -1
+    require_2408: bool = False
 
 
 WEB_NUMBER_SENSOR_TYPES = [
@@ -1220,6 +1232,20 @@ MAIN_BIN_SENSOR_TYPES = [
         icon="mdi:toggle-switch",
         icon_off="mdi:toggle-switch-off",
         entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+]
+
+"""Supported main unit button types."""
+MAIN_BUTTON_TYPES =[
+    ExtButtonEntityDescription(
+        key="system_reboot",
+        name="Reboot System",
+        payload="true",
+        #entity_category=EntityCategory.CONFIG,
+        device_class=None,
+        icon="mdi:restart",
+        entity_registry_enabled_default=True,
+        require_2408=True
     ),
 ]
 

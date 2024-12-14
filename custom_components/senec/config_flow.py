@@ -3,15 +3,15 @@ import logging
 
 import voluptuous as vol
 from aiohttp import ClientResponseError
+from requests.exceptions import HTTPError, Timeout
+
+from custom_components.senec.pysenec_ha import Inverter
+from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession, async_create_clientsession
-from requests.exceptions import HTTPError, Timeout
-
-from custom_components.senec.pysenec_ha import Inverter
-from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
@@ -120,6 +120,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             senec_client = Senec(host=host, use_https=use_https, web_session=async_get_clientsession(self.hass))
             await senec_client.update_version()
+            await senec_client.update()
             self._use_https = use_https
             self._device_type_internal = senec_client.device_type_internal
 

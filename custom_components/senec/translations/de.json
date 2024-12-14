@@ -1102,6 +1102,9 @@
       "sgready_mode_code": {
         "name": "SGReady Modus [CODE]"
       }
+    },
+    "button": {
+      "system_reboot": {"name": "System Neustart"}
     }
   }
 }

@@ -1,7 +1,27 @@
+import copy
 import logging
 from struct import unpack, pack
 
 _LOGGER = logging.getLogger(__name__)
+
+_MASKED_VALUES = ["host", "username", "password", "app_token", "app_master_plant_id", "dserial"]
+
+
+def mask_map(d: dict) -> dict:
+    return mask_map_internal(copy.deepcopy(d))
+
+def mask_map_internal(d: dict) -> dict:
+    for k, v in d.copy().items():
+        if isinstance(v, dict):
+            d.pop(k)
+            d[k] = v
+            mask_map_internal(v)
+        else:
+            if k.lower() in _MASKED_VALUES:
+                v = "<MASKED>"
+            d.pop(k)
+            d[k] = v
+    return d
 
 def parse_value(value: str):
     """Parses numeric values, Senec supplies them as hex."""

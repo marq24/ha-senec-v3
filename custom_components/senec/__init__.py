@@ -3,7 +3,7 @@ import asyncio
 import logging
 from datetime import timedelta
 
-from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal
+from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal, util
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
     SENEC_SECTION_ENERGY,
@@ -72,8 +72,9 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=60)
 
-PLATFORMS = ["sensor", "binary_sensor", "select", "switch", "number"]
+PLATFORMS = ["binary_sensor", "button", "number", "select", "sensor", "switch"]
 CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
+
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the senec component."""
@@ -87,9 +88,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     SCAN_INTERVAL = timedelta(seconds=config_entry.options.get(CONF_SCAN_INTERVAL,
                                                                config_entry.data.get(CONF_SCAN_INTERVAL,
                                                                                      DEFAULT_SCAN_INTERVAL_SENECV2)))
-
     _LOGGER.info(
-        f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {mask_map(dict(config_entry.as_dict()))}")
+        f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
 
     if DOMAIN not in hass.data:
         value = "UNKOWN"
@@ -230,21 +230,6 @@ def need_query_app_api_wallbox(registry, sluged_title: str, opt: dict, sensor_ty
     return opt
 
 
-def mask_map(d):
-    for k, v in d.copy().items():
-        if isinstance(v, dict):
-            d.pop(k)
-            d[k] = v
-            mask_map(v)
-        else:
-            lk = k.lower()
-            if lk == "host" or lk == "password" or lk == "app_token" or lk == "app_master_plant_id" or lk == 'dserial':
-                v = "<MASKED>"
-            d.pop(k)
-            d[k] = v
-    return d
-
-
 class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     """Define an object to hold Senec data."""
 
@@ -383,6 +368,9 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.warning(str(evt))
         return True
 
+    async def _async_is2408_or_later(self) -> bool:
+        return await self.senec.is_2408_or_higher_async()
+
     async def _async_update_data(self):
         try:
             await self.senec.update()
@@ -413,6 +401,15 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_set_string_value(self, set_str_key, value: str):
         try:
             await self.senec.set_string_value(set_str_key, value)
+            return self.senec
+        except UpdateFailed as exception:
+            raise UpdateFailed() from exception
+        except Exception as fatal:
+            raise UpdateFailed() from fatal
+
+    async def _async_trigger_button(self, trigger_key:str, payload: str):
+        try:
+            await self.senec._trigger_button(trigger_key, payload)
             return self.senec
         except UpdateFailed as exception:
             raise UpdateFailed() from exception
