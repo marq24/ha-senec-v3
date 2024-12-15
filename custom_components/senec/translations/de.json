@@ -721,6 +721,12 @@
       "bms_cell_volt_a14": {
         "name": "Module A: Zell-Spannung A14"
       },
+      "bms_cell_volt_a15": {
+        "name": "Module A: Zell-Spannung A15"
+      },
+      "bms_cell_volt_a16": {
+        "name": "Module A: Zell-Spannung A16"
+      },
       "bms_cell_volt_b1": {
         "name": "Module B: Zell-Spannung B1"
       },
@@ -762,6 +768,12 @@
       },
       "bms_cell_volt_b14": {
         "name": "Module B: Zell-Spannung B14"
+      },
+      "bms_cell_volt_b15": {
+        "name": "Module B: Zell-Spannung B15"
+      },
+      "bms_cell_volt_b16": {
+        "name": "Module B: Zell-Spannung B16"
       },
       "bms_cell_volt_c1": {
         "name": "Module C: Zell-Spannung C1"
@@ -805,6 +817,12 @@
       "bms_cell_volt_c14": {
         "name": "Module C: Zell-Spannung C14"
       },
+      "bms_cell_volt_c15": {
+        "name": "Module C: Zell-Spannung C15"
+      },
+      "bms_cell_volt_c16": {
+        "name": "Module C: Zell-Spannung C16"
+      },
       "bms_cell_volt_d1": {
         "name": "Module D: Zell-Spannung D1"
       },
@@ -846,6 +864,12 @@
       },
       "bms_cell_volt_d14": {
         "name": "Module D: Zell-Spannung D14"
+      },
+      "bms_cell_volt_d15": {
+        "name": "Module D: Zell-Spannung D15"
+      },
+      "bms_cell_volt_d16": {
+        "name": "Module D: Zell-Spannung D16"
       },
       "bms_voltage_a": {
         "name": "Module A: Spannung"

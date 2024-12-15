@@ -774,6 +774,16 @@ class Senec:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][13]
 
     @property
+    def bms_cell_volt_a15(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][14]
+
+    @property
+    def bms_cell_volt_a16(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_A" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_A"][15]
+
+    @property
     def bms_cell_volt_b1(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][0]
@@ -842,6 +852,16 @@ class Senec:
     def bms_cell_volt_b14(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][13]
+
+    @property
+    def bms_cell_volt_b15(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][14]
+
+    @property
+    def bms_cell_volt_b16(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_B" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_B"][15]
 
     @property
     def bms_cell_volt_c1(self) -> float:
@@ -914,6 +934,16 @@ class Senec:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][13]
 
     @property
+    def bms_cell_volt_c15(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][14]
+
+    @property
+    def bms_cell_volt_c16(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_C" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_C"][15]
+
+    @property
     def bms_cell_volt_d1(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][0]
@@ -982,6 +1012,16 @@ class Senec:
     def bms_cell_volt_d14(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][13]
+
+    @property
+    def bms_cell_volt_d15(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][14]
+
+    @property
+    def bms_cell_volt_d16(self) -> float:
+        if self._raw is not None and "BMS" in self._raw and "CELL_VOLTAGES_MODULE_D" in self._raw["BMS"]:
+            return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][15]
 
     @property
     def _bms_modules_configured(self) -> int:
