@@ -204,7 +204,7 @@
     {%- else -%}
         {% set times_data = [] %}
     {%- endif %}
-{{now_idx_internal(times_data)|int}}
+{{now_idx_internal(times_data)}}
 {%- endmacro %}
 
 {% macro now_idx_internal(times_data) -%}
@@ -239,19 +239,19 @@
     {%- else -%}
         {% set prices_data = [] %}
     {%- endif %}
-{{avgprice_ahead_internal(now_idx(), 0, prices_data)}}
+{{avgprice_ahead_internal(now_idx(), prices_data)}}
 {%- endmacro %}
 
-{% macro avgprice_ahead_internal(a_nowidx, lookback_delta, prices_data) -%}
+{% macro avgprice_ahead_internal(a_nowidx, prices_data) -%}
     {% if tibb_avg_price()|trim != 'None' -%}
-{{average(prices_data[max(0, (a_nowidx|int - lookback_delta|int))|int : now_max(a_nowidx|int, prices_data|length)|int], tibb_avg_price()|float)|round(4)}}
+{{average(prices_data[a_nowidx|int:now_max(a_nowidx|int, prices_data|length)|int], tibb_avg_price()|float)|round(4)}}
     {%- else -%}
-{{average(prices_data[max(0, (a_nowidx|int - lookback_delta|int))|int : now_max(a_nowidx|int, prices_data|length)|int])|round(4)}}
+{{average(prices_data[a_nowidx|int:now_max(a_nowidx|int, prices_data|length)|int])|round(4)}}
     {%- endif %}
 {%- endmacro %}
 
 {% macro avgprice_min_internal(prices_data) -%}
-{{avgprice_ahead_internal(now_idx(), 4, prices_data)}}
+{{avgprice_ahead_internal(now_idx(), prices_data)}}
 {%- endmacro %}
 
 {% macro xxx_avgprice_min_internal(prices_data) -%}

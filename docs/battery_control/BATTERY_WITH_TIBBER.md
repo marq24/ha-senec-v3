@@ -337,13 +337,13 @@ actions:
   - if:
       - condition: template
         value_template: >-
-          {{(
+          {{ states('switch.senec_safe_charge')|lower == 'off' and (
             (states('binary_sensor.pow_now_in_low_price_phase')|lower == 'on') or
             (states('binary_sensor.pow_now_in_cheapest_phase')|lower == 'on')
           ) and
           states('binary_sensor.pow_pv_power_can_fully_load_storage')|lower == 'off' and
-          states('sensor.pow_storage_full_charge_duration')|int > 0.49 and
-          (
+          states('sensor.pow_storage_full_charge_duration')|int > 0.49
+          and (
             (states('binary_sensor.pow_now_in_cheapest_phase')|lower == 'on') or
             (states('sensor.pow_storage_full_charge_duration') >= states('sensor.pow_low_price_duration'))
           )}}
@@ -353,6 +353,7 @@ actions:
 mode: single
 trace:
   stored_traces: 100
+
 ```
 #### STOP
 Stop Storage loading (and allow that energy from the storage can be used) when price is high - obviously you need a
@@ -374,11 +375,12 @@ conditions: []
 actions:
   - if:
       - condition: template
-        value_template: >-
-          {{
-          states('binary_sensor.pow_now_in_high_price_storage_independent_phase')|lower == 'on' or
-          states('binary_sensor.pow_pv_power_can_fully_load_storage')|lower == 'on'
-          }}
+        value_template: |-
+          {{ states('switch.senec_safe_charge')|lower == 'on' and (
+            states('binary_sensor.pow_now_in_high_price_storage_independent_phase')|lower == 'on' or
+            states('binary_sensor.pow_now_in_high_price_phase')|lower == 'on' or
+            states('binary_sensor.pow_pv_power_can_fully_load_storage')|lower =='on'
+          ) }}
     then:
       - entity_id: switch.senec_safe_charge
         action: switch.turn_off

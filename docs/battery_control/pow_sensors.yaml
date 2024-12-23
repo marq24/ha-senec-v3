@@ -196,7 +196,7 @@ template:
       - name: "POW Tibber today delta"
         unique_id: pow_tibber_today_delta
         state_class: measurement
-        unit_of_measurement: "€/kWh"
+        unit_of_measurement: "€"
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set tpdelta = i.tibb_price_delta()|trim  %}
@@ -209,7 +209,7 @@ template:
       - name: "POW Tibber tomorrow delta"
         unique_id: pow_tibber_tomorrow_delta
         state_class: measurement
-        unit_of_measurement: "€/kWh"
+        unit_of_measurement: "€"
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set tpdelta = i.tibb_price_delta_tomorrow()|trim  %}
@@ -222,7 +222,7 @@ template:
       - name: "POW Tibber overall delta"
         unique_id: pow_tibber_overall_delta
         state_class: measurement
-        unit_of_measurement: "€/kWh"
+        unit_of_measurement: "€"
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set tpdelta = i.tibb_price_delta_overall()|trim  %}
