@@ -4,7 +4,7 @@ from struct import unpack, pack
 
 _LOGGER = logging.getLogger(__name__)
 
-_MASKED_VALUES = ["host", "username", "password", "app_token", "app_master_plant_id", "dserial"]
+_MASKED_VALUES = ["host", "username", "password", "app_token", "app_master_plant_id", "dserial", "device_id"]
 
 
 def mask_map(d: dict) -> dict:

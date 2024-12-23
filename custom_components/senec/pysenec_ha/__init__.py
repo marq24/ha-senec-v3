@@ -93,6 +93,7 @@ SYSTEM_STATUS_DISCHARGE = {16, 17, 18, 21, 29, 44, 97}
 
 _LOGGER = logging.getLogger(__name__)
 
+SET_COOKIE = "Set-Cookie"
 
 class Senec:
     """Senec Home Battery Sensor"""
@@ -137,6 +138,13 @@ class Senec:
         self.host = host
         self.web_session: aiohttp.websession = web_session
 
+        # we need to use a cookieJar that accept also IP's!
+        if hasattr(self.web_session, "_cookie_jar"):
+            the_jar = getattr(self.web_session, "_cookie_jar")
+            if hasattr(the_jar, "_unsafe"):
+                the_jar._unsafe = True
+                _LOGGER.debug("WEB_SESSION cookie_jar accept cookies for IP's")
+
         if use_https:
             self.url = f"https://{host}/lala.cgi"
         else:
@@ -173,10 +181,10 @@ class Senec:
         self._last_version_update = 0
         self._last_system_reset = 0
 
-        try:
-            asyncio.create_task(self.update_version())
-        except Exception as exc:
-            _LOGGER.debug(f"Exception while try to call 'self.update_version()': {exc}")
+        #try:
+        #    asyncio.create_task(self.update_version())
+        #except Exception as exc:
+        #    _LOGGER.debug(f"Exception while try to call 'self.update_version()': {exc}")
 
         IntBridge.lala_cgi = self
         if IntBridge.avail():
@@ -220,9 +228,33 @@ class Senec:
     async def update_version(self):
         # we do not expect that the version info will update in the next 60 minutes...
         if self._last_version_update + 3600 < time():
-            await  self.read_version()
+            await self._init_gui_cookies(retry=True)
+            await self._read_version()
 
-    async def read_version(self):
+    async def _init_gui_cookies(self, retry:bool):
+        # with NPU 2411 we must start the communication with the backend with this single call...
+        # no clue what type of special SENEC-Style security this is?!...
+        form = {SENEC_SECTION_FACTORY:{"SYS_TYPE":"","COUNTRY":"","DEVICE_ID":""}}
+        async with self.web_session.post(self.url, json=form, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                data = parse(await res.json())
+                if SET_COOKIE in res.headers:
+                    _LOGGER.debug(f"init-cookies: {util.mask_map(data)} - {res.headers[SET_COOKIE]}")
+                else:
+                    if(retry):
+                        _LOGGER.debug(f"init-cookies: {util.mask_map(data)} - NO COOKIES in RESPONSE (try to logout)")
+                        await asyncio.sleep(1)
+                        await self._senec_local_access_stop_no_checks()
+                        await asyncio.sleep(2)
+                        await self._init_gui_cookies(retry=False)
+                    else:
+                        _LOGGER.debug(f"init-cookies: {util.mask_map(data)} - NO COOKIES in RESPONSE")
+
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+    async def _read_version(self):
         form = {
             SENEC_SECTION_FACTORY: {
                 "SYS_TYPE": "",
@@ -252,8 +284,11 @@ class Senec:
         }
 
         async with self.web_session.post(self.url, json=form, ssl=False) as res:
+            _LOGGER.debug("update version info...")
             try:
                 res.raise_for_status()
+                #if SET_COOKIE in res.headers:
+                #    _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
                 self._raw_version = parse(await res.json())
                 self._last_version_update = time()
             except JSONDecodeError as exc:
@@ -1567,18 +1602,20 @@ class Senec:
             return self._raw[SENEC_SECTION_SOCKETS]["TIME_REM"]
 
     async def update(self):
-        await self.read_senec_lala_with_retry(retry=True)
+        if self._raw_version is None or len(self._raw_version) == 0:
+            await self.update_version()
+        await self._read_senec_lala_with_retry(retry=True)
 
-    async def read_senec_lala_with_retry(self, retry: bool = False):
+    async def _read_senec_lala_with_retry(self, retry: bool = False):
         try:
-            await self.read_senec_lala()
+            await self._read_senec_lala()
         except ClientConnectorError as exc:
             _LOGGER.info(f"{exc}")
             if retry:
                 await asyncio.sleep(5)
-                await self.read_senec_lala_with_retry(retry=False)
+                await self._read_senec_lala_with_retry(retry=False)
 
-    async def read_senec_lala(self):
+    async def _read_senec_lala(self):
         form = {
             SENEC_SECTION_TEMPMEASURE: {
                 "BATTERY_TEMP": "",
@@ -1600,7 +1637,7 @@ class Senec:
 
         if self.is_2408_or_higher():
             form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408})
-            form.update({SENEC_SECTION_LOG: {"USER_LEVEL": ""}})
+            form.update({SENEC_SECTION_LOG: {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}})
         else:
             form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS})
 
@@ -1652,6 +1689,8 @@ class Senec:
         async with self.web_session.post(self.url, json=form, ssl=False) as res:
             try:
                 res.raise_for_status()
+                if SET_COOKIE in res.headers:
+                    _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
                 data = await res.json()
                 self._raw = parse(data)
             except JSONDecodeError as exc:
@@ -1764,7 +1803,7 @@ class Senec:
 
     async def is_2408_or_higher_async(self) -> bool:
         if self._last_version_update == 0:
-            await self.read_version()
+            await self.update_version()
         return self.is_2408_or_higher()
 
     def is_2408_or_higher(self) -> bool:
@@ -1779,22 +1818,28 @@ class Senec:
             if (self._raw is not None and
                     SENEC_SECTION_LOG in self._raw and
                     "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
-                    self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] < 2):
-                login_data = {SENEC_SECTION_LOG: {"USER_LEVEL": "", "USERNAME": self._senec_a, "PASSWORD": self._senec_b, "LOG_IN_BUTT": "u8_01"}}
+                    ("VARIABLE_NOT_FOUND" == self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] or
+                    int(self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]) < 2)):
+                login_data = {SENEC_SECTION_LOG: {"USER_LEVEL": "", "USERNAME": self._senec_a, "LOG_IN_NOK_COUNT": "", "PASSWORD": self._senec_b, "LOG_IN_BUTT": "u8_01"}}
                 await self.write_senec_v31(login_data)
                 await asyncio.sleep(2)
                 await self.update()
+                _LOGGER.debug(f"LoginOk? {self._raw[SENEC_SECTION_LOG]}")
 
     async def _senec_local_access_stop(self):
         if await self.is_2408_or_higher_async():
             if (self._raw is not None and
                     SENEC_SECTION_LOG in self._raw and
                     "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
-                    self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] > 1):
-                login_data = {SENEC_SECTION_LOG: {"LOG_OUT_BUTT": "u8_01"}}
-                await self.write_senec_v31(login_data)
+                    ("VARIABLE_NOT_FOUND" == self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] or
+                    int(self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]) > 1)):
+                await self._senec_local_access_stop_no_checks()
                 await asyncio.sleep(2)
                 await self.update()
+
+    async def _senec_local_access_stop_no_checks(self):
+        login_data = {SENEC_SECTION_LOG: {"LOG_IN_NOK_COUNT": "", "LOG_OUT_BUTT": "u8_01"}}
+        await self.write_senec_v31(login_data)
 
     async def trigger_system_reboot(self, payload:str):
         if await self.is_2408_or_higher_async():
@@ -2200,6 +2245,8 @@ class Senec:
         async with self.web_session.post(self.url, json=data, ssl=False) as res:
             try:
                 res.raise_for_status()
+                if SET_COOKIE in res.headers:
+                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
                 self._raw_post = parse(await res.json())
                 _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
                 return self._raw_post
