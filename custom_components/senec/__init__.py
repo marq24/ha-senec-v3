@@ -371,49 +371,62 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_is2408_or_later(self) -> bool:
         return await self.senec.is_2408_or_higher_async()
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict:
+        _LOGGER.debug(f"_async_update_data called")
         try:
             await self.senec.update()
-            return self.senec
+            data = self.senec.dict_data();
+            _LOGGER.debug(f"read: {util.mask_map(data)}")
+            return data
         except UpdateFailed as exception:
+            _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except Exception as fatal:
+            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_to_state(self, switch_key, state):
         try:
             await self.senec.switch(switch_key, state)
-            return self.senec
+            return self.senec.dict_data()
         except UpdateFailed as exception:
+            _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except Exception as fatal:
+            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_array_to_state(self, switch_array_key, array_pos, state):
         try:
             await self.senec.switch_array(switch_array_key, array_pos, state)
-            return self.senec
+            return self.senec.dict_data()
         except UpdateFailed as exception:
+            _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except Exception as fatal:
+            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_set_string_value(self, set_str_key, value: str):
         try:
             await self.senec.set_string_value(set_str_key, value)
-            return self.senec
+            return self.senec.dict_data()
         except UpdateFailed as exception:
+            _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except Exception as fatal:
+            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_trigger_button(self, trigger_key:str, payload: str):
         try:
             await self.senec._trigger_button(trigger_key, payload)
-            return self.senec
+            return self.senec.dict_data()
         except UpdateFailed as exception:
+            _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except Exception as fatal:
+            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
             raise UpdateFailed() from fatal
 
 

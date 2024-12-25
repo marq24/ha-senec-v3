@@ -198,6 +198,12 @@ class Senec:
                 except Exception as exc:
                     _LOGGER.debug(f"Exception while try to call 'IntBridge.app_api.update': {exc}")
 
+    def dict_data(self) -> dict:
+        # will be called by the UpdateCoordinator (to get the current data)
+        # self._raw = None
+        # self._raw_version = None
+        return {"data": self._raw, "version": self._raw_version}
+
     @property
     def device_id(self) -> str:
         return self._raw_version[SENEC_SECTION_FACTORY]["DEVICE_ID"]
@@ -2264,6 +2270,14 @@ class Inverter:
         self.url3 = f"http://{host}/versions.xml"
         self._version_infos = ''
         self._has_bdc = False
+        self._raw = None
+        self._raw_version = None
+
+    def dict_data(self) -> dict:
+        # will be called by the UpdateCoordinator (to get the current data)
+        # self._raw = None
+        # self._raw_version = None
+        return {"data": self._raw, "version": self._raw_version}
 
     async def update_version(self):
         await self.read_inverter_version()
@@ -2688,6 +2702,23 @@ class MySenecWebPortal:
             if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
                 self._QUERY_WALLBOX = True
                 _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
+
+    def dict_data(self) -> dict:
+        # will be called by the UpdateCoordinator (to get the current data)
+        # self._app_raw_now = None
+        # self._app_raw_today = None
+        # self._app_raw_total_v1_outdated = None
+        # self._app_raw_total_v2 = None
+        # self._app_raw_tech_data = None
+        # self._app_raw_wallbox = [None, None, None, None]
+        return {
+            "now": self._app_raw_now,
+            "today": self._app_raw_today,
+            "total": self._app_raw_total_v2,
+            "total_old": self._app_raw_total_v1_outdated,
+            "tech_data": self._app_raw_tech_data,
+            "wallbox": self._app_raw_wallbox
+        }
 
     def check_cookie_jar_type(self):
         if _require_lib_patch():
