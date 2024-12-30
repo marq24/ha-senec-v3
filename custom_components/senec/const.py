@@ -1245,7 +1245,8 @@ MAIN_BUTTON_TYPES =[
         device_class=None,
         icon="mdi:restart",
         entity_registry_enabled_default=True,
-        require_2408=True
+        # as reported by ph_o_e_n_ix [photovoltaikforum] the reset also working for older SENEC Systems
+        #require_2408=True
     ),
 ]
 
