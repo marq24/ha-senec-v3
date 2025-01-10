@@ -3448,7 +3448,11 @@ class MySenecWebPortal:
                 res.raise_for_status()
                 if res.status == 200:
                     self._spare_capacity = await res.text()
-                    self._QUERY_SPARE_CAPACITY_TS = time()
+                    if not isinstance(self._spare_capacity, (int, float)):
+                        self._QUERY_SPARE_CAPACITY_TS = time()
+                    else:
+                        _LOGGER.warning(f"spare_capacity is not a number - request to '{a_url}' returned:\n{self._spare_capacity}")
+                        self._spare_capacity = 0
                 else:
                     self._is_authenticated = False
                     await self.update()
@@ -3762,7 +3766,7 @@ class MySenecWebPortal:
 
     @property
     def spare_capacity(self) -> int:
-        if hasattr(self, '_spare_capacity'):
+        if hasattr(self, '_spare_capacity') and isinstance(self._spare_capacity, (int, float)):
             return int(self._spare_capacity)
 
     @property

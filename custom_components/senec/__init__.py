@@ -151,8 +151,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.versions
 
         # Register Services
-        service = SenecService.SenecService(hass, config_entry, coordinator)
-        hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, service.set_peakshaving)
+        senec_services = SenecService.SenecService(hass, config_entry, coordinator)
+        hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, senec_services.set_peakshaving)
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 

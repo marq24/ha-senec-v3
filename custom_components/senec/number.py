@@ -92,7 +92,8 @@ class SenecNumber(SenecEntity, NumberEntity):
         if self._internal_minmax_adjustment_needed:
             self._internal_check_minmax_adjustment()
 
-        return float(value)
+        if value is not None:
+            return float(value)
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
