@@ -1703,6 +1703,8 @@ class Senec:
                 self._raw = parse(data)
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+            except Exception as err:
+                _LOGGER.warning(f"read_senec_lala caused: {err}")
 
     async def read_all_fields(self) -> []:
         async with self.web_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False) as res:
@@ -2261,8 +2263,8 @@ class Senec:
                 self._raw_post = parse(await res.json())
                 _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
                 return self._raw_post
-            except Exception as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+            except Exception as err:
+                _LOGGER.warning(f"Error while 'posting data' {err}")
 
     async def senec_v31_safe_charge(self, form_data:str):
         _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data}")
@@ -2290,8 +2292,8 @@ class Senec:
                 self._raw_post = parse(await res.json())
                 _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
                 return self._raw_post
-            except Exception as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+            except Exception as err:
+                _LOGGER.warning(f"Error while 'posting data' {err}")
 
 class Inverter:
     """Senec Home Inverter addon"""
