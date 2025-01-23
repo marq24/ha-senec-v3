@@ -135,7 +135,13 @@ class Senec:
         else:
             self._IGNORE_SYSTEM_STATUS = False
 
-        self.host = host
+        self._host = host
+        if use_https:
+            self._host_and_schema = f"https://{host}"
+        else:
+            self._host_and_schema = f"http://{host}"
+
+        self.url = f"{self._host_and_schema}/lala.cgi"
         self.web_session: aiohttp.websession = web_session
 
         # we need to use a cookieJar that accept also IP's!
@@ -145,10 +151,6 @@ class Senec:
                 the_jar._unsafe = True
                 _LOGGER.debug("WEB_SESSION cookie_jar accept cookies for IP's")
 
-        if use_https:
-            self.url = f"https://{host}/lala.cgi"
-        else:
-            self.url = f"http://{host}/lala.cgi"
 
         # evil HACK - since SENEC does not switch the property fast enough...
         # so for five seconds after the switch take place we will return
@@ -1756,23 +1758,27 @@ class Senec:
                 return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
 
     async def switch_safe_charge(self, value: bool):
-        self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"VALUE": value})
-        self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"TS": time()})
-        post_data = {}
-        if (value):
-            self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
-            post_data = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "u8_01", "SAFE_CHARGE_PROHIBIT": "",
-                                                "SAFE_CHARGE_RUNNING": "",
-                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
-                                                "LI_STORAGE_MODE_RUNNING": ""}}
-        else:
-            self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
-            post_data = {SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "u8_01",
-                                                "SAFE_CHARGE_RUNNING": "",
-                                                "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "",
-                                                "LI_STORAGE_MODE_RUNNING": ""}}
+        # first of all getting the real current state from the device... (we don't trust local settings)
+        data = await self.senec_v31_safe_charge('{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}')
 
-        await self.write(post_data)
+        if (value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 0) or (not value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1):
+            self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"VALUE": value})
+            self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"TS": time()})
+            post_data_str = None
+            if (value):
+                self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
+                post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
+            else:
+                self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
+                post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
+
+            await self.senec_v31_safe_charge(post_data_str)
+            await asyncio.sleep(1)
+            await self.senec_v31_safe_charge(post_data_str)
+            await asyncio.sleep(1)
+            await self._read_senec_lala()
+        else:
+            _LOGGER.debug(f"Safe Charge already in requested state... requested: {value}  is: {data[SENEC_SECTION_ENERGY]}")
 
     @property
     def li_storage_mode(self) -> bool:
@@ -1802,7 +1808,6 @@ class Senec:
                                        "LI_STORAGE_MODE_RUNNING": ""}}
 
         await self.write(post_data)
-
 
     async def _trigger_button(self, key: str, payload: str):
         return await getattr(self, 'trigger_' + key)(payload)
@@ -2249,6 +2254,35 @@ class Senec:
     async def write_senec_v31(self, data):
         _LOGGER.debug(f"posting data (raw): {util.mask_map(data)}")
         async with self.web_session.post(self.url, json=data, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                if SET_COOKIE in res.headers:
+                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
+                self._raw_post = parse(await res.json())
+                _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
+                return self._raw_post
+            except Exception as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+    async def senec_v31_safe_charge(self, form_data:str):
+        _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data}")
+        special_hdrs = {
+            "Host": self._host,
+            "Origin": self._host_and_schema,
+            "Referer": f"{self._host_and_schema}/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+            "X-Requested-With": "XMLHttpRequest",
+            "sec-ch-ua": 'Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Accept": "application/json, text/javascript, */*; q=0.01"
+        }
+        async with self.web_session.post(self.url, data=form_data, headers=special_hdrs, ssl=False, chunked=None) as res:
+            _LOGGER.debug(f"requested '{self.url}' with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
                 if SET_COOKIE in res.headers:
