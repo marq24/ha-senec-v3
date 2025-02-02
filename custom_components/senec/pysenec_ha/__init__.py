@@ -189,6 +189,8 @@ class Senec:
         #    _LOGGER.debug(f"Exception while try to call 'self.update_version()': {exc}")
 
         IntBridge.lala_cgi = self
+        _LOGGER.debug(f"LocalSenec initialized and IntBridge.lala_cgi set to {self}")
+
         if IntBridge.avail():
             # ok mein-senec-web is already existing...
             if self._QUERY_WALLBOX_APPAPI:
@@ -629,122 +631,146 @@ class Senec:
     @property
     def bms_cell_temp_a1(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][0]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"]) > 0:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][0]
 
     @property
     def bms_cell_temp_a2(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][1]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"]) > 1:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][1]
 
     @property
     def bms_cell_temp_a3(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][2]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"]) > 2:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][2]
 
     @property
     def bms_cell_temp_a4(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][3]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"]) > 3:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][3]
 
     @property
     def bms_cell_temp_a5(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][4]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"]) > 4:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][4]
 
     @property
     def bms_cell_temp_a6(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_A" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][5]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"]) > 5:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_A"][5]
 
     @property
     def bms_cell_temp_b1(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][0]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"]) > 0:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][0]
 
     @property
     def bms_cell_temp_b2(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][1]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"]) > 1:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][1]
 
     @property
     def bms_cell_temp_b3(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][2]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"]) > 2:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][2]
 
     @property
     def bms_cell_temp_b4(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][3]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"]) > 3:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][3]
 
     @property
     def bms_cell_temp_b5(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][4]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"]) > 4:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][4]
 
     @property
     def bms_cell_temp_b6(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_B" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][5]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"]) > 5:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_B"][5]
 
     @property
     def bms_cell_temp_c1(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][0]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"]) > 0:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][0]
 
     @property
     def bms_cell_temp_c2(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][1]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"]) > 1:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][1]
 
     @property
     def bms_cell_temp_c3(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][2]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"]) > 2:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][2]
 
     @property
     def bms_cell_temp_c4(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][3]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"]) > 3:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][3]
 
     @property
     def bms_cell_temp_c5(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][4]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"]) > 4:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][4]
 
     @property
     def bms_cell_temp_c6(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_C" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][5]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"]) > 5:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_C"][5]
 
     @property
     def bms_cell_temp_d1(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][0]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"]) > 0:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][0]
 
     @property
     def bms_cell_temp_d2(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][1]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"]) > 1:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][1]
 
     @property
     def bms_cell_temp_d3(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][2]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"]) > 2:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][2]
 
     @property
     def bms_cell_temp_d4(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][3]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"]) > 3:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][3]
 
     @property
     def bms_cell_temp_d5(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][4]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"]) > 4:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][4]
 
     @property
     def bms_cell_temp_d6(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CELL_TEMPERATURES_MODULE_D" in self._raw["BMS"]:
-            return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][5]
+            if len(self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"]) > 5:
+                return self._raw["BMS"]["CELL_TEMPERATURES_MODULE_D"][5]
 
     @property
     def bms_cell_volt_a1(self) -> float:
@@ -1759,6 +1785,8 @@ class Senec:
             else:
                 return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
 
+    # Trigger: LOG-Rotate
+    # {"WIZARD":{"FEATURECODE_ENTERED":""},"STECA":{"PVSS":""},"TEST":{"SELFTEST":""},"DEBUG":{"LOG_ROTATE":"u8_01"}}
     async def switch_safe_charge(self, value: bool):
         # first of all getting the real current state from the device... (we don't trust local settings)
         data = await self.senec_v31_safe_charge('{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}')
@@ -1774,8 +1802,6 @@ class Senec:
                 self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
                 post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
 
-            await self.senec_v31_safe_charge(post_data_str)
-            await asyncio.sleep(1)
             await self.senec_v31_safe_charge(post_data_str)
             await asyncio.sleep(1)
             await self._read_senec_lala()
@@ -2733,6 +2759,7 @@ class MySenecWebPortal:
         # self._QUERY_TECH_DATA_TS = 0
 
         IntBridge.app_api = self
+        _LOGGER.debug(f"MySenecWebPortal initialized and IntBridge.app_api set to {self}")
         if IntBridge.avail():
             # ok local-polling (lala.cgi) is already existing...
             if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
@@ -4313,4 +4340,5 @@ class IntBridge:
 
     @staticmethod
     def avail() -> bool:
+        _LOGGER.debug(f"IntBridge.avail() -> IntBridge.app_api: {IntBridge.app_api is not None} IntBridge.lala_cgi: {IntBridge.lala_cgi is not None}")
         return IntBridge.app_api is not None and IntBridge.lala_cgi is not None
