@@ -72,10 +72,13 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
             else:
                 value = getattr(self.coordinator.senec, self.entity_description.key)
 
-            if (value is None or str(value) == LOCAL_WB_MODE_UNKNOWN) and self._previous_value is not None:
-                value = self._previous_value
-            else:
-                value = None
+            # if value is not set or the unknown-wallbox value, then check, if we
+            # have a previous value... and then use it - or reset it to None
+            if value is None or str(value) == LOCAL_WB_MODE_UNKNOWN:
+                if self._previous_value is not None:
+                    value = self._previous_value
+                else:
+                    value = None
 
             if value is None or value == "":
                 value = 'unknown'

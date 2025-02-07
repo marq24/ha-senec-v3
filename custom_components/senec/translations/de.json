@@ -156,8 +156,8 @@
         "name": "Wallbox I Modus",
         "state": {
           "locked": "AUS",
-          "optimized_3": "OPTIMIERT [Ladeunterbrechung EIN]",
-          "optimized_4": "OPTIMIERT [Ladeunterbrechung AUS]",
+          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung EIN]",
+          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung AUS]",
           "fastest": "SCHNELL"
         }
       },
@@ -165,8 +165,8 @@
         "name": "Wallbox II Modus",
         "state": {
           "locked": "AUS",
-          "optimized_3": "OPTIMIERT [Ladeunterbrechung EIN]",
-          "optimized_4": "OPTIMIERT [Ladeunterbrechung AUS]",
+          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung EIN]",
+          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung AUS]",
           "fastest": "SCHNELL"
         }
       },
@@ -174,8 +174,8 @@
         "name": "Wallbox III Modus",
         "state": {
           "locked": "AUS",
-          "optimized_3": "OPTIMIERT [Ladeunterbrechung EIN]",
-          "optimized_4": "OPTIMIERT [Ladeunterbrechung AUS]",
+          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung EIN]",
+          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung AUS]",
           "fastest": "SCHNELL"
         }
       },
@@ -183,8 +183,8 @@
         "name": "Wallbox IV Modus",
         "state": {
           "locked": "AUS",
-          "optimized_3": "OPTIMIERT [Ladeunterbrechung EIN]",
-          "optimized_4": "OPTIMIERT [Ladeunterbrechung AUS]",
+          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung EIN]",
+          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung AUS]",
           "fastest": "SCHNELL"
         }
       }
