@@ -1125,6 +1125,9 @@
       },
       "sgready_mode_code": {
         "name": "SGReady mode [CODE]"
+      },
+      "spare_capacity": {
+        "name": "Spare Capacity"
       }
     },
     "button": {

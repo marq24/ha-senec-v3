@@ -1612,6 +1612,12 @@ class Senec:
             return self._raw[SENEC_SECTION_FAN_SPEED]["INV_HV"] > 0
 
     @property
+    def spare_capacity(self) -> int:
+        if self._raw is not None and SENEC_SECTION_BAT1 in self._raw and "SPARE_CAPACITY" in self._raw[
+            SENEC_SECTION_BAT1]:
+            return self._raw[SENEC_SECTION_BAT1]["SPARE_CAPACITY"]
+
+    @property
     def sockets_already_switched(self) -> [int]:
         if self._raw is not None and SENEC_SECTION_SOCKETS in self._raw and "ALREADY_SWITCHED" in self._raw[
             SENEC_SECTION_SOCKETS]:
@@ -1672,6 +1678,7 @@ class Senec:
         if self.is_2408_or_higher():
             form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408})
             form.update({SENEC_SECTION_LOG: {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}})
+            form.update({SENEC_SECTION_BAT1: {"SPARE_CAPACITY": ""}})
         else:
             form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS})
 
@@ -1785,11 +1792,9 @@ class Senec:
             else:
                 return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
 
-    # Trigger: LOG-Rotate
-    # {"WIZARD":{"FEATURECODE_ENTERED":""},"STECA":{"PVSS":""},"TEST":{"SELFTEST":""},"DEBUG":{"LOG_ROTATE":"u8_01"}}
     async def switch_safe_charge(self, value: bool):
         # first of all getting the real current state from the device... (we don't trust local settings)
-        data = await self.senec_v31_safe_charge('{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}')
+        data = await self.senec_v31_post_plain_form_data('{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}')
 
         if (value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 0) or (not value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1):
             self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"VALUE": value})
@@ -1802,7 +1807,7 @@ class Senec:
                 self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
                 post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
 
-            await self.senec_v31_safe_charge(post_data_str)
+            await self.senec_v31_post_plain_form_data(post_data_str)
             await asyncio.sleep(1)
             await self._read_senec_lala()
         else:
@@ -1850,6 +1855,18 @@ class Senec:
                 SENEC_SECTION_SYS_UPDATE in self._raw_version and \
                 "NPU_IMAGE_VERSION" in self._raw_version[SENEC_SECTION_SYS_UPDATE]:
             return int(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"]) >= 2408
+        return False
+
+    async def is_2411_or_higher_async(self) -> bool:
+        if self._last_version_update == 0:
+            await self.update_version()
+        return self.is_2411_or_higher()
+
+    def is_2411_or_higher(self) -> bool:
+        if self._raw_version is not None and \
+                SENEC_SECTION_SYS_UPDATE in self._raw_version and \
+                "NPU_IMAGE_VERSION" in self._raw_version[SENEC_SECTION_SYS_UPDATE]:
+            return int(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"]) >= 2411
         return False
 
     async def _senec_local_access_start(self):
@@ -2292,7 +2309,7 @@ class Senec:
             except Exception as err:
                 _LOGGER.warning(f"Error while 'posting data' {err}")
 
-    async def senec_v31_safe_charge(self, form_data:str):
+    async def senec_v31_post_plain_form_data(self, form_data:str):
         _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data}")
         special_hdrs = {
             "Host": self._host,

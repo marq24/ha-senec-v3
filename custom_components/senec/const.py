@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from custom_components.senec.pysenec_ha.constants import (
+    SENEC_SECTION_BAT1,
     SENEC_SECTION_BMS,
     SENEC_SECTION_FAN_SPEED,
     SENEC_SECTION_STATISTIC,
@@ -3635,5 +3636,14 @@ MAIN_SENSOR_TYPES = [
         name="sockets_2_time_rem",
         icon="mdi:counter",
         state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        senec_lala_section=SENEC_SECTION_BAT1,
+        entity_registry_enabled_default=False,
+        key="spare_capacity",
+        name="Spare Capacity",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:battery-lock"
     ),
 ]
