@@ -185,10 +185,25 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._device_master_plant_number = senec_web_client.masterPlantNumber
 
                 await senec_web_client.app_update_tech_data()
+                if senec_web_client.product_name is None:
+                    prod_name = "UNKNOWN_PROD_NAME"
+                else:
+                    prod_name = senec_web_client.product_name
+
+                if senec_web_client.senec_num is None:
+                    senec_num = "UNKNOWN_SENEC_NUM"
+                else:
+                    senec_num = senec_web_client.senec_num
+
+                if senec_web_client.serial_number is None:
+                    serial_num = "UNKNOWN_SERIAL_NUM"
+                else:
+                    serial_num = senec_web_client.serial_number
+
                 # these values will also read with every restart...
                 self._device_type = SYSTYPE_NAME_WEBAPI
-                self._device_model = senec_web_client.product_name + ' | SENEC.Num: ' + senec_web_client.senec_num
-                self._device_serial = senec_web_client.serial_number
+                self._device_model =  prod_name + ' | SENEC.Num: ' + senec_num
+                self._device_serial = serial_num
                 self._app_token = senec_web_client._app_token
                 self._app_master_plant_id = senec_web_client._app_master_plant_id
                 self._app_wallbox_num_max = senec_web_client._app_wallbox_num_max

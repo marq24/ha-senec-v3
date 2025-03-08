@@ -3855,6 +3855,8 @@ class MySenecWebPortal:
             return self._app_raw_tech_data["casing"]["serial"]
         elif hasattr(self, '_dev_number'):
             return str(self._dev_number)
+        else:
+            return "UNKNOWN_SENEC_NUM"
 
     @property
     def serial_number(self) -> str:
@@ -3862,6 +3864,8 @@ class MySenecWebPortal:
             return self._app_raw_tech_data["mcu"]["mainControllerSerial"]
         elif hasattr(self, '_serial_number'):
             return str(self._serial_number)
+        else:
+            return "UNKNOWN_SERIAL"
 
     @property
     def product_name(self) -> str:
@@ -3869,6 +3873,8 @@ class MySenecWebPortal:
             return self._app_raw_tech_data["systemOverview"]["productName"]
         elif hasattr(self, '_product_name'):
             return str(self._product_name)
+        else:
+            return "UNKNOWN_PROD_NAME"
 
     @property
     def zone_id(self) -> str:
