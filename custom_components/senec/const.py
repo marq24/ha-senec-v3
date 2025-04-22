@@ -295,6 +295,7 @@ WEB_SENSOR_TYPES = [
         icon="mdi:home-battery",
         # device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
+        controls=("check_plausibility"),
     ),
     ExtSensorEntityDescription(
         key="gridimport_now",

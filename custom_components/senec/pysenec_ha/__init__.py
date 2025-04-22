@@ -1882,6 +1882,16 @@ class Senec:
                 await self.update()
                 _LOGGER.debug(f"LoginOk? {self._raw[SENEC_SECTION_LOG]}")
 
+    @property
+    def _is_user_level_two_or_higher(self) -> bool:
+        if SENEC_SECTION_LOG in self._raw and "USER_LEVEL" in self._raw[SENEC_SECTION_LOG]:
+            val = self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]
+            try:
+                return int(val) >= 2
+            except:
+                pass
+        return False
+
     async def _senec_local_access_stop(self):
         if await self.is_2408_or_higher_async():
             if (self._raw is not None and
