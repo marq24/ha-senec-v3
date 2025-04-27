@@ -12,6 +12,7 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_T
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession, async_create_clientsession
+from homeassistant.util import slugify
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
@@ -58,18 +59,8 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-# @callback
-# def senec_entries_data(hass: HomeAssistant):
-#    """Return the hosts already configured."""
-#    return {entry.data[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
-
-# @callback
-# def senec_entries_options(hass: HomeAssistant):
-#    """Return the hosts already configured."""
-#    return {entry.options[CONF_HOST] for entry in hass.config_entries.async_entries(DOMAIN)}
-
 @callback
-def senec_entries(hass: HomeAssistant):
+def senec_host_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
     conf_hosts = []
     for entry in hass.config_entries.async_entries(DOMAIN):
@@ -83,7 +74,24 @@ def senec_entries(hass: HomeAssistant):
 @staticmethod
 def host_in_configuration_exists(hass: HomeAssistant, host: str) -> bool:
     """Return True if host exists in configuration."""
-    if host in senec_entries(hass):
+    if host in senec_host_entries(hass):
+        return True
+    return False
+
+
+@callback
+def senec_title_entries(hass: HomeAssistant):
+    """Return the hosts already configured."""
+    conf_titles = []
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        conf_titles.append(slugify(entry.title))
+    return conf_titles
+
+
+@staticmethod
+def title_in_configuration_exists(hass: HomeAssistant, a_title: str) -> bool:
+    """Return True if name exists in configuration."""
+    if slugify(a_title) in senec_title_entries(hass):
         return True
     return False
 
@@ -280,6 +288,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if host_in_configuration_exists(self.hass, host_entry):
                 self._errors[CONF_HOST] = "already_configured"
+            if title_in_configuration_exists(self.hass, name):
+                self._errors[CONF_NAME] = "already_configured"
             else:
                 # Build-In Inverter stuff
                 if self._selected_system is not None and self._selected_system.get(SETUP_SYS_TYPE) == SYSTYPE_INVERTV3:
