@@ -182,7 +182,6 @@ WEB_NUMBER_SENSOR_TYPES = [
 ]
 
 WEB_SENSOR_TYPES = [
-
     ExtSensorEntityDescription(
         key="consumption_total",
         name="House consumed",
@@ -293,7 +292,7 @@ WEB_SENSOR_TYPES = [
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=0,
         icon="mdi:home-battery",
-        # device_class=SensorDeviceClass.BATTERY,
+        device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
         controls=("check_plausibility"),
     ),
@@ -341,7 +340,7 @@ WEB_SENSOR_TYPES = [
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=0,
         icon="mdi:battery-lock",
-        device_class=SensorDeviceClass.BATTERY,
+        #device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
@@ -1634,7 +1633,7 @@ MAIN_SENSOR_TYPES = [
         native_unit_of_measurement=PERCENTAGE,
         suggested_display_precision=0,
         icon="mdi:home-battery",
-        # device_class=SensorDeviceClass.BATTERY,
+        device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
