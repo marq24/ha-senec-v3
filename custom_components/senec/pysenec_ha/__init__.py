@@ -2696,10 +2696,24 @@ class MySenecWebPortal:
 
         # 2025/15/05 -> looks like that 'app-gateway-prod.senecops.com' is down...
         #APP_BASE_URL = "https://app-gateway-prod.senecops.com/"
+
         APP_BASE_URL = "https://app-gateway.prod.senec.dev/"
+
+        # this are the URL's used by the new APP: 'com.senecapp_4.7.2'
+        #APP_BASE_URL1_NEW = "https://senec-app-user-proxy.prod.senec.dev/"
+        #APP_BASE_URL2_NEW = "https://senec-app-systems-proxy.prod.senec.dev/"
+        #APP_BASE_URL3_NEW = "https://senec-app-abilities-proxy.prod.senec.dev/"
+
         self._SENEC_APP_AUTH = APP_BASE_URL + "v1/senec/login"
+        #self._SENEC_APP_AUTH = APP_BASE_URL1_NEW + "v1/user/login"
+
         self._SENEC_APP_GET_SYSTEMS = APP_BASE_URL + "v1/senec/anlagen"
+        #self._SENEC_APP_GET_SYSTEMS = APP_BASE_URL2_NEW + "v1/systems"
+
         self._SENEC_APP_GET_ABILITIES = APP_BASE_URL + "v1/senec/anlagen/%s/abilities"
+        #self._SENEC_APP_GET_ABILITIES = APP_BASE_URL3_NEW + "abilities/packages/%s"
+
+        # we must find out the new URL's as well..
         self._SENEC_APP_SET_WALLBOX = APP_BASE_URL + "v1/senec/anlagen/%s/wallboxes/%s"
         # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/technical-data"
         # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/statistik?periode=JAHR&datum=2024-01-13&locale=de_DE&timezone=Europe/Berlin"
