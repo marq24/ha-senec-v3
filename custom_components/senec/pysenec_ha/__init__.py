@@ -2693,7 +2693,10 @@ class MySenecWebPortal:
         # https://documenter.getpostman.com/view/10329335/UVCB9ihW#17e2c6c6-fe5e-4ca9-bc2f-dca997adaf90
         # https://documenter.getpostman.com/view/10329335/UVCB9ihW#3e5a4286-c7d2-49d1-8856-12bba9fb5c6e
         # https://documenter.getpostman.com/view/932140/2s9YXib2td#4d0f84ac-f573-42e3-b155-9a17cef309ec
-        APP_BASE_URL = "https://app-gateway-prod.senecops.com/"
+
+        # 2025/15/05 -> looks like that 'app-gateway-prod.senecops.com' is down...
+        #APP_BASE_URL = "https://app-gateway-prod.senecops.com/"
+        APP_BASE_URL = "https://app-gateway.prod.senec.dev/"
         self._SENEC_APP_AUTH = APP_BASE_URL + "v1/senec/login"
         self._SENEC_APP_GET_SYSTEMS = APP_BASE_URL + "v1/senec/anlagen"
         self._SENEC_APP_GET_ABILITIES = APP_BASE_URL + "v1/senec/anlagen/%s/abilities"
