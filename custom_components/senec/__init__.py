@@ -114,8 +114,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # or not...
         coordinator._statistics_available = coordinator.senec.grid_total_export is not None
         await coordinator.senec.update_version()
+
         coordinator._device_type = SYSTYPE_NAME_SENEC
-        coordinator._device_model = f"{coordinator.senec.device_type}  | {coordinator.senec.batt_type}"
+        temp_device_type = coordinator.senec.device_type
+        if temp_device_type is None or temp_device_type == "UNKNOWN":
+            temp_device_type = SYSTYPE_NAME_SENEC
+        coordinator._device_model = f"{temp_device_type}  | {coordinator.senec.batt_type}"
         coordinator._device_serial = f"S{coordinator.senec.device_id}"
         coordinator._device_version = coordinator.senec.versions
 

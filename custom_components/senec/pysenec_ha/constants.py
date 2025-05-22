@@ -127,6 +127,8 @@ SYSTEM_TYPE_NAME = {
     17: "SENEC.Home V3 hybrid",
     18: "SENEC.Home V3 hybrid duo",
     19: "SENEC.Home V3 hybrid",
+    20: "SENEC.Home V3 hybrid LFP",
+    21: "SENEC.Home V3 hybrid duo LFP"
 }
 
 SYSTEM_STATE_NAME = {
@@ -230,7 +232,8 @@ SYSTEM_STATE_NAME = {
         96: "BALANCING",
         97: "SAFETY DISCHARGE",
         98: "BMS ERROR - MODULE IMBALANCE",
-        99: "WAKE UP CHARGING"
+        99: "WAKE UP CHARGING",
+        100: "SOX-CALIBRATION"
     },
     "de": {
         0: "INITIALZUSTAND",
@@ -332,7 +335,8 @@ SYSTEM_STATE_NAME = {
         96: "BALANCING",
         97: "SICHERHEITSENTLADUNG",
         98: "BMS FEHLER - MODULUNGLEICHGEWICHT",
-        99: "AUFWACHLADUNG"
+        99: "AUFWACHLADUNG",
+        100: "SOX-KALIBRIERUNG"
     },
     "it": {
         0: "STATO INIZIALE",
@@ -434,7 +438,8 @@ SYSTEM_STATE_NAME = {
         96: "BALANCING",
         97: "SCARICO DI SICUREZZA",
         98: "ERRORE BMS - SQUILIBRIO DEL MODULOTRANSLATE",
-        99: "CARICA DI RISVEGLIO"
+        99: "CARICA DI RISVEGLIO",
+        100: "SOX-CALIBRAZIONE"
     }
 }
 
