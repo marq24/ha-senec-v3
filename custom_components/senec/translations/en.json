@@ -451,6 +451,12 @@
       "derating": {
         "name": "Derating"
       },
+      "yield_pv_total": {
+        "name": "PV Total Yield"
+      },
+      "yield_produced_total": {
+        "name": "Produced Total Yield"
+      },
       "system_state": {
         "name": "System State"
       },

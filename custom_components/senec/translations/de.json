@@ -451,6 +451,12 @@
       "derating": {
         "name": "Drosselung"
       },
+      "yield_pv_total": {
+        "name": "PV Gesamtertrag"
+      },
+      "yield_produced_total": {
+        "name": "Produzierter Gesamtertrag"
+      },
       "system_state": {
         "name": "Systemstatus"
       },

@@ -2357,10 +2357,12 @@ class Inverter:
         self.url1 = f"http://{host}/all.xml"
         self.url2 = f"http://{host}/measurements.xml"
         self.url3 = f"http://{host}/versions.xml"
+        self.url_yield = f"http://{host}/yields.json?total=1"
         self._version_infos = ''
         self._has_bdc = False
         self._raw = None
         self._raw_version = None
+        self._YIELD_DATA_READ_TS = 0
 
     def dict_data(self) -> dict:
         # will be called by the UpdateCoordinator (to get the current data)
@@ -2487,6 +2489,32 @@ class Inverter:
                                             case 'Derating':
                                                 self._derating = float(100.0 - float(a_dict["@Value"]))
 
+        if self._YIELD_DATA_READ_TS + 300 < time():
+            async with self.web_session.get(f"{self.url_yield}&_={datetime.now()}") as res:
+                self._YIELD_DATA_READ_TS = time()
+                res.raise_for_status()
+                yield_data = await res.json()
+                if "TotalCurves" in yield_data and "Datasets" in yield_data["TotalCurves"]:
+                    # Extract the PV1 dataset
+                    pv1_yield_data = next(dataset["Data"] for dataset in yield_data["TotalCurves"]["Datasets"] if dataset["Type"] == "PV1")
+
+                    # Calculate the sum of all Data fields in PV1
+                    pv1_yield_sum = sum(entry["Data"] for entry in pv1_yield_data)
+                    if pv1_yield_sum > 0:
+                        self._yield_pv1_total = pv1_yield_sum / 1000
+                        if self._raw is not None:
+                            self._raw["yield_pv1_total"] = pv1_yield_sum / 1000
+
+                    # Extract the Produced dataset
+                    produced_yield_data = next(dataset["Data"] for dataset in yield_data["TotalCurves"]["Datasets"] if dataset["Type"] == "Produced")
+
+                    # Calculate the sum of all Data fields in 'Produced'
+                    prod_yield_sum = sum(entry["Data"] for entry in produced_yield_data)
+                    if prod_yield_sum > 0:
+                        self._yield_produced_total = prod_yield_sum / 1000
+                        if self._raw is not None:
+                            self._raw["yield_produced_total"] = prod_yield_sum / 1000
+
     @property
     def device_versions(self) -> str:
         return self._version_infos
@@ -2522,111 +2550,145 @@ class Inverter:
     def ac_voltage(self) -> float:
         if (hasattr(self, '_ac_voltage')):
             return self._ac_voltage
+        return None
 
     @property
     def ac_current(self) -> float:
         if (hasattr(self, '_ac_current')):
             return self._ac_current
+        return None
 
     @property
     def ac_power(self) -> float:
         if (hasattr(self, '_ac_power')):
             return self._ac_power
+        return None
 
     @property
     def ac_power_fast(self) -> float:
         if (hasattr(self, '_ac_power_fast')):
             return self._ac_power_fast
+        return None
 
     @property
     def ac_frequency(self) -> float:
         if (hasattr(self, '_ac_frequency')):
             return self._ac_frequency
+        return None
 
     @property
     def dc_voltage1(self) -> float:
         if (hasattr(self, '_dc_voltage1')):
             return self._dc_voltage1
+        return None
 
     @property
     def dc_voltage2(self) -> float:
         if (hasattr(self, '_dc_voltage2')):
             return self._dc_voltage2
+        return None
 
     @property
     def dc_current1(self) -> float:
         if (hasattr(self, '_dc_current1')):
             return self._dc_current1
+        return None
 
     @property
     def bdc_bat_voltage(self) -> float:
         if (hasattr(self, '_bdc_bat_voltage')):
             return self._bdc_bat_voltage
+        return None
 
     @property
     def bdc_bat_current(self) -> float:
         if (hasattr(self, '_bdc_bat_current')):
             return self._bdc_bat_current
+        return None
 
     @property
     def bdc_bat_power(self) -> float:
         if (hasattr(self, '_bdc_bat_power')):
             return self._bdc_bat_power
+        return None
 
     @property
     def bdc_link_voltage(self) -> float:
         if (hasattr(self, '_bdc_link_voltage')):
             return self._bdc_link_voltage
+        return None
 
     @property
     def bdc_link_current(self) -> float:
         if (hasattr(self, '_bdc_link_current')):
             return self._bdc_link_current
+        return None
 
     @property
     def bdc_link_power(self) -> float:
         if (hasattr(self, '_bdc_link_power')):
             return self._bdc_link_power
+        return None
 
     @property
     def dc_current1(self) -> float:
         if (hasattr(self, '_dc_current1')):
             return self._dc_current1
+        return None
 
     @property
     def dc_current2(self) -> float:
         if (hasattr(self, '_dc_current2')):
             return self._dc_current2
+        return None
 
     @property
     def link_voltage(self) -> float:
         if (hasattr(self, '_link_voltage')):
             return self._link_voltage
+        return None
 
     @property
     def gridpower(self) -> float:
         if (hasattr(self, '_gridpower')):
             return self._gridpower
+        return None
 
     @property
     def gridconsumedpower(self) -> float:
         if (hasattr(self, '_gridconsumedpower')):
             return self._gridconsumedpower
+        return None
 
     @property
     def gridinjectedpower(self) -> float:
         if (hasattr(self, '_gridinjectedpower')):
             return self._gridinjectedpower
+        return None
 
     @property
     def ownconsumedpower(self) -> float:
         if (hasattr(self, '_ownconsumedpower')):
             return self._ownconsumedpower
+        return None
 
     @property
     def derating(self) -> float:
         if (hasattr(self, '_derating')):
             return self._derating
+        return None
+
+    @property
+    def yield_pv_total(self) -> float:
+        if (hasattr(self, '_yield_pv1_total')):
+            return self._yield_pv1_total
+        return None
+
+    @property
+    def yield_produced_total(self) -> float:
+        if (hasattr(self, '_yield_produced_total')):
+            return self._yield_produced_total
+        return None
 
 
 class MySenecWebPortal:
