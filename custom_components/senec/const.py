@@ -901,7 +901,9 @@ INVERTER_SENSOR_TYPES = [
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         suggested_display_precision=3,
         icon="mdi:lightning-bolt",
-        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+
     ),
     ExtSensorEntityDescription(
         key="yield_produced_total",
@@ -909,7 +911,8 @@ INVERTER_SENSOR_TYPES = [
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         suggested_display_precision=3,
         icon="mdi:lightning-bolt",
-        state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     )
 ]
 

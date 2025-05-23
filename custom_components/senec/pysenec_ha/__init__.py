@@ -2490,7 +2490,7 @@ class Inverter:
                                                 self._derating = float(100.0 - float(a_dict["@Value"]))
 
         if self._YIELD_DATA_READ_TS + 300 < time():
-            async with self.web_session.get(f"{self.url_yield}&_={datetime.now()}") as res:
+            async with self.web_session.get(f"{self.url_yield}&_={time()}") as res:
                 self._YIELD_DATA_READ_TS = time()
                 res.raise_for_status()
                 yield_data = await res.json()
