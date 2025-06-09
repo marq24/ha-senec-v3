@@ -144,7 +144,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                         if self._previous_plausible_value is not None and self._previous_plausible_value != 1e-05:
                             # we only use a previous value if it's not older than
                             # 2 times the configured update interval + 30 seconds...
-                            if self._previous_plausible_value_ts + ((2 *  self.coordinator.update_interval()) + 30) < time():
+                            if self._previous_plausible_value_ts + ((2 *  self.coordinator.update_interval) + 30) < time():
                                 _LOGGER.debug(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_plausible_value}")
                                 return self._previous_plausible_value
                     else:
