@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from http.cookies import BaseCookie, SimpleCookie, Morsel
 from time import time
-from typing import Union, cast
+from typing import Union, cast, Final
 
 import aiohttp
 import xmltodict
@@ -2690,6 +2690,8 @@ class Inverter:
             return self._yield_produced_total
         return None
 
+#USER_AGENT: Final = "SENEC.App/4.8.1 (LMFD) okhttp/4.12.0"
+USER_AGENT: Final = "SENEC.App okhttp/4.12.0"
 
 class MySenecWebPortal:
     def __init__(self, user, pwd, web_session, master_plant_number: int = 0, lang: str = "en", options: dict = None):
@@ -2787,6 +2789,13 @@ class MySenecWebPortal:
         # 1514764800 = 2018-01-01 as UNIX epoche timestamp
         self._SENEC_APP_TOTAL_V2 = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=YEAR&from=1514764800&to=%s"
         self._SENEC_APP_TECHDATA = APP_BASE_URL2 + "v1/senec/systems/%s/technical-data"
+
+        # 2025/06/11 [NEW APP URLS -but with LESS DATA!]
+        # APP_BASE_MEASSURE_URL3  = "https://senec-app-measurements-proxy.prod.senec.dev/"
+        # APP_BASE_SYSTEM_URL3    = "https://senec-app-systems-proxy.prod.senec.dev/"
+        # self._SENEC_APP_NOW     = f"{APP_BASE_MEASSURE_URL3}v1/systems/%s/dashboard"
+        # self._SENEC_APP_TOTAL_V3= f"{APP_BASE_MEASSURE_URL3}v1/systems/%s/measurements?resolution=YEAR&from=2018-01-01T00:00:00Z&to=%s"
+        # self._SENEC_APP_TECHDATA= f"{APP_BASE_SYSTEM_URL3}systems/%s/details"
 
         # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/abilities
         # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/operational-mode -> "COM70"
@@ -2911,7 +2920,7 @@ class MySenecWebPortal:
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.web_session.post(self._SENEC_APP_AUTH, json=auth_payload, ssl=False) as res:
+        async with self.web_session.post(self._SENEC_APP_AUTH, headers={"User-Agent": USER_AGENT}, json=auth_payload, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -2938,7 +2947,7 @@ class MySenecWebPortal:
                     _LOGGER.warning(f"APP-API: Login failed with Code {res.status}")
 
             except ClientResponseError as ioexc:
-                _LOGGER.warning(f"APP-API: Could not login to APP-API: {ioexc}")
+                _LOGGER.warning(f"APP-API: Could not login to APP-API: {type(ioexc)} - {ioexc}")
 
     async def app_update_context(self, retry: bool = True):
         _LOGGER.debug("***** app_update_context(self) ********")
@@ -2952,7 +2961,7 @@ class MySenecWebPortal:
     async def app_get_master_plant_id(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
         if self._app_is_authenticated:
-            headers = {"Authorization": self._app_token}
+            headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
             try:
                 async with self.web_session.get(self._SENEC_APP_GET_SYSTEMS, headers=headers, ssl=False) as res:
                     try:
@@ -3002,14 +3011,11 @@ class MySenecWebPortal:
                                 await self.app_authenticate(retry=False)
                     except Exception as exc:
                         if res is not None:
-                            _LOGGER.error(
-                                f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' - Response is: '{res}' [retry={retry}]")
+                            _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' - Response is: '{res}' [retry={retry}]")
                         else:
-                            _LOGGER.error(
-                                f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
+                            _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
             except Exception as exc:
-                _LOGGER.error(
-                    f"APP-API: Error when try to call 'self.web_session.get()' for {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
+                _LOGGER.error(f"APP-API: Error when try to call 'self.web_session.get()' for {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
         else:
             if retry:
                 await self.app_authenticate(retry=False)
@@ -3019,7 +3025,7 @@ class MySenecWebPortal:
         if self._app_token is not None:
             _LOGGER.debug(f"APP-API get {a_url}")
             try:
-                headers = {"Authorization": self._app_token}
+                headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
                 async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
                     res.raise_for_status()
                     if res.status == 200:
@@ -3075,6 +3081,12 @@ class MySenecWebPortal:
             # status_url = f"{self._SENEC_APP_TOTAL}" % (
             #    str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
             status_url = f"{self._SENEC_APP_TOTAL_V2}" % (str(self._app_master_plant_id), str(int(today.timestamp())))
+
+            # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
+            # today = datetime.now(timezone.utc) + relativedelta(months=+1)
+            # to_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
+            # status_url = f"{self._SENEC_APP_TOTAL_V3}" % (str(self._app_master_plant_id), to_date)
+
             data = await self.app_get_data(a_url=status_url)
             if data is not None and "measurements" in data and "timeseries" in data:
                 self._app_raw_total_v2 = data
@@ -3178,7 +3190,7 @@ class MySenecWebPortal:
         if self._app_token is not None:
             _LOGGER.debug(f"APP-API post {post_data} to {a_url}")
             try:
-                headers = {"Authorization": self._app_token}
+                headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
                 async with self.web_session.post(url=a_url, headers=headers, json=post_data, ssl=False) as res:
                     res.raise_for_status()
                     if res.status == 200:
@@ -3402,7 +3414,7 @@ class MySenecWebPortal:
     async def app_get_system_abilities(self):
         # 'app_get_system_abilities' not used (yet)
         if self._app_master_plant_id is not None and self._app_token is not None:
-            headers = {"Authorization": self._app_token}
+            headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
             a_url = f"{self._SENEC_APP_GET_ABILITIES}" % str(self._app_master_plant_id)
             async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
                 res.raise_for_status()
@@ -3550,7 +3562,7 @@ class MySenecWebPortal:
     async def update_peak_shaving(self):
         _LOGGER.info("***** update_peak_shaving(self) ********")
         a_url = f"{self._SENEC_API_GET_PEAK_SHAVING}{self._master_plant_number}"
-        async with self.web_session.get(a_url, ssl=False) as res:
+        async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -3586,7 +3598,7 @@ class MySenecWebPortal:
         # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
         a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._master_plant_number}&mode={new_peak_shaving['mode'].upper()}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
 
-        async with self.web_session.post(a_url, ssl=False) as res:
+        async with self.web_session.post(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -3612,7 +3624,7 @@ class MySenecWebPortal:
     async def update_spare_capacity(self):
         _LOGGER.info("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
-        async with self.web_session.get(a_url, ssl=False) as res:
+        async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -3639,7 +3651,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** set_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
 
-        async with self.web_session.post(a_url, ssl=False) as res:
+        async with self.web_session.post(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -3748,7 +3760,7 @@ class MySenecWebPortal:
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_state(self) ********")
             a_url = f"{self._SENEC_API_GET_SGREADY_STATE}" % (str(self._master_plant_number))
-            async with self.web_session.get(a_url, ssl=False) as res:
+            async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
                 try:
                     res.raise_for_status()
                     if res.status == 200:
@@ -3781,7 +3793,7 @@ class MySenecWebPortal:
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_conf(self) ********")
             a_url = f"{self._SENEC_API_GET_SGREADY_CONF}" % (str(self._master_plant_number))
-            async with self.web_session.get(a_url, ssl=False) as res:
+            async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
                 try:
                     res.raise_for_status()
                     if res.status == 200:
@@ -3821,7 +3833,7 @@ class MySenecWebPortal:
                         post_data[a_key] = self._sgready_conf_data[a_key]
 
             if len(post_data) > 0 and post_data_to_backend:
-                async with self.web_session.post(a_url, ssl=False, json=post_data) as res:
+                async with self.web_session.post(a_url, headers={"User-Agent": USER_AGENT}, ssl=False, json=post_data) as res:
                     try:
                         res.raise_for_status()
                         if res.status == 200:
@@ -3867,7 +3879,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
-        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER, ssl=False) as res:
+        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -3890,7 +3902,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** update_get_systems(self) ********")
 
         a_url = f"{self._SENEC_WEB_GET_SYSTEM_INFO}" % str(a_plant_number)
-        async with self.web_session.get(a_url, ssl=False) as res:
+        async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -4198,7 +4210,10 @@ class MySenecWebPortal:
         #        'mainControllerState': {'name': 'EIGENVERBRAUCH', 'severity': 'INFO'}, 'firmwareVersion': '123',
         #        'guiVersion': 123}, 'warranty': {'endDate': 1700000000, 'warrantyTermInMonths': 123},
         if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["mcu"]["mainControllerState"]["name"].replace('_', ' ')
+            if "mainControllerState" in self._app_raw_tech_data["mcu"]:
+                return self._app_raw_tech_data["mcu"]["mainControllerState"]["name"].replace('_', ' ')
+            elif "mainControllerUnitState" in self._app_raw_tech_data["mcu"]:
+                return self._app_raw_tech_data["mcu"]["mainControllerUnitState"]["name"].replace('_', ' ')
 
     #######################################################################################################
     # 'batteryInverter': {'state': {'name': 'RUN_GRID', 'severity': 'INFO'}, 'vendor': 'XXX',
@@ -4269,28 +4284,33 @@ class MySenecWebPortal:
     def _battery_module_count(self) -> int:
         # internal use only...
         if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["batteryPack"]["numberOfBatteryModules"]
+            if "numberOfBatteryModules" in self._app_raw_tech_data["batteryPack"]:
+                return self._app_raw_tech_data["batteryPack"]["numberOfBatteryModules"]
         return 0
 
     @property
     def battery_state_voltage(self) -> float:
         if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["batteryPack"]["currentVoltageInV"]
+            if "currentVoltageInV" in self._app_raw_tech_data["batteryPack"]:
+                return self._app_raw_tech_data["batteryPack"]["currentVoltageInV"]
 
     @property
     def battery_state_current(self) -> float:
         if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["batteryPack"]["currentCurrentInA"]
+            if "currentCurrentInA" in self._app_raw_tech_data["batteryPack"]:
+                return self._app_raw_tech_data["batteryPack"]["currentCurrentInA"]
 
     @property
     def _not_used_currentChargingLevelInPercent(self) -> float:
         if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["batteryPack"]["currentChargingLevelInPercent"]
+            if "currentChargingLevelInPercent" in self._app_raw_tech_data["batteryPack"]:
+                return self._app_raw_tech_data["batteryPack"]["currentChargingLevelInPercent"]
 
     @property
     def battery_soh_remaining_capacity(self) -> float:
         if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["batteryPack"]["remainingCapacityInPercent"]
+            if "remainingCapacityInPercent" in self._app_raw_tech_data["batteryPack"]:
+                return self._app_raw_tech_data["batteryPack"]["remainingCapacityInPercent"]
 
     #######################################################################################################
     # 'batteryModules': [{'ordinal': 1, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
