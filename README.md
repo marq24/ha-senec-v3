@@ -1,28 +1,42 @@
 # Home Assistant Integration for SENEC.Home V2.x/V3/V4 Systems
 
+<!--
+> [!NOTE]  
+> Highlights information that users should take into account, even when skimming.
+
+> [!TIP]
+> Optional information to help a user be more successful.
+
+> [!IMPORTANT]  
+> Crucial information necessary for users to succeed.
+
+> [!WARNING]  
+> Critical content demanding immediate user attention due to potential risks.
+
+> [!CAUTION]
+> Negative potential consequences of an action.
+-->
+
 This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4 Systems. In addition and where possible functions are provided to control the system.
 
 __Please note__, _that this integration is not official and not supported by the SENEC development team. I am not affiliated with SENEC in any way._
 
-## Disclaimer
-
-Please be aware, that we are developing this integration to best of our knowledge and belief, but cant give a guarantee. Therefore, use this integration **at your own risk**.
+> [!WARNING]
+> ## General Disclaimer
+> Please be aware that we are developing this integration to the best of our knowledge and belief, but can't give a guarantee. Therefore, use this integration **at your own risk**.
 
 [![hacs_badge][hacsbadge]][hacs] [![github][ghsbadge]][ghs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![PayPal][paypalbadge]][paypal] [![hainstall][hainstallbadge]][hainstall]
 
----
 
-###### Advertisement / Werbung
+> [!WARNING]
+> ## Disclaimer for WebAPI Based Integration
+> ### SENEC WebAPI can break at any time — and there might be no fix!
+> SENEC does not provide any kind of public accessible API and/or documentation. The WebAPI can break at any time without notice. This means that the integration might stop working at any time, and there might be no fix available. Please be aware of this before using the WebAPI based integration.
+>  
+> You __should <ins>not</ins> make yourself <ins>dependent</ins> on the WebAPI based integration__, as it might not work in the future. If you want to use the WebAPI based integration, please be aware that __you are using it at your own risk__.
+> 
+> I must admit that <ins>__I am not sure__</ins> if the WebAPI-Integration version <ins>__is available in the future__</ins>. it might be just coincident, but the latest changes in the infrastructure by SENEC __might indicate__ that SENEC is __actively working on blocking custom implementations__.
 
-### Switch to Tibber!
-
-Are you still customer of (IMHO totally overpriced) SENEC.Cloud as electricity provider? Be smart switch to Tibber - that's what I did in october 2023.
-
-If you want to join Tibber (become a customer), you might want to use my personal invitation link. When you use this link, Tibber will we grant you and me a bonus of 50,-€ for each of us. This bonus then can be used in the Tibber store (not for your power bill) - e.g. to buy a Tibber Bridge. If you are already a Tibber customer and have not used an invitation link yet, you can also enter one afterward in the Tibber App (up to 14 days). [[see official Tibber support article](https://support.tibber.com/en/articles/4601431-tibber-referral-bonus#h_ae8df266c0)]
-
-Please consider [using my personal Tibber invitation link to join Tibber today](https://invite.tibber.com/6o0kqvzf) or Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterward in the Tibber App - TIA!
-
----
 ## Setup / Installation
 
 ### Step I: Install the integration
@@ -31,8 +45,8 @@ Please consider [using my personal Tibber invitation link to join Tibber today](
 
 - Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
 - Add integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
-- Use the 3-dots at the right of the list entry (not at the top bar!) to download/install the custom integration - the latest release version is automatically selected. Only select a different version if you have specific reasons.
-- After you presses download and the process has completed, you must __Restart Home Assistant__ to install all dependencies
+- Use the 3-dots at the right of the list entry (not at the top bar!) to download/install the custom integration — the latest release version is automatically selected. Only select a different version if you have specific reasons.
+- After you press download and the process has completed, you must __Restart Home Assistant__ to install all dependencies
 - Setup the custom integration as described below (see _Step II: Adding or enabling the integration_)
 
 __If you only find__ the `Senec solar system sensor` integration (which will not work any longer!) - please add this repo as custom repository https://github.com/marq24/ha-senec-v3 to HACS
@@ -52,7 +66,7 @@ Just click the following Button to start the configuration automatically (for th
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=senec)
 
-#### Option 2: Manually steps by step
+#### Option 2: Manually step by step
 
 Use the following steps for a manual configuration by adding the custom integration using the web interface and follow instruction on screen:
 
@@ -60,9 +74,9 @@ Use the following steps for a manual configuration by adding the custom integrat
 - Select the Integration Type (basically LAN ot WebApi)
 - LAN: (`SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older`
   or `Internal inverter build into SENEC.Home V3 hybrid/hybrid duo`)
-    - Provide display name for the device, and it's address (hostname or IP)
-    - Provide the update intervall
-    - Provide area where the battery is located
+    - Provide display name for the device and its address (hostname or IP)
+    - Provide the update interval
+    - Provide the area where the battery is located
 - WebAPI (`WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)`
   or `SENEC.Home V4/SENEC.Home V4 hybrid`):
     - Provide display name for the device
@@ -71,6 +85,21 @@ Use the following steps for a manual configuration by adding the custom integrat
 You can repeat this to add additional Integration entries (e.g. LAN + WebAPI)
 
 <a id='inv-lnk'></a>
+
+
+---
+###### Advertisement / Werbung
+
+### Switch to Tibber!
+
+Are you still a customer of (IMHO totally overpriced) SENEC.Cloud as an electricity provider? Be smart switch to Tibber - that's what I did in october 2023.
+
+If you want to join Tibber (become a customer), you might want to use my personal invitation link. When you use this link, Tibber will grant you and me a bonus of 50,-€ for each of us. This bonus then can be used in the Tibber store (not for your power bill) — e.g., to buy a Tibber Bridge. If you are already a Tibber customer and have not used an invitation link yet, you can also enter one afterward in the Tibber App (up to 14 days). [[see official Tibber support article](https://support.tibber.com/en/articles/4601431-tibber-referral-bonus#h_ae8df266c0)]
+
+Please consider [using my personal Tibber invitation link to join Tibber today](https://invite.tibber.com/6o0kqvzf) or Enter the following code: 6o0kqvzf (six, oscar, zero, kilo, quebec, victor, zulu, foxtrot) afterward in the Tibber App - TIA!
+
+---
+
 
 ## Switching to this fork
 
@@ -325,11 +354,12 @@ Resulting energy distribution card:
 
 ![Energy Distribution](images/energy_distribution.png)
 
-## In the winter season: charge your SENEC Battery from grid (when stock price is low)
+## In winter: charge your SENEC Battery from grid (when stock price is low)
 
 When your grid supply depends on the hourly electricity price on the stock exchange, then it might be smart in the winter time (when almost no PV power is available) to charge your SENEC system with power from grid. If you are a little bit deeper into HA automations you might like to use my scripts to control the charging and discharging of your battery.
 
 See all the details in the [LOAD YOUR BATTERY_WITH_TIBBER](https://github.com/marq24/ha-senec-v3/blob/master/docs/battery_control/BATTERY_WITH_TIBBER.md).
+
 
 # Developer information
 
