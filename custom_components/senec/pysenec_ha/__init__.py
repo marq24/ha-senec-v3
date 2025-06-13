@@ -3029,7 +3029,7 @@ class MySenecWebPortal:
                 headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
                 async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
                     res.raise_for_status()
-                    if res.status == 200:
+                    if res.status in [200, 201, 202, 204, 205]:
                         try:
                             data = await res.json()
                             _LOGGER.debug(f"APP-API response: {data}")
@@ -3078,7 +3078,14 @@ class MySenecWebPortal:
     @staticmethod
     def summ_measurement_values(src_dict, dest_dict):
         """Add corresponding values from two measurement dictionaries"""
-        # Get the values arrays from both dictionaries
+        # Get the value arrays from both dictionaries
+        if (src_dict is None or
+            "timeseries" not in src_dict or
+            "measurements" not in src_dict["timeseries"][0] or
+            "values" not in src_dict["timeseries"][0]["measurements"]):
+            _LOGGER.debug("Source dict '{src_dict}' does not contain the expected structure for timeseries measurements.")
+            return dest_dict
+
         src_values = src_dict["timeseries"][0]["measurements"]["values"]
         dest_values = dest_dict["timeseries"][0]["measurements"]["values"]
 
@@ -3098,6 +3105,7 @@ class MySenecWebPortal:
             if self._total_sum_till_begin_of_this_year is None:
                 # Loop from 2018 to current year
                 for year in range(2018, current_year):
+                    _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {year}")
                     # January 1st at 00:00:00 UTC of this year
                     start = int(datetime(year, 1, 1, 0, 0, 0, tzinfo=tz_gmt_plus_1).timestamp())
                     # December 31st at 23:59:59 UTC of this year
@@ -3125,7 +3133,7 @@ class MySenecWebPortal:
 
             data = await self.app_get_data(a_url=status_url)
             if data is not None and "measurements" in data and "timeseries" in data:
-                self._app_raw_total_v2 = MySenecWebPortal.summ_measurement_values(data, self._total_sum_till_begin_of_this_year)
+                self._app_raw_total_v2 = MySenecWebPortal.summ_measurement_values(self._total_sum_till_begin_of_this_year, data)
 
                 # filename = f"./{start}.json"
                 # directory = os.path.dirname(filename)
