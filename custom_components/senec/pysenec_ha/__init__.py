@@ -3,7 +3,7 @@ import base64
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from http.cookies import BaseCookie, SimpleCookie, Morsel
 from time import time
 from typing import Union, cast, Final
@@ -2788,6 +2788,7 @@ class MySenecWebPortal:
         self._SENEC_APP_TOTAL_V1_OUTDATED = APP_BASE_URL2 + "v1/senec/monitor/%s/data/custom?startDate=2018-01-01&endDate=%s-%s-01&locale=de_DE&timezone=GMT"
         # 1514764800 = 2018-01-01 as UNIX epoche timestamp
         self._SENEC_APP_TOTAL_V2 = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=YEAR&from=1514764800&to=%s"
+        self._SENEC_APP_TOTAL_V2_with_START_and_END = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=YEAR&from=%s&to=%s"
         self._SENEC_APP_TECHDATA = APP_BASE_URL2 + "v1/senec/systems/%s/technical-data"
 
         # 2025/06/11 [NEW APP URLS -but with LESS DATA!]
@@ -2868,11 +2869,11 @@ class MySenecWebPortal:
         self._app_raw_total_v2 = None
         self._app_raw_tech_data = None
         self._app_raw_wallbox = [None, None, None, None]
+        self._total_sum_till_begin_of_this_year = None
 
         self.SGREADY_SUPPORTED = False
 
         # self._QUERY_TECH_DATA_TS = 0
-
         IntBridge.app_api = self
         _LOGGER.debug(f"MySenecWebPortal initialized and IntBridge.app_api set to {self}")
         if IntBridge.avail():
@@ -3074,13 +3075,48 @@ class MySenecWebPortal:
             # somehow we should pass a "callable"...
             await self.app_authenticate()
 
+    @staticmethod
+    def summ_measurement_values(src_dict, dest_dict):
+        """Add corresponding values from two measurement dictionaries"""
+        # Get the values arrays from both dictionaries
+        src_values = src_dict["timeseries"][0]["measurements"]["values"]
+        dest_values = dest_dict["timeseries"][0]["measurements"]["values"]
+
+        # Add corresponding values together
+        summed_values = [src_val + dest_val for src_val, dest_val in zip(src_values, dest_values)]
+
+        # Create a result dictionary with the structure of the first one
+        dest_dict["timeseries"][0]["measurements"]["values"] = summed_values
+        return dest_dict
+
     async def app_update_total(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_update_total(self) ********")
         if self._app_master_plant_id is not None:
-            today = datetime.today() + relativedelta(months=+1)
+            current_year = datetime.now().year
+            tz_gmt_plus_1 = timezone(timedelta(hours=1))
+
+            if self._total_sum_till_begin_of_this_year is None:
+                # Loop from 2018 to current year
+                for year in range(2018, current_year):
+                    # January 1st at 00:00:00 UTC of this year
+                    start = int(datetime(year, 1, 1, 0, 0, 0, tzinfo=tz_gmt_plus_1).timestamp())
+                    # December 31st at 23:59:59 UTC of this year
+                    end = int(datetime(year, 12, 31, 23, 59, 59, tzinfo=tz_gmt_plus_1).timestamp())
+
+                    status_url = f"{self._SENEC_APP_TOTAL_V2_with_START_and_END}" % (str(self._app_master_plant_id), str(start), str(end))
+                    data = await self.app_get_data(a_url=status_url)
+                    if data is not None and "measurements" in data and "timeseries" in data:
+                        if self._total_sum_till_begin_of_this_year is None:
+                            self._total_sum_till_begin_of_this_year = data
+                        else:
+                            self._total_sum_till_begin_of_this_year = MySenecWebPortal.summ_measurement_values(data, self._total_sum_till_begin_of_this_year)
+
+            start = int((datetime(current_year, 1, 1, 0, 0, 0, tzinfo=tz_gmt_plus_1)).timestamp())
+            end = int((datetime.today() + relativedelta(months=+1)).timestamp())
+
             # status_url = f"{self._SENEC_APP_TOTAL}" % (
             #    str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
-            status_url = f"{self._SENEC_APP_TOTAL_V2}" % (str(self._app_master_plant_id), str(int(today.timestamp())))
+            status_url = f"{self._SENEC_APP_TOTAL_V2_with_START_and_END}" % (str(self._app_master_plant_id), str(start), str(end))
 
             # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
             # today = datetime.now(timezone.utc) + relativedelta(months=+1)
@@ -3089,7 +3125,17 @@ class MySenecWebPortal:
 
             data = await self.app_get_data(a_url=status_url)
             if data is not None and "measurements" in data and "timeseries" in data:
-                self._app_raw_total_v2 = data
+                self._app_raw_total_v2 = MySenecWebPortal.summ_measurement_values(data, self._total_sum_till_begin_of_this_year)
+
+                # filename = f"./{start}.json"
+                # directory = os.path.dirname(filename)
+                # if not os.path.exists(directory):
+                #     os.makedirs(directory)
+                #
+                # #file_path = os.path.join(os.getcwd(), filename)
+                # with open(filename, "w", encoding="utf-8") as outfile:
+                #     json.dump(self._app_raw_total_v2, outfile, indent=4)
+
             else:
                 self._app_raw_total_v2 = None
         else:
