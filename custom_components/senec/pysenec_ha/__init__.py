@@ -2693,6 +2693,38 @@ class Inverter:
 #USER_AGENT: Final = "SENEC.App/4.8.1 (LMFD) okhttp/4.12.0"
 USER_AGENT: Final = "SENEC.App okhttp/4.12.0"
 
+
+def app_has_dict_timeseries_with_values(a_dict:dict) -> bool:
+    if (a_dict is None or
+            "timeseries" not in a_dict or
+            len(a_dict["timeseries"]) == 0 or
+            "measurements" not in a_dict["timeseries"][0] or
+            "values" not in a_dict["timeseries"][0]["measurements"]):
+        _LOGGER.debug(f"Data '{a_dict}' does not contain the expected structure for timeseries measurements.")
+        return False
+    return True
+
+def app_summ_total_dict_values(src_dict, dest_dict):
+    """Add corresponding values from two measurement dictionaries"""
+    # Get the value arrays from both dictionaries
+    src_values = src_dict["timeseries"][0]["measurements"]["values"]
+    dest_values = dest_dict["timeseries"][0]["measurements"]["values"]
+
+    # Add corresponding values together
+    summed_values = [src_val + dest_val for src_val, dest_val in zip(src_values, dest_values)]
+
+    # Create a result dictionary with the structure of the first one
+    dest_dict["timeseries"][0]["measurements"]["values"] = summed_values
+    return dest_dict
+
+def app_get_year_start(year, a_tzinfo):
+    # January 1st at 00:00:00 UTC+1 of the year
+    return int(datetime(year, 1, 1, 0, 0, 0, tzinfo=a_tzinfo).timestamp())
+
+def app_get_year_end(year, a_tzinfo):
+    # December 31st at 23:59:59 UTC+1 of the year
+    return int(datetime(year, 12, 31, 23, 59, 59, tzinfo=a_tzinfo).timestamp())
+
 class MySenecWebPortal:
     def __init__(self, user, pwd, web_session, master_plant_number: int = 0, lang: str = "en", options: dict = None):
         self._lang = lang
@@ -2869,7 +2901,7 @@ class MySenecWebPortal:
         self._app_raw_total_v2 = None
         self._app_raw_tech_data = None
         self._app_raw_wallbox = [None, None, None, None]
-        self._total_sum_till_begin_of_this_year = None
+        self._static_TOTAL_SUMS = None
 
         self.SGREADY_SUPPORTED = False
 
@@ -3075,56 +3107,39 @@ class MySenecWebPortal:
             # somehow we should pass a "callable"...
             await self.app_authenticate()
 
-    @staticmethod
-    def summ_measurement_values(src_dict, dest_dict):
-        """Add corresponding values from two measurement dictionaries"""
-        # Get the value arrays from both dictionaries
-        if (src_dict is None or
-            "timeseries" not in src_dict or
-            "measurements" not in src_dict["timeseries"][0] or
-            "values" not in src_dict["timeseries"][0]["measurements"]):
-            _LOGGER.debug("Source dict '{src_dict}' does not contain the expected structure for timeseries measurements.")
-            return dest_dict
-
-        src_values = src_dict["timeseries"][0]["measurements"]["values"]
-        dest_values = dest_dict["timeseries"][0]["measurements"]["values"]
-
-        # Add corresponding values together
-        summed_values = [src_val + dest_val for src_val, dest_val in zip(src_values, dest_values)]
-
-        # Create a result dictionary with the structure of the first one
-        dest_dict["timeseries"][0]["measurements"]["values"] = summed_values
-        return dest_dict
 
     async def app_update_total(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_update_total(self) ********")
         if self._app_master_plant_id is not None:
             current_year = datetime.now().year
+            # for what ever reason we must move into the timezone of the SENEC backend...
+            # when we use real GMT timestamps, then the measurement is split into two parts
+            # (59min from the year before and the rest (-1h) from the current year)
+            # In order to keep the sum-up code clean, I decided to use the GMT+1 timezone
             tz_gmt_plus_1 = timezone(timedelta(hours=1))
 
-            if self._total_sum_till_begin_of_this_year is None:
-                # Loop from 2018 to current year
-                for year in range(2018, current_year):
-                    _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {year}")
-                    # January 1st at 00:00:00 UTC of this year
-                    start = int(datetime(year, 1, 1, 0, 0, 0, tzinfo=tz_gmt_plus_1).timestamp())
-                    # December 31st at 23:59:59 UTC of this year
-                    end = int(datetime(year, 12, 31, 23, 59, 59, tzinfo=tz_gmt_plus_1).timestamp())
+            if self._static_TOTAL_SUMS is None:
+                # Loop from 2018 to current year [there are no older sytems then 2018]
+                for a_year in range(2018, current_year):
+                    _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {a_year}")
+                    status_url = self._SENEC_APP_TOTAL_V2_with_START_and_END % (
+                        str(self._app_master_plant_id),
+                        str(app_get_year_start(a_year, tz_gmt_plus_1)),
+                        str(app_get_year_end(a_year, tz_gmt_plus_1)))
 
-                    status_url = f"{self._SENEC_APP_TOTAL_V2_with_START_and_END}" % (str(self._app_master_plant_id), str(start), str(end))
                     data = await self.app_get_data(a_url=status_url)
-                    if data is not None and "measurements" in data and "timeseries" in data:
-                        if self._total_sum_till_begin_of_this_year is None:
-                            self._total_sum_till_begin_of_this_year = data
+                    if data is not None and app_has_dict_timeseries_with_values(data):
+                        if self._static_TOTAL_SUMS is None:
+                            self._static_TOTAL_SUMS = data
                         else:
-                            self._total_sum_till_begin_of_this_year = MySenecWebPortal.summ_measurement_values(data, self._total_sum_till_begin_of_this_year)
-
-            start = int((datetime(current_year, 1, 1, 0, 0, 0, tzinfo=tz_gmt_plus_1)).timestamp())
-            end = int((datetime.today() + relativedelta(months=+1)).timestamp())
+                            self._static_TOTAL_SUMS = app_summ_total_dict_values(data, self._static_TOTAL_SUMS)
 
             # status_url = f"{self._SENEC_APP_TOTAL}" % (
             #    str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
-            status_url = f"{self._SENEC_APP_TOTAL_V2_with_START_and_END}" % (str(self._app_master_plant_id), str(start), str(end))
+            status_url = self._SENEC_APP_TOTAL_V2_with_START_and_END % (
+                str(self._app_master_plant_id),
+                str(app_get_year_start(current_year, tz_gmt_plus_1)),
+                str(int((datetime.today() + relativedelta(months=+1)).timestamp())))
 
             # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
             # today = datetime.now(timezone.utc) + relativedelta(months=+1)
@@ -3132,8 +3147,11 @@ class MySenecWebPortal:
             # status_url = f"{self._SENEC_APP_TOTAL_V3}" % (str(self._app_master_plant_id), to_date)
 
             data = await self.app_get_data(a_url=status_url)
-            if data is not None and "measurements" in data and "timeseries" in data:
-                self._app_raw_total_v2 = MySenecWebPortal.summ_measurement_values(self._total_sum_till_begin_of_this_year, data)
+            if app_has_dict_timeseries_with_values(data):
+                if self._static_TOTAL_SUMS is not None:
+                    data = app_summ_total_dict_values(self._static_TOTAL_SUMS, data)
+
+                self._app_raw_total_v2 = data
 
                 # filename = f"./{start}.json"
                 # directory = os.path.dirname(filename)
@@ -3154,7 +3172,7 @@ class MySenecWebPortal:
     async def app_update_now(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_update_now(self) ********")
         if self._app_master_plant_id is not None:
-            status_url = f"{self._SENEC_APP_NOW}" % (str(self._app_master_plant_id))
+            status_url = self._SENEC_APP_NOW % (str(self._app_master_plant_id))
             data = await self.app_get_data(a_url=status_url)
             if data is not None and "currently" in data:
                 self._app_raw_now = data["currently"]
@@ -3175,7 +3193,7 @@ class MySenecWebPortal:
     async def app_update_tech_data(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_update_tech_data(self) ********")
         if self._app_master_plant_id is not None:
-            status_url = f"{self._SENEC_APP_TECHDATA}" % (str(self._app_master_plant_id))
+            status_url = self._SENEC_APP_TECHDATA % (str(self._app_master_plant_id))
             data = await self.app_get_data(a_url=status_url)
             if data is not None:
                 self._app_raw_tech_data = data
@@ -3192,7 +3210,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** APP-API: app_get_wallbox_data(self) ********")
         if self._app_master_plant_id is not None:
             idx = wallbox_num - 1
-            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+            wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
             data = await self.app_get_data(a_url=wb_url)
             if data is not None:
                 self._app_raw_wallbox[idx] = data
@@ -3329,7 +3347,7 @@ class MySenecWebPortal:
                     api_mode_to_set = APP_API_WB_MODE_FASTEST
 
                 if data is not None:
-                    wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+                    wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
                     success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
 
                     if success:
@@ -3397,7 +3415,7 @@ class MySenecWebPortal:
                 "minChargingCurrentInA": float(round(value_to_set, 2))
             }
 
-            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+            wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
             success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
             if success:
                 # setting the internal storage value...
@@ -3432,7 +3450,7 @@ class MySenecWebPortal:
                 "allowIntercharge": value_to_set
             }
 
-            wb_url = f"{self._SENEC_APP_SET_WALLBOX}" % (str(self._app_master_plant_id), str(wallbox_num))
+            wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
             success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
             if success:
                 # setting the internal storage value...
@@ -3469,7 +3487,7 @@ class MySenecWebPortal:
         # 'app_get_system_abilities' not used (yet)
         if self._app_master_plant_id is not None and self._app_token is not None:
             headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
-            a_url = f"{self._SENEC_APP_GET_ABILITIES}" % str(self._app_master_plant_id)
+            a_url = self._SENEC_APP_GET_ABILITIES % str(self._app_master_plant_id)
             async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
                 res.raise_for_status()
                 if res.status == 200:
@@ -3813,7 +3831,7 @@ class MySenecWebPortal:
     async def update_sgready_state(self):
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_state(self) ********")
-            a_url = f"{self._SENEC_API_GET_SGREADY_STATE}" % (str(self._master_plant_number))
+            a_url = self._SENEC_API_GET_SGREADY_STATE % (str(self._master_plant_number))
             async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
                 try:
                     res.raise_for_status()
@@ -3846,7 +3864,7 @@ class MySenecWebPortal:
     async def update_sgready_conf(self):
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_conf(self) ********")
-            a_url = f"{self._SENEC_API_GET_SGREADY_CONF}" % (str(self._master_plant_number))
+            a_url = self._SENEC_API_GET_SGREADY_CONF % (str(self._master_plant_number))
             async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
                 try:
                     res.raise_for_status()
@@ -3873,7 +3891,7 @@ class MySenecWebPortal:
         if self.SGREADY_SUPPORTED:
             _LOGGER.debug(f"***** set_sgready_conf(self, new_sgready_data {new_sgready_data}) ********")
 
-            a_url = f"{self._SENEC_API_SET_SGREADY_CONF}" % (str(self._master_plant_number))
+            a_url = self._SENEC_API_SET_SGREADY_CONF % (str(self._master_plant_number))
 
             post_data_to_backend = False
             post_data = {}
@@ -3955,7 +3973,7 @@ class MySenecWebPortal:
     async def update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
         _LOGGER.debug("***** update_get_systems(self) ********")
 
-        a_url = f"{self._SENEC_WEB_GET_SYSTEM_INFO}" % str(a_plant_number)
+        a_url = self._SENEC_WEB_GET_SYSTEM_INFO % str(a_plant_number)
         async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
             res.raise_for_status()
             if res.status == 200:
