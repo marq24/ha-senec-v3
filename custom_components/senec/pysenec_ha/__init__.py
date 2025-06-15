@@ -4020,7 +4020,7 @@ class MySenecWebPortal:
 
     @property
     def spare_capacity(self) -> int:
-        if hasattr(self, '_spare_capacity') and isinstance(self._spare_capacity, (int, float)):
+        if hasattr(self, '_spare_capacity'):
             return int(self._spare_capacity)
 
     @property
