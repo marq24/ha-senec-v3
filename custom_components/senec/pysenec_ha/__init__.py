@@ -2902,6 +2902,7 @@ class MySenecWebPortal:
         self._app_raw_tech_data = None
         self._app_raw_wallbox = [None, None, None, None]
         self._static_TOTAL_SUMS = None
+        self._static_TOTAL_SUMS_WAS_FETCHED = False
 
         self.SGREADY_SUPPORTED = False
 
@@ -3118,7 +3119,7 @@ class MySenecWebPortal:
             # In order to keep the sum-up code clean, I decided to use the GMT+1 timezone
             tz_gmt_plus_1 = timezone(timedelta(hours=1))
 
-            if self._static_TOTAL_SUMS is None:
+            if not self._static_TOTAL_SUMS_WAS_FETCHED:
                 # Loop from 2018 to current year [there are no older sytems then 2018]
                 for a_year in range(2018, current_year):
                     _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {a_year}")
@@ -3133,6 +3134,8 @@ class MySenecWebPortal:
                             self._static_TOTAL_SUMS = data
                         else:
                             self._static_TOTAL_SUMS = app_summ_total_dict_values(data, self._static_TOTAL_SUMS)
+
+                self._static_TOTAL_SUMS_WAS_FETCHED = True
 
             # status_url = f"{self._SENEC_APP_TOTAL}" % (
             #    str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
@@ -3641,13 +3644,11 @@ class MySenecWebPortal:
                     try:
                         r_json = await res.json()
                         # GET Data from JSON
-                        self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json[
-                            "einspeisebegrenzungKwpInPercent"]
+                        self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json["einspeisebegrenzungKwpInPercent"]
                         self._peak_shaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
-                        self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json[
-                            "peakShavingCapacityLimitInPercent"]
-                        self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(
-                            r_json["peakShavingEndDate"] / 1000)  # from miliseconds to seconds
+                        self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json["peakShavingCapacityLimitInPercent"]
+                        self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(r_json["peakShavingEndDate"] / 1000,
+                                                                                                   tz=timezone.utc)  # from miliseconds to seconds
                         self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
                     except JSONDecodeError as exc:
                         _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
