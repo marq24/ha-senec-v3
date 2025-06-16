@@ -2746,13 +2746,17 @@ def app_aggregate_timeseries_data_if_needed(data):
         }]
     }
 
-def app_get_utc_date_start(year, month:int=1):
+def app_get_utc_date_start(year, month:int=1, day:int=-1):
     # January 1st at 00:00:00 UTC+1 of the year
-    return int(datetime(year, month, 1, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+    if day < 1:
+        day = 1
+    return int(datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).timestamp())
 
-def app_get_utc_date_end(year, month:int=12):
+def app_get_utc_date_end(year, month:int=12, day:int=-1):
     # December 31st at 23:59:59 UTC+1 of the year
-    return int(datetime(year, month, calendar.monthrange(year, month)[1], 23, 59, 59, tzinfo=timezone.utc).timestamp())
+    if day < 1:
+        day = calendar.monthrange(year, month)[1]
+    return int(datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).timestamp())
 
 class MySenecWebPortal:
     def __init__(self, user, pwd, web_session, master_plant_number: int = 0, lang: str = "en", options: dict = None):
@@ -2930,10 +2934,12 @@ class MySenecWebPortal:
         self._app_raw_total_v2 = None
         self._app_raw_tech_data = None
         self._app_raw_wallbox = [None, None, None, None]
-        self._static_TOTAL_SUMS_YEAR = None
-        self._static_TOTAL_SUMS_MONTH = None
-        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_YEAR = 1970
-        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_MONTH = 0
+        self._static_TOTAL_SUMS_PREV_YEARS = None
+        self._static_TOTAL_SUMS_PREV_MONTHS = None
+        self._static_TOTAL_SUMS_PREV_DAYS = None
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
 
         self.SGREADY_SUPPORTED = False
 
@@ -3144,9 +3150,10 @@ class MySenecWebPortal:
         _LOGGER.debug("***** APP-API: app_update_total(self) ********")
         if self._app_master_plant_id is not None:
             current_year = datetime.now().year
-            current_month =  datetime.now().month
+            current_month = datetime.now().month
+            current_day = datetime.now().day
 
-            if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_YEAR != current_year:
+            if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year:
                 # Loop from 2018 to current year [there are no older systems than 2018]
                 # we might like to store the first year, that actually has data?!
                 for a_year in range(2018, current_year):
@@ -3160,16 +3167,16 @@ class MySenecWebPortal:
                     data = await self.app_get_data(a_url=status_url)
                     if data is not None and app_has_dict_timeseries_with_values(data):
                         data = app_aggregate_timeseries_data_if_needed(data)
-                        if self._static_TOTAL_SUMS_YEAR is None:
-                            self._static_TOTAL_SUMS_YEAR = data
+                        if self._static_TOTAL_SUMS_PREV_YEARS is None:
+                            self._static_TOTAL_SUMS_PREV_YEARS = data
                         else:
-                            self._static_TOTAL_SUMS_YEAR = app_summ_total_dict_values(data, self._static_TOTAL_SUMS_YEAR)
+                            self._static_TOTAL_SUMS_PREV_YEARS = app_summ_total_dict_values(data, self._static_TOTAL_SUMS_PREV_YEARS)
 
-                self._static_TOTAL_SUMS_WAS_FETCHED_FOR_YEAR = current_year
+                self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year
 
-            if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_MONTH != current_month:
+            if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month:
                 if current_month == 1:
-                    _static_TOTAL_SUMS_MONTH = None
+                    self._static_TOTAL_SUMS_PREV_MONTHS = None
                 else:
                     _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
                     status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
@@ -3180,9 +3187,9 @@ class MySenecWebPortal:
 
                     data = await self.app_get_data(a_url=status_url)
                     if data is not None and app_has_dict_timeseries_with_values(data):
-                        self._static_TOTAL_SUMS_MONTH = app_aggregate_timeseries_data_if_needed(data)
+                        self._static_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data)
 
-                self._static_TOTAL_SUMS_WAS_FETCHED_FOR_MONTH = current_month
+                self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
                 # # as alternative fetching the start of the year - month by month...
                 # for a_month in range(1, current_month):
                 #     _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month {a_month}")
@@ -3200,12 +3207,29 @@ class MySenecWebPortal:
                 #         else:
                 #             self._static_TOTAL_SUMS_MONTH = app_summ_total_dict_values(data, self._static_TOTAL_SUMS)
 
+            if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day:
+                if current_day == 1:
+                    self._static_TOTAL_SUMS_PREV_DAYS = None
+                else:
+                    _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
+                    status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
+                        str(self._app_master_plant_id),
+                        "MONTH",
+                        str(app_get_utc_date_start(current_year, current_month, 1)),
+                        str(app_get_utc_date_end(current_year, current_month, current_day - 1)))
+
+                    data = await self.app_get_data(a_url=status_url)
+                    if data is not None and app_has_dict_timeseries_with_values(data):
+                        self._static_TOTAL_SUMS_PREV_DAYS = app_aggregate_timeseries_data_if_needed(data)
+
+                self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day
+
             # status_url = f"{self._SENEC_APP_TOTAL}" % (
             #    str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
             status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
                 str(self._app_master_plant_id),
-                "MONTH",
-                str(app_get_utc_date_start(current_year, current_month)),
+                "DAY",
+                str(app_get_utc_date_start(current_year, current_month, current_day)),
                 str(int((datetime.today() + relativedelta(months=+1)).timestamp())))
 
             # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
@@ -3217,11 +3241,14 @@ class MySenecWebPortal:
             if app_has_dict_timeseries_with_values(data):
                 data = app_aggregate_timeseries_data_if_needed(data)
                 # adding all from the previous years (all till 01.01.THIS YEAR 'minuns 1 second')
-                if self._static_TOTAL_SUMS_YEAR is not None:
-                    data = app_summ_total_dict_values(self._static_TOTAL_SUMS_YEAR, data)
+                if self._static_TOTAL_SUMS_PREV_YEARS is not None:
+                    data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_YEARS, data)
                 # adding all from this year till this-month miuns 1 (from 01.01 THIS YEAR)
-                if self._static_TOTAL_SUMS_MONTH is not None:
-                    data = app_summ_total_dict_values(self._static_TOTAL_SUMS_MONTH, data)
+                if self._static_TOTAL_SUMS_PREV_MONTHS is not None:
+                    data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_MONTHS, data)
+
+                if self._static_TOTAL_SUMS_PREV_DAYS is not None:
+                    data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_DAYS, data)
 
                 self._app_raw_total_v2 = data
 
