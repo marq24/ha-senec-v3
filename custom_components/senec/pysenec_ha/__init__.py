@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from http.cookies import BaseCookie, SimpleCookie, Morsel
 from time import time
+from numbers import Number
 from typing import Union, cast, Final
 
 import aiohttp
@@ -3793,15 +3794,16 @@ class MySenecWebPortal:
     async def update_spare_capacity(self):
         _LOGGER.info("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
-        async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as res:
+        async with self.web_session.get(a_url, headers={"User-Agent": USER_AGENT}, ssl=False) as response:
             try:
-                res.raise_for_status()
-                if res.status == 200:
-                    self._spare_capacity = await res.text()
-                    if not isinstance(self._spare_capacity, (int, float)):
+                response.raise_for_status()
+                if 200 <= response.status <= 205:
+                    content = await response.text()
+                    if isinstance(content, Number):
                         self._QUERY_SPARE_CAPACITY_TS = time()
+                        self._spare_capacity = int(content)
                     else:
-                        _LOGGER.warning(f"spare_capacity is not a number - request to '{a_url}' returned:\n{self._spare_capacity}")
+                        _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
                         self._spare_capacity = 0
                 else:
                     self._is_authenticated = False
