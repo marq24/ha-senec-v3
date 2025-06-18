@@ -3798,10 +3798,10 @@ class MySenecWebPortal:
             try:
                 response.raise_for_status()
                 if 200 <= response.status <= 205:
-                    content = await response.text()
+                    content = int(await response.text())
                     if isinstance(content, Number):
                         self._QUERY_SPARE_CAPACITY_TS = time()
-                        self._spare_capacity = int(content)
+                        self._spare_capacity = content
                     else:
                         _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
                         self._spare_capacity = 0
