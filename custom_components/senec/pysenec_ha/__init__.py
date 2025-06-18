@@ -3694,7 +3694,8 @@ class MySenecWebPortal:
 
             if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                if self._QUERY_SPARE_CAPACITY_TS + 86400 < time():
+                # 2025/06/19 - changed to 6h... = 86400/4 = 21600
+                if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
                     self.check_cookie_jar_type()
                     if self._is_authenticated:
                         await self.update_spare_capacity()
@@ -3798,10 +3799,14 @@ class MySenecWebPortal:
             try:
                 response.raise_for_status()
                 if 200 <= response.status <= 205:
-                    content = int(await response.text())
-                    if isinstance(content, Number):
-                        self._QUERY_SPARE_CAPACITY_TS = time()
-                        self._spare_capacity = content
+                    content = await response.text()
+                    if content is not None and len(content) > 0:
+                        try:
+                            self._spare_capacity = int(content)
+                            self._QUERY_SPARE_CAPACITY_TS = time()
+                        except ValueError as vexc:
+                            _LOGGER.info(f"spare_capacity can't be converted to a number - request to '{a_url}' returned: '{content}' caused {type(vexc)} - {vexc}")
+                            self._spare_capacity = 0
                     else:
                         _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
                         self._spare_capacity = 0
