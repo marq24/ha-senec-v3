@@ -101,8 +101,6 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                                            description.controls is not None and
                                            "only_increasing" in description.controls)
 
-        self._previous_plausible_value_ts = time()
-        self._previous_plausible_value: int | float | None = None
         self._check_plausibility: bool = (description is not None and
                                           isinstance(description, ExtSensorEntityDescription) and
                                           hasattr(description, "controls") and
@@ -122,11 +120,13 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
             value = getattr(self.coordinator.senec, self.entity_description.key)
 
         # _LOGGER.debug( str(sensor)+' '+ str(type(value)) +' '+str(value))
-        if isinstance(value, bool):
+        if value is None:
+            return None
+        elif isinstance(value, bool):
             return value
         else:
             if isinstance(value, int):
-                return value
+                return int(value)
             else:
                 # always try to parse sensor value as float
                 try:
@@ -137,54 +137,47 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                 # 1: SENEC API returns 1e-05 for some values, which is not a valid value
                 # -----------------
                 # _check_plausibility only implemented for web-api 'acculevel_now'
-                # and if the value is not 'plausible', then the return value is a float! (and not an int)
+                # and if the value is not 'plausible'
                 if self._check_plausibility:
-                    # sometime fucking SENEC API return 1e-05, when the actual value
+                    # sometimes the gentle SENEC API return 1e-05, when the actual value
                     # should be way larger than 1e-05
-                    if value == 1e-05:
-                        # if there is a valid '_previous_plausible_value' stored...
-                        if self._previous_plausible_value is not None and self._previous_plausible_value != 1e-05:
-                            # we only use a previous value if it's not older than
-                            # 2 times the configured update interval + 30 seconds...
-                            seconds = self.coordinator._update_interval_seconds
-                            if seconds is None or not isinstance(seconds, Number):
-                                seconds = DEFAULT_SCAN_INTERVAL_WEB
-                            if self._previous_plausible_value_ts + ((2 * seconds) + 30) < time():
-                                _LOGGER.debug(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_plausible_value}")
-                                return self._previous_plausible_value
+                    if str(value).lower() == "1e-05":
+                        # we ignore, the 1e-05 in any case - even if the '_previous_float_value' is None, we will
+                        # return this _previous_float_value
+                        _LOGGER.debug(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
+                        return self._previous_float_value
                     else:
-                        self._previous_plausible_value_ts = time()
-                        self._previous_plausible_value = value
+                        self._previous_float_value = value
+                        return value
 
-                    # if we haven't returned any value yet, we use the value that we
-                    # have actually read from the API
-                    return value
-
-                # 2: SENEC API returns sometimes smaller values, even if the values should increase
+                # 2: SENEC API returns sometimes smaller values, even if the values should ONLY increase
                 # -----------------
-                # do not update if value is lower than the current state
+                # do not update if the value is lower than the current state
                 # this is only an issue for _total sensors
                 # since the API may return false values in this case
-                if not self._is_total_increasing:
-                    return value
-                elif (self._previous_float_value is not None) and (value < self._previous_float_value):
-                    _LOGGER.debug(f"Thanks for nothing Senec! prev>new for key {self._attr_translation_key} - prev:{self._previous_float_value} new: {value}")
-                    return self._previous_float_value
-                else:
-                    self._previous_float_value = value
-                    return value
+                if self._is_total_increasing:
+                    if (self._previous_float_value is not None) and (value < self._previous_float_value):
+                        _LOGGER.debug(f"Thanks for nothing Senec! [or just a rounding issue?] previous stored value is larger than the new value | for key '{self._attr_translation_key}' - previous: '{self._previous_float_value}' new: '{value}'")
+                        return self._previous_float_value
+                    else:
+                        self._previous_float_value = value
+                        return value
+
+                return value
+
 
     async def async_added_to_hass(self) -> None:
         """Call when entity about to be added to Home Assistant."""
         await super().async_added_to_hass()
-        if self._is_total_increasing:
+        if self._is_total_increasing or self._check_plausibility:
             # get the last known value
             last_sensor_data = await self.async_get_last_state()
             if last_sensor_data is not None and isinstance(last_sensor_data,
                                                            State) and last_sensor_data.state is not None:
                 try:
-                    self._previous_float_value = float(last_sensor_data.state)
-                    _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
+                    a_float_value = float(last_sensor_data.state)
+                    self._previous_float_value = a_float_value
+                    _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {a_float_value}")
                 except:
                     _LOGGER.debug(f"ignoring prev value for key {self._attr_translation_key}: cause value is: {last_sensor_data.state}")
                     self._previous_float_value = None

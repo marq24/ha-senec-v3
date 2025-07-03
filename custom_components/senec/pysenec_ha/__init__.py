@@ -14,7 +14,6 @@ import aiohttp
 import xmltodict
 from aiohttp import ClientResponseError, ClientConnectorError
 from aiohttp.helpers import is_ip_address
-from dateutil.relativedelta import relativedelta
 from orjson import JSONDecodeError
 from packaging import version
 from yarl import URL
@@ -3150,9 +3149,10 @@ class MySenecWebPortal:
     async def app_update_total(self, retry: bool = True):
         _LOGGER.debug("***** APP-API: app_update_total(self) ********")
         if self._app_master_plant_id is not None:
-            current_year = datetime.now().year
-            current_month = datetime.now().month
-            current_day = datetime.now().day
+            now_utc = datetime.now(timezone.utc)
+            current_year = now_utc.year
+            current_month = now_utc.month
+            current_day = now_utc.day
 
             if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year:
                 # Loop from 2018 to current year [there are no older systems than 2018]
@@ -3231,7 +3231,7 @@ class MySenecWebPortal:
                 str(self._app_master_plant_id),
                 "DAY",
                 str(app_get_utc_date_start(current_year, current_month, current_day)),
-                str(int((datetime.today() + relativedelta(months=+1)).timestamp())))
+                str(int((now_utc + timedelta(hours=12)).timestamp())))
 
             # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
             # today = datetime.now(timezone.utc) + relativedelta(months=+1)
@@ -3241,10 +3241,10 @@ class MySenecWebPortal:
             data = await self.app_get_data(a_url=status_url)
             if app_has_dict_timeseries_with_values(data):
                 data = app_aggregate_timeseries_data_if_needed(data)
-                # adding all from the previous years (all till 01.01.THIS YEAR 'minuns 1 second')
+                # adding all from the previous years (all till 01.01.THIS YEAR 'minus 1 second')
                 if self._static_TOTAL_SUMS_PREV_YEARS is not None:
                     data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_YEARS, data)
-                # adding all from this year till this-month miuns 1 (from 01.01 THIS YEAR)
+                # adding all from this year till this-month minus 1 (from 01.01 THIS YEAR)
                 if self._static_TOTAL_SUMS_PREV_MONTHS is not None:
                     data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_MONTHS, data)
 
