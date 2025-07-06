@@ -1571,6 +1571,13 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:solar-power",
     ),
     ExtSensorEntityDescription(
+        key="hours_of_operation",
+        name="Operating hours counter",
+        icon="mdi:counter",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtSensorEntityDescription(
         key="battery_temp",
         name="Battery Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,

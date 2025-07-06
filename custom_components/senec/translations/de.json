@@ -463,6 +463,9 @@
       "system_state": {
         "name": "Systemstatus"
       },
+      "hours_of_operation": {
+        "name": "Betriebsstundenzähler"
+      },
       "battery_temp": {
         "name": "Akku Temperatur"
       },

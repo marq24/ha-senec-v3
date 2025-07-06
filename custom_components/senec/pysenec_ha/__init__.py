@@ -68,7 +68,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SGREADY_MODES,
     SGREADY_CONFKEY_ENABLED,
     SENEC_ENERGY_FIELDS,
-    SENEC_ENERGY_FIELDS_2408
+    SENEC_ENERGY_FIELDS_2408_MIN,
 )
 from custom_components.senec.pysenec_ha.util import parse
 
@@ -315,6 +315,11 @@ class Senec:
             return SYSTEM_STATE_NAME[self._lang].get(value, "UNKNOWN")
         else:
             return SYSTEM_STATE_NAME["en"].get(value, "UNKNOWN")
+
+    @property
+    def hours_of_operation(self) -> int:
+        if "STAT_HOURS_OF_OPERATION" in self._raw[SENEC_SECTION_ENERGY]:
+            return self._raw[SENEC_SECTION_ENERGY]["STAT_HOURS_OF_OPERATION"]
 
     @property
     def raw_status(self) -> dict:
@@ -1676,14 +1681,16 @@ class Senec:
         }
 
         if self.is_2408_or_higher():
-            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408})
+            # 2025/07/06 why we should poll all the data - if we simply don't use them yet...
+            #form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408})
+            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408_MIN})
             form.update({SENEC_SECTION_LOG: {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}})
             form.update({SENEC_SECTION_BAT1: {"SPARE_CAPACITY": ""}})
         else:
+            if self._QUERY_STATS:
+                form.update({SENEC_SECTION_STATISTIC: {}})
             form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS})
 
-        if self._QUERY_STATS:
-            form.update({SENEC_SECTION_STATISTIC: {}})
 
         if self._QUERY_FANDATA:
             form.update({SENEC_SECTION_FAN_SPEED: {}})
@@ -1916,67 +1923,63 @@ class Senec:
             else:
                 _LOGGER.debug(f"Last Reset too recent...")
 
-    async def trigger_cap_test_start(self):
-        if await self.is_2408_or_higher_async():
-            if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
-                    self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 0):
-                await self._senec_local_access_start()
-                # ok we set the new state...
-                data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_START": "u8_01"}}
-                await self.write_senec_v31(data)
-                await self._senec_local_access_stop()
-            else:
-                _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not OFF")
-
-    async def trigger_cap_test_stop(self):
-        if await self.is_2408_or_higher_async():
-            if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
-                self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 1):
-                await self._senec_local_access_start()
-                # ok we set the new state...
-                data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_STOP": "u8_01"}}
-                await self.write_senec_v31(data)
-                await self._senec_local_access_stop()
-            else:
-                _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not ON")
+    # async def trigger_cap_test_start(self):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
+    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 0):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_START": "u8_01"}}
+    #             await self.write_senec_v31(data)
+    #             await self._senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not OFF")
+    #
+    # async def trigger_cap_test_stop(self):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
+    #             self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 1):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_STOP": "u8_01"}}
+    #             await self.write_senec_v31(data)
+    #             await self._senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not ON")
 
     # trigger_load_test_start & trigger_load_test_stop
     # are not really working...
-    async def trigger_load_test_start(self, requested_watts: int):
-        if await self.is_2408_or_higher_async():
-            if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
-                    self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 0):
-                await self._senec_local_access_start()
-                # ok we set the new state...
-                wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(float(requested_watts)/-3))}"
-                data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
-                                                "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
-                                                "TEST_CHARGE_ENABLE": "u8_01"} }
-                await self.write_senec_v31(data)
-                # as soon as we will logout, the test_load will be cancled...
-                #await self.senec_local_access_stop()
-            else:
-                _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
-
-    async def trigger_load_test_stop(self):
-        if await self.is_2408_or_higher_async():
-            if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
-                    self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 1):
-                await self._senec_local_access_start()
-                # ok we set the new state...
-                wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(0))}"
-                data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
-                                                "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
-                                                "TEST_CHARGE_ENABLE": "u8_00"} }
-                await self.write_senec_v31(data)
-                # as soon as we will logout, the test_load will be cancled...
-                #await self.senec_local_access_stop()
-            else:
-                _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
-
-
-
-
+    # async def trigger_load_test_start(self, requested_watts: int):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
+    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 0):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(float(requested_watts)/-3))}"
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
+    #                                             "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
+    #                                             "TEST_CHARGE_ENABLE": "u8_01"} }
+    #             await self.write_senec_v31(data)
+    #             # as soon as we will logout, the test_load will be cancled...
+    #             #await self.senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
+    #
+    # async def trigger_load_test_stop(self):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
+    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 1):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(0))}"
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
+    #                                             "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
+    #                                             "TEST_CHARGE_ENABLE": "u8_00"} }
+    #             await self.write_senec_v31(data)
+    #             # as soon as we will logout, the test_load will be cancled...
+    #             #await self.senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
 
 
 

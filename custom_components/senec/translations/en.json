@@ -463,6 +463,9 @@
       "system_state": {
         "name": "System State"
       },
+      "hours_of_operation": {
+        "name": "Operating hours Counter"
+      },
       "battery_temp": {
         "name": "Battery Temperature"
       },
