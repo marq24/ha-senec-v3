@@ -370,6 +370,9 @@
       "gridexport_total": {
         "name": "Grid Exported"
       },
+      "wallbox_consumption_total": {
+        "name": "Wallbox consumed"
+      },
       "powergenerated_now": {
         "name": "Solar Generated Power"
       },

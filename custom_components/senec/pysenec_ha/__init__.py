@@ -7,7 +7,6 @@ import logging
 from datetime import datetime, timezone, timedelta
 from http.cookies import BaseCookie, SimpleCookie, Morsel
 from time import time
-from numbers import Number
 from typing import Union, cast, Final
 
 import aiohttp
@@ -4199,7 +4198,8 @@ class MySenecWebPortal:
     # from here the "real" sensor data starts... #
     ##############################################
     def _get_sum_for_index(self, index: int) -> float:
-        return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total_v2["timeseries"])
+        if index > -1:
+            return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total_v2["timeseries"])
 
     @property
     def accuimport_total(self) -> float:
@@ -4258,6 +4258,12 @@ class MySenecWebPortal:
             return float(self._app_raw_total_v1_outdated["totalUsage"]["value"])
         elif hasattr(self, '_energy_entities') and "consumption_total" in self._energy_entities:
             return self._energy_entities["consumption_total"]
+
+    @property
+    def wallbox_consumption_total(self) -> float:
+        if self._app_raw_total_v2 is not None and "measurements" in self._app_raw_total_v2:
+            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("WALLBOX_CONSUMPTION"))
+
 
     @property
     def accuimport_today(self) -> float:

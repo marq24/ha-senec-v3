@@ -242,6 +242,17 @@ WEB_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL,
         controls=("only_increasing"),
     ),
+    ExtSensorEntityDescription(
+        key="wallbox_consumption_total",
+        name="Wallbox consumed",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=3,
+        icon="mdi:ev-station",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        entity_registry_enabled_default=False,
+        controls=("only_increasing"),
+    ),
 
     # accuimport_today
     # accuexport_today

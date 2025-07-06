@@ -370,6 +370,9 @@
       "gridexport_total": {
         "name": "Netz Einspeisung"
       },
+      "wallbox_consumption_total": {
+        "name": "Wallboxverbrauch"
+      },
       "powergenerated_now": {
         "name": "Aktuell erzeugter PV-Strom"
       },
