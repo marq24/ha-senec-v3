@@ -17,7 +17,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -160,9 +160,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
-    if config_entry.state != ConfigEntryState.LOADED:
-        config_entry.add_update_listener(async_reload_entry)
-
+    config_entry.async_on_unload(config_entry.add_update_listener(entry_update_listener))
     return True
 
 
@@ -436,6 +434,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload Senec config entry."""
+    _LOGGER.debug(f"async_unload_entry() called for entry: {config_entry.entry_id}")
     unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
 
     if unload_ok:
@@ -448,11 +447,9 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return unload_ok
 
 
-async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    if await async_unload_entry(hass, config_entry):
-        await asyncio.sleep(2)
-        await async_setup_entry(hass, config_entry)
+async def entry_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    _LOGGER.debug(f"entry_update_listener() called for entry: {config_entry.entry_id}")
+    await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 class SenecEntity(Entity):
