@@ -1,6 +1,5 @@
 """Config flow for senec integration."""
 import logging
-from typing import Any
 
 import voluptuous as vol
 from aiohttp import ClientResponseError
@@ -9,11 +8,10 @@ from requests.exceptions import HTTPError, Timeout
 from custom_components.senec.pysenec_ha import Inverter
 from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
-from homeassistant.helpers.aiohttp_client import async_get_clientsession, async_create_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.util import slugify
 from .const import (
     DOMAIN,
@@ -137,7 +135,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Check if we can connect to the Senec device."""
         self._errors = {}
         try:
-            senec_client = Senec(host=host, use_https=use_https, web_session=async_get_clientsession(self.hass))
+            senec_client = Senec(host=host, use_https=use_https, lala_session=async_create_clientsession(self.hass, verify_ssl=False))
             await senec_client.update_version()
             await senec_client.update()
             self._use_https = use_https
@@ -168,7 +166,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Check if we can connect to the Senec device."""
         self._errors = {}
         try:
-            inverter_client = Inverter(host=host, web_session=async_get_clientsession(self.hass))
+            inverter_client = Inverter(host=host, inv_session=async_get_clientsession(self.hass))
             await inverter_client.update_version()
             self._support_bdc = inverter_client.has_bdc
 

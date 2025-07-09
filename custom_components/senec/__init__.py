@@ -22,7 +22,7 @@ from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_N
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as config_val, entity_registry
-from homeassistant.helpers.aiohttp_client import async_create_clientsession, async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import slugify
@@ -241,7 +241,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
             # host can be changed in the options...
             self._host = config_entry.options.get(CONF_HOST, config_entry.data[CONF_HOST])
-            self.senec = Inverter(self._host, web_session=async_get_clientsession(hass))
+            self.senec = Inverter(self._host, inv_session=async_create_clientsession(hass))
 
         # WEB-API Version...
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
@@ -351,7 +351,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                     # this 'hack' only works while the MAIN_SELECT_TYPES are only WALLBOX related...
                     opt = need_query_app_api_wallbox(registry, sluged_title, opt, "select", MAIN_SELECT_TYPES)
 
-            self.senec = Senec(host=self._host, use_https=self._use_https, web_session=async_get_clientsession(hass),
+            self.senec = Senec(host=self._host, use_https=self._use_https, lala_session=async_create_clientsession(hass, verify_ssl=False),
                                lang=hass.config.language.lower(), options=opt)
 
         self.name = config_entry.title

@@ -101,17 +101,19 @@ class Senec:
     _senec_b = base64.b64decode("c3RfU2VuZWNJbnN0YWxs".encode('utf-8')).decode('utf-8')
 
     _defaultHeaders = {
-        "Accept": "*/*",
-        "User-Agent": "HA-SENEC-Integration",
-        "Accept-Encoding": "gzip, deflate, br",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
     }
     _lalaHeaders = {
         **_defaultHeaders,
-        "Content-Type": "application/json",
-        "Keep-Alive": "timeout=60, max=1000",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Connection": "keep-alive",
+        "Keep-Alive": "timeout=60, max=0",
     }
 
-    def __init__(self, host, use_https, web_session, lang: str = "en", options: dict = None):
+    def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None):
         _LOGGER.info(f"restarting Senec lala.cgi integration... for host: '{host}' with options: {options}")
         self._lang = lang
         self._QUERY_STATS = True
@@ -153,7 +155,7 @@ class Senec:
             self._host_and_schema = f"http://{host}"
 
         self.url = f"{self._host_and_schema}/lala.cgi"
-        self.lala_session: aiohttp.websession = web_session
+        self.lala_session: aiohttp.websession = lala_session
 
         # we need to use a cookieJar that accept also IP's!
         if hasattr(self.lala_session, "_cookie_jar"):
@@ -256,7 +258,8 @@ class Senec:
         # with NPU 2411 we must start the communication with the backend with this single call...
         # no clue what type of special SENEC-Style security this is?!...
         form = {SENEC_SECTION_FACTORY:{"SYS_TYPE":"","COUNTRY":"","DEVICE_ID":""}}
-        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
+            _LOGGER.debug(f"_init_gui_cookies() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
                 data = parse(await res.json())
@@ -304,8 +307,8 @@ class Senec:
             SENEC_SECTION_STATISTIC: {}
         }
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
-            _LOGGER.debug("update version info...")
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
+            _LOGGER.debug(f"_read_version() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
                 #if SET_COOKIE in res.headers:
@@ -1745,11 +1748,12 @@ class Senec:
                 "PROHIBIT_USAGE": ""}
             })
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
+            _LOGGER.debug(f"_read_senec_lala() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
-                if SET_COOKIE in res.headers:
-                    _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
+                # if SET_COOKIE in res.headers:
+                #     _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
                 data = await res.json()
                 self._raw = parse(data)
             except JSONDecodeError as exc:
@@ -1758,7 +1762,7 @@ class Senec:
                 _LOGGER.warning(f"read_senec_lala caused: {err}")
 
     async def read_all_fields(self) -> []:
-        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, header=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, headers=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 data = await res.json()
@@ -1769,7 +1773,7 @@ class Senec:
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 data = await res.json()
@@ -2322,7 +2326,7 @@ class Senec:
 
     async def write_senec_v31(self, data):
         _LOGGER.debug(f"posting data (raw): {util.mask_map(data)}")
-        async with self.lala_session.post(self.url, json=data, ssl=False, header=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 if SET_COOKIE in res.headers:
@@ -2334,7 +2338,7 @@ class Senec:
                 _LOGGER.warning(f"Error while 'posting data' {err}")
 
     async def senec_v31_post_plain_form_data(self, form_data:str):
-        _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data}")
+        _LOGGER.debug(f"posting x-www-form-urlencoded: {util.mask_map(form_data)}")
         special_hdrs = {
             "Host": self._host,
             "Origin": self._host_and_schema,
@@ -2352,7 +2356,7 @@ class Senec:
             "Keep-Alive": "timeout=60, max=1000",
         }
         async with self.lala_session.post(self.url, data=form_data, headers=special_hdrs, ssl=False, chunked=None) as res:
-            _LOGGER.debug(f"requested '{self.url}' with headers: {res.request_info.headers}")
+            _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
                 if SET_COOKIE in res.headers:
@@ -2366,9 +2370,14 @@ class Senec:
 class Inverter:
     """Senec Home Inverter addon"""
 
-    def __init__(self, host, web_session):
+    _keepAliveHeaders = {
+        "Connection": "keep-alive",
+        "Keep-Alive": "timeout=60, max=0",
+    }
+
+    def __init__(self, host, inv_session):
         self.host = host
-        self.web_session: aiohttp.websession = web_session
+        self.inv_session: aiohttp.websession = inv_session
         self.url1 = f"http://{host}/all.xml"
         self.url2 = f"http://{host}/measurements.xml"
         self.url3 = f"http://{host}/versions.xml"
@@ -2389,7 +2398,7 @@ class Inverter:
         await self.read_inverter_version()
 
     async def read_inverter_version(self):
-        async with self.web_session.get(self.url3) as res:
+        async with self.inv_session.get(self.url3, headers=self._keepAliveHeaders) as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw_version = xmltodict.parse(txt, force_list=('Software',))
@@ -2444,7 +2453,7 @@ class Inverter:
                 await self.read_inverter_with_retry(retry=False)
 
     async def read_inverter(self):
-        async with self.web_session.get(f"{self.url2}?{datetime.now()}") as res:
+        async with self.inv_session.get(url=f"{self.url2}?{datetime.now()}", headers=self._keepAliveHeaders) as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
@@ -2505,7 +2514,7 @@ class Inverter:
                                                 self._derating = float(100.0 - float(a_dict["@Value"]))
 
         if self._YIELD_DATA_READ_TS + 300 < time():
-            async with self.web_session.get(f"{self.url_yield}&_={time()}") as res:
+            async with self.inv_session.get(url=f"{self.url_yield}&_={time()}", headers=self._keepAliveHeaders) as res:
                 self._YIELD_DATA_READ_TS = time()
                 res.raise_for_status()
                 yield_data = await res.json()
@@ -2707,7 +2716,6 @@ class Inverter:
 
 #USER_AGENT: Final = "SENEC.App/4.8.1 (LMFD) okhttp/4.12.0"
 USER_AGENT: Final = "SENEC.App okhttp/4.12.0"
-
 
 def app_has_dict_timeseries_with_values(a_dict:dict) -> bool:
     if (a_dict is None or
