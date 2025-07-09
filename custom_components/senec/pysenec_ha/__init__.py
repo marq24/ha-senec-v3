@@ -100,6 +100,17 @@ class Senec:
     _senec_a = base64.b64decode("c3RfaW5zdGFsbGF0ZXVy".encode('utf-8')).decode('utf-8')
     _senec_b = base64.b64decode("c3RfU2VuZWNJbnN0YWxs".encode('utf-8')).decode('utf-8')
 
+    _defaultHeaders = {
+        "Accept": "*/*",
+        "User-Agent": "HA-SENEC-Integration",
+        "Accept-Encoding": "gzip, deflate, br",
+    }
+    _lalaHeaders = {
+        **_defaultHeaders,
+        "Content-Type": "application/json",
+        "Keep-Alive": "timeout=60, max=1000",
+    }
+
     def __init__(self, host, use_https, web_session, lang: str = "en", options: dict = None):
         _LOGGER.info(f"restarting Senec lala.cgi integration... for host: '{host}' with options: {options}")
         self._lang = lang
@@ -142,11 +153,11 @@ class Senec:
             self._host_and_schema = f"http://{host}"
 
         self.url = f"{self._host_and_schema}/lala.cgi"
-        self.web_session: aiohttp.websession = web_session
+        self.lala_session: aiohttp.websession = web_session
 
         # we need to use a cookieJar that accept also IP's!
-        if hasattr(self.web_session, "_cookie_jar"):
-            the_jar = getattr(self.web_session, "_cookie_jar")
+        if hasattr(self.lala_session, "_cookie_jar"):
+            the_jar = getattr(self.lala_session, "_cookie_jar")
             if hasattr(the_jar, "_unsafe"):
                 the_jar._unsafe = True
                 _LOGGER.debug("WEB_SESSION cookie_jar accept cookies for IP's")
@@ -245,7 +256,7 @@ class Senec:
         # with NPU 2411 we must start the communication with the backend with this single call...
         # no clue what type of special SENEC-Style security this is?!...
         form = {SENEC_SECTION_FACTORY:{"SYS_TYPE":"","COUNTRY":"","DEVICE_ID":""}}
-        async with self.web_session.post(self.url, json=form, ssl=False) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 data = parse(await res.json())
@@ -293,7 +304,7 @@ class Senec:
             SENEC_SECTION_STATISTIC: {}
         }
 
-        async with self.web_session.post(self.url, json=form, ssl=False) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
             _LOGGER.debug("update version info...")
             try:
                 res.raise_for_status()
@@ -307,7 +318,7 @@ class Senec:
     @property
     def system_state(self) -> str:
         """
-        Textual descritpion of energy status
+        Textual description of energy status
 
         """
         value = self._raw[SENEC_SECTION_ENERGY]["STAT_STATE"]
@@ -1734,7 +1745,7 @@ class Senec:
                 "PROHIBIT_USAGE": ""}
             })
 
-        async with self.web_session.post(self.url, json=form, ssl=False) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 if SET_COOKIE in res.headers:
@@ -1747,7 +1758,7 @@ class Senec:
                 _LOGGER.warning(f"read_senec_lala caused: {err}")
 
     async def read_all_fields(self) -> []:
-        async with self.web_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False) as res:
+        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, header=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 data = await res.json()
@@ -1758,7 +1769,7 @@ class Senec:
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
-        async with self.web_session.post(self.url, json=form, ssl=False) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, header=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 data = await res.json()
@@ -2311,7 +2322,7 @@ class Senec:
 
     async def write_senec_v31(self, data):
         _LOGGER.debug(f"posting data (raw): {util.mask_map(data)}")
-        async with self.web_session.post(self.url, json=data, ssl=False) as res:
+        async with self.lala_session.post(self.url, json=data, ssl=False, header=self._lalaHeaders) as res:
             try:
                 res.raise_for_status()
                 if SET_COOKIE in res.headers:
@@ -2337,9 +2348,10 @@ class Senec:
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": "\"Windows\"",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "Accept": "application/json, text/javascript, */*; q=0.01"
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Keep-Alive": "timeout=60, max=1000",
         }
-        async with self.web_session.post(self.url, data=form_data, headers=special_hdrs, ssl=False, chunked=None) as res:
+        async with self.lala_session.post(self.url, data=form_data, headers=special_hdrs, ssl=False, chunked=None) as res:
             _LOGGER.debug(f"requested '{self.url}' with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()

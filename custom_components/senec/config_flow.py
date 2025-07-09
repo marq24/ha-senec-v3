@@ -1,5 +1,6 @@
 """Config flow for senec integration."""
 import logging
+from typing import Any
 
 import voluptuous as vol
 from aiohttp import ClientResponseError
@@ -8,6 +9,7 @@ from requests.exceptions import HTTPError, Timeout
 from custom_components.senec.pysenec_ha import Inverter
 from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
@@ -121,6 +123,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._app_token = None
         self._app_master_plant_id = None
         self._app_wallbox_num_max = None
+
+    # async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    #     entry_data = self._get_reconfigure_entry().data
+    #     self._default_name = entry_data.get(CONF_NAME, DEFAULT_NAME)
+    #     self._default_host = entry_data.get(CONF_HOST, DEFAULT_HOST)
+    #     self._default_pwd = entry_data.get(CONF_PASSWORD, DEFAULT_PWD)
+    #     self._default_scan_interval = entry_data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    #     self._default_node_number = entry_data.get(CONF_NODE_NUMBER, DEFAULT_NODE_NUMBER)
+    #     return await self.async_step_user()
 
     async def _test_connection_senec(self, host, use_https):
         """Check if we can connect to the Senec device."""
