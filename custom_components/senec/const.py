@@ -39,6 +39,10 @@ from homeassistant.helpers.entity import EntityCategory
 
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
+
+CONFIG_VERSION: Final = 2
+CONFIG_MINOR_VERSION: Final = 0
+
 SYSTYPE_SENECV4: Final = "systype_senecv4"
 SYSTYPE_WEBAPI: Final = "systype_webapi"
 SYSTYPE_SENECV3: Final = "systype_senecv3"
@@ -76,36 +80,38 @@ CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"
 CONF_SYSTYPE_INVERTER: Final = "inverter"
 CONF_SYSTYPE_WEB: Final = "web"
 
-CONF_APP_TOKEN = "app_token"
-CONF_APP_SYSTEMID = "app_master_plant_id"
-CONF_APP_WALLBOX_COUNT = "app_wallbox_num_max"
+CONF_APP_TOKEN: Final = "app_token"
+CONF_APP_SYSTEMID: Final = "app_master_plant_id"
+CONF_APP_WALLBOX_COUNT: Final = "app_wallbox_num_max"
 
 """Default config for Senec."""
-DEFAULT_SYSTEM = SYSTYPE_SENECV3
-DEFAULT_MODE = MODE_LOCAL
-DEFAULT_HOST = "Senec"
-DEFAULT_HOST_INVERTER = "Inverter"
-DEFAULT_USERNAME = "E-Mail"
-DEFAULT_NAME = "senec"
-DEFAULT_NAME_INVERTER = "Inverter"
-DEFAULT_NAME_WEB = "senec_WEBAPI"
-DEFAULT_SCAN_INTERVAL = 30
-DEFAULT_SCAN_INTERVAL_SENECV2 = 60
+DEFAULT_SYSTEM: Final = SYSTYPE_SENECV3
+DEFAULT_MODE: Final = MODE_LOCAL
+DEFAULT_HOST: Final = "Senec"
+DEFAULT_HOST_INVERTER: Final = "Inverter"
+DEFAULT_USERNAME: Final = "your-eMail"
+DEFAULT_NAME: Final = "senec"
+DEFAULT_NAME_INVERTER: Final = "Inverter"
+DEFAULT_NAME_WEB: Final = "senec_WEBAPI"
+DEFAULT_SCAN_INTERVAL: Final = 30
+DEFAULT_MIN_SCAN_INTERVAL: Final = 1
+DEFAULT_SCAN_INTERVAL_SENECV2: Final = 60
 # 5 minutes... [do not spam mein-senec.de]
-DEFAULT_SCAN_INTERVAL_WEB = 300
-DEFAULT_SCAN_INTERVAL_WEB_SENECV4 = 60
+DEFAULT_SCAN_INTERVAL_WEB: Final = 300
+DEFAULT_SCAN_INTERVAL_WEB_SENECV4: Final = 60
+DEFAULT_MIN_SCAN_INTERVAL_WEB: Final = 20
 
-QUERY_BMS_KEY = "query_bms_data"
-QUERY_FANDATA_KEY = "query_fan_data"
-QUERY_WALLBOX_KEY = "query_wallbox_data"
-QUERY_WALLBOX_APPAPI_KEY = "query_wallbox_data_via_app_api"
-QUERY_SOCKETS_KEY = "query_sockets_data"
-QUERY_SPARE_CAPACITY_KEY = "query_spare_capacity"
-QUERY_PEAK_SHAVING_KEY = "query_peak_shaving"
-IGNORE_SYSTEM_STATE_KEY = CONF_IGNORE_SYSTEM_STATE
+QUERY_BMS_KEY: Final = "query_bms_data"
+QUERY_FANDATA_KEY: Final = "query_fan_data"
+QUERY_WALLBOX_KEY: Final = "query_wallbox_data"
+QUERY_WALLBOX_APPAPI_KEY: Final = "query_wallbox_data_via_app_api"
+QUERY_SOCKETS_KEY: Final = "query_sockets_data"
+QUERY_SPARE_CAPACITY_KEY: Final = "query_spare_capacity"
+QUERY_PEAK_SHAVING_KEY: Final = "query_peak_shaving"
+IGNORE_SYSTEM_STATE_KEY: Final = CONF_IGNORE_SYSTEM_STATE
 
 # Peak Shaving Options
-PEAK_SHAVING_OPTIONS = ["deactivated", "manual", "auto"]
+PEAK_SHAVING_OPTIONS: Final = ["deactivated", "manual", "auto"]
 
 # Service names
 SERVICE_SET_PEAKSHAVING: Final = "set_peakshaving"

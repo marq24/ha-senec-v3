@@ -38,7 +38,8 @@
   },
   "config": {
     "abort": {
-      "already_configured": "Integration ist bereits eingerichtet"
+      "already_configured": "Integration ist bereits eingerichtet",
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
     },
     "error": {
       "login_failed": "Login fehlgeschlagen - bitte Benutzername und/oder Passwort prüfen",
@@ -52,12 +53,13 @@
           "stype": "System Version wählen"
         }
       },
-      "system": {
+      "localsystem": {
         "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
         "data": {
           "name": "Anzeige Name",
           "host": "IP oder Hostname des SENEC.Home V3 Systems bzw des Inverters",
-          "scan_interval": "Aktualisierungsintervall in Sekunden"
+          "scan_interval": "Aktualisierungsintervall in Sekunden",
+          "ignore_system_state": "Die Werte für die Batterie-LADE/ENTLADE Sensoren sollen den System Status nicht berücksichtigen"
         }
       },
       "websetup": {
@@ -66,7 +68,7 @@
           "name": "Anzeige Name",
           "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
           "password": "Dein 'mein-senec.de' Passwort",
-          "scan_interval": "Aktualisierungsintervall in Sekunden [> 60 Sekunden (30 Sekunden für SENEC.Home V4)]",
+          "scan_interval": "Aktualisierungsintervall in Sekunden [> 60 Sekunden (20 Sekunden für SENEC.Home V4)]",
           "master_plant_number": "Anlagennummer (Experten Einstellung: Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden)"
         }
       },

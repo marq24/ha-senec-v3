@@ -67,6 +67,7 @@ from .const import (
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
     SERVICE_SET_PEAKSHAVING,
+    CONFIG_VERSION, CONFIG_MINOR_VERSION
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,6 +75,19 @@ SCAN_INTERVAL = timedelta(seconds=60)
 
 PLATFORMS = ["binary_sensor", "button", "number", "select", "sensor", "switch"]
 CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+    if config_entry.version < CONFIG_VERSION:
+        if config_entry.data is not None and len(config_entry.data) > 0:
+            _LOGGER.debug(f"Migrating configuration from version {config_entry.version}.{config_entry.minor_version}")
+            if config_entry.options is not None and len(config_entry.options):
+                new_data = {**config_entry.data, **config_entry.options}
+            else:
+                new_data = config_entry.data
+            hass.config_entries.async_update_entry(config_entry, data=new_data, options={}, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
+            _LOGGER.debug(f"Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
+    return True
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -108,8 +122,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
-    if CONF_TYPE not in config_entry.data or config_entry.data[CONF_TYPE] in (
-            CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2):
+    if CONF_TYPE not in config_entry.data or config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2]:
         # after the refresh we should know if the lala.cgi return STATISTIC data
         # or not...
         coordinator._statistics_available = coordinator.senec.grid_total_export is not None
@@ -164,8 +177,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return True
 
 
-async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_token: str, app_master_plant_id: str,
-                            app_wallbox_num_max: int):
+async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_token: str, app_master_plant_id: str, app_wallbox_num_max: int):
     if config_entry is not None:
         _LOGGER.debug(f"update_conf_entry called...")  # with user_input: {user_input} and context: {self.context}")
 
@@ -183,8 +195,7 @@ async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_
 
         await asyncio.sleep(5)
 
-        _LOGGER.debug(
-            f"finally saving new data to config_entry - add_update_listener will take care about a possible the restart...")
+        _LOGGER.debug(f"finally saving new data to config_entry - add_update_listener will take care about a possible the restart...")
         hass.config_entries.async_update_entry(config_entry, data=_data, options=_options)
 
 
@@ -328,7 +339,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 self._use_https = False
 
             opt = {
-                IGNORE_SYSTEM_STATE_KEY: config_entry.options.get(CONF_IGNORE_SYSTEM_STATE, False),
+                IGNORE_SYSTEM_STATE_KEY: config_entry.options.get(CONF_IGNORE_SYSTEM_STATE, config_entry.data.get(CONF_IGNORE_SYSTEM_STATE, False)),
                 QUERY_WALLBOX_KEY: False,
                 QUERY_WALLBOX_APPAPI_KEY: False,
                 QUERY_BMS_KEY: False,

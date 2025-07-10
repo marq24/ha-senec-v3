@@ -38,7 +38,8 @@
   },
   "config": {
     "abort": {
-      "already_configured": "Integration is already configured"
+      "already_configured": "Integration is already configured",
+      "reconfigure_successful": "Re-configuration was successful"
     },
     "error": {
       "login_failed": "Login failed - please check username and/or password",
@@ -52,12 +53,13 @@
           "stype": "Select System type"
         }
       },
-      "system": {
+      "localsystem": {
         "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
         "data": {
           "name": "Display name",
           "host": "IP or hostname of the SENEC.Home V3 System OR the Inverter",
-          "scan_interval": "Polling Interval in seconds"
+          "scan_interval": "Polling Interval in seconds",
+          "ignore_system_state": "The values for the battery charge/discharge sensors should not take the system status into account"
         }
       },
       "websetup": {
@@ -66,7 +68,7 @@
           "name": "Display name",
           "username": "Your 'mein-senec.de' username",
           "password": "Your 'mein-senec.de' password",
-          "scan_interval": "Polling Interval in seconds [> 60 seconds (30 seconds for SENEC.Home V4)]"
+          "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4)]"
         }
       },
       "optional_websetup_required_info": {
