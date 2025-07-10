@@ -104,7 +104,6 @@ DEFAULT_MIN_SCAN_INTERVAL_WEB: Final = 20
 QUERY_BMS_KEY: Final = "query_bms_data"
 QUERY_FANDATA_KEY: Final = "query_fan_data"
 QUERY_WALLBOX_KEY: Final = "query_wallbox_data"
-QUERY_WALLBOX_APPAPI_KEY: Final = "query_wallbox_data_via_app_api"
 QUERY_SOCKETS_KEY: Final = "query_sockets_data"
 QUERY_SPARE_CAPACITY_KEY: Final = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY: Final = "query_peak_shaving"

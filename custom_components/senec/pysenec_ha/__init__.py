@@ -21,7 +21,6 @@ from custom_components.senec.const import (
     QUERY_BMS_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
-    QUERY_WALLBOX_APPAPI_KEY,
     QUERY_SOCKETS_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
@@ -124,13 +123,10 @@ class Senec:
 
         if options is not None and QUERY_WALLBOX_KEY in options:
             self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
+            # do we need some additional information for our wallbox (that are only available via the app-api!
+            self._QUERY_WALLBOX_APPAPI = options[QUERY_WALLBOX_KEY]
         else:
             self._QUERY_WALLBOX = False
-
-        # do we need some additional information for our wallbox (that are only available via the app-api!
-        if options is not None and QUERY_WALLBOX_APPAPI_KEY in options:
-            self._QUERY_WALLBOX_APPAPI = options[QUERY_WALLBOX_APPAPI_KEY]
-        else:
             self._QUERY_WALLBOX_APPAPI = False
 
         if options is not None and QUERY_FANDATA_KEY in options:

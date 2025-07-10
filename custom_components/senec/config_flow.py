@@ -339,7 +339,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     raise data_entry_flow.AbortFlow("already_configured")
 
             # Build-In Inverter stuff
-            if self._selected_system == SYSTYPE_INVERTV3:
+            if self._selected_system in [SYSTYPE_INVERTV3, CONF_SYSTYPE_INVERTER]:
                 if await self._test_connection_inverter(host_entry):
                     inv_data = {
                         CONF_TYPE: CONF_SYSTYPE_INVERTER,
@@ -432,7 +432,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
                 })
 
-        return self.async_show_form(step_id="localsystem", data_schema=a_schema, last_step=True, errors=self._errors)
+            return self.async_show_form(step_id="localsystem", data_schema=a_schema, last_step=True, errors=self._errors)
 
     async def async_step_websetup(self, user_input=None):
         self._errors = {}

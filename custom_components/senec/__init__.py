@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from datetime import timedelta
+from typing import Final
 
 from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal, util
 from custom_components.senec.pysenec_ha.constants import (
@@ -61,7 +62,6 @@ from .const import (
     QUERY_BMS_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
-    QUERY_WALLBOX_APPAPI_KEY,
     QUERY_SOCKETS_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
@@ -99,11 +99,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
     global SCAN_INTERVAL
     # update_interval can be adjusted in the options (not for WebAPI)
-    SCAN_INTERVAL = timedelta(seconds=config_entry.options.get(CONF_SCAN_INTERVAL,
-                                                               config_entry.data.get(CONF_SCAN_INTERVAL,
-                                                                                     DEFAULT_SCAN_INTERVAL_SENECV2)))
-    _LOGGER.info(
-        f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
+    SCAN_INTERVAL = timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
+    _LOGGER.info(f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
 
     if DOMAIN not in hass.data:
         value = "UNKOWN"
@@ -123,7 +120,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
     if CONF_TYPE not in config_entry.data or config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2]:
-        # after the refresh we should know if the lala.cgi return STATISTIC data
+        # after the refresh, we should know if the lala.cgi return STATISTIC data
         # or not...
         coordinator._statistics_available = coordinator.senec.grid_total_export is not None
         await coordinator.senec.update_version()
@@ -132,7 +129,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         temp_device_type = coordinator.senec.device_type
         if temp_device_type is None or temp_device_type == "UNKNOWN":
             temp_device_type = SYSTYPE_NAME_SENEC
-        coordinator._device_model = f"{temp_device_type}  | {coordinator.senec.batt_type}"
+        coordinator._device_model = f"{temp_device_type} | {coordinator.senec.batt_type}"
         coordinator._device_serial = f"S{coordinator.senec.device_id}"
         coordinator._device_version = coordinator.senec.versions
 
@@ -145,15 +142,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         # after an initial data-sync we check if our stored credentials are still the same...
-        # and if not we trigger an update of the config_entry (which is only possible via the
-        # conf_flow...
+        # and if not, we trigger an update of the config_entry (which is only possible via the
+        # conf_flow)...
         app_token = coordinator.senec._app_token
         app_master_plant_id = coordinator.senec._app_master_plant_id
         app_wallbox_num_max = coordinator.senec._app_wallbox_num_max
 
-        if config_entry.data.get(CONF_APP_TOKEN, "") != app_token or \
-                config_entry.data.get(CONF_APP_SYSTEMID, "") != app_master_plant_id or \
-                config_entry.data.get(CONF_APP_WALLBOX_COUNT, -1) != app_wallbox_num_max:
+        if (config_entry.data.get(CONF_APP_TOKEN, "") != app_token or
+                config_entry.data.get(CONF_APP_SYSTEMID, "") != app_master_plant_id or
+                config_entry.data.get(CONF_APP_WALLBOX_COUNT, -1) != app_wallbox_num_max):
             _LOGGER.info("need to update config_entry with new data by calling update_conf_entry in as task...")
 
             hass.async_create_task(
@@ -162,6 +159,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
         if coordinator.senec.product_name is None:
             await coordinator.senec.app_update_context()
+
         coordinator._device_type = SYSTYPE_NAME_WEBAPI
         coordinator._device_model = f"{coordinator.senec.product_name} | SENEC.Case: {coordinator.senec.senec_num}"
         coordinator._device_serial = coordinator.senec.serial_number
@@ -181,9 +179,7 @@ async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_
     if config_entry is not None:
         _LOGGER.debug(f"update_conf_entry called...")  # with user_input: {user_input} and context: {self.context}")
 
-        _options = dict(config_entry.options)
         _data = dict(config_entry.data)
-
         # if "dataAAAA" in _data:
         #    del _data["dataAAAA"]
 
@@ -196,52 +192,23 @@ async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_
         await asyncio.sleep(5)
 
         _LOGGER.debug(f"finally saving new data to config_entry - add_update_listener will take care about a possible the restart...")
-        hass.config_entries.async_update_entry(config_entry, data=_data, options=_options)
+        hass.config_entries.async_update_entry(config_entry, data=_data)
 
 
-def check_for_options(registry, sluged_title: str, opt: dict, sensor_type: str, entity_desc_list: list) -> dict:
-    for description in entity_desc_list:
-        if not opt[QUERY_BMS_KEY] and SENEC_SECTION_BMS == description.senec_lala_section:
-            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
-            a_entity = registry.async_get(a_sensor_id)
-            if a_entity is not None and a_entity.disabled_by is None:
-                _LOGGER.info("***** QUERY_BMS-DATA ********")
-                opt[QUERY_BMS_KEY] = True
-
-        if not opt[QUERY_WALLBOX_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
-            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
-            a_entity = registry.async_get(a_sensor_id)
-            if a_entity is not None and a_entity.disabled_by is None:
-                _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
-                opt[QUERY_WALLBOX_KEY] = True
-
-        if not opt[QUERY_FANDATA_KEY] and SENEC_SECTION_FAN_SPEED == description.senec_lala_section:
-            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
-            a_entity = registry.async_get(a_sensor_id)
-            if a_entity is not None and a_entity.disabled_by is None:
-                _LOGGER.info("***** QUERY_FANSPEED-DATA ********")
-                opt[QUERY_FANDATA_KEY] = True
-
-        if not opt[QUERY_SOCKETS_KEY] and SENEC_SECTION_SOCKETS == description.senec_lala_section:
-            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
-            a_entity = registry.async_get(a_sensor_id)
-            if a_entity is not None and a_entity.disabled_by is None:
-                _LOGGER.info("***** QUERY_SOCKETS-DATA ********")
-                opt[QUERY_SOCKETS_KEY] = True
-    return opt
-
-
-def need_query_app_api_wallbox(registry, sluged_title: str, opt: dict, sensor_type: str,
-                               entity_desc_list: list) -> dict:
-    for description in entity_desc_list:
-        if not opt[QUERY_WALLBOX_APPAPI_KEY] and SENEC_SECTION_WALLBOX == description.senec_lala_section:
-            a_sensor_id = f"{sensor_type}.{sluged_title}_{description.key}".lower()
-            a_entity = registry.async_get(a_sensor_id)
-            if a_entity is not None and a_entity.disabled_by is None:
-                _LOGGER.info("***** QUERY_APPAPI-WALLBOX-DATA ********")
-                opt[QUERY_WALLBOX_APPAPI_KEY] = True
-    return opt
-
+# Map platforms to their corresponding search lists
+PLATFORM_MAPPING: Final = {
+    "sensor": MAIN_SENSOR_TYPES,
+    "binary_sensor": MAIN_BIN_SENSOR_TYPES,
+    "switch": MAIN_SWITCH_TYPES,
+    "number": MAIN_NUMBER_TYPES,
+    "select": MAIN_SELECT_TYPES
+}
+SECTION_MAPPING: Final = {
+    SENEC_SECTION_WALLBOX:  (QUERY_WALLBOX_KEY, "***** QUERY_WALLBOX-DATA ********"),
+    SENEC_SECTION_BMS:      (QUERY_BMS_KEY,     "***** QUERY_BMS-DATA ********"),
+    SENEC_SECTION_FAN_SPEED:(QUERY_FANDATA_KEY, "***** QUERY_FAN-DATA ********"),
+    SENEC_SECTION_SOCKETS:  (QUERY_SOCKETS_KEY, "***** QUERY_SOCKET-DATA ********")
+}
 
 class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     """Define an object to hold Senec data."""
@@ -251,7 +218,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         # Build-In INVERTER
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
             # host can be changed in the options...
-            self._host = config_entry.options.get(CONF_HOST, config_entry.data[CONF_HOST])
+            self._host = config_entry.data[CONF_HOST]
             self.senec = Inverter(self._host, inv_session=async_create_clientsession(hass))
 
         # WEB-API Version...
@@ -263,8 +230,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 a_master_plant_number = int(config_entry.data[CONF_DEV_MASTER_NUM])
 
             # user & pwd can be changed via the options...
-            user = config_entry.options.get(CONF_USERNAME, config_entry.data[CONF_USERNAME])
-            pwd = config_entry.options.get(CONF_PASSWORD, config_entry.data[CONF_PASSWORD])
+            user = config_entry.data[CONF_USERNAME]
+            pwd = config_entry.data[CONF_PASSWORD]
 
             # we need to know if the 'spare_capacity' and 'peak_shaving' code should be called or not?!
             opt = {
@@ -293,34 +260,28 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 registry = entity_registry.async_get(hass)
 
                 if registry is not None:
-                    slug_title = slugify(config_entry.title)
+                    all_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
+                    _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_entities)}")
+                    for a_entity in all_entities:
+                        if a_entity.disabled_by is None:
+                            _LOGGER.debug(f"Entity '{a_entity.entity_id}' is enabled for {config_entry.title}")
 
-                    # Spare Capacity
-                    sce_id = f"number.{slug_title}_spare_capacity".lower()
-                    spare_capacity_entity = registry.async_get(sce_id)
+                            # Spare Capacity
+                            if not opt[QUERY_SPARE_CAPACITY_KEY] and a_entity.entity_id.startswith("number."):
+                                if a_entity.entity_id.endswith("_spare_capacity"):
+                                    _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
+                                    opt[QUERY_SPARE_CAPACITY_KEY] = True
 
-                    if spare_capacity_entity is not None:
-                        if spare_capacity_entity.disabled_by is None:
-                            _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
-                            opt[QUERY_SPARE_CAPACITY_KEY] = True
+                            # Peak Shaving
+                            if not opt[QUERY_PEAK_SHAVING_KEY] and a_entity.entity_id.startswith("sensor."):
+                                a_id = a_entity.entity_id
+                                if any(a_id.endswith(suffix) for suffix in ("_gridexport_limit", "_peakshaving_mode", "_peakshaving_capacitylimit", "_peakshaving_enddate")):
+                                    _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
+                                    opt[QUERY_PEAK_SHAVING_KEY] = True
 
-                    # Peak Shaving
-                    ps_gridlimit_id = f"sensor.{slug_title}_gridexport_limit".lower()
-                    ps_gridlimit_entity = registry.async_get(ps_gridlimit_id)
-
-                    ps_mode_id = f"sensor.{slug_title}_peakshaving_mode".lower()
-                    ps_mode_entity = registry.async_get(ps_mode_id)
-
-                    ps_capacity_id = f"sensor.{slug_title}_peakshaving_capacitylimit".lower()
-                    ps_capacity_entity = registry.async_get(ps_capacity_id)
-
-                    ps_end_id = f"sensor.{slug_title}_peakshaving_enddate".lower()
-                    ps_end_entity = registry.async_get(ps_end_id)
-
-                    if ps_gridlimit_entity is not None and ps_mode_entity is not None and ps_capacity_entity is not None and ps_end_entity is not None:
-                        if ps_gridlimit_entity.disabled_by is None or ps_mode_entity.disabled_by is None or ps_capacity_entity.disabled_by is None or ps_end_entity is None:
-                            _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
-                            opt[QUERY_PEAK_SHAVING_KEY] = True
+                            # when we have both, we can break the loop
+                            if opt[QUERY_PEAK_SHAVING_KEY] and opt[QUERY_SPARE_CAPACITY_KEY]:
+                                break
 
                     # we need to check, if there are any Wallbox entities...
                     # opt[QUERY_WALLBOX_KEY] = True
@@ -332,35 +293,45 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         # lala.cgi Version...
         else:
             # host can be changed in the options...
-            self._host = config_entry.options.get(CONF_HOST, config_entry.data[CONF_HOST])
+            self._host = config_entry.data[CONF_HOST]
             if CONF_USE_HTTPS in config_entry.data:
                 self._use_https = config_entry.data[CONF_USE_HTTPS]
             else:
                 self._use_https = False
 
             opt = {
-                IGNORE_SYSTEM_STATE_KEY: config_entry.options.get(CONF_IGNORE_SYSTEM_STATE, config_entry.data.get(CONF_IGNORE_SYSTEM_STATE, False)),
+                IGNORE_SYSTEM_STATE_KEY: config_entry.data.get(CONF_IGNORE_SYSTEM_STATE, False),
                 QUERY_WALLBOX_KEY: False,
-                QUERY_WALLBOX_APPAPI_KEY: False,
                 QUERY_BMS_KEY: False,
                 QUERY_FANDATA_KEY: False,
                 QUERY_SOCKETS_KEY: False
             }
+
             # check if any of the wallbox-sensors is enabled... and only THEN
             # we will include the 'WALLBOX' in our POST to the lala.cgi
-            if hass is not None and config_entry.title is not None:
+            if hass is not None and config_entry.entry_id is not None:
                 registry = entity_registry.async_get(hass)
                 if registry is not None:
-                    sluged_title = slugify(config_entry.title)
-                    opt = check_for_options(registry, sluged_title, opt, "sensor", MAIN_SENSOR_TYPES)
-                    opt = check_for_options(registry, sluged_title, opt, "binary_sensor", MAIN_BIN_SENSOR_TYPES)
-                    opt = check_for_options(registry, sluged_title, opt, "switch", MAIN_SWITCH_TYPES)
-                    opt = check_for_options(registry, sluged_title, opt, "number", MAIN_NUMBER_TYPES)
-                    opt = check_for_options(registry, sluged_title, opt, "select", MAIN_SELECT_TYPES)
+                    all_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
+                    _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_entities)}")
+                    for a_entity in all_entities:
+                        if a_entity.disabled_by is None:
+                            _LOGGER.debug(f"Entity '{a_entity.entity_id}' is enabled for {config_entry.title}")
+                            # check if the entity is a sensor, binary_sensor, switch, number or select
+                            a_entity_platform = a_entity.entity_id.split(".")[0]
+                            if a_entity_platform in PLATFORM_MAPPING:
+                                for a_entity_desc in PLATFORM_MAPPING[a_entity_platform]:
+                                    if a_entity.entity_id.endswith(a_entity_desc.key):
+                                        if hasattr(a_entity_desc, "senec_lala_section"):
+                                            a_lala_section  = a_entity_desc.senec_lala_section
+                                            if a_lala_section in SECTION_MAPPING:
+                                                query_option_key, a_log_msg = SECTION_MAPPING[a_lala_section]
+                                                if not opt[query_option_key]:
+                                                    opt[query_option_key] = True
+                                                    _LOGGER.info(a_log_msg)
 
-                    # do we need to tell the mein-senec.de web integration to query the status of the wallbox?
-                    # this 'hack' only works while the MAIN_SELECT_TYPES are only WALLBOX related...
-                    opt = need_query_app_api_wallbox(registry, sluged_title, opt, "select", MAIN_SELECT_TYPES)
+                                        _LOGGER.debug(f"Found a EntityDescription for '{a_entity.entity_id}' key: {a_entity_desc.key}")
+                                        break
 
             self.senec = Senec(host=self._host, use_https=self._use_https, lala_session=async_create_clientsession(hass, verify_ssl=False),
                                lang=hass.config.language.lower(), options=opt)
@@ -482,29 +453,23 @@ class SenecEntity(Entity):
 
         dtype = self.coordinator._device_type
         if dtype is None:
-            dtype = self.coordinator._config_entry.options.get(CONF_DEV_TYPE,
-                                                               self.coordinator._config_entry.data.get(CONF_DEV_TYPE))
+            dtype = self.coordinator._config_entry.data.get(CONF_DEV_TYPE, "UNKNOWN_TYPE")
 
         dmodel = self.coordinator._device_model
         if dmodel is None:
-            dmodel = self.coordinator._config_entry.options.get(CONF_DEV_MODEL,
-                                                                self.coordinator._config_entry.data.get(CONF_DEV_MODEL))
+            dmodel = self.coordinator._config_entry.data.get(CONF_DEV_MODEL, "UNKNOWN_MODEL")
 
         dserial = self.coordinator._device_serial
         if dserial is None:
-            dserial = self.coordinator._config_entry.options.get(CONF_DEV_SERIAL,
-                                                                 self.coordinator._config_entry.data.get(
-                                                                     CONF_DEV_SERIAL))
+            dserial = self.coordinator._config_entry.data.get(CONF_DEV_SERIAL, "UNKNOWN_SERIAL")
 
         dversion = self.coordinator._device_version
         if dversion is None:
-            dversion = self.coordinator._config_entry.options.get(CONF_DEV_VERSION,
-                                                                  self.coordinator._config_entry.data.get(
-                                                                      CONF_DEV_VERSION))
+            dversion = self.coordinator._config_entry.data.get(CONF_DEV_VERSION, "UNKNOWN_VERSION")
 
         device = self._name
 
-        # "hw_version": self.coordinator._config_entry.options.get(CONF_DEV_NAME, self.coordinator._config_entry.data.get(CONF_DEV_NAME)),
+        # "hw_version": self.coordinator._config_entry.data.get(CONF_DEV_NAME, "UNKNOWN_HW_VERSION"),
         return {
             "identifiers": {(DOMAIN, self.coordinator._host, device)},
             "name": f"{dtype}: {device}",
