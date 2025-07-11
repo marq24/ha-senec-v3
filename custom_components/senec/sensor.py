@@ -1,7 +1,5 @@
 """Platform for Senec sensors."""
 import logging
-from numbers import Number
-from time import time
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -11,10 +9,9 @@ from homeassistant.core import State
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
-from . import SenecDataUpdateCoordinator, SenecEntity
+from . import SenecDataUpdateCoordinator, SenecEntity, Inverter
 from .const import (
     DOMAIN,
-    DEFAULT_SCAN_INTERVAL_WEB,
     MAIN_SENSOR_TYPES,
     INVERTER_SENSOR_TYPES,
     WEB_SENSOR_TYPES,
@@ -34,11 +31,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
+        is_bdc_inverter = config_entry.data[CONF_SUPPORT_BDC]
+        if not is_bdc_inverter and isinstance(coordinator.senec, Inverter) and hasattr(coordinator.senec, "_has_bdc"):
+            is_bdc_inverter = coordinator.senec._has_bdc
+
         for description in INVERTER_SENSOR_TYPES:
             add_entity = description.controls is None
             if not add_entity:
                 if 'bdc_only' in description.controls:
-                    if (config_entry.data[CONF_SUPPORT_BDC]):
+                    if is_bdc_inverter:
                         add_entity = True
                 else:
                     add_entity = True
