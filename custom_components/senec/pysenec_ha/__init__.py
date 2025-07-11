@@ -2393,48 +2393,63 @@ class Inverter:
     async def update_version(self):
         await self.read_inverter_version()
 
+    def process_entry(self, a_entry, last_dev):
+        """Process a single entry, handling both list items and dict keys"""
+        if '@Device' not in a_entry:
+            return
+
+        a_dev = a_entry["@Device"]
+        if not self._has_bdc:
+            self._has_bdc = a_dev == 'BDC'
+
+        # Handle device separation
+        if a_dev != last_dev:
+            if len(self._version_infos) > 0:
+                self._version_infos = f"{self._version_infos} \n"
+            self._version_infos = f"{self._version_infos} [{a_dev}]:\t"
+        else:
+            if len(self._version_infos) > 0:
+                self._version_infos = f"{self._version_infos} | "
+
+        # Add version info
+        if '@Name' in a_entry and '@Version' in a_entry:
+            self._version_infos = f'{self._version_infos + a_entry["@Name"]} v{a_entry["@Version"]}'
+        elif '@Device' in a_entry and '@Version' in a_entry:
+            self._version_infos = f'{self._version_infos + a_entry["@Device"]} v{a_entry["@Version"]}'
+
+        return a_dev
+
     async def read_inverter_version(self):
         async with self.inv_session.get(self.url3, headers=self._keepAliveHeaders) as res:
             res.raise_for_status()
             txt = await res.text()
-            self._raw_version = xmltodict.parse(txt, force_list=('Software',))
+            self._raw_version = xmltodict.parse(txt, force_list=('Software', 'Hardware', ))
             last_dev = ''
             if self._raw_version is not None:
                 if "root" in self._raw_version:
                     if "Device" in self._raw_version["root"]:
-                        if "Versions" in self._raw_version["root"]["Device"]:
-                            if "Software" in self._raw_version["root"]["Device"]["Versions"]:
-                                a_dict = self._raw_version["root"]["Device"]["Versions"]["Software"]
+                        a_device_dict = self._raw_version["root"]["Device"]
+                        if not self._has_bdc and "@Name" in a_device_dict:
+                            self._has_bdc = a_device_dict["@Name"].upper().endswith("_BDC")
+                        if "Versions" in a_device_dict:
+                            a_version_dict = a_device_dict["Versions"]
+                            a_dict = None
+                            if "Software" in a_version_dict:
+                                a_dict = a_version_dict["Software"]
+                            elif "Hardware" in a_version_dict:
+                                a_dict = a_version_dict["Hardware"]
+
+                            if a_dict is not None and len(a_dict) > 0:
                                 if isinstance(a_dict, list):
                                     for a_entry in a_dict:
-                                        if '@Name' in a_entry:
-                                            a_dev = a_entry["@Device"]
-                                            if (not self._has_bdc):
-                                                self._has_bdc = a_dev == 'BDC'
-                                            if (a_dev != last_dev):
-                                                if (len(self._version_infos) > 0):
-                                                    self._version_infos = self._version_infos + '\n'
-                                                self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
-                                            else:
-                                                if (len(self._version_infos) > 0):
-                                                    self._version_infos = self._version_infos + '|'
-                                            self._version_infos = self._version_infos + a_entry["@Name"] + ' v' + a_entry["@Version"]
-                                            last_dev = a_dev
+                                        result = self.process_entry(a_entry, last_dev)
+                                        if result:
+                                            last_dev = result
                                 elif isinstance(a_dict, dict):
-                                    for a_entry in a_dict.keys():
-                                        if '@Name' in a_entry:
-                                            a_dev = a_dict["@Device"]
-                                            if (not self._has_bdc):
-                                                self._has_bdc = a_dev == 'BDC'
-                                            if (a_dev != last_dev):
-                                                if (len(self._version_infos) > 0):
-                                                    self._version_infos = self._version_infos + '\n'
-                                                self._version_infos = self._version_infos + "[" + a_dev + "]:\t"
-                                            else:
-                                                if (len(self._version_infos) > 0):
-                                                    self._version_infos = self._version_infos + '|'
-                                            self._version_infos = self._version_infos + a_dict["@Name"] + ' v' + a_dict["@Version"]
-                                            last_dev = a_dev
+                                    for a_entry_key in a_dict.keys():
+                                        result = self.process_entry(a_entry_key, last_dev)
+                                        if result:
+                                            last_dev = result
 
     async def update(self):
         await self.read_inverter_with_retry(retry=True)
