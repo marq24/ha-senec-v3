@@ -191,6 +191,8 @@ class Senec:
         self._raw_version = None
         self._last_version_update = 0
         self._last_system_reset = 0
+        self._timeout = aiohttp.ClientTimeout(total=10, connect=None, sock_connect=None, sock_read=None,
+                                              ceil_threshold=5)
 
         #try:
         #    asyncio.create_task(self.update_version())
@@ -254,7 +256,7 @@ class Senec:
         # with NPU 2411 we must start the communication with the backend with this single call...
         # no clue what type of special SENEC-Style security this is?!...
         form = {SENEC_SECTION_FACTORY:{"SYS_TYPE":"","COUNTRY":"","DEVICE_ID":""}}
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
             _LOGGER.debug(f"_init_gui_cookies() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
@@ -303,7 +305,7 @@ class Senec:
             SENEC_SECTION_STATISTIC: {}
         }
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
             _LOGGER.debug(f"_read_version() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
@@ -1744,21 +1746,24 @@ class Senec:
                 "PROHIBIT_USAGE": ""}
             })
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
-            _LOGGER.debug(f"_read_senec_lala() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
-            try:
-                res.raise_for_status()
-                # if SET_COOKIE in res.headers:
-                #     _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
-                data = await res.json()
-                self._raw = parse(data)
-            except JSONDecodeError as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-            except Exception as err:
-                _LOGGER.warning(f"read_senec_lala caused: {err}")
+        try:
+            async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+                _LOGGER.debug(f"_read_senec_lala() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
+                try:
+                    res.raise_for_status()
+                    # if SET_COOKIE in res.headers:
+                    #     _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
+                    data = await res.json()
+                    self._raw = parse(data)
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                except Exception as err:
+                    _LOGGER.warning(f"read_senec_lala caused: {err}")
+        except BaseException as e:
+            _LOGGER.info(f"_read_senec_lala() caused: {type(e)} - {e}")
 
     async def read_all_fields(self) -> []:
-        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, headers=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
             try:
                 res.raise_for_status()
                 data = await res.json()
@@ -1769,7 +1774,7 @@ class Senec:
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
             try:
                 res.raise_for_status()
                 data = await res.json()
@@ -2322,7 +2327,7 @@ class Senec:
 
     async def write_senec_v31(self, data):
         _LOGGER.debug(f"posting data (raw): {util.mask_map(data)}")
-        async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders) as res:
+        async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
             try:
                 res.raise_for_status()
                 if SET_COOKIE in res.headers:
@@ -2383,6 +2388,8 @@ class Inverter:
         self._raw = None
         self._raw_version = None
         self._YIELD_DATA_READ_TS = 0
+        self._timeout = aiohttp.ClientTimeout(total=10, connect=None, sock_connect=None, sock_read=None,
+                                              ceil_threshold=5)
 
     def dict_data(self) -> dict:
         # will be called by the UpdateCoordinator (to get the current data)
@@ -2393,7 +2400,7 @@ class Inverter:
     async def update_version(self):
         await self.read_inverter_version()
 
-    def process_entry(self, a_entry, last_dev):
+    def _process_sw_hw_entry(self, a_entry, last_dev):
         """Process a single entry, handling both list items and dict keys"""
         if '@Device' not in a_entry:
             return
@@ -2442,12 +2449,12 @@ class Inverter:
                             if a_dict is not None and len(a_dict) > 0:
                                 if isinstance(a_dict, list):
                                     for a_entry in a_dict:
-                                        result = self.process_entry(a_entry, last_dev)
+                                        result = self._process_sw_hw_entry(a_entry, last_dev)
                                         if result:
                                             last_dev = result
                                 elif isinstance(a_dict, dict):
                                     for a_entry_key in a_dict.keys():
-                                        result = self.process_entry(a_entry_key, last_dev)
+                                        result = self._process_sw_hw_entry(a_entry_key, last_dev)
                                         if result:
                                             last_dev = result
 
@@ -2464,7 +2471,7 @@ class Inverter:
                 await self.read_inverter_with_retry(retry=False)
 
     async def read_inverter(self):
-        async with self.inv_session.get(url=f"{self.url2}?{datetime.now()}", headers=self._keepAliveHeaders) as res:
+        async with self.inv_session.get(url=f"{self.url2}?{datetime.now()}", headers=self._keepAliveHeaders, timeout=self._timeout) as res:
             res.raise_for_status()
             txt = await res.text()
             self._raw = xmltodict.parse(txt)
@@ -2525,7 +2532,7 @@ class Inverter:
                                                 self._derating = float(100.0 - float(a_dict["@Value"]))
 
         if self._YIELD_DATA_READ_TS + 300 < time():
-            async with self.inv_session.get(url=f"{self.url_yield}&_={time()}", headers=self._keepAliveHeaders) as res:
+            async with self.inv_session.get(url=f"{self.url_yield}&_={time()}", headers=self._keepAliveHeaders, timeout=self._timeout) as res:
                 self._YIELD_DATA_READ_TS = time()
                 res.raise_for_status()
                 yield_data = await res.json()

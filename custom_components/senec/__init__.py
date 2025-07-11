@@ -26,7 +26,6 @@ from homeassistant.helpers import config_validation as config_val, entity_regist
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util import slugify
 from . import service as SenecService
 from .const import (
     DOMAIN,
@@ -365,8 +364,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         except UpdateFailed as exception:
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
-        except Exception as fatal:
-            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
+        except BaseException as fatal:
+            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_to_state(self, switch_key, state):
@@ -376,8 +375,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         except UpdateFailed as exception:
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
-        except Exception as fatal:
-            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
+        except BaseException as fatal:
+            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_array_to_state(self, switch_array_key, array_pos, state):
@@ -387,8 +386,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         except UpdateFailed as exception:
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
-        except Exception as fatal:
-            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
+        except BaseException as fatal:
+            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_set_string_value(self, set_str_key, value: str):
@@ -398,8 +397,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         except UpdateFailed as exception:
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
-        except Exception as fatal:
-            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
+        except BaseException as fatal:
+            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_trigger_button(self, trigger_key:str, payload: str):
@@ -409,8 +408,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         except UpdateFailed as exception:
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
-        except Exception as fatal:
-            _LOGGER.warning(f"UpdateFailed (fatal): {fatal}")
+        except BaseException as fatal:
+            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
             raise UpdateFailed() from fatal
 
 
