@@ -2338,25 +2338,25 @@ class Senec:
             except Exception as err:
                 _LOGGER.warning(f"Error while 'posting data' {err}")
 
-    async def senec_v31_post_plain_form_data(self, form_data:str):
-        _LOGGER.debug(f"posting x-www-form-urlencoded: {util.mask_map(form_data)}")
+    async def senec_v31_post_plain_form_data(self, form_data_str:str):
+        _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data_str}")
         special_hdrs = {
             "Host": self._host,
             "Origin": self._host_and_schema,
             "Referer": f"{self._host_and_schema}/",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+            #"Sec-Fetch-Dest": "empty",
+            #"Sec-Fetch-Mode": "cors",
+            #"Sec-Fetch-Site": "same-origin",
+            #"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
             "X-Requested-With": "XMLHttpRequest",
-            "sec-ch-ua": 'Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": "\"Windows\"",
+            #"sec-ch-ua": 'Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132',
+            #"sec-ch-ua-mobile": "?0",
+            #"sec-ch-ua-platform": "\"Windows\"",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Keep-Alive": "timeout=60, max=1000",
+            "Keep-Alive": "timeout=60, max=0",
         }
-        async with self.lala_session.post(self.url, data=form_data, headers=special_hdrs, ssl=False, chunked=None) as res:
+        async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None) as res:
             _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()

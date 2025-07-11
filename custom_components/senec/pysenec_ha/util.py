@@ -8,7 +8,11 @@ _MASKED_VALUES = ["host", "username", "password", "app_token", "app_master_plant
 
 
 def mask_map(d: dict) -> dict:
-    return mask_map_internal(copy.deepcopy(d))
+    if not isinstance(d, dict):
+        _LOGGER.info(f"mask_map expects a dictionary, got '{type(d).__name__}'")
+        return d
+    else:
+        return mask_map_internal(copy.deepcopy(d))
 
 def mask_map_internal(d: dict) -> dict:
     for k, v in d.copy().items():
