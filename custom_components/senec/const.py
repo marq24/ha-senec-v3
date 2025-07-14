@@ -83,6 +83,7 @@ CONF_SYSTYPE_WEB: Final = "web"
 CONF_APP_TOKEN: Final = "app_token"
 CONF_APP_SYSTEMID: Final = "app_master_plant_id"
 CONF_APP_WALLBOX_COUNT: Final = "app_wallbox_num_max"
+CONF_APP_SERIALNUM: Final = "app_serialnumber"
 
 """Default config for Senec."""
 DEFAULT_SYSTEM: Final = SYSTYPE_SENECV3

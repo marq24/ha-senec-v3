@@ -58,6 +58,7 @@ from .const import (
     CONF_IGNORE_SYSTEM_STATE,
     CONF_APP_TOKEN,
     CONF_APP_SYSTEMID,
+    CONF_APP_SERIALNUM,
     CONF_APP_WALLBOX_COUNT,
 
     CONFIG_VERSION,
@@ -130,7 +131,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._use_https = False
         self._device_type_internal = ""
         self._support_bdc = False
-        self._device_master_plant_number = -1
+        self._app_master_plant_number = -1
 
         self._device_type = ""
         self._device_model = ""
@@ -140,6 +141,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         self._app_token = None
         self._app_master_plant_id = None
+        self._app_serial_number = None
         self._app_wallbox_num_max = None
 
         # just a container to transport the user-input data to the next step...
@@ -216,17 +218,17 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.warning(f"Could not connect to build-in Inverter device at {host}, check host ip address")
         return False
 
-    async def _test_connection_webapi(self, user: str, pwd: str, master_plant: int):
+    async def _test_connection_webapi(self, user: str, pwd: str, user_master_plant: int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
         web_session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session,
-                                                master_plant_number=master_plant)
+                                                app_master_plant_number=user_master_plant)
             await senec_web_client.app_authenticate(retry=False, do_update=False)
             if senec_web_client._app_is_authenticated:
                 await senec_web_client.app_update_context()
-                self._device_master_plant_number = senec_web_client.masterPlantNumber
+                self._app_master_plant_number = senec_web_client.appMasterPlantNumber
 
                 await senec_web_client.app_update_tech_data()
                 if senec_web_client.product_name is None:
@@ -250,6 +252,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._device_serial = serial_num
                 self._app_token = senec_web_client._app_token
                 self._app_master_plant_id = senec_web_client._app_master_plant_id
+                self._app_serial_number = senec_web_client._app_serial_number
                 self._app_wallbox_num_max = senec_web_client._app_wallbox_num_max
                 self._device_version = senec_web_client.versions
 
@@ -259,6 +262,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "device_serial": self._device_serial,
                     "app_token": f"{self._app_token[:4]}...",
                     "app_master_plant_id": self._app_master_plant_id,
+                    "app_serial_number": self._app_serial_number,
                     "app_wallbox_num_max": self._app_wallbox_num_max,
                     "device_version": self._device_version
                 }
@@ -472,12 +476,13 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DEV_MODEL: self._device_model,
                     CONF_DEV_SERIAL: self._device_serial,
                     CONF_DEV_VERSION: self._device_version,
-                    CONF_DEV_MASTER_NUM: self._device_master_plant_number
+                    CONF_DEV_MASTER_NUM: self._app_master_plant_number
                 }
 
-                if all(x is not None for x in [self._app_token, self._app_master_plant_id, self._app_wallbox_num_max]):
+                if all(x is not None for x in [self._app_token, self._app_master_plant_id, self._app_serial_number, self._app_wallbox_num_max]):
                     web_data[CONF_APP_TOKEN] = self._app_token
                     web_data[CONF_APP_SYSTEMID] = self._app_master_plant_id
+                    web_data[CONF_APP_SERIALNUM] = self._app_serial_number
                     web_data[CONF_APP_WALLBOX_COUNT] = self._app_wallbox_num_max
 
                 if self.source == SOURCE_RECONFIGURE:
