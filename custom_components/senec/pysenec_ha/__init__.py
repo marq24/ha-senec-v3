@@ -2801,7 +2801,7 @@ def app_get_utc_date_end(year, month:int=12, day:int=-1):
 
 class MySenecWebPortal:
 
-    _def_web_headers = {
+    _default_web_headers = {
         "User-Agent": USER_AGENT,
         "Connection": "keep-alive",
         "Keep-Alive": "timeout=60, max=1000",
@@ -3839,7 +3839,7 @@ class MySenecWebPortal:
     async def update_peak_shaving(self):
         _LOGGER.info("***** update_peak_shaving(self) ********")
         a_url = f"{self._SENEC_API_GET_PEAK_SHAVING}{self._web_master_plant_number}"
-        async with self.web_session.get(a_url, headers=self._def_web_headers, ssl=False) as res:
+        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -3873,7 +3873,7 @@ class MySenecWebPortal:
         # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
         a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._web_master_plant_number}&mode={new_peak_shaving['mode'].upper()}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
 
-        async with self.web_session.post(a_url, headers=self._def_web_headers, ssl=False) as res:
+        async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -3899,7 +3899,7 @@ class MySenecWebPortal:
     async def update_spare_capacity(self):
         _LOGGER.info("***** update_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
-        async with self.web_session.get(a_url, headers=self._def_web_headers, ssl=False) as response:
+        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as response:
             try:
                 response.raise_for_status()
                 if 200 <= response.status <= 205:
@@ -3931,7 +3931,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** set_spare_capacity(self) ********")
         a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
 
-        async with self.web_session.post(a_url, headers=self._def_web_headers, ssl=False) as res:
+        async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 res.raise_for_status()
                 if res.status == 200:
@@ -4009,12 +4009,10 @@ class MySenecWebPortal:
         # grab TOTAL stats
         if self._web_master_plant_number is None or self._web_master_plant_number == -1:
             _LOGGER.warning("web_update_total() called without valid web master plant number, skipping update.")
-            self._web_is_authenticated = False
-            await self.web_authenticate(do_update=False, throw401=False)
         else:
             for key in self._API_KEYS:
                 api_url = f"{self._SENEC_WEB_GET_STATUS}" % (key, str(self._web_master_plant_number))
-                async with self.web_session.get(api_url, headers=self._def_web_headers, ssl=False) as res:
+                async with self.web_session.get(api_url, headers=self._default_web_headers, ssl=False) as res:
                     try:
                         res.raise_for_status()
                         if res.status == 200:
@@ -4044,7 +4042,7 @@ class MySenecWebPortal:
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_state(self) ********")
             a_url = self._SENEC_API_GET_SGREADY_STATE % (str(self._web_master_plant_number))
-            async with self.web_session.get(a_url, headers=self._def_web_headers, ssl=False) as res:
+            async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
                     res.raise_for_status()
                     if res.status == 200:
@@ -4077,7 +4075,7 @@ class MySenecWebPortal:
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_conf(self) ********")
             a_url = self._SENEC_API_GET_SGREADY_CONF % (str(self._web_master_plant_number))
-            async with self.web_session.get(a_url, headers=self._def_web_headers, ssl=False) as res:
+            async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
                     res.raise_for_status()
                     if res.status == 200:
@@ -4117,7 +4115,7 @@ class MySenecWebPortal:
                         post_data[a_key] = self._sgready_conf_data[a_key]
 
             if len(post_data) > 0 and post_data_to_backend:
-                async with self.web_session.post(a_url, headers=self._def_web_headers, ssl=False, json=post_data) as res:
+                async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False, json=post_data) as res:
                     try:
                         res.raise_for_status()
                         if res.status == 200:
@@ -4163,7 +4161,7 @@ class MySenecWebPortal:
         _LOGGER.debug("***** web_update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
-        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER, headers=self._def_web_headers, ssl=False) as res:
+        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER, headers=self._default_web_headers, ssl=False) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
@@ -4186,11 +4184,12 @@ class MySenecWebPortal:
         _LOGGER.debug(f"***** web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
 
         a_url = self._SENEC_WEB_GET_SYSTEM_INFO % str(a_plant_number)
-        async with self.web_session.get(a_url, headers=self._def_web_headers, ssl=False) as res:
+        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             res.raise_for_status()
             if res.status == 200:
                 try:
                     r_json = await res.json()
+                    #_LOGGER.debug(f"web_update_get_systems() - response: {r_json}")
                     if autodetect_mode:
                         if "master" in r_json and r_json["master"]:
                             # we are cool that's a master-system... so we store our counter...
