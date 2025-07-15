@@ -2900,12 +2900,14 @@ class MySenecWebPortal:
         APP_BASE_URL2 = "https://app-gateway.prod.senec.dev/"
         self._SENEC_APP_NOW = APP_BASE_URL2 + "v2/senec/systems/%s/dashboard"
         self._SENEC_APP_TOTAL_V1_OUTDATED = APP_BASE_URL2 + "v1/senec/monitor/%s/data/custom?startDate=2018-01-01&endDate=%s-%s-01&locale=de_DE&timezone=GMT"
-        # 1514764800 = 2018-01-01 as UNIX epoche timestamp
-        self._SENEC_APP_TOTAL_V2 = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=YEAR&from=1514764800&to=%s"
-        self._SENEC_APP_TOTAL_V2_with_TYPE_START_END = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=%s&from=%s&to=%s"
         self._SENEC_APP_TECHDATA = APP_BASE_URL2 + "v1/senec/systems/%s/technical-data"
 
+        # 2025/07/15 Looks like that this Endpoints are GONE
+        self._SENEC_APP_TOTAL_V2 = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=YEAR&from=1514764800&to=%s" # 1514764800 = 2018-01-01 as UNIX epoche timestamp
+        self._SENEC_APP_TOTAL_V2_with_TYPE_START_END = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=%s&from=%s&to=%s"
+
         # 2025/06/11 [NEW APP URLS -but with LESS DATA!]
+        # 2025/07/15 [APP_BASE_MEASSURE_URL3 is now secured via sso-login -> token + something random]
         APP_BASE_MEASSURE_URL3  = "https://senec-app-measurements-proxy.prod.senec.dev/"
         # APP_BASE_SYSTEM_URL3    = "https://senec-app-systems-proxy.prod.senec.dev/"
         # self._SENEC_APP_NOW     = f"{APP_BASE_MEASSURE_URL3}v1/systems/%s/dashboard"
@@ -3782,7 +3784,7 @@ class MySenecWebPortal:
             _LOGGER.info("***** update(self) ********")
             await self.app_update_now()
             # thanks - app_totals currently not working
-            await self.web_update_total()
+            # await self.web_update_total()
 
             # 30 min = 30 * 60 sec = 1800 sec
             # if self._QUERY_TECH_DATA_TS + 1800 < time():
