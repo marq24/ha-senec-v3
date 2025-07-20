@@ -16,12 +16,13 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal, util
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
+    SENEC_SECTION_BMS_CELLS,
     SENEC_SECTION_ENERGY,
     SENEC_SECTION_FAN_SPEED,
     SENEC_SECTION_STATISTIC,
+    SENEC_SECTION_PV1,
     SENEC_SECTION_PM1OBJ1,
     SENEC_SECTION_PM1OBJ2,
-    SENEC_SECTION_PV1,
     SENEC_SECTION_PWR_UNIT,
     SENEC_SECTION_SOCKETS,
     SENEC_SECTION_TEMPMEASURE,
@@ -61,6 +62,10 @@ from .const import (
     MAIN_NUMBER_TYPES,
     MAIN_SELECT_TYPES,
     QUERY_BMS_KEY,
+    QUERY_BMS_CELLS_KEY,
+    QUERY_PV1_KEY,
+    QUERY_PM1OBJ1_KEY,
+    QUERY_PM1OBJ2_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
     QUERY_SOCKETS_KEY,
@@ -211,8 +216,12 @@ PLATFORM_MAPPING: Final = {
     "select": MAIN_SELECT_TYPES
 }
 SECTION_MAPPING: Final = {
+    SENEC_SECTION_PV1:      (QUERY_PV1_KEY,     "***** QUERY_PV1-DATA ********"),
+    SENEC_SECTION_PM1OBJ1:  (QUERY_PM1OBJ1_KEY, "***** QUERY_PM1OBJ1-DATA ********"),
+    SENEC_SECTION_PM1OBJ2:  (QUERY_PM1OBJ2_KEY, "***** QUERY_PM1OBJ2-DATA ********"),
     SENEC_SECTION_WALLBOX:  (QUERY_WALLBOX_KEY, "***** QUERY_WALLBOX-DATA ********"),
     SENEC_SECTION_BMS:      (QUERY_BMS_KEY,     "***** QUERY_BMS-DATA ********"),
+    SENEC_SECTION_BMS_CELLS:(QUERY_BMS_CELLS_KEY,"***** QUERY_BMS-CELLS-DATA ********"),
     SENEC_SECTION_FAN_SPEED:(QUERY_FANDATA_KEY, "***** QUERY_FAN-DATA ********"),
     SENEC_SECTION_SOCKETS:  (QUERY_SOCKETS_KEY, "***** QUERY_SOCKET-DATA ********")
 }
@@ -317,8 +326,12 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             opt = {
                 IGNORE_SYSTEM_STATE_KEY: config_entry.data.get(CONF_IGNORE_SYSTEM_STATE, False),
-                QUERY_WALLBOX_KEY: False,
+                QUERY_PV1_KEY: False,
+                QUERY_PM1OBJ1_KEY: False,
+                QUERY_PM1OBJ2_KEY: False,
                 QUERY_BMS_KEY: False,
+                QUERY_BMS_CELLS_KEY: False,
+                QUERY_WALLBOX_KEY: False,
                 QUERY_FANDATA_KEY: False,
                 QUERY_SOCKETS_KEY: False
             }

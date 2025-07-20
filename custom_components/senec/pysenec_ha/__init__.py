@@ -18,7 +18,11 @@ from packaging import version
 from yarl import URL
 
 from custom_components.senec.const import (
+    QUERY_PV1_KEY,
+    QUERY_PM1OBJ1_KEY,
+    QUERY_PM1OBJ2_KEY,
     QUERY_BMS_KEY,
+    QUERY_BMS_CELLS_KEY,
     QUERY_FANDATA_KEY,
     QUERY_WALLBOX_KEY,
     QUERY_SOCKETS_KEY,
@@ -114,34 +118,56 @@ class Senec:
     def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None):
         _LOGGER.info(f"restarting Senec lala.cgi integration... for host: '{host}' with options: {options}")
         self._lang = lang
+
+        # this property will be finally set on config_read
         self._QUERY_STATS = True
-        if options is not None and QUERY_BMS_KEY in options:
-            self._QUERY_BMS = options[QUERY_BMS_KEY]
-        else:
-            self._QUERY_BMS = False
+        self._QUERY_USER_LEVEL = False
 
-        if options is not None and QUERY_WALLBOX_KEY in options:
-            self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
-            # do we need some additional information for our wallbox (that are only available via the app-api!
-            self._QUERY_WALLBOX_APPAPI = options[QUERY_WALLBOX_KEY]
-        else:
-            self._QUERY_WALLBOX = False
-            self._QUERY_WALLBOX_APPAPI = False
+        # all other query fields depends from the config
+        self._QUERY_PV1 = False
+        self._QUERY_PM1OBJ1 = False
+        self._QUERY_PM1OBJ2 = False
+        self._QUERY_BMS = False
+        self._QUERY_BMS_CELLS = False
+        self._QUERY_WALLBOX = False
+        self._QUERY_WALLBOX_APPAPI = False
+        self._QUERY_SOCKETSDATA = False
+        self._IGNORE_SYSTEM_STATUS = False
+        self._QUERY_FANDATA = False
 
-        if options is not None and QUERY_FANDATA_KEY in options:
-            self._QUERY_FANDATA = options[QUERY_FANDATA_KEY]
-        else:
-            self._QUERY_FANDATA = False
+        if options is not None:
+            if QUERY_PV1_KEY in options:
+                self._QUERY_PV1 = options[QUERY_PV1_KEY]
 
-        if options is not None and QUERY_SOCKETS_KEY in options:
-            self._QUERY_SOCKETSDATA = options[QUERY_SOCKETS_KEY]
-        else:
-            self._QUERY_SOCKETSDATA = False
+            if QUERY_PM1OBJ1_KEY in options:
+                self._QUERY_PM1OBJ1 = options[QUERY_PM1OBJ1_KEY]
 
-        if options is not None and IGNORE_SYSTEM_STATE_KEY in options:
-            self._IGNORE_SYSTEM_STATUS = options[IGNORE_SYSTEM_STATE_KEY]
-        else:
-            self._IGNORE_SYSTEM_STATUS = False
+            if QUERY_PM1OBJ2_KEY in options:
+                self._QUERY_PM1OBJ2 = options[QUERY_PM1OBJ2_KEY]
+
+            if QUERY_BMS_KEY in options:
+                self._QUERY_BMS = options[QUERY_BMS_KEY]
+
+            if QUERY_BMS_CELLS_KEY in options:
+                self._QUERY_BMS_CELLS = options[QUERY_BMS_CELLS_KEY]
+                if self._QUERY_BMS_CELLS:
+                    self._QUERY_BMS = True
+
+            if QUERY_WALLBOX_KEY in options:
+                self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
+                # do we need some additional information for our wallbox (that are only available via the app-api!
+                self._QUERY_WALLBOX_APPAPI = options[QUERY_WALLBOX_KEY]
+
+            if QUERY_FANDATA_KEY in options:
+                self._QUERY_FANDATA = options[QUERY_FANDATA_KEY]
+
+            if QUERY_SOCKETS_KEY in options:
+                self._QUERY_SOCKETSDATA = options[QUERY_SOCKETS_KEY]
+
+            if IGNORE_SYSTEM_STATE_KEY in options:
+                self._IGNORE_SYSTEM_STATUS = options[IGNORE_SYSTEM_STATE_KEY]
+
+
 
         self._host = host
         if use_https:
@@ -273,19 +299,27 @@ class Senec:
                 "NPU_VER": "",
                 "NPU_IMAGE_VERSION": ""
             },
-            SENEC_SECTION_STATISTIC: {}
+            SENEC_SECTION_STATISTIC: {},
+            SENEC_SECTION_BMS:{
+                "MODULES_CONFIGURED": ""
+            }
         }
 
         async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
             _LOGGER.debug(f"_read_version() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
-                #if SET_COOKIE in res.headers:
-                #    _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
                 self._raw_version = parse(await res.json())
                 self._last_version_update = time()
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+    @property
+    def number_of_configured_bms_modules(self) -> int:
+        if self._raw_version is not None and "BMS" in self._raw_version and "MODULES_CONFIGURED" in self._raw_version["BMS"]:
+            return int(self._raw_version["BMS"]["MODULES_CONFIGURED"])
+        else:
+            return 0
 
     ################
     # LOCAL-READ
@@ -306,57 +340,68 @@ class Senec:
                 "CASE_TEMP": "",
                 "MCU_TEMP": "",
             },
-            SENEC_SECTION_PV1: {
-                "POWER_RATIO": "",
-                "POWER_RATIO_L1": "",
-                "POWER_RATIO_L2": "",
-                "POWER_RATIO_L3": "",
-                "MPP_VOL": "",
-                "MPP_CUR": "",
-                "MPP_POWER": ""},
-            SENEC_SECTION_PWR_UNIT: {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
-            SENEC_SECTION_PM1OBJ1: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            SENEC_SECTION_PM1OBJ2: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
         }
+        if self._QUERY_PV1:
+            # the OLD SENEC_SECTION_PV1 section (but we don't use the POWER_RATIO stuff, nor we handle
+            # SENEC_SECTION_PWR_UNIT values anywhere - so don't query them!)
+            # SENEC_SECTION_PV1: {
+            #     #"POWER_RATIO": "",
+            #     #"POWER_RATIO_L1": "",
+            #     #"POWER_RATIO_L2": "",
+            #     #"POWER_RATIO_L3": "",
+            #     "MPP_VOL": "",
+            #     "MPP_CUR": "",
+            #     "MPP_POWER": ""},
+            # # SENEC_SECTION_PWR_UNIT: {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""}
+            form[SENEC_SECTION_PV1] = {"MPP_VOL": "", "MPP_CUR": "", "MPP_POWER": ""}
+        if self._QUERY_PM1OBJ1:
+            form[SENEC_SECTION_PM1OBJ1] = {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""}
+        if self._QUERY_PM1OBJ2:
+            form[SENEC_SECTION_PM1OBJ2] = {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""}
 
         if self._is_2408_or_higher():
             # 2025/07/06 why we should poll all the data - if we simply don't use them yet...
-            #form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408})
-            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408_MIN})
-            form.update({SENEC_SECTION_LOG: {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}})
-            form.update({SENEC_SECTION_BAT1: {"SPARE_CAPACITY": ""}})
+            form[SENEC_SECTION_ENERGY]  = SENEC_ENERGY_FIELDS_2408_MIN
+
+            if self._QUERY_USER_LEVEL:
+                form[SENEC_SECTION_LOG] = {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}
+
+            form[SENEC_SECTION_BAT1]    = {"SPARE_CAPACITY": ""}
         else:
             if self._QUERY_STATS:
-                form.update({SENEC_SECTION_STATISTIC: {}})
-            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS})
-
+                form[SENEC_SECTION_STATISTIC] = {}
+            form[SENEC_SECTION_ENERGY] = SENEC_ENERGY_FIELDS
 
         if self._QUERY_FANDATA:
-            form.update({SENEC_SECTION_FAN_SPEED: {}})
+            form[SENEC_SECTION_FAN_SPEED] = {}
 
         if self._QUERY_SOCKETSDATA:
-            form.update({SENEC_SECTION_SOCKETS: {}})
+            form[SENEC_SECTION_SOCKETS] = {}
 
         if self._QUERY_BMS:
-            form.update({SENEC_SECTION_BMS: {
-                "CELL_TEMPERATURES_MODULE_A": "",
-                "CELL_TEMPERATURES_MODULE_B": "",
-                "CELL_TEMPERATURES_MODULE_C": "",
-                "CELL_TEMPERATURES_MODULE_D": "",
-                "CELL_VOLTAGES_MODULE_A": "",
-                "CELL_VOLTAGES_MODULE_B": "",
-                "CELL_VOLTAGES_MODULE_C": "",
-                "CELL_VOLTAGES_MODULE_D": "",
-                "CURRENT": "",
-                "VOLTAGE": "",
-                "SOC": "",
-                "SOH": "",
-                "CYCLES": "",
-                "MODULES_CONFIGURED": ""}
-            })
+            bms_query = {
+                SENEC_SECTION_BMS: {
+                    "CURRENT": "",
+                    "VOLTAGE": "",
+                    "SOC": "",
+                    "SOH": "",
+                    "CYCLES": ""
+                }}
+            if self._QUERY_BMS_CELLS:
+                # Add temperature and voltage fields for each configured BMS module
+                module_letters = ['A', 'B', 'C', 'D']
+                for i in range(min(self.number_of_configured_bms_modules, len(module_letters))):
+                    letter = module_letters[i]
+                    bms_query[SENEC_SECTION_BMS][f"CELL_TEMPERATURES_MODULE_{letter}"] = ""
+
+                for i in range(min(self.number_of_configured_bms_modules, len(module_letters))):
+                    letter = module_letters[i]
+                    bms_query[SENEC_SECTION_BMS][f"CELL_VOLTAGES_MODULE_{letter}"] = ""
+
+            form.update(bms_query)
 
         if self._QUERY_WALLBOX:
-            form.update({SENEC_SECTION_WALLBOX: {
+            form[SENEC_SECTION_WALLBOX] = {
                 "L1_CHARGING_CURRENT": "",
                 "L1_USED": "",
                 "L2_CHARGING_CURRENT": "",
@@ -370,16 +415,14 @@ class Senec:
                 "SET_IDEFAULT": "",
                 "SMART_CHARGE_ACTIVE": "",
                 "STATE": "",
-                "PROHIBIT_USAGE": ""}
-            })
+                "PROHIBIT_USAGE": ""
+            }
 
         try:
             async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
                 _LOGGER.debug(f"_read_senec_lala() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
                 try:
                     res.raise_for_status()
-                    # if SET_COOKIE in res.headers:
-                    #     _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
                     data = await res.json()
                     self._raw = parse(data)
                 except JSONDecodeError as exc:
@@ -423,8 +466,6 @@ class Senec:
         async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
             try:
                 res.raise_for_status()
-                if SET_COOKIE in res.headers:
-                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
                 self._raw_post = parse(await res.json())
                 _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
                 return self._raw_post
@@ -453,8 +494,6 @@ class Senec:
             _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
             try:
                 res.raise_for_status()
-                if SET_COOKIE in res.headers:
-                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
                 self._raw_post = parse(await res.json())
                 _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
                 return self._raw_post
@@ -650,8 +689,30 @@ class Senec:
     _senec_a:Final = base64.b64decode("c3RfaW5zdGFsbGF0ZXVy".encode('utf-8')).decode('utf-8')
     _senec_b:Final = base64.b64decode("c3RfU2VuZWNJbnN0YWxs".encode('utf-8')).decode('utf-8')
 
+    @property
+    def has_user_level(self) -> bool:
+        return SENEC_SECTION_LOG in self._raw and "USER_LEVEL" in self._raw[SENEC_SECTION_LOG]
+
+    @property
+    def is_is_user_level_two_or_higher(self) -> bool:
+        if not self._QUERY_USER_LEVEL:
+            _LOGGER.warning(f"USER_LEVEL will not be requested")
+
+        if SENEC_SECTION_LOG in self._raw and "USER_LEVEL" in self._raw[SENEC_SECTION_LOG]:
+            val = self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]
+            try:
+                return int(val) >= 2
+            except:
+                pass
+        return False
+
     async def _senec_local_access_start(self):
+        self._QUERY_USER_LEVEL = True
         if await self._is_2408_or_higher_async():
+            if not self.has_user_level:
+                await self.update()
+                await asyncio.sleep(2)
+
             if (self._raw is not None and
                     SENEC_SECTION_LOG in self._raw and
                     "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
@@ -663,18 +724,15 @@ class Senec:
                 await self.update()
                 _LOGGER.debug(f"LoginOk? {self._raw[SENEC_SECTION_LOG]}")
 
-    @property
-    def _is_user_level_two_or_higher(self) -> bool:
-        if SENEC_SECTION_LOG in self._raw and "USER_LEVEL" in self._raw[SENEC_SECTION_LOG]:
-            val = self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]
-            try:
-                return int(val) >= 2
-            except:
-                pass
-        return False
+        self._QUERY_USER_LEVEL = False
 
     async def _senec_local_access_stop(self):
+        self._QUERY_USER_LEVEL = True
         if await self._is_2408_or_higher_async():
+            if not self.has_user_level:
+                await self.update()
+                await asyncio.sleep(2)
+
             if (self._raw is not None and
                     SENEC_SECTION_LOG in self._raw and
                     "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
@@ -683,12 +741,11 @@ class Senec:
                 await self._senec_local_access_stop_no_checks()
                 await asyncio.sleep(2)
                 await self.update()
+        self._QUERY_USER_LEVEL = False
 
     async def _senec_local_access_stop_no_checks(self):
         data = {SENEC_SECTION_LOG: {"LOG_IN_NOK_COUNT": "", "LOG_OUT_BUTT": "u8_01"}}
         await self._write_senec_v31(data)
-
-
 
 
     def dict_data(self) -> dict:
@@ -1518,154 +1575,147 @@ class Senec:
             return self._raw["BMS"]["CELL_VOLTAGES_MODULE_D"][15]
 
     @property
-    def _bms_modules_configured(self) -> int:
-        if self._raw is not None and "BMS" in self._raw and "MODULES_CONFIGURED" in self._raw["BMS"]:
-            return int(self._raw["BMS"]["MODULES_CONFIGURED"])
-        else:
-            return 0
-
-    @property
     def bms_soc_a(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
-                self._bms_modules_configured > 0 or len(self._raw["BMS"]["SOC"]) > 0):
+                self.number_of_configured_bms_modules > 0 or len(self._raw["BMS"]["SOC"]) > 0):
             return self._raw["BMS"]["SOC"][0]
 
     @property
     def bms_soc_b(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
-                self._bms_modules_configured > 1 or len(self._raw["BMS"]["SOC"]) > 1):
+                self.number_of_configured_bms_modules > 1 or len(self._raw["BMS"]["SOC"]) > 1):
             return self._raw["BMS"]["SOC"][1]
 
     @property
     def bms_soc_c(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
-                self._bms_modules_configured > 2 or len(self._raw["BMS"]["SOC"]) > 2):
+                self.number_of_configured_bms_modules > 2 or len(self._raw["BMS"]["SOC"]) > 2):
             return self._raw["BMS"]["SOC"][2]
 
     @property
     def bms_soc_d(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOC" in self._raw["BMS"] and (
-                self._bms_modules_configured > 3 or len(self._raw["BMS"]["SOC"]) > 3):
+                self.number_of_configured_bms_modules > 3 or len(self._raw["BMS"]["SOC"]) > 3):
             return self._raw["BMS"]["SOC"][3]
 
     @property
     def bms_soh_a(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
-                self._bms_modules_configured > 0 or len(self._raw["BMS"]["SOH"]) > 0):
+                self.number_of_configured_bms_modules > 0 or len(self._raw["BMS"]["SOH"]) > 0):
             return self._raw["BMS"]["SOH"][0]
 
     @property
     def bms_soh_b(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
-                self._bms_modules_configured > 1 or len(self._raw["BMS"]["SOH"]) > 1):
+                self.number_of_configured_bms_modules > 1 or len(self._raw["BMS"]["SOH"]) > 1):
             return self._raw["BMS"]["SOH"][1]
 
     @property
     def bms_soh_c(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
-                self._bms_modules_configured > 2 or len(self._raw["BMS"]["SOH"]) > 2):
+                self.number_of_configured_bms_modules > 2 or len(self._raw["BMS"]["SOH"]) > 2):
             return self._raw["BMS"]["SOH"][2]
 
     @property
     def bms_soh_d(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "SOH" in self._raw["BMS"] and (
-                self._bms_modules_configured > 3 or len(self._raw["BMS"]["SOH"]) > 3):
+                self.number_of_configured_bms_modules > 3 or len(self._raw["BMS"]["SOH"]) > 3):
             return self._raw["BMS"]["SOH"][3]
 
     @property
     def bms_voltage_a(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
-                self._bms_modules_configured > 0 or len(self._raw["BMS"]["VOLTAGE"]) > 0):
+                self.number_of_configured_bms_modules > 0 or len(self._raw["BMS"]["VOLTAGE"]) > 0):
             return self._raw["BMS"]["VOLTAGE"][0]
 
     @property
     def bms_voltage_b(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
-                self._bms_modules_configured > 1 or len(self._raw["BMS"]["VOLTAGE"]) > 1):
+                self.number_of_configured_bms_modules > 1 or len(self._raw["BMS"]["VOLTAGE"]) > 1):
             return self._raw["BMS"]["VOLTAGE"][1]
 
     @property
     def bms_voltage_c(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
-                self._bms_modules_configured > 2 or len(self._raw["BMS"]["VOLTAGE"]) > 2):
+                self.number_of_configured_bms_modules > 2 or len(self._raw["BMS"]["VOLTAGE"]) > 2):
             return self._raw["BMS"]["VOLTAGE"][2]
 
     @property
     def bms_voltage_d(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "VOLTAGE" in self._raw["BMS"] and (
-                self._bms_modules_configured > 3 or len(self._raw["BMS"]["VOLTAGE"]) > 3):
+                self.number_of_configured_bms_modules > 3 or len(self._raw["BMS"]["VOLTAGE"]) > 3):
             return self._raw["BMS"]["VOLTAGE"][3]
 
     @property
     def bms_current_a(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
-                self._bms_modules_configured > 0 or len(self._raw["BMS"]["CURRENT"]) > 0):
+                self.number_of_configured_bms_modules > 0 or len(self._raw["BMS"]["CURRENT"]) > 0):
             return self._raw["BMS"]["CURRENT"][0]
 
     @property
     def bms_current_b(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
-                self._bms_modules_configured > 1 or len(self._raw["BMS"]["CURRENT"]) > 1):
+                self.number_of_configured_bms_modules > 1 or len(self._raw["BMS"]["CURRENT"]) > 1):
             return self._raw["BMS"]["CURRENT"][1]
 
     @property
     def bms_current_c(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
-                self._bms_modules_configured > 2 or len(self._raw["BMS"]["CURRENT"]) > 2):
+                self.number_of_configured_bms_modules > 2 or len(self._raw["BMS"]["CURRENT"]) > 2):
             return self._raw["BMS"]["CURRENT"][2]
 
     @property
     def bms_current_d(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CURRENT" in self._raw["BMS"] and (
-                self._bms_modules_configured > 3 or len(self._raw["BMS"]["CURRENT"]) > 3):
+                self.number_of_configured_bms_modules > 3 or len(self._raw["BMS"]["CURRENT"]) > 3):
             return self._raw["BMS"]["CURRENT"][3]
 
     @property
     def bms_cycles_a(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
-                self._bms_modules_configured > 0 or len(self._raw["BMS"]["CYCLES"]) > 0):
+                self.number_of_configured_bms_modules > 0 or len(self._raw["BMS"]["CYCLES"]) > 0):
             return self._raw["BMS"]["CYCLES"][0]
 
     @property
     def bms_cycles_b(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
-                self._bms_modules_configured > 1 or len(self._raw["BMS"]["CYCLES"]) > 1):
+                self.number_of_configured_bms_modules > 1 or len(self._raw["BMS"]["CYCLES"]) > 1):
             return self._raw["BMS"]["CYCLES"][1]
 
     @property
     def bms_cycles_c(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
-                self._bms_modules_configured > 2 or len(self._raw["BMS"]["CYCLES"]) > 2):
+                self.number_of_configured_bms_modules > 2 or len(self._raw["BMS"]["CYCLES"]) > 2):
             return self._raw["BMS"]["CYCLES"][2]
 
     @property
     def bms_cycles_d(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "CYCLES" in self._raw["BMS"] and (
-                self._bms_modules_configured > 3 or len(self._raw["BMS"]["CYCLES"]) > 3):
+                self.number_of_configured_bms_modules > 3 or len(self._raw["BMS"]["CYCLES"]) > 3):
             return self._raw["BMS"]["CYCLES"][3]
 
     @property
     def bms_fw_a(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
-                self._bms_modules_configured > 0 or len(self._raw["BMS"]["FW"]) > 0):
+                self.number_of_configured_bms_modules > 0 or len(self._raw["BMS"]["FW"]) > 0):
             return self._raw["BMS"]["FW"][0]
 
     @property
     def bms_fw_b(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
-                self._bms_modules_configured > 1 or len(self._raw["BMS"]["FW"]) > 1):
+                self.number_of_configured_bms_modules > 1 or len(self._raw["BMS"]["FW"]) > 1):
             return self._raw["BMS"]["FW"][1]
 
     @property
     def bms_fw_c(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
-                self._bms_modules_configured > 2 or len(self._raw["BMS"]["FW"]) > 2):
+                self.number_of_configured_bms_modules > 2 or len(self._raw["BMS"]["FW"]) > 2):
             return self._raw["BMS"]["FW"][2]
 
     @property
     def bms_fw_d(self) -> float:
         if self._raw is not None and "BMS" in self._raw and "FW" in self._raw["BMS"] and (
-                self._bms_modules_configured > 3 or len(self._raw["BMS"]["FW"]) > 3):
+                self.number_of_configured_bms_modules > 3 or len(self._raw["BMS"]["FW"]) > 3):
             return self._raw["BMS"]["FW"][3]
 
     @property
@@ -2286,7 +2336,7 @@ class Senec:
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_1_mode(self, value: str):
-        await self._set_wallbox_mode_post(0, value)
+        await self.set_wallbox_mode_post_int(0, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
 
@@ -2297,7 +2347,7 @@ class Senec:
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_2_mode(self, value: str):
-        await self._set_wallbox_mode_post(1, value)
+        await self.set_wallbox_mode_post_int(1, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=False)
 
@@ -2308,7 +2358,7 @@ class Senec:
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_3_mode(self, value: str):
-        await self._set_wallbox_mode_post(2, value)
+        await self.set_wallbox_mode_post_int(2, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=False)
 
@@ -2319,11 +2369,11 @@ class Senec:
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_4_mode(self, value: str):
-        await self._set_wallbox_mode_post(3, value)
+        await self.set_wallbox_mode_post_int(3, value)
         if IntBridge.avail():
             await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=False)
 
-    async def _set_wallbox_mode_post(self, pos: int, local_value: str):
+    async def set_wallbox_mode_post_int(self, pos: int, local_value: str):
         if local_value == LOCAL_WB_MODE_LOCKED:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 1,
@@ -2415,8 +2465,6 @@ class Inverter:
 
     def dict_data(self) -> dict:
         # will be called by the UpdateCoordinator (to get the current data)
-        # self._raw = None
-        # self._raw_version = None
         return {"data": self._raw, "version": self._raw_version}
 
     async def update_version(self):
@@ -3585,7 +3633,7 @@ class MySenecWebPortal:
                         if sync and IntBridge.avail():
                             # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
                             # is no sync=False parameter here...
-                            await IntBridge.lala_cgi._set_wallbox_mode_post(pos=idx, local_value=local_mode_to_set)
+                            await IntBridge.lala_cgi.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
 
                         # when we changed the mode, the backend might have automatically adjusted the
                         # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
