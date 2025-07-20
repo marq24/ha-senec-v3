@@ -4,6 +4,15 @@ import logging
 from datetime import timedelta
 from typing import Final
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as config_val, entity_registry
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.entity import EntityDescription, Entity
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal, util
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
@@ -18,14 +27,6 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, Event
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as config_val, entity_registry
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant.helpers.entity import EntityDescription, Entity
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from . import service as SenecService
 from .const import (
     DOMAIN,
@@ -368,7 +369,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         return True
 
     async def _async_is2408_or_later(self) -> bool:
-        return await self.senec.is_2408_or_higher_async()
+        return await self.senec._is_2408_or_higher_async()
 
     async def _async_update_data(self) -> dict:
         _LOGGER.debug(f"_async_update_data called")

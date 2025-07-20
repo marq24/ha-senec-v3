@@ -97,8 +97,6 @@ SET_COOKIE = "Set-Cookie"
 
 class Senec:
     """Senec Home Battery Sensor"""
-    _senec_a = base64.b64decode("c3RfaW5zdGFsbGF0ZXVy".encode('utf-8')).decode('utf-8')
-    _senec_b = base64.b64decode("c3RfU2VuZWNJbnN0YWxs".encode('utf-8')).decode('utf-8')
 
     _defaultHeaders = {
         "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -214,38 +212,10 @@ class Senec:
                 except Exception as exc:
                     _LOGGER.debug(f"Exception while try to call 'IntBridge.app_api.update': {exc}")
 
-    def dict_data(self) -> dict:
-        # will be called by the UpdateCoordinator (to get the current data)
-        # self._raw = None
-        # self._raw_version = None
-        return {"data": self._raw, "version": self._raw_version}
-
-    @property
-    def device_id(self) -> str:
-        return self._raw_version[SENEC_SECTION_FACTORY]["DEVICE_ID"]
-
-    @property
-    def versions(self) -> str:
-        a = self._raw_version[SENEC_SECTION_WIZARD]["APPLICATION_VERSION"]
-        b = self._raw_version[SENEC_SECTION_WIZARD]["FIRMWARE_VERSION"]
-        c = self._raw_version[SENEC_SECTION_WIZARD]["INTERFACE_VERSION"]
-        d = str(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_VER"])
-        e = str(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"])
-        return f"App:{a} FW:{b} NPU-Image:{e}(v{d})"
-
-    @property
-    def device_type(self) -> str:
-        value = self._raw_version[SENEC_SECTION_FACTORY]["SYS_TYPE"]
-        return SYSTEM_TYPE_NAME.get(value, "UNKNOWN")
-
-    @property
-    def device_type_internal(self) -> str:
-        return self._raw_version[SENEC_SECTION_FACTORY]["SYS_TYPE"]
-
-    @property
-    def batt_type(self) -> str:
-        value = self._raw_version[SENEC_SECTION_BAT1]["TYPE"]
-        return BATT_TYPE_NAME.get(value, "UNKNOWN")
+    async def update(self):
+        if self._raw_version is None or len(self._raw_version) == 0:
+            await self.update_version()
+        await self._read_senec_lala_with_retry(retry=True)
 
     async def update_version(self):
         # we do not expect that the version info will update in the next 60 minutes...
@@ -316,6 +286,443 @@ class Senec:
                 self._last_version_update = time()
             except JSONDecodeError as exc:
                 _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+    ################
+    # LOCAL-READ
+    ################
+    async def _read_senec_lala_with_retry(self, retry: bool = False):
+        try:
+            await self._read_senec_lala()
+        except ClientConnectorError as exc:
+            _LOGGER.info(f"{exc}")
+            if retry:
+                await asyncio.sleep(5)
+                await self._read_senec_lala_with_retry(retry=False)
+
+    async def _read_senec_lala(self):
+        form = {
+            SENEC_SECTION_TEMPMEASURE: {
+                "BATTERY_TEMP": "",
+                "CASE_TEMP": "",
+                "MCU_TEMP": "",
+            },
+            SENEC_SECTION_PV1: {
+                "POWER_RATIO": "",
+                "POWER_RATIO_L1": "",
+                "POWER_RATIO_L2": "",
+                "POWER_RATIO_L3": "",
+                "MPP_VOL": "",
+                "MPP_CUR": "",
+                "MPP_POWER": ""},
+            SENEC_SECTION_PWR_UNIT: {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
+            SENEC_SECTION_PM1OBJ1: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+            SENEC_SECTION_PM1OBJ2: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
+        }
+
+        if self._is_2408_or_higher():
+            # 2025/07/06 why we should poll all the data - if we simply don't use them yet...
+            #form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408})
+            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408_MIN})
+            form.update({SENEC_SECTION_LOG: {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}})
+            form.update({SENEC_SECTION_BAT1: {"SPARE_CAPACITY": ""}})
+        else:
+            if self._QUERY_STATS:
+                form.update({SENEC_SECTION_STATISTIC: {}})
+            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS})
+
+
+        if self._QUERY_FANDATA:
+            form.update({SENEC_SECTION_FAN_SPEED: {}})
+
+        if self._QUERY_SOCKETSDATA:
+            form.update({SENEC_SECTION_SOCKETS: {}})
+
+        if self._QUERY_BMS:
+            form.update({SENEC_SECTION_BMS: {
+                "CELL_TEMPERATURES_MODULE_A": "",
+                "CELL_TEMPERATURES_MODULE_B": "",
+                "CELL_TEMPERATURES_MODULE_C": "",
+                "CELL_TEMPERATURES_MODULE_D": "",
+                "CELL_VOLTAGES_MODULE_A": "",
+                "CELL_VOLTAGES_MODULE_B": "",
+                "CELL_VOLTAGES_MODULE_C": "",
+                "CELL_VOLTAGES_MODULE_D": "",
+                "CURRENT": "",
+                "VOLTAGE": "",
+                "SOC": "",
+                "SOH": "",
+                "CYCLES": "",
+                "MODULES_CONFIGURED": ""}
+            })
+
+        if self._QUERY_WALLBOX:
+            form.update({SENEC_SECTION_WALLBOX: {
+                "L1_CHARGING_CURRENT": "",
+                "L1_USED": "",
+                "L2_CHARGING_CURRENT": "",
+                "L2_USED": "",
+                "L3_CHARGING_CURRENT": "",
+                "L3_USED": "",
+                "EV_CONNECTED": "",
+                "MIN_CHARGING_CURRENT": "",
+                "ALLOW_INTERCHARGE": "",
+                "SET_ICMAX": "",
+                "SET_IDEFAULT": "",
+                "SMART_CHARGE_ACTIVE": "",
+                "STATE": "",
+                "PROHIBIT_USAGE": ""}
+            })
+
+        try:
+            async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+                _LOGGER.debug(f"_read_senec_lala() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
+                try:
+                    res.raise_for_status()
+                    # if SET_COOKIE in res.headers:
+                    #     _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
+                    data = await res.json()
+                    self._raw = parse(data)
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                except Exception as err:
+                    _LOGGER.warning(f"read_senec_lala caused: {err}")
+        except BaseException as e:
+            _LOGGER.info(f"_read_senec_lala() caused: {type(e)} - {e}")
+
+    async def _read_all_fields(self) -> []:
+        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+            try:
+                res.raise_for_status()
+                data = await res.json()
+                obj = parse(data)
+                form = {}
+                for section in obj["DEBUG"]["SECTIONS"]:
+                    form[section] = {}
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+            try:
+                res.raise_for_status()
+                data = await res.json()
+                return parse(data)
+            except JSONDecodeError as exc:
+                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+
+        return None
+
+
+    ################
+    # LOCAL-WRITE
+    ################
+    async def _write(self, data):
+        await self._write_senec_v31(data)
+
+    async def _write_senec_v31(self, data):
+        _LOGGER.debug(f"posting data (raw): {util.mask_map(data)}")
+        async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+            try:
+                res.raise_for_status()
+                if SET_COOKIE in res.headers:
+                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
+                self._raw_post = parse(await res.json())
+                _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
+                return self._raw_post
+            except Exception as err:
+                _LOGGER.warning(f"Error while 'posting data' {err}")
+
+    async def _senec_v31_post_plain_form_data(self, form_data_str:str):
+        _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data_str}")
+        special_hdrs = {
+            "Host": self._host,
+            "Origin": self._host_and_schema,
+            "Referer": f"{self._host_and_schema}/",
+            #"Sec-Fetch-Dest": "empty",
+            #"Sec-Fetch-Mode": "cors",
+            #"Sec-Fetch-Site": "same-origin",
+            #"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+            "X-Requested-With": "XMLHttpRequest",
+            #"sec-ch-ua": 'Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132',
+            #"sec-ch-ua-mobile": "?0",
+            #"sec-ch-ua-platform": "\"Windows\"",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Keep-Alive": "timeout=60, max=0",
+        }
+        async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None) as res:
+            _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
+            try:
+                res.raise_for_status()
+                if SET_COOKIE in res.headers:
+                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
+                self._raw_post = parse(await res.json())
+                _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
+                return self._raw_post
+            except Exception as err:
+                _LOGGER.warning(f"Error while 'posting data' {err}")
+
+
+    ################
+    # VERSION-CHECKS
+    ################
+    async def _is_2408_or_higher_async(self) -> bool:
+        if self._last_version_update == 0:
+            await self.update_version()
+        return self._is_2408_or_higher()
+
+    def _is_2408_or_higher(self) -> bool:
+        if self._raw_version is not None and \
+                SENEC_SECTION_SYS_UPDATE in self._raw_version and \
+                "NPU_IMAGE_VERSION" in self._raw_version[SENEC_SECTION_SYS_UPDATE]:
+            return int(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"]) >= 2408
+        return False
+
+    async def _is_2411_or_higher_async(self) -> bool:
+        if self._last_version_update == 0:
+            await self.update_version()
+        return self._is_2411_or_higher()
+
+    def _is_2411_or_higher(self) -> bool:
+        if self._raw_version is not None and \
+                SENEC_SECTION_SYS_UPDATE in self._raw_version and \
+                "NPU_IMAGE_VERSION" in self._raw_version[SENEC_SECTION_SYS_UPDATE]:
+            return int(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"]) >= 2411
+        return False
+
+    ################
+    # BUTTON-STUFF
+    ################
+    async def _trigger_button(self, key: str, payload: str):
+        return await getattr(self, 'trigger_' + key)(payload)
+
+    async def trigger_system_reboot(self, payload:str):
+        if await self._is_2408_or_higher_async():
+            if self._last_system_reset + 300 < time():
+                data = {"SYS_UPDATE": {"BOOT_REPORT_SUCCESS": "", "USER_REBOOT_DEVICE": "u8_01"}}
+                await self._write_senec_v31(data)
+                self._last_system_reset = time()
+            else:
+                _LOGGER.debug(f"Last Reset too recent...")
+
+    ################
+    # CORE-SWITCHES
+    ################
+    ## LADEN...
+    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
+
+    ## Freigeben...
+    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
+
+    # function sendTestPower(e) {
+    #    var t = "[";
+    # for (c = 0; c < 3; c++) t += '"', t += e ? pageObj.castVarValue("fl", -$("#itestpower").val() / 3) : pageObj.castVarValue("fl", $("#itestpower").val() / 3), c < 2 && (t += '",');
+    # t += '"]', pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", t)
+    # }
+    # function ChargebtnClickEvent() {
+    #    1 == chargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!0), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
+    # }
+    # function DischargebtnClickEvent() {
+    #    1 == dischargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!1), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
+    # }
+
+    @property
+    def safe_charge(self) -> bool:
+        if self._raw is not None:
+            # if it just has been switched on/off we provide a FAKE value for 5 sec...
+            # since senec unit do not react 'instant' on some requests...
+            if self._OVERWRITES["SAFE_CHARGE_RUNNING"]["TS"] + 5 > time():
+                return self._OVERWRITES["SAFE_CHARGE_RUNNING"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
+
+    async def switch_safe_charge(self, value: bool):
+        # first of all getting the real current state from the device... (we don't trust local settings)
+        data = await self._senec_v31_post_plain_form_data('{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}')
+
+        if (value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 0) or (not value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1):
+            self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"VALUE": value})
+            self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"TS": time()})
+            post_data_str = None
+            if (value):
+                self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
+                post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
+            else:
+                self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
+                post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
+
+            await self._senec_v31_post_plain_form_data(post_data_str)
+            await asyncio.sleep(1)
+            await self._read_senec_lala()
+        else:
+            _LOGGER.debug(f"Safe Charge already in requested state... requested: {value}  is: {data[SENEC_SECTION_ENERGY]}")
+
+    @property
+    def li_storage_mode(self) -> bool:
+        if self._raw is not None:
+            # if it just has been switched on/off we provide a FAKE value for 5 sec...
+            # since senec unit do not react 'instant' on some requests...
+            if self._OVERWRITES["LI_STORAGE_MODE_RUNNING"]["TS"] + 5 > time():
+                return self._OVERWRITES["LI_STORAGE_MODE_RUNNING"]["VALUE"]
+            else:
+                return self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] == 1
+
+    async def switch_li_storage_mode(self, value: bool):
+        self._OVERWRITES["LI_STORAGE_MODE_RUNNING"].update({"VALUE": value})
+        self._OVERWRITES["LI_STORAGE_MODE_RUNNING"].update({"TS": time()})
+        post_data = {}
+        if (value):
+            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 1
+            post_data = {
+                SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
+                                       "LI_STORAGE_MODE_START": "u8_01", "LI_STORAGE_MODE_STOP": "",
+                                       "LI_STORAGE_MODE_RUNNING": ""}}
+        else:
+            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 0
+            post_data = {
+                SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
+                                       "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "u8_01",
+                                       "LI_STORAGE_MODE_RUNNING": ""}}
+
+        await self._write(post_data)
+
+    # async def trigger_cap_test_start(self):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
+    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 0):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_START": "u8_01"}}
+    #             await self.write_senec_v31(data)
+    #             await self._senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not OFF")
+    #
+    # async def trigger_cap_test_stop(self):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
+    #             self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 1):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_STOP": "u8_01"}}
+    #             await self.write_senec_v31(data)
+    #             await self._senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not ON")
+
+    # trigger_load_test_start & trigger_load_test_stop
+    # are not really working...
+    # async def trigger_load_test_start(self, requested_watts: int):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
+    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 0):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(float(requested_watts)/-3))}"
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
+    #                                             "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
+    #                                             "TEST_CHARGE_ENABLE": "u8_01"} }
+    #             await self.write_senec_v31(data)
+    #             # as soon as we will logout, the test_load will be cancled...
+    #             #await self.senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
+    #
+    # async def trigger_load_test_stop(self):
+    #     if await self.is_2408_or_higher_async():
+    #         if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
+    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 1):
+    #             await self._senec_local_access_start()
+    #             # ok we set the new state...
+    #             wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(0))}"
+    #             data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
+    #                                             "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
+    #                                             "TEST_CHARGE_ENABLE": "u8_00"} }
+    #             await self.write_senec_v31(data)
+    #             # as soon as we will logout, the test_load will be cancled...
+    #             #await self.senec_local_access_stop()
+    #         else:
+    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
+
+
+    ################
+    # LOCAL-ACCESS
+    ################
+    _senec_a:Final = base64.b64decode("c3RfaW5zdGFsbGF0ZXVy".encode('utf-8')).decode('utf-8')
+    _senec_b:Final = base64.b64decode("c3RfU2VuZWNJbnN0YWxs".encode('utf-8')).decode('utf-8')
+
+    async def _senec_local_access_start(self):
+        if await self._is_2408_or_higher_async():
+            if (self._raw is not None and
+                    SENEC_SECTION_LOG in self._raw and
+                    "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
+                    ("VARIABLE_NOT_FOUND" == self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] or
+                     int(self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]) < 2)):
+                data = {SENEC_SECTION_LOG: {"USER_LEVEL": "", "USERNAME": self._senec_a, "LOG_IN_NOK_COUNT": "", "PASSWORD": self._senec_b, "LOG_IN_BUTT": "u8_01"}}
+                await self._write_senec_v31(data)
+                await asyncio.sleep(2)
+                await self.update()
+                _LOGGER.debug(f"LoginOk? {self._raw[SENEC_SECTION_LOG]}")
+
+    @property
+    def _is_user_level_two_or_higher(self) -> bool:
+        if SENEC_SECTION_LOG in self._raw and "USER_LEVEL" in self._raw[SENEC_SECTION_LOG]:
+            val = self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]
+            try:
+                return int(val) >= 2
+            except:
+                pass
+        return False
+
+    async def _senec_local_access_stop(self):
+        if await self._is_2408_or_higher_async():
+            if (self._raw is not None and
+                    SENEC_SECTION_LOG in self._raw and
+                    "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
+                    ("VARIABLE_NOT_FOUND" == self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] or
+                     int(self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]) > 1)):
+                await self._senec_local_access_stop_no_checks()
+                await asyncio.sleep(2)
+                await self.update()
+
+    async def _senec_local_access_stop_no_checks(self):
+        data = {SENEC_SECTION_LOG: {"LOG_IN_NOK_COUNT": "", "LOG_OUT_BUTT": "u8_01"}}
+        await self._write_senec_v31(data)
+
+
+
+
+    def dict_data(self) -> dict:
+        # will be called by the UpdateCoordinator (to get the current data)
+        # self._raw = None
+        # self._raw_version = None
+        return {"data": self._raw, "version": self._raw_version}
+
+    @property
+    def device_id(self) -> str:
+        return self._raw_version[SENEC_SECTION_FACTORY]["DEVICE_ID"]
+
+    @property
+    def versions(self) -> str:
+        a = self._raw_version[SENEC_SECTION_WIZARD]["APPLICATION_VERSION"]
+        b = self._raw_version[SENEC_SECTION_WIZARD]["FIRMWARE_VERSION"]
+        c = self._raw_version[SENEC_SECTION_WIZARD]["INTERFACE_VERSION"]
+        d = str(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_VER"])
+        e = str(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"])
+        return f"App:{a} FW:{b} NPU-Image:{e}(v{d})"
+
+    @property
+    def device_type(self) -> str:
+        value = self._raw_version[SENEC_SECTION_FACTORY]["SYS_TYPE"]
+        return SYSTEM_TYPE_NAME.get(value, "UNKNOWN")
+
+    @property
+    def device_type_internal(self) -> str:
+        return self._raw_version[SENEC_SECTION_FACTORY]["SYS_TYPE"]
+
+    @property
+    def batt_type(self) -> str:
+        value = self._raw_version[SENEC_SECTION_BAT1]["TYPE"]
+        return BATT_TYPE_NAME.get(value, "UNKNOWN")
 
     @property
     def system_state(self) -> str:
@@ -1659,347 +2066,6 @@ class Senec:
             SENEC_SECTION_SOCKETS]:
             return self._raw[SENEC_SECTION_SOCKETS]["TIME_REM"]
 
-    async def update(self):
-        if self._raw_version is None or len(self._raw_version) == 0:
-            await self.update_version()
-        await self._read_senec_lala_with_retry(retry=True)
-
-    async def _read_senec_lala_with_retry(self, retry: bool = False):
-        try:
-            await self._read_senec_lala()
-        except ClientConnectorError as exc:
-            _LOGGER.info(f"{exc}")
-            if retry:
-                await asyncio.sleep(5)
-                await self._read_senec_lala_with_retry(retry=False)
-
-    async def _read_senec_lala(self):
-        form = {
-            SENEC_SECTION_TEMPMEASURE: {
-                "BATTERY_TEMP": "",
-                "CASE_TEMP": "",
-                "MCU_TEMP": "",
-            },
-            SENEC_SECTION_PV1: {
-                "POWER_RATIO": "",
-                "POWER_RATIO_L1": "",
-                "POWER_RATIO_L2": "",
-                "POWER_RATIO_L3": "",
-                "MPP_VOL": "",
-                "MPP_CUR": "",
-                "MPP_POWER": ""},
-            SENEC_SECTION_PWR_UNIT: {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""},
-            SENEC_SECTION_PM1OBJ1: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-            SENEC_SECTION_PM1OBJ2: {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""},
-        }
-
-        if self.is_2408_or_higher():
-            # 2025/07/06 why we should poll all the data - if we simply don't use them yet...
-            #form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408})
-            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS_2408_MIN})
-            form.update({SENEC_SECTION_LOG: {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}})
-            form.update({SENEC_SECTION_BAT1: {"SPARE_CAPACITY": ""}})
-        else:
-            if self._QUERY_STATS:
-                form.update({SENEC_SECTION_STATISTIC: {}})
-            form.update({SENEC_SECTION_ENERGY: SENEC_ENERGY_FIELDS})
-
-
-        if self._QUERY_FANDATA:
-            form.update({SENEC_SECTION_FAN_SPEED: {}})
-
-        if self._QUERY_SOCKETSDATA:
-            form.update({SENEC_SECTION_SOCKETS: {}})
-
-        if self._QUERY_BMS:
-            form.update({SENEC_SECTION_BMS: {
-                "CELL_TEMPERATURES_MODULE_A": "",
-                "CELL_TEMPERATURES_MODULE_B": "",
-                "CELL_TEMPERATURES_MODULE_C": "",
-                "CELL_TEMPERATURES_MODULE_D": "",
-                "CELL_VOLTAGES_MODULE_A": "",
-                "CELL_VOLTAGES_MODULE_B": "",
-                "CELL_VOLTAGES_MODULE_C": "",
-                "CELL_VOLTAGES_MODULE_D": "",
-                "CURRENT": "",
-                "VOLTAGE": "",
-                "SOC": "",
-                "SOH": "",
-                "CYCLES": "",
-                "MODULES_CONFIGURED": ""}
-            })
-
-        if self._QUERY_WALLBOX:
-            form.update({SENEC_SECTION_WALLBOX: {
-                "L1_CHARGING_CURRENT": "",
-                "L1_USED": "",
-                "L2_CHARGING_CURRENT": "",
-                "L2_USED": "",
-                "L3_CHARGING_CURRENT": "",
-                "L3_USED": "",
-                "EV_CONNECTED": "",
-                "MIN_CHARGING_CURRENT": "",
-                "ALLOW_INTERCHARGE": "",
-                "SET_ICMAX": "",
-                "SET_IDEFAULT": "",
-                "SMART_CHARGE_ACTIVE": "",
-                "STATE": "",
-                "PROHIBIT_USAGE": ""}
-            })
-
-        try:
-            async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-                _LOGGER.debug(f"_read_senec_lala() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
-                try:
-                    res.raise_for_status()
-                    # if SET_COOKIE in res.headers:
-                    #     _LOGGER.debug(f"got cookie update: {res.headers[SET_COOKIE]}")
-                    data = await res.json()
-                    self._raw = parse(data)
-                except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-                except Exception as err:
-                    _LOGGER.warning(f"read_senec_lala caused: {err}")
-        except BaseException as e:
-            _LOGGER.info(f"_read_senec_lala() caused: {type(e)} - {e}")
-
-    async def read_all_fields(self) -> []:
-        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-            try:
-                res.raise_for_status()
-                data = await res.json()
-                obj = parse(data)
-                form = {}
-                for section in obj["DEBUG"]["SECTIONS"]:
-                    form[section] = {}
-            except JSONDecodeError as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-            try:
-                res.raise_for_status()
-                data = await res.json()
-                return parse(data)
-            except JSONDecodeError as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-
-        return None
-
-
-    ## LADEN...
-    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
-
-    ## Freigeben...
-    ## {"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
-
-    # function sendTestPower(e) {
-    #    var t = "[";
-    # for (c = 0; c < 3; c++) t += '"', t += e ? pageObj.castVarValue("fl", -$("#itestpower").val() / 3) : pageObj.castVarValue("fl", $("#itestpower").val() / 3), c < 2 && (t += '",');
-    # t += '"]', pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", t)
-    # }
-
-    # function ChargebtnClickEvent() {
-    #    1 == chargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!0), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
-    # }
-
-    # function DischargebtnClickEvent() {
-    #    1 == dischargeState ? (pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_00"), pageObj.add_property_to_object("ENERGY", "GRID_POWER_OFFSET", '["fl_00000000","fl_00000000","fl_00000000"]')) : isValidFloat($("#itestpower").val()) && 0 < $("#itestpower").val() ? (sendTestPower(!1), pageObj.handleCheckBoxUpdate("ENERGY", "TEST_CHARGE_ENABLE", "u8_01")) : alert(lng.lSetupTestPowerError)
-    # }
-
-    @property
-    def safe_charge(self) -> bool:
-        if self._raw is not None:
-            # if it just has been switched on/off we provide a FAKE value for 5 sec...
-            # since senec unit do not react 'instant' on some requests...
-            if self._OVERWRITES["SAFE_CHARGE_RUNNING"]["TS"] + 5 > time():
-                return self._OVERWRITES["SAFE_CHARGE_RUNNING"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1
-
-    async def switch_safe_charge(self, value: bool):
-        # first of all getting the real current state from the device... (we don't trust local settings)
-        data = await self.senec_v31_post_plain_form_data('{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}')
-
-        if (value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 0) or (not value and data[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] == 1):
-            self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"VALUE": value})
-            self._OVERWRITES["SAFE_CHARGE_RUNNING"].update({"TS": time()})
-            post_data_str = None
-            if (value):
-                self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 1
-                post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
-            else:
-                self._raw[SENEC_SECTION_ENERGY]["SAFE_CHARGE_RUNNING"] = 0
-                post_data_str = '{"ENERGY":{"SAFE_CHARGE_FORCE":"","SAFE_CHARGE_PROHIBIT":"u8_01","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}'
-
-            await self.senec_v31_post_plain_form_data(post_data_str)
-            await asyncio.sleep(1)
-            await self._read_senec_lala()
-        else:
-            _LOGGER.debug(f"Safe Charge already in requested state... requested: {value}  is: {data[SENEC_SECTION_ENERGY]}")
-
-    @property
-    def li_storage_mode(self) -> bool:
-        if self._raw is not None:
-            # if it just has been switched on/off we provide a FAKE value for 5 sec...
-            # since senec unit do not react 'instant' on some requests...
-            if self._OVERWRITES["LI_STORAGE_MODE_RUNNING"]["TS"] + 5 > time():
-                return self._OVERWRITES["LI_STORAGE_MODE_RUNNING"]["VALUE"]
-            else:
-                return self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] == 1
-
-    async def switch_li_storage_mode(self, value: bool):
-        self._OVERWRITES["LI_STORAGE_MODE_RUNNING"].update({"VALUE": value})
-        self._OVERWRITES["LI_STORAGE_MODE_RUNNING"].update({"TS": time()})
-        post_data = {}
-        if (value):
-            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 1
-            post_data = {
-                SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
-                                       "LI_STORAGE_MODE_START": "u8_01", "LI_STORAGE_MODE_STOP": "",
-                                       "LI_STORAGE_MODE_RUNNING": ""}}
-        else:
-            self._raw[SENEC_SECTION_ENERGY]["LI_STORAGE_MODE_RUNNING"] = 0
-            post_data = {
-                SENEC_SECTION_ENERGY: {"SAFE_CHARGE_FORCE": "", "SAFE_CHARGE_PROHIBIT": "", "SAFE_CHARGE_RUNNING": "",
-                                       "LI_STORAGE_MODE_START": "", "LI_STORAGE_MODE_STOP": "u8_01",
-                                       "LI_STORAGE_MODE_RUNNING": ""}}
-
-        await self.write(post_data)
-
-    async def _trigger_button(self, key: str, payload: str):
-        return await getattr(self, 'trigger_' + key)(payload)
-
-    async def is_2408_or_higher_async(self) -> bool:
-        if self._last_version_update == 0:
-            await self.update_version()
-        return self.is_2408_or_higher()
-
-    def is_2408_or_higher(self) -> bool:
-        if self._raw_version is not None and \
-                SENEC_SECTION_SYS_UPDATE in self._raw_version and \
-                "NPU_IMAGE_VERSION" in self._raw_version[SENEC_SECTION_SYS_UPDATE]:
-            return int(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"]) >= 2408
-        return False
-
-    async def is_2411_or_higher_async(self) -> bool:
-        if self._last_version_update == 0:
-            await self.update_version()
-        return self.is_2411_or_higher()
-
-    def is_2411_or_higher(self) -> bool:
-        if self._raw_version is not None and \
-                SENEC_SECTION_SYS_UPDATE in self._raw_version and \
-                "NPU_IMAGE_VERSION" in self._raw_version[SENEC_SECTION_SYS_UPDATE]:
-            return int(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"]) >= 2411
-        return False
-
-    async def _senec_local_access_start(self):
-        if await self.is_2408_or_higher_async():
-            if (self._raw is not None and
-                    SENEC_SECTION_LOG in self._raw and
-                    "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
-                    ("VARIABLE_NOT_FOUND" == self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] or
-                    int(self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]) < 2)):
-                login_data = {SENEC_SECTION_LOG: {"USER_LEVEL": "", "USERNAME": self._senec_a, "LOG_IN_NOK_COUNT": "", "PASSWORD": self._senec_b, "LOG_IN_BUTT": "u8_01"}}
-                await self.write_senec_v31(login_data)
-                await asyncio.sleep(2)
-                await self.update()
-                _LOGGER.debug(f"LoginOk? {self._raw[SENEC_SECTION_LOG]}")
-
-    @property
-    def _is_user_level_two_or_higher(self) -> bool:
-        if SENEC_SECTION_LOG in self._raw and "USER_LEVEL" in self._raw[SENEC_SECTION_LOG]:
-            val = self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]
-            try:
-                return int(val) >= 2
-            except:
-                pass
-        return False
-
-    async def _senec_local_access_stop(self):
-        if await self.is_2408_or_higher_async():
-            if (self._raw is not None and
-                    SENEC_SECTION_LOG in self._raw and
-                    "USER_LEVEL" in self._raw[SENEC_SECTION_LOG] and
-                    ("VARIABLE_NOT_FOUND" == self._raw[SENEC_SECTION_LOG]["USER_LEVEL"] or
-                    int(self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]) > 1)):
-                await self._senec_local_access_stop_no_checks()
-                await asyncio.sleep(2)
-                await self.update()
-
-    async def _senec_local_access_stop_no_checks(self):
-        login_data = {SENEC_SECTION_LOG: {"LOG_IN_NOK_COUNT": "", "LOG_OUT_BUTT": "u8_01"}}
-        await self.write_senec_v31(login_data)
-
-    async def trigger_system_reboot(self, payload:str):
-        if await self.is_2408_or_higher_async():
-            if self._last_system_reset + 300 < time():
-                data = {"SYS_UPDATE": {"BOOT_REPORT_SUCCESS": "", "USER_REBOOT_DEVICE": "u8_01"}}
-                await self.write_senec_v31(data)
-                self._last_system_reset = time()
-            else:
-                _LOGGER.debug(f"Last Reset too recent...")
-
-    # async def trigger_cap_test_start(self):
-    #     if await self.is_2408_or_higher_async():
-    #         if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
-    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 0):
-    #             await self._senec_local_access_start()
-    #             # ok we set the new state...
-    #             data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_START": "u8_01"}}
-    #             await self.write_senec_v31(data)
-    #             await self._senec_local_access_stop()
-    #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not OFF")
-    #
-    # async def trigger_cap_test_stop(self):
-    #     if await self.is_2408_or_higher_async():
-    #         if (self._raw is not None and "GUI_CAP_TEST_STATE" in self._raw[SENEC_SECTION_ENERGY] and
-    #             self._raw[SENEC_SECTION_ENERGY]["GUI_CAP_TEST_STATE"] == 1):
-    #             await self._senec_local_access_start()
-    #             # ok we set the new state...
-    #             data = {SENEC_SECTION_ENERGY: { "GUI_CAP_TEST_STOP": "u8_01"}}
-    #             await self.write_senec_v31(data)
-    #             await self._senec_local_access_stop()
-    #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not ON")
-
-    # trigger_load_test_start & trigger_load_test_stop
-    # are not really working...
-    # async def trigger_load_test_start(self, requested_watts: int):
-    #     if await self.is_2408_or_higher_async():
-    #         if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
-    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 0):
-    #             await self._senec_local_access_start()
-    #             # ok we set the new state...
-    #             wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(float(requested_watts)/-3))}"
-    #             data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
-    #                                             "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
-    #                                             "TEST_CHARGE_ENABLE": "u8_01"} }
-    #             await self.write_senec_v31(data)
-    #             # as soon as we will logout, the test_load will be cancled...
-    #             #await self.senec_local_access_stop()
-    #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
-    #
-    # async def trigger_load_test_stop(self):
-    #     if await self.is_2408_or_higher_async():
-    #         if (self._raw is not None and "GUI_TEST_CHARGE_STAT" in self._raw[SENEC_SECTION_ENERGY] and
-    #                 self._raw[SENEC_SECTION_ENERGY]["GUI_TEST_CHARGE_STAT"] == 1):
-    #             await self._senec_local_access_start()
-    #             # ok we set the new state...
-    #             wat_val = f"fl_{util.get_float_as_IEEE754_hex(float(0))}"
-    #             data = {SENEC_SECTION_ENERGY: { "GUI_TEST_CHARGE_STAT": "",
-    #                                             "GRID_POWER_OFFSET": [wat_val, wat_val, wat_val],
-    #                                             "TEST_CHARGE_ENABLE": "u8_00"} }
-    #             await self.write_senec_v31(data)
-    #             # as soon as we will logout, the test_load will be cancled...
-    #             #await self.senec_local_access_stop()
-    #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
-
-
-
     @property
     def wallbox_allow_intercharge(self) -> bool:
         # please note this is not ARRAY data - so we code it here again...
@@ -2024,7 +2090,7 @@ class Senec:
             self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 0
             post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_00"}}
 
-        await self.write(post_data)
+        await self._write(post_data)
 
         if sync and IntBridge.avail():
             # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting... so we need to push
@@ -2287,12 +2353,12 @@ class Senec:
     async def switch_array_post(self, section_key: str, value_key: str, pos: int, array_length: int, value: bool):
         post_data = {}
         self.prepare_post_data(post_data, array_length, pos, section_key, value_key, "u8", value=(1 if value else 0))
-        await self.write(post_data)
+        await self._write(post_data)
 
     async def set_nva_post(self, section_key: str, value_key: str, pos: int, array_length: int, data_type: str, value):
         post_data = {}
         self.prepare_post_data(post_data, array_length, pos, section_key, value_key, data_type, value)
-        await self.write(post_data)
+        await self._write(post_data)
 
     async def set_multi_post(self, array_length: int, pos: int,
                              section_key1: str, value_key1: str, data_type1: str, value1,
@@ -2301,7 +2367,7 @@ class Senec:
         post_data = {}
         self.prepare_post_data(post_data, array_length, pos, section_key1, value_key1, data_type1, value1)
         self.prepare_post_data(post_data, array_length, pos, section_key2, value_key2, data_type2, value2)
-        await self.write(post_data)
+        await self._write(post_data)
 
     def prepare_post_data(self, post_data: dict, array_length: int, pos: int, section_key: str, value_key: str,
                           data_type: str, value):
@@ -2323,51 +2389,6 @@ class Senec:
         else:
             post_data[section_key] = {value_key: value_data}
 
-    async def write(self, data):
-        await self.write_senec_v31(data)
-
-    async def write_senec_v31(self, data):
-        _LOGGER.debug(f"posting data (raw): {util.mask_map(data)}")
-        async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-            try:
-                res.raise_for_status()
-                if SET_COOKIE in res.headers:
-                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
-                self._raw_post = parse(await res.json())
-                _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
-                return self._raw_post
-            except Exception as err:
-                _LOGGER.warning(f"Error while 'posting data' {err}")
-
-    async def senec_v31_post_plain_form_data(self, form_data_str:str):
-        _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data_str}")
-        special_hdrs = {
-            "Host": self._host,
-            "Origin": self._host_and_schema,
-            "Referer": f"{self._host_and_schema}/",
-            #"Sec-Fetch-Dest": "empty",
-            #"Sec-Fetch-Mode": "cors",
-            #"Sec-Fetch-Site": "same-origin",
-            #"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-            "X-Requested-With": "XMLHttpRequest",
-            #"sec-ch-ua": 'Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132',
-            #"sec-ch-ua-mobile": "?0",
-            #"sec-ch-ua-platform": "\"Windows\"",
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Keep-Alive": "timeout=60, max=0",
-        }
-        async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None) as res:
-            _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
-            try:
-                res.raise_for_status()
-                if SET_COOKIE in res.headers:
-                    _LOGGER.debug(f"got cookie update (on-write) {res.headers[SET_COOKIE]}")
-                self._raw_post = parse(await res.json())
-                _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
-                return self._raw_post
-            except Exception as err:
-                _LOGGER.warning(f"Error while 'posting data' {err}")
 
 class Inverter:
     """Senec Home Inverter addon"""
