@@ -225,12 +225,18 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session,
                                                 app_master_plant_number=user_master_plant)
-            await senec_web_client.app_authenticate(retry=False, do_update=False)
-            if senec_web_client._app_is_authenticated:
-                await senec_web_client.app_update_context()
+
+            # 2025/21/07 APPAuth is not working...
+            # await senec_web_client.app_authenticate(retry=False, do_update=False)
+            # if senec_web_client._app_is_authenticated:
+                # await senec_web_client.app_update_context()
+                # self._app_master_plant_number = senec_web_client.appMasterPlantNumber
+                # await senec_web_client.app_update_tech_data()
+            await senec_web_client.web_authenticate(do_update=False, throw401=True)
+            if senec_web_client._web_is_authenticated and senec_web_client._web_master_plant_number is not None:
+                # looks strange, but we have a fallback to webMaterPlantNumber inplace!
                 self._app_master_plant_number = senec_web_client.appMasterPlantNumber
 
-                await senec_web_client.app_update_tech_data()
                 if senec_web_client.product_name is None:
                     prod_name = "UNKNOWN_PROD_NAME"
                 else:
@@ -260,7 +266,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "device_type": self._device_type,
                     "device_model": self._device_model,
                     "device_serial": self._device_serial,
-                    "app_token": f"{self._app_token[:4]}...",
+                    "app_token": f"{self._app_token[:4]}..." if self._app_token is not None else None,
                     "app_master_plant_id": self._app_master_plant_id,
                     "app_serial_number": self._app_serial_number,
                     "app_wallbox_num_max": self._app_wallbox_num_max,
