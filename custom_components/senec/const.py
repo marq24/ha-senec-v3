@@ -1,5 +1,6 @@
 """Constants for the Senec integration."""
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Final
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
@@ -42,6 +43,13 @@ from custom_components.senec.pysenec_ha.constants import (
     WALLBOX_CHARGING_MODES
 )
 
+WEB_IS_OVER_DATETIME:Final = datetime(year=2025, month=7, day=23, hour=0, minute=0, second=0, tzinfo=timezone.utc)
+
+def IS_AFTER_2025_07_23():
+    return datetime.now(timezone.utc) > WEB_IS_OVER_DATETIME
+
+OVER_MSG: Final = "The Senec-API/mein-senec.de access has stop working at 2025/07/23 - There is NO REPLACEMENT or workaround available! - and it is quite unlikely that it will return. Do not waste your time, trying to restore any previous releases of the Integration - none of them will work."
+
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
 
@@ -53,7 +61,12 @@ SYSTYPE_WEBAPI: Final = "systype_webapi"
 SYSTYPE_SENECV3: Final = "systype_senecv3"
 SYSTYPE_SENECV2: Final = "systype_senecv2"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
-SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
+
+if IS_AFTER_2025_07_23():
+    # 2025/07/22: this will stop working at 2025/07/23!!! it make no sense to allow users to install a new WEB-System
+    SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV2, SYSTYPE_INVERTV3]
+else:
+    SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
 
 MASTER_PLANT_NUMBERS: Final = ["auto", "0", "1", "2", "3", "4", "5", "6", "7"]
 

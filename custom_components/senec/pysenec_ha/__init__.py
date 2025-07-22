@@ -3101,7 +3101,14 @@ class MySenecWebPortal:
             "total": self._app_raw_total_v2,
             "total_old": self._app_raw_total_v1_outdated,
             "tech_data": self._app_raw_tech_data,
-            "wallbox": self._app_raw_wallbox
+            "wallbox": self._app_raw_wallbox,
+            "mein-senec": {
+                "energy_entities": self._energy_entities,
+                "power_entities": self._power_entities,
+                "battery_entities": self._battery_entities,
+                "peak_shaving_entities": self._peak_shaving_entities,
+                "sgready_conf_data": self._sgready_conf_data
+            }
         }
 
     def check_cookie_jar_type(self):

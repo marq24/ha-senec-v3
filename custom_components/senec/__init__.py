@@ -28,8 +28,11 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
+
 from . import service as SenecService
 from .const import (
+    IS_AFTER_2025_07_23,
+    OVER_MSG,
     DOMAIN,
     MANUFACTURE,
     DEFAULT_HOST,
@@ -114,9 +117,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        # we need to log in into the SenecApp and authenticate the user via the web-portal
-        await coordinator.senec.authenticate_all()
-        _LOGGER.info(f"authenticate_all() completed DONE -> important data: {coordinator.senec.get_debug_login_data()}")
+        # 2025/07/22: this will stop working at 2025/07/23!!!
+        if IS_AFTER_2025_07_23():
+            _LOGGER.error(f"{OVER_MSG}")
+        else:
+            # we need to log in into the SenecApp and authenticate the user via the web-portal
+            await coordinator.senec.authenticate_all()
+            _LOGGER.info(f"authenticate_all() completed DONE -> important data: {coordinator.senec.get_debug_login_data()}")
 
     await coordinator.async_refresh()
     if not coordinator.last_update_success:
@@ -168,8 +175,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 update_conf_entry(hass, config_entry, app_token, app_master_plant_id, app_serial_number, app_wallbox_num_max),
                 f"update_config_entry {config_entry.title} {config_entry.domain} {config_entry.entry_id}")
 
-        if coordinator.senec.product_name is None:
-            await coordinator.senec.app_update_context()
+        # need review! - since currently there is no 'app_update_context()' method in the MySenecWebPortal
+        if coordinator.senec.product_name is None or coordinator.senec.product_name == "UNKNOWN_PROD_NAME":
+            #await coordinator.senec.app_update_context()
+            pass
 
         coordinator._device_type = SYSTYPE_NAME_WEBAPI
         coordinator._device_model = f"{coordinator.senec.product_name} | SENEC.Case: {coordinator.senec.senec_num}"
@@ -315,6 +324,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                           app_master_plant_number=app_master_plant_number, # we will not set the master_plant number - we will always use "autodetect
                                           lang=hass.config.language.lower(),
                                           options=opt)
+            self._warning_counter = 0
         # lala.cgi Version...
         else:
             # host can be changed in the options...
@@ -387,6 +397,17 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         _LOGGER.debug(f"_async_update_data called")
         try:
+            if CONF_TYPE in self._config_entry.data and self._config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+                if IS_AFTER_2025_07_23():
+                    if self._warning_counter < 5:
+                        self._warning_counter += 1
+                        _LOGGER.warning(f"You should deactivate this Integration - {OVER_MSG} - {self._warning_counter} warnings so far")
+                        return {}
+                    else:
+                        if self._warning_counter == 5:
+                            _LOGGER.error(f"Too many warnings - {OVER_MSG} - deactivating integration now!")
+                        raise BaseException(OVER_MSG)
+
             await self.senec.update()
             data = self.senec.dict_data();
             _LOGGER.debug(f"read: {util.mask_map(data)}")
