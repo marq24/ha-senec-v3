@@ -31,8 +31,6 @@ from custom_components.senec.pysenec_ha.constants import (
 
 from . import service as SenecService
 from .const import (
-    IS_AFTER_2025_07_23,
-    OVER_MSG,
     DOMAIN,
     MANUFACTURE,
     DEFAULT_HOST,
@@ -117,13 +115,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     coordinator = SenecDataUpdateCoordinator(hass, config_entry)
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        # 2025/07/22: this will stop working at 2025/07/23!!!
-        if IS_AFTER_2025_07_23():
-            _LOGGER.error(f"{OVER_MSG}")
-        else:
-            # we need to log in into the SenecApp and authenticate the user via the web-portal
-            await coordinator.senec.authenticate_all()
-            _LOGGER.info(f"authenticate_all() completed DONE -> important data: {coordinator.senec.get_debug_login_data()}")
+        # we need to log in into the SenecApp and authenticate the user via the web-portal
+        await coordinator.senec.authenticate_all()
+        _LOGGER.info(f"authenticate_all() completed DONE -> important data: {coordinator.senec.get_debug_login_data()}")
 
     await coordinator.async_refresh()
     if not coordinator.last_update_success:
@@ -397,17 +391,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         _LOGGER.debug(f"_async_update_data called")
         try:
-            if CONF_TYPE in self._config_entry.data and self._config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-                if IS_AFTER_2025_07_23():
-                    if self._warning_counter < 5:
-                        self._warning_counter += 1
-                        _LOGGER.warning(f"You should deactivate this Integration - {OVER_MSG} - {self._warning_counter} warnings so far")
-                        return {}
-                    else:
-                        if self._warning_counter == 5:
-                            _LOGGER.error(f"Too many warnings - {OVER_MSG} - deactivating integration now!")
-                        raise BaseException(OVER_MSG)
-
             await self.senec.update()
             data = self.senec.dict_data();
             _LOGGER.debug(f"read: {util.mask_map(data)}")

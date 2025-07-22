@@ -4,18 +4,26 @@ import calendar
 # required to patch the CookieJar of aiohttp - thanks for nothing!
 import contextlib
 import logging
+
+# all for the new openId stuff
+import os
+import json
+import string
+import secrets
+import hashlib
+import random
+import re
+from base64 import urlsafe_b64encode
+from urllib.parse import quote, urlparse, parse_qs
+
 from datetime import datetime, timezone, timedelta
-from http.cookies import BaseCookie, SimpleCookie, Morsel
 from time import time
 from typing import Union, cast, Final
 
 import aiohttp
 import xmltodict
 from aiohttp import ClientResponseError, ClientConnectorError
-from aiohttp.helpers import is_ip_address
-from orjson import JSONDecodeError
-from packaging import version
-from yarl import URL
+from json import JSONDecodeError
 
 from custom_components.senec.const import (
     QUERY_PV1_KEY,
@@ -321,9 +329,9 @@ class Senec:
         else:
             return 0
 
-    ################
+    ###################################
     # LOCAL-READ
-    ################
+    ###################################
     async def _read_senec_lala_with_retry(self, retry: bool = False):
         try:
             await self._read_senec_lala()
@@ -455,9 +463,9 @@ class Senec:
         return None
 
 
-    ################
+    ###################################
     # LOCAL-WRITE
-    ################
+    ###################################
     async def _write(self, data):
         await self._write_senec_v31(data)
 
@@ -501,9 +509,9 @@ class Senec:
                 _LOGGER.warning(f"Error while 'posting data' {err}")
 
 
-    ################
+    ###################################
     # VERSION-CHECKS
-    ################
+    ###################################
     async def _is_2408_or_higher_async(self) -> bool:
         if self._last_version_update == 0:
             await self.update_version()
@@ -528,9 +536,9 @@ class Senec:
             return int(self._raw_version[SENEC_SECTION_SYS_UPDATE]["NPU_IMAGE_VERSION"]) >= 2411
         return False
 
-    ################
+    ###################################
     # BUTTON-STUFF
-    ################
+    ###################################
     async def _trigger_button(self, key: str, payload: str):
         return await getattr(self, 'trigger_' + key)(payload)
 
@@ -543,9 +551,9 @@ class Senec:
             else:
                 _LOGGER.debug(f"Last Reset too recent...")
 
-    ################
+    ###################################
     # CORE-SWITCHES
-    ################
+    ###################################
     ## LADEN...
     ## {"ENERGY":{"SAFE_CHARGE_FORCE":"u8_01","SAFE_CHARGE_PROHIBIT":"","SAFE_CHARGE_RUNNING":"","LI_STORAGE_MODE_START":"","LI_STORAGE_MODE_STOP":"","LI_STORAGE_MODE_RUNNING":""}}
 
@@ -683,9 +691,9 @@ class Senec:
     #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
 
 
-    ################
+    ###################################
     # LOCAL-ACCESS
-    ################
+    ###################################
     _senec_a:Final = base64.b64decode("c3RfaW5zdGFsbGF0ZXVy".encode('utf-8')).decode('utf-8')
     _senec_b:Final = base64.b64decode("c3RfU2VuZWNJbnN0YWxs".encode('utf-8')).decode('utf-8')
 
@@ -2802,10 +2810,6 @@ class Inverter:
             return self._yield_produced_total
         return None
 
-#USER_AGENT: Final = "SENEC.App/4.8.1 (LMFD) okhttp/4.12.0"
-USER_AGENT: Final = "SENEC.App okhttp/4.12.0"
-WEB_USER_AGENT: Final = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
-
 def app_has_dict_timeseries_with_values(a_dict:dict) -> bool:
     if (a_dict is None or
             "timeseries" not in a_dict or
@@ -2871,6 +2875,9 @@ def app_get_utc_date_end(year, month:int=12, day:int=-1):
 
 class MySenecWebPortal:
 
+    #USER_AGENT: Final = "SENEC.App okhttp/4.12.0"
+    WEB_USER_AGENT: Final = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
     _default_web_headers = {
         "User-Agent": WEB_USER_AGENT,
         "Connection": "keep-alive",
@@ -2909,110 +2916,47 @@ class MySenecWebPortal:
         # Variable to save latest update time for spare capacity
         self._QUERY_SPARE_CAPACITY_TS = 0
 
-        # Variable to save latest update time for peak shaving
+        # Variable to save the latest update time for peak shaving
         self._QUERY_PEAK_SHAVING_TS = 0
 
-        # Variable to save latest update time for SG-Ready configuration
+        # Variable to save the latest update time for SG-Ready configuration
         self._QUERY_SGREADY_CONF_TS = 0
 
         self.web_session: aiohttp.websession = web_session
 
-        if _require_lib_patch():
-            if hasattr(aiohttp.helpers, "get_running_loop"):
-                loop = aiohttp.helpers.get_running_loop(web_session.loop)
-            elif hasattr(asyncio, "get_running_loop"):
-                loop = asyncio.get_running_loop()
-            else:
-                loop = None
-
-            if loop is not None:
-                senec_jar = MySenecCookieJar(loop=loop)
-                if hasattr(web_session, "_cookie_jar"):
-                    old_jar = getattr(web_session, "_cookie_jar")
-                    senec_jar.update_cookies(old_jar._host_only_cookies)
-                setattr(self.web_session, "_cookie_jar", senec_jar)
-            else:
-                _LOGGER.warning("_require_lib_patch is True, but we could not get access to a loop object")
-
-        # SENEC API
         self._SENEC_USERNAME = user
         self._SENEC_PASSWORD = pwd
 
-        # https://documenter.getpostman.com/view/10329335/UVCB9ihW#17e2c6c6-fe5e-4ca9-bc2f-dca997adaf90
-        # https://documenter.getpostman.com/view/10329335/UVCB9ihW#3e5a4286-c7d2-49d1-8856-12bba9fb5c6e
-        # https://documenter.getpostman.com/view/932140/2s9YXib2td#4d0f84ac-f573-42e3-b155-9a17cef309ec
+        ###################################
+        # mein-senec.de
+        ###################################
+        self._WEB_BASE_URL          = "https://mein-senec.de"
+        self._WEB_GET_CUSTOMER      = f"{self._WEB_BASE_URL}/endkunde/api/context/getEndkunde"
+        self._WEB_GET_SYSTEM_INFO   = f"{self._WEB_BASE_URL}/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=%s"
 
-        # 2025/15/05 -> looks like that 'app-gateway-prod.senecops.com' is down...
-        #APP_BASE_URL = "https://app-gateway-prod.senecops.com/"
-
-        APP_BASE_URL = "https://app-gateway.prod.senec.dev/"
-
-        # this are the URL's used by the new APP: 'com.senecapp_4.7.2'
-        #APP_BASE_URL1_NEW = "https://senec-app-user-proxy.prod.senec.dev/"
-        #APP_BASE_URL2_NEW = "https://senec-app-systems-proxy.prod.senec.dev/"
-        #APP_BASE_URL3_NEW = "https://senec-app-abilities-proxy.prod.senec.dev/"
-
-        self._SENEC_APP_AUTH = APP_BASE_URL + "v1/senec/login"
-        #self._SENEC_APP_AUTH = APP_BASE_URL1_NEW + "v1/user/login"
-
-        self._SENEC_APP_GET_SYSTEMS = APP_BASE_URL + "v1/senec/anlagen"
-        #self._SENEC_APP_GET_SYSTEMS = APP_BASE_URL2_NEW + "v1/systems"
-
-        self._SENEC_APP_GET_ABILITIES = APP_BASE_URL + "v1/senec/anlagen/%s/abilities"
-        #self._SENEC_APP_GET_ABILITIES = APP_BASE_URL3_NEW + "abilities/packages/%s"
-
-        # we must find out the new URL's as well..
-        self._SENEC_APP_SET_WALLBOX = APP_BASE_URL + "v1/senec/anlagen/%s/wallboxes/%s"
-        # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/technical-data"
-        # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/statistik?periode=JAHR&datum=2024-01-13&locale=de_DE&timezone=Europe/Berlin"
-        # "https://app-gateway-prod.senecops.com/v1/senec/anlagen/%s/zeitverlauf?periode=STUNDE&after=2024-01-14T12:00:00Z&locale=de_DE&timezone=Europe/Berlin"
-
-        APP_BASE_URL2 = "https://app-gateway.prod.senec.dev/"
-        self._SENEC_APP_NOW = APP_BASE_URL2 + "v2/senec/systems/%s/dashboard"
-        self._SENEC_APP_TOTAL_V1_OUTDATED = APP_BASE_URL2 + "v1/senec/monitor/%s/data/custom?startDate=2018-01-01&endDate=%s-%s-01&locale=de_DE&timezone=GMT"
-        self._SENEC_APP_TECHDATA = APP_BASE_URL2 + "v1/senec/systems/%s/technical-data"
-
-        # 2025/07/15 Looks like that this Endpoints are GONE
-        self._SENEC_APP_TOTAL_V2 = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=YEAR&from=1514764800&to=%s" # 1514764800 = 2018-01-01 as UNIX epoche timestamp
-        self._SENEC_APP_TOTAL_V2_with_TYPE_START_END = APP_BASE_URL2 + "v2/senec/systems/%s/measurements?resolution=%s&from=%s&to=%s"
-
-        # 2025/06/11 [NEW APP URLS -but with LESS DATA!]
-        # 2025/07/15 [APP_BASE_MEASSURE_URL3 is now secured via sso-login -> token + something random]
-        APP_BASE_MEASSURE_URL3  = "https://senec-app-measurements-proxy.prod.senec.dev/"
-        # APP_BASE_SYSTEM_URL3    = "https://senec-app-systems-proxy.prod.senec.dev/"
-        # self._SENEC_APP_NOW     = f"{APP_BASE_MEASSURE_URL3}v1/systems/%s/dashboard"
-        self._SENEC_APP_TOTAL_V3= f"{APP_BASE_MEASSURE_URL3}v1/systems/%s/measurements?resolution=MONTH&from=2025-01-01T00:00:00Z&to=%s"
-        # self._SENEC_APP_TECHDATA= f"{APP_BASE_SYSTEM_URL3}systems/%s/details"
-
-        # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/abilities
-        # https://app-gateway.prod.senec.dev/v1/senec/systems/%s/operational-mode -> "COM70"
-
-        self._SENEC_WEB_AUTH = "https://mein-senec.de/auth/login"
-        self._SENEC_WEB_GET_CUSTOMER = "https://mein-senec.de/endkunde/api/context/getEndkunde"
-        self._SENEC_WEB_GET_SYSTEM_INFO = "https://mein-senec.de/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=%s"
-
-        self._SENEC_WEB_GET_OVERVIEW_URL = "https://mein-senec.de/endkunde/api/status/getstatusoverview.php?anlageNummer=%s"
-        self._SENEC_WEB_GET_STATUS = "https://mein-senec.de/endkunde/api/status/getstatus.php?type=%s&period=all&anlageNummer=%s"
+        self._WEB_GET_OVERVIEW_URL  = f"{self._WEB_BASE_URL}/endkunde/api/status/getstatusoverview.php?anlageNummer=%s"
+        self._WEB_GET_STATUS        = f"{self._WEB_BASE_URL}/endkunde/api/status/getstatus.php?type=%s&period=all&anlageNummer=%s"
 
         # Calls for spare capacity - Base URL has to be followed by master plant number
-        self._SENEC_API_SPARE_CAPACITY_BASE_URL = "https://mein-senec.de/endkunde/api/senec/"
+        # calls will look like self._WEB_SPARE_CAPACITY_BASE_URL + AnlagenNummer + self._WEB_GET_SPARE_CAPACITY
+        self._WEB_SPARE_CAPACITY_BASE_URL = f"{self._WEB_BASE_URL}/endkunde/api/senec/"
         # Call the following URL (GET-Request) in order to get the spare capacity as int in the response body
-        self._SENEC_API_GET_SPARE_CAPACITY = "/emergencypower/reserve-in-percent"
+        self._WEB_GET_SPARE_CAPACITY = "/emergencypower/reserve-in-percent"
         # Call the following URL (Post Request) in order to set the spare capacity
-        self._SENEC_API_SET_SPARE_CAPACITY = "/emergencypower?reserve-in-percent="
+        self._WEB_SET_SPARE_CAPACITY = "/emergencypower?reserve-in-percent="
 
         # Call for export limit and current peak shaving information - to be followed by master plant number
-        self._SENEC_API_GET_PEAK_SHAVING = "https://mein-senec.de/endkunde/api/peakshaving/getSettings?anlageNummer="
+        self._WEB_GET_PEAK_SHAVING  = f"{self._WEB_BASE_URL}/endkunde/api/peakshaving/getSettings?anlageNummer="
         # Call to set spare capacity information - Base URL
-        self._SENEC_API_SET_PEAK_SHAVING_BASE_URL = "https://mein-senec.de/endkunde/api/peakshaving/saveSettings?anlageNummer="
-        #
-        self._SENEC_API_GET_SGREADY_STATE = "https://mein-senec.de/endkunde/api/senec/%s/sgready/state"
-        self._SENEC_API_GET_SGREADY_CONF = "https://mein-senec.de/endkunde/api/senec/%s/sgready/config"
+        self._WEB_SET_PEAK_SHAVING = f"{self._WEB_BASE_URL}/endkunde/api/peakshaving/saveSettings?anlageNummer="
+
+        self._WEB_GET_SGREADY_STATE = f"{self._WEB_BASE_URL}/endkunde/api/senec/%s/sgready/state"
+        self._WEB_GET_SGREADY_CONF  = f"{self._WEB_BASE_URL}/endkunde/api/senec/%s/sgready/config"
         # {"enabled":false,"modeChangeDelayInMinutes":20,"powerOnProposalThresholdInWatt":2000,"powerOnCommandThresholdInWatt":2500}
-        self._SENEC_API_SET_SGREADY_CONF = "https://mein-senec.de/endkunde/api/senec/%s/sgready"
+        self._WEB_SET_SGREADY_CONF  = f"{self._WEB_BASE_URL}/endkunde/api/senec/%s/sgready"
 
         # can be used in all api calls, names come from senec website
-        self._API_KEYS = [
+        self._WEB_REQUEST_KEYS = [
             "accuimport",  # what comes OUT OF the accu
             "accuexport",  # what goes INTO the accu
             "gridimport",  # what comes OUT OF the grid
@@ -3020,30 +2964,33 @@ class MySenecWebPortal:
             "powergenerated",  # power produced
             "consumption"  # power used
         ]
-
         # can only be used in some api calls, names come from senec website
-        self._API_KEYS_EXTRA = [
+        self._WEB_REQUEST_KEYS_EXTRA = [
             "acculevel"  # accu level
         ]
+
+        # WEBDATA STORAGE
+        self._web_is_authenticated = False
+        self._web_dev_number = None
+        self._web_serial_number = None
+        self._web_product_name = None
+        self._web_energy_entities = {}
+        self._web_power_entities = {}
+        self._web_battery_entities = {}
+        self._web_spare_capacity = 0  # initialize the spare_capacity with 0
+        self._web_peak_shaving_entities = {}
+        self._web_sgready_conf_data = {}
+        self._web_sgready_mode_code = 0
+        self._web_sgready_mode = None
+        self.SGREADY_SUPPORTED = False
 
         # genius - _app_master_plant_number does not have to be the same then _web_master_plant_number...
         self._app_master_plant_number = app_master_plant_number
         self._web_master_plant_number = None
 
-        # WEBDATA STORAGE
-        self._web_is_authenticated = False
-        self._web_serial_number = None
-        self._web_product_name = None
-        self._energy_entities = {}
-        self._power_entities = {}
-        self._battery_entities = {}
-        self._spare_capacity = 0  # initialize the spare_capacity with 0
-        self._peak_shaving_entities = {}
-        self._sgready_conf_data = {}
-        self._sgready_mode_code = 0
-        self._sgready_mode = None
-
-        # APP-API...
+        ###################################
+        # SenecApp
+        ###################################
         if (options is not None and
             CONF_APP_TOKEN in options and options[CONF_APP_TOKEN] is not None and
             CONF_APP_SYSTEMID in options and options[CONF_APP_SYSTEMID] is not None and
@@ -3065,8 +3012,7 @@ class MySenecWebPortal:
         # we still need to init the objects...
         self._app_raw_now = None
         self._app_raw_today = None
-        self._app_raw_total_v1_outdated = None
-        self._app_raw_total_v2 = None
+        self._app_raw_total = None
         self._app_raw_tech_data = None
         self._app_raw_wallbox = [None, None, None, None]
         # self._static_TOTAL_SUMS_PREV_YEARS = None
@@ -3075,8 +3021,6 @@ class MySenecWebPortal:
         # self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
         # self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
         # self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
-
-        self.SGREADY_SUPPORTED = False
 
         # self._QUERY_TECH_DATA_TS = 0
         IntBridge.app_api = self
@@ -3089,43 +3033,30 @@ class MySenecWebPortal:
 
     def dict_data(self) -> dict:
         # will be called by the UpdateCoordinator (to get the current data)
-        # self._app_raw_now = None
-        # self._app_raw_today = None
-        # self._app_raw_total_v1_outdated = None
-        # self._app_raw_total_v2 = None
-        # self._app_raw_tech_data = None
-        # self._app_raw_wallbox = [None, None, None, None]
         return {
             "now": self._app_raw_now,
             "today": self._app_raw_today,
-            "total": self._app_raw_total_v2,
-            "total_old": self._app_raw_total_v1_outdated,
+            "total": self._app_raw_total,
             "tech_data": self._app_raw_tech_data,
             "wallbox": self._app_raw_wallbox,
             "mein-senec": {
-                "energy_entities": self._energy_entities,
-                "power_entities": self._power_entities,
-                "battery_entities": self._battery_entities,
-                "peak_shaving_entities": self._peak_shaving_entities,
-                "sgready_conf_data": self._sgready_conf_data
+                "energy_entities": self._web_energy_entities,
+                "power_entities": self._web_power_entities,
+                "battery_entities": self._web_battery_entities,
+                "peak_shaving_entities": self._web_peak_shaving_entities,
+                "sgready_conf_data": self._web_sgready_conf_data
             }
         }
-
-    def check_cookie_jar_type(self):
-        if _require_lib_patch():
-            if hasattr(self.web_session, "_cookie_jar"):
-                old_jar = getattr(self.web_session, "_cookie_jar")
-                if type(old_jar) is not MySenecCookieJar:
-                    _LOGGER.warning('CookieJar is not of type MySenecCookie JAR any longer... forcing CookieJAR update')
-                    loop = aiohttp.helpers.get_running_loop(self.web_session.loop)
-                    new_senec_jar = MySenecCookieJar(loop=loop);
-                    new_senec_jar.update_cookies(old_jar._host_only_cookies)
-                    setattr(self.web_session, "_cookie_jar", new_senec_jar)
 
     def purge_senec_cookies(self):
         if hasattr(self.web_session, "_cookie_jar"):
             the_jar = getattr(self.web_session, "_cookie_jar")
             the_jar.clear_domain("mein-senec.de")
+            the_jar.clear_domain("sso.senec.com")
+
+    def clear_jar(self):
+        if hasattr(self.web_session, "_cookie_jar"):
+            self.web_session._cookie_jar.clear()
 
     async def authenticate_all(self):
         # if not self._app_is_authenticated:
@@ -3434,7 +3365,7 @@ class MySenecWebPortal:
     #             if self._static_TOTAL_SUMS_PREV_DAYS is not None:
     #                 data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_DAYS, data)
     #
-    #             self._app_raw_total_v2 = data
+    #             self._app_raw_total = data
     #
     #             # filename = f"./{start}.json"
     #             # directory = os.path.dirname(filename)
@@ -3443,10 +3374,10 @@ class MySenecWebPortal:
     #             #
     #             # #file_path = os.path.join(os.getcwd(), filename)
     #             # with open(filename, "w", encoding="utf-8") as outfile:
-    #             #     json.dump(self._app_raw_total_v2, outfile, indent=4)
+    #             #     json.dump(self._app_raw_total, outfile, indent=4)
     #
     #         else:
-    #             self._app_raw_total_v2 = None
+    #             self._app_raw_total = None
     #     else:
     #         if retry:
     #             await self.app_authenticate()
@@ -3821,20 +3752,65 @@ class MySenecWebPortal:
     #     return False
 
     """MEIN-SENEC.DE from here"""
+    async def web_authenticate(self, do_update:bool=False, throw401:bool=False):
+        if not self._web_is_authenticated:
+            _LOGGER.debug("***** WEB-API: web_authenticate(self) ********")
+            try:
+                async with self.web_session.get(self._WEB_BASE_URL, allow_redirects=True, max_redirects=20, headers=self._default_web_headers) as res:
+                    res.raise_for_status()
+                    if res.status == 200:
+                        html_content = await res.text()
+                        # that's quite evil - parsing HTML via RegEx
 
-    async def web_authenticate(self, do_update: bool, throw401: bool):
-        _LOGGER.info("***** web_authenticate(self) ********")
-        self.check_cookie_jar_type()
-        auth_payload = {
+                        # the simple variant, just take ANY form..
+                        # match = re.search(r'<form[^>]*action="([^"]+)"', html_content)
+                        # the_form_action_url = match.group(1) if match else None
+
+                        # the complex one, search for username & password inputs
+                        form_match = re.search(r'<form[^>]*action="([^"]+)"[^>]*>(.*?)</form>', html_content, re.DOTALL | re.IGNORECASE)
+                        the_form_action_url = None
+                        if form_match:
+                            form_content = form_match.group(2)
+                            # Check if the form contains both username and password inputs
+                            has_username = re.search(r'<input[^>]*(?:name|id)=["\']?(?:username|user|email)["\']?[^>]*>', form_content, re.IGNORECASE)
+                            has_password = re.search(r'<input[^>]*(?:name|id)=["\']?password["\']?[^>]*>', form_content, re.IGNORECASE)
+                            if has_username and has_password:
+                                # This is the login form we're looking for
+                                the_form_action_url = form_match.group(1)
+
+                        if the_form_action_url:
+                            await self._web_authenticate_part_02(the_form_action_url.replace('&amp;', '&'), do_update, throw401)
+                        else:
+                            _LOGGER.error(f"web_authenticate(): no form action url could be found {html_content}")
+                    else:
+                        _LOGGER.error(f"web_authenticate(): unexpected status code [200] {res.status} - {res}")
+            except Exception as exc:
+                if throw401:
+                    raise exc
+                else:
+                    _LOGGER.error(f"web_authenticate(): Error when try to call {self._WEB_BASE_URL}: '{exc}'")
+
+    async def _web_authenticate_part_02(self, form_action_url, do_update:bool=False, throw401:bool=False):
+        req_headers = self._default_web_headers.copy()
+        req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+        req_headers["authority"]        = "sso.senec.com"
+        req_headers["Dtn"]              = "1"
+        req_headers["origin"]           = "null"
+        req_headers["Content-Type"]     = "application/x-www-form-urlencoded"
+        req_headers["Cache-Control"]    = "max-age=0"
+
+        login_data= {
             "username": self._SENEC_USERNAME,
             "password": self._SENEC_PASSWORD
         }
-        async with self.web_session.post(self._SENEC_WEB_AUTH, data=auth_payload, max_redirects=20, ssl=False) as res:
+
+        async with self.web_session.post(form_action_url, data=login_data, allow_redirects=True, max_redirects=20, headers=req_headers) as res:
             try:
+                _LOGGER.debug(f"_web_authenticate_part_02(): requesting: {form_action_url}")
                 res.raise_for_status()
                 if res.status == 200:
-                    # be gentle reading the complete response...
-                    r_json = await res.text()
+                    content = await res.text()
+                    _LOGGER.debug(f"finally reached: {res.request_info.url}")
                     self._web_is_authenticated = True
                     if self._web_master_plant_number is None:
                         await self.web_update_context()
@@ -3844,19 +3820,114 @@ class MySenecWebPortal:
                         if do_update:
                             await self.update()
                 else:
-                    _LOGGER.warning(f"Login failed with Code {res.status}")
                     self.purge_senec_cookies()
-            except ClientResponseError as exc:
-                # _LOGGER.error(str(exc))
+                    _LOGGER.info(f"_web_authenticate_part_02(): unexpected [200] response code: {res.status} - {res}")
+
+            except BaseException as exc:
                 if throw401:
                     raise exc
                 else:
+                    _LOGGER.info(f"_web_authenticate_part_02(): status code: {res.status} [{type(exc)} - {exc}]")
                     if exc.status == 401:
                         self.purge_senec_cookies()
                         self._web_is_authenticated = False
                     else:
-                        _LOGGER.warning(f"Login exception with Code {res.status}")
                         self.purge_senec_cookies()
+
+    async def web_update_context(self, force_autodetect:bool = False):
+        _LOGGER.debug("***** web_update_context(self) ********")
+        if self._web_is_authenticated:
+            await self.web_update_get_customer()
+
+            # in autodetect-mode the initial self._web_master_plant_number = -1
+            if self._web_master_plant_number is None or self._web_master_plant_number == -1 or force_autodetect:
+                self._web_master_plant_number = 0
+                is_autodetect = True
+            else:
+                is_autodetect = False
+
+            # I must check if we still need this, since we have now code, that tries to compare
+            # self._app_serial_number with the returned 'steuereinheitnummer' of the
+            # web [but of course only when app-impl is back]
+            if self._app_master_plant_number is not None and self._app_master_plant_number > 0:
+                self._web_master_plant_number = self._app_master_plant_number
+
+            await self.web_update_get_systems(a_plant_number=self._web_master_plant_number, autodetect_mode=is_autodetect)
+        else:
+            await self.web_authenticate(do_update=False, throw401=False)
+            if self._web_is_authenticated:
+                await self.web_update_context()
+
+    async def web_update_get_customer(self):
+        _LOGGER.debug("***** web_update_get_customer(self) ********")
+
+        # grab NOW and TODAY stats
+        async with self.web_session.get(self._WEB_GET_CUSTOMER, headers=self._default_web_headers, ssl=False) as res:
+            res.raise_for_status()
+            if res.status in [200, 201, 202, 205]:
+                try:
+                    r_json = await res.json()
+                    self._web_dev_number = r_json["devNumber"]
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+            else:
+                self._web_is_authenticated = False
+                await self.web_authenticate(do_update=False, throw401=False)
+
+    async def web_update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
+        _LOGGER.debug(f"***** web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
+
+        a_url = self._WEB_GET_SYSTEM_INFO % str(a_plant_number)
+        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
+            res.raise_for_status()
+            if res.status in [200, 201, 202, 205]:
+                try:
+                    r_json = await res.json()
+                    #_LOGGER.debug(f"web_update_get_systems() - response: {r_json}")
+                    if autodetect_mode:
+                        if "master" in r_json and r_json["master"]:
+                            # we are cool that's a master-system... so we store our counter...
+                            self._web_serial_number = r_json["steuereinheitnummer"]
+                            if self._app_serial_number is None or self._app_serial_number == r_json["steuereinheitnummer"]:
+                                self._web_product_name = r_json["produktName"]
+                                if "zoneId" in r_json:
+                                    self._web_zone_id = r_json["zoneId"]
+                                else:
+                                    self._web_zone_id = "UNKNOWN"
+                                self._web_master_plant_number = a_plant_number
+                                _LOGGER.debug(f"set _web_master_plant_number to {a_plant_number} (Found a web master system with serial number: {self._web_serial_number} [{self._web_product_name}])")
+                            else:
+                                # ok it looks like the serial number does not match... let's request another system
+                                _LOGGER.debug(f"Found a web master system with serial number: {self._web_serial_number} [{r_json["produktName"]}] - but not matching the SenecApp serial number: {self._app_serial_number}")
+                                a_plant_number += 1
+                                await self.web_update_get_systems(a_plant_number, autodetect_mode)
+                        else:
+                            if not hasattr(self, "_serial_number_slave"):
+                                self._serial_number_slave = []
+                                self._product_name_slave = []
+                            self._serial_number_slave.append(r_json["steuereinheitnummer"])
+                            self._product_name_slave.append(r_json["produktName"])
+                            a_plant_number += 1
+                            await self.web_update_get_systems(a_plant_number, autodetect_mode)
+                    else:
+                        self._web_serial_number = r_json["steuereinheitnummer"]
+                        self._web_product_name = r_json["produktName"]
+                        if "zoneId" in r_json:
+                            self._web_zone_id = r_json["zoneId"]
+                        else:
+                            self._web_zone_id = "UNKNOWN"
+                        self._web_master_plant_number = a_plant_number
+
+                    # let's check if the sytem support's SG-Read...
+                    if "sgReadyVisible" in r_json and r_json["sgReadyVisible"]:
+                        _LOGGER.debug("System is SGReady")
+                        self.SGREADY_SUPPORTED = True
+
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+            else:
+                self._web_is_authenticated = False
+                await self.web_authenticate(do_update=False, throw401=False)
 
     async def update(self):
         if self._web_is_authenticated:
@@ -3901,184 +3972,10 @@ class MySenecWebPortal:
         else:
             await self.web_authenticate(do_update=True, throw401=False)
 
-    async def update_original_not_working_2025_07_21(self):
-        if self._app_is_authenticated:
-            _LOGGER.info("***** update(self) ********")
-            await self.app_update_now()
-            # thanks - app_totals currently not working
-            # await self.web_update_total()
-
-            # 30 min = 30 * 60 sec = 1800 sec
-            # if self._QUERY_TECH_DATA_TS + 1800 < time():
-            # well since we also get the system-state from the tech_data we call this
-            # monster object every time [I dislike this!]
-            await self.app_update_tech_data()
-
-            if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
-                await self.app_update_all_wallboxes()
-
-            # not used any longer... [going to use the App-API]
-            # await self.update_now_kW_stats()
-            # await self.update_full_kWh_stats()
-
-            if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
-                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                # 2025/06/19 - changed to 6h... = 86400/4 = 21600
-                if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
-                    self.check_cookie_jar_type()
-                    if self._web_is_authenticated:
-                        await self.update_spare_capacity()
-                    else:
-                        await self.web_authenticate(do_update=True, throw401=False)
-
-            if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
-                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
-                    self.check_cookie_jar_type()
-                    if self._web_is_authenticated:
-                        await self.update_peak_shaving()
-                    else:
-                        await self.web_authenticate(do_update=True, throw401=False)
-
-            if self.SGREADY_SUPPORTED:
-                self.check_cookie_jar_type()
-                if self._web_is_authenticated:
-                    await self.update_sgready_state()
-                else:
-                    await self.web_authenticate(do_update=True, throw401=False)
-
-                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                if self._QUERY_SGREADY_CONF_TS + 86400 < time():
-                    self.check_cookie_jar_type()
-                    if self._web_is_authenticated:
-                        await self.update_sgready_conf()
-                    else:
-                        await self.web_authenticate(do_update=True, throw401=False)
-
-        else:
-            await self.app_authenticate(do_update=True)
-
-    """This function will update peak shaving information"""
-
-    async def update_peak_shaving(self):
-        _LOGGER.info("***** update_peak_shaving(self) ********")
-        a_url = f"{self._SENEC_API_GET_PEAK_SHAVING}{self._web_master_plant_number}"
-        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
-            try:
-                res.raise_for_status()
-                if res.status == 200:
-                    try:
-                        r_json = await res.json()
-                        # GET Data from JSON
-                        self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json["einspeisebegrenzungKwpInPercent"]
-                        self._peak_shaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
-                        self._peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json["peakShavingCapacityLimitInPercent"]
-                        self._peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(r_json["peakShavingEndDate"] / 1000,
-                                                                                                   tz=timezone.utc)  # from miliseconds to seconds
-                        self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
-                    except JSONDecodeError as exc:
-                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-                else:
-                    self._web_is_authenticated = False
-                    await self.update()
-
-            except ClientResponseError as exc:
-                if exc.status == 401:
-                    self.purge_senec_cookies()
-
-                self._web_is_authenticated = False
-                await self.update()
-
-    """This function will set the peak shaving data over the web api"""
-
-    async def set_peak_shaving(self, new_peak_shaving: dict):
-        _LOGGER.debug("***** set_peak_shaving(self, new_peak_shaving) ********")
-
-        # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
-        a_url = f"{self._SENEC_API_SET_PEAK_SHAVING_BASE_URL}{self._web_master_plant_number}&mode={new_peak_shaving['mode'].upper()}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
-
-        async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
-            try:
-                res.raise_for_status()
-                if res.status == 200:
-                    _LOGGER.debug("***** Set Peak Shaving successfully ********")
-                    # Reset the timer in order that the Peak Shaving is updated immediately after the change
-                    self._QUERY_PEAK_SHAVING_TS = 0
-
-                else:
-                    self._web_is_authenticated = False
-                    await self.web_authenticate(do_update=False, throw401=False)
-                    await self.set_peak_shaving(new_peak_shaving)
-
-            except ClientResponseError as exc:
-                if exc.status == 401:
-                    self.purge_senec_cookies()
-
-                self._web_is_authenticated = False
-                await self.web_authenticate(do_update=False, throw401=True)
-                await self.set_peak_shaving(new_peak_shaving)
-
-    """This function will update the spare capacity over the web api"""
-
-    async def update_spare_capacity(self):
-        _LOGGER.info("***** update_spare_capacity(self) ********")
-        a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._SENEC_API_GET_SPARE_CAPACITY}"
-        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as response:
-            try:
-                response.raise_for_status()
-                if 200 <= response.status <= 205:
-                    content = await response.text()
-                    if content is not None and len(content) > 0:
-                        try:
-                            self._spare_capacity = int(content)
-                            self._QUERY_SPARE_CAPACITY_TS = time()
-                        except ValueError as vexc:
-                            _LOGGER.info(f"spare_capacity can't be converted to a number - request to '{a_url}' returned: '{content}' caused {type(vexc)} - {vexc}")
-                            self._spare_capacity = 0
-                    else:
-                        _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
-                        self._spare_capacity = 0
-                else:
-                    self._web_is_authenticated = False
-                    await self.update()
-
-            except ClientResponseError as exc:
-                if exc.status == 401:
-                    self.purge_senec_cookies()
-
-                self._web_is_authenticated = False
-                await self.update()
-
-    """This function will set the spare capacity over the web api"""
-
-    async def set_spare_capacity(self, new_spare_capacity: int):
-        _LOGGER.debug("***** set_spare_capacity(self) ********")
-        a_url = f"{self._SENEC_API_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._SENEC_API_SET_SPARE_CAPACITY}{new_spare_capacity}"
-
-        async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
-            try:
-                res.raise_for_status()
-                if res.status == 200:
-                    _LOGGER.debug("***** Set Spare Capacity successfully ********")
-                    # Reset the timer in order that the Spare Capacity is updated immediately after the change
-                    self._QUERY_SPARE_CAPACITY_TS = 0
-                else:
-                    self._web_is_authenticated = False
-                    await self.web_authenticate(do_update=False, throw401=False)
-                    await self.set_spare_capacity(new_spare_capacity)
-
-            except ClientResponseError as exc:
-                if exc.status == 401:
-                    self.purge_senec_cookies()
-
-                self._web_is_authenticated = False
-                await self.web_authenticate(do_update=False, throw401=True)
-                await self.set_spare_capacity(new_spare_capacity)
-
     async def web_update_now(self):
         _LOGGER.debug("***** web_update_now(self) ********")
         # grab NOW and TODAY stats
-        a_url = f"{self._SENEC_WEB_GET_OVERVIEW_URL}" % str(self._web_master_plant_number)
+        a_url = f"{self._WEB_GET_OVERVIEW_URL}" % str(self._web_master_plant_number)
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 _LOGGER.debug(f"web_update_now() requesting: {a_url}")
@@ -4088,27 +3985,27 @@ class MySenecWebPortal:
                         r_json = await res.json()
                         _LOGGER.debug(f"web_update_now() response-recaived: {r_json}")
                         self._raw = parse(r_json)
-                        for key in (self._API_KEYS + self._API_KEYS_EXTRA):
+                        for key in (self._WEB_REQUEST_KEYS + self._WEB_REQUEST_KEYS_EXTRA):
                             if key in r_json:
                                 if key == "acculevel":
                                     if "now" in r_json[key]:
                                         value_now = r_json[key]["now"]
                                         entity_now_name = str(key + "_now")
-                                        self._battery_entities[entity_now_name] = value_now
+                                        self._web_battery_entities[entity_now_name] = value_now
                                     else:
                                         _LOGGER.info(f"web_update_now() No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
                                 else:
                                     if "now" in r_json[key]:
                                         value_now = r_json[key]["now"]
                                         entity_now_name = str(key + "_now")
-                                        self._power_entities[entity_now_name] = value_now
+                                        self._web_power_entities[entity_now_name] = value_now
                                     else:
                                         _LOGGER.info(f"web_update_now() No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
                                     if "today" in r_json[key]:
                                         value_today = r_json[key]["today"]
                                         entity_today_name = str(key + "_today")
-                                        self._energy_entities[entity_today_name] = value_today
+                                        self._web_energy_entities[entity_today_name] = value_today
                                     else:
                                         _LOGGER.info(f"web_update_now() No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
@@ -4134,8 +4031,8 @@ class MySenecWebPortal:
             _LOGGER.warning("web_update_total() called without valid web master plant number, skipping update.")
         else:
             _LOGGER.debug("***** web_update_total(self) ********")
-            for key in self._API_KEYS:
-                a_url = f"{self._SENEC_WEB_GET_STATUS}" % (key, str(self._web_master_plant_number))
+            for key in self._WEB_REQUEST_KEYS:
+                a_url = f"{self._WEB_GET_STATUS}" % (key, str(self._web_master_plant_number))
                 async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                     _LOGGER.debug(f"web_update_total() requesting: {a_url}")
                     try:
@@ -4147,7 +4044,7 @@ class MySenecWebPortal:
                                 if "fullkwh" in r_json:
                                     value = r_json["fullkwh"]
                                     entity_name = str(key + "_total")
-                                    self._energy_entities[entity_name] = value
+                                    self._web_energy_entities[entity_name] = value
                                 else:
                                     _LOGGER.info(f"web_update_total(): No 'fullkwh' in json: {r_json} when requesting: {a_url}")
                             except JSONDecodeError as exc:
@@ -4164,10 +4061,180 @@ class MySenecWebPortal:
                         self._web_is_authenticated = False
                         await self.update()
 
+    # async def update_original_not_working_2025_07_21(self):
+    #     if self._app_is_authenticated:
+    #         _LOGGER.info("***** update(self) ********")
+    #         await self.app_update_now()
+    #         # thanks - app_totals currently not working
+    #         # await self.web_update_total()
+    #
+    #         # 30 min = 30 * 60 sec = 1800 sec
+    #         # if self._QUERY_TECH_DATA_TS + 1800 < time():
+    #         # well since we also get the system-state from the tech_data we call this
+    #         # monster object every time [I dislike this!]
+    #         await self.app_update_tech_data()
+    #
+    #         if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
+    #             await self.app_update_all_wallboxes()
+    #
+    #         # not used any longer... [going to use the App-API]
+    #         # await self.update_now_kW_stats()
+    #         # await self.update_full_kWh_stats()
+    #
+    #         if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
+    #             # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+    #             # 2025/06/19 - changed to 6h... = 86400/4 = 21600
+    #             if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
+    #                 self.check_cookie_jar_type()
+    #                 if self._web_is_authenticated:
+    #                     await self.update_spare_capacity()
+    #                 else:
+    #                     await self.web_authenticate(do_update=True, throw401=False)
+    #
+    #         if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
+    #             # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+    #             if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
+    #                 self.check_cookie_jar_type()
+    #                 if self._web_is_authenticated:
+    #                     await self.update_peak_shaving()
+    #                 else:
+    #                     await self.web_authenticate(do_update=True, throw401=False)
+    #
+    #         if self.SGREADY_SUPPORTED:
+    #             self.check_cookie_jar_type()
+    #             if self._web_is_authenticated:
+    #                 await self.update_sgready_state()
+    #             else:
+    #                 await self.web_authenticate(do_update=True, throw401=False)
+    #
+    #             # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+    #             if self._QUERY_SGREADY_CONF_TS + 86400 < time():
+    #                 self.check_cookie_jar_type()
+    #                 if self._web_is_authenticated:
+    #                     await self.update_sgready_conf()
+    #                 else:
+    #                     await self.web_authenticate(do_update=True, throw401=False)
+    #
+    #     else:
+    #         await self.app_authenticate(do_update=True)
+
+    """This function will update peak shaving information"""
+    async def update_peak_shaving(self):
+        _LOGGER.info("***** update_peak_shaving(self) ********")
+        a_url = f"{self._WEB_GET_PEAK_SHAVING}{self._web_master_plant_number}"
+        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    try:
+                        r_json = await res.json()
+                        # GET Data from JSON
+                        self._web_peak_shaving_entities["einspeisebegrenzungKwpInPercent"] = r_json["einspeisebegrenzungKwpInPercent"]
+                        self._web_peak_shaving_entities["peakShavingMode"] = r_json["peakShavingMode"].lower()
+                        self._web_peak_shaving_entities["peakShavingCapacityLimitInPercent"] = r_json["peakShavingCapacityLimitInPercent"]
+                        self._web_peak_shaving_entities["peakShavingEndDate"] = datetime.fromtimestamp(r_json["peakShavingEndDate"] / 1000,
+                                                                                                       tz=timezone.utc)  # from miliseconds to seconds
+                        self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
+                    except JSONDecodeError as exc:
+                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                else:
+                    self._web_is_authenticated = False
+                    await self.update()
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purge_senec_cookies()
+
+                self._web_is_authenticated = False
+                await self.update()
+
+    """This function will set the peak shaving data over the web api"""
+    async def set_peak_shaving(self, new_peak_shaving: dict):
+        _LOGGER.debug("***** set_peak_shaving(self, new_peak_shaving) ********")
+
+        # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
+        a_url = f"{self._WEB_SET_PEAK_SHAVING}{self._web_master_plant_number}&mode={new_peak_shaving['mode'].upper()}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
+
+        async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    _LOGGER.debug("***** Set Peak Shaving successfully ********")
+                    # Reset the timer in order that the Peak Shaving is updated immediately after the change
+                    self._QUERY_PEAK_SHAVING_TS = 0
+
+                else:
+                    self._web_is_authenticated = False
+                    await self.web_authenticate(do_update=False, throw401=False)
+                    await self.set_peak_shaving(new_peak_shaving)
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purge_senec_cookies()
+
+                self._web_is_authenticated = False
+                await self.web_authenticate(do_update=False, throw401=True)
+                await self.set_peak_shaving(new_peak_shaving)
+
+    """This function will update the spare capacity over the web api"""
+    async def update_spare_capacity(self):
+        _LOGGER.info("***** update_spare_capacity(self) ********")
+        a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_GET_SPARE_CAPACITY}"
+        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as response:
+            try:
+                response.raise_for_status()
+                if 200 <= response.status <= 205:
+                    content = await response.text()
+                    if content is not None and len(content) > 0:
+                        try:
+                            self._web_spare_capacity = int(content)
+                            self._QUERY_SPARE_CAPACITY_TS = time()
+                        except ValueError as vexc:
+                            _LOGGER.info(f"spare_capacity can't be converted to a number - request to '{a_url}' returned: '{content}' caused {type(vexc)} - {vexc}")
+                            self._web_spare_capacity = 0
+                    else:
+                        _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
+                        self._web_spare_capacity = 0
+                else:
+                    self._web_is_authenticated = False
+                    await self.update()
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purge_senec_cookies()
+
+                self._web_is_authenticated = False
+                await self.update()
+
+    """This function will set the spare capacity over the web api"""
+    async def set_spare_capacity(self, new_spare_capacity: int):
+        _LOGGER.debug("***** set_spare_capacity(self) ********")
+        a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_SET_SPARE_CAPACITY}{new_spare_capacity}"
+
+        async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
+            try:
+                res.raise_for_status()
+                if res.status == 200:
+                    _LOGGER.debug("***** Set Spare Capacity successfully ********")
+                    # Reset the timer in order that the Spare Capacity is updated immediately after the change
+                    self._QUERY_SPARE_CAPACITY_TS = 0
+                else:
+                    self._web_is_authenticated = False
+                    await self.web_authenticate(do_update=False, throw401=False)
+                    await self.set_spare_capacity(new_spare_capacity)
+
+            except ClientResponseError as exc:
+                if exc.status == 401:
+                    self.purge_senec_cookies()
+
+                self._web_is_authenticated = False
+                await self.web_authenticate(do_update=False, throw401=True)
+                await self.set_spare_capacity(new_spare_capacity)
+
     async def update_sgready_state(self):
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_state(self) ********")
-            a_url = self._SENEC_API_GET_SGREADY_STATE % (str(self._web_master_plant_number))
+            a_url = self._WEB_GET_SGREADY_STATE % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
                     res.raise_for_status()
@@ -4176,13 +4243,12 @@ class MySenecWebPortal:
                             r_json = await res.json()
                             plain = str(r_json)
                             if len(plain) > 4 and plain[0:4] == "MODE":
-                                self._sgready_mode_code = int(plain[4:])
-                                if self._sgready_mode_code > 0:
+                                self._web_sgready_mode_code = int(plain[4:])
+                                if self._web_sgready_mode_code > 0:
                                     if self._lang in SGREADY_MODES:
-                                        self._sgready_mode = SGREADY_MODES[self._lang].get(self._sgready_mode_code,
-                                                                                           "UNKNOWN")
+                                        self._web_sgready_mode = SGREADY_MODES[self._lang].get(self._web_sgready_mode_code,"UNKNOWN")
                                     else:
-                                        self._sgready_mode = SGREADY_MODES["en"].get(self._sgready_mode_code, "UNKNOWN")
+                                        self._web_sgready_mode = SGREADY_MODES["en"].get(self._web_sgready_mode_code, "UNKNOWN")
 
                         except JSONDecodeError as exc:
                             _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
@@ -4200,14 +4266,14 @@ class MySenecWebPortal:
     async def update_sgready_conf(self):
         if self.SGREADY_SUPPORTED:
             _LOGGER.info("***** update_update_sgready_conf(self) ********")
-            a_url = self._SENEC_API_GET_SGREADY_CONF % (str(self._web_master_plant_number))
+            a_url = self._WEB_GET_SGREADY_CONF % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
                     res.raise_for_status()
                     if res.status == 200:
                         try:
                             r_json = await res.json()
-                            self._sgready_conf_data = r_json
+                            self._web_sgready_conf_data = r_json
                             self._QUERY_SGREADY_CONF_TS = time()
 
                         except JSONDecodeError as exc:
@@ -4227,18 +4293,18 @@ class MySenecWebPortal:
         if self.SGREADY_SUPPORTED:
             _LOGGER.debug(f"***** set_sgready_conf(self, new_sgready_data {new_sgready_data}) ********")
 
-            a_url = self._SENEC_API_SET_SGREADY_CONF % (str(self._web_master_plant_number))
+            a_url = self._WEB_SET_SGREADY_CONF % (str(self._web_master_plant_number))
 
             post_data_to_backend = False
             post_data = {}
             for a_key in SGREADY_CONF_KEYS:
-                if a_key in self._sgready_conf_data:
+                if a_key in self._web_sgready_conf_data:
                     if a_key in new_sgready_data:
-                        if self._sgready_conf_data[a_key] != new_sgready_data[a_key]:
+                        if self._web_sgready_conf_data[a_key] != new_sgready_data[a_key]:
                             post_data[a_key] = new_sgready_data[a_key]
                             post_data_to_backend = True
                     else:
-                        post_data[a_key] = self._sgready_conf_data[a_key]
+                        post_data[a_key] = self._web_sgready_conf_data[a_key]
 
             if len(post_data) > 0 and post_data_to_backend:
                 async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False, json=post_data) as res:
@@ -4263,122 +4329,37 @@ class MySenecWebPortal:
                         await self.set_sgready_conf(new_sgready_data)
             else:
                 _LOGGER.debug(
-                    f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._sgready_conf_data}")
+                    f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._web_sgready_conf_data}")
 
-    async def web_update_context(self, force_autodetect:bool = False):
-        _LOGGER.debug("***** web_update_context(self) ********")
-        if self._web_is_authenticated:
-            await self.web_update_get_customer()
+    ###################################
+    # DUMMY METHODS [for the Bridge]
+    ###################################
+    def app_get_local_wallbox_mode_from_api_values(self, param):
+        pass
 
-            # in autodetect-mode the initial self._web_master_plant_number = -1
-            if self._web_master_plant_number is None or self._web_master_plant_number == -1 or force_autodetect:
-                self._web_master_plant_number = 0
-                is_autodetect = True
-            else:
-                is_autodetect = False
+    async def app_set_wallbox_mode(self, local_mode_to_set, wallbox_num, sync):
+        pass
 
-            # 2025/07/21 - Senec has deactivated the AppAPI (for simple login's - so we must use SSO - or just ignore
-            # all this - and poll mein-senec.de)
-            # So we must use now the configured 'app_master_plant_number' as '_web_master_plant_number' which probably
-            # cause issues for the users - but I don't know, how to solve this!
-            if self._app_master_plant_number is not None and self._app_master_plant_number > 0:
-                self._web_master_plant_number = self._app_master_plant_number
+    async def app_set_allow_intercharge_all(self, value_to_set, sync):
+        pass
 
-            await self.web_update_get_systems(a_plant_number=self._web_master_plant_number, autodetect_mode=is_autodetect)
-        else:
-            await self.web_authenticate(do_update=False, throw401=False)
-            if self._web_is_authenticated:
-                await self.web_update_context()
+    async def app_set_wallbox_icmax(self, value_to_set, wallbox_num, sync):
+        pass
 
-    async def web_update_get_customer(self):
-        _LOGGER.debug("***** web_update_get_customer(self) ********")
-
-        # grab NOW and TODAY stats
-        async with self.web_session.get(self._SENEC_WEB_GET_CUSTOMER, headers=self._default_web_headers, ssl=False) as res:
-            res.raise_for_status()
-            if res.status == 200:
-                try:
-                    r_json = await res.json()
-                    # self._raw = parse(r_json)
-                    self._dev_number = r_json["devNumber"]
-                    # anzahlAnlagen
-                    # language
-                    # emailAdresse
-                    # meterReadingVisible
-                    # vorname
-                    # nachname
-                except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-            else:
-                self._web_is_authenticated = False
-                await self.web_authenticate(do_update=False, throw401=False)
-
-    async def web_update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
-        _LOGGER.debug(f"***** web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
-
-        a_url = self._SENEC_WEB_GET_SYSTEM_INFO % str(a_plant_number)
-        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
-            res.raise_for_status()
-            if res.status == 200:
-                try:
-                    r_json = await res.json()
-                    #_LOGGER.debug(f"web_update_get_systems() - response: {r_json}")
-                    if autodetect_mode:
-                        if "master" in r_json and r_json["master"]:
-                            # we are cool that's a master-system... so we store our counter...
-                            self._web_serial_number = r_json["steuereinheitnummer"]
-                            if self._app_serial_number is None or self._app_serial_number == r_json["steuereinheitnummer"]:
-                                self._web_product_name = r_json["produktName"]
-                                if "zoneId" in r_json:
-                                    self._zone_id = r_json["zoneId"]
-                                else:
-                                    self._zone_id = "UNKNOWN"
-                                self._web_master_plant_number = a_plant_number
-                                _LOGGER.debug(f"set _web_master_plant_number to {a_plant_number} (Found a web master system with serial number: {self._web_serial_number} [{self._web_product_name}])")
-                            else:
-                                # ok it looks like the serial number does not match... let's request another system
-                                _LOGGER.debug(f"Found a web master system with serial number: {self._web_serial_number} [{r_json["produktName"]}] - but not matching the SenecApp serial number: {self._app_serial_number}")
-                                a_plant_number += 1
-                                await self.web_update_get_systems(a_plant_number, autodetect_mode)
-                        else:
-                            if not hasattr(self, "_serial_number_slave"):
-                                self._serial_number_slave = []
-                                self._product_name_slave = []
-                            self._serial_number_slave.append(r_json["steuereinheitnummer"])
-                            self._product_name_slave.append(r_json["produktName"])
-                            a_plant_number += 1
-                            await self.web_update_get_systems(a_plant_number, autodetect_mode)
-                    else:
-                        self._web_serial_number = r_json["steuereinheitnummer"]
-                        self._web_product_name = r_json["produktName"]
-                        if "zoneId" in r_json:
-                            self._zone_id = r_json["zoneId"]
-                        else:
-                            self._zone_id = "UNKNOWN"
-                        self._web_master_plant_number = a_plant_number
-
-                    # let's check if the sytem support's SG-Read...
-                    if "sgReadyVisible" in r_json and r_json["sgReadyVisible"]:
-                        _LOGGER.debug("System is SGReady")
-                        self.SGREADY_SUPPORTED = True
-
-                except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-            else:
-                self._web_is_authenticated = False
-                await self.web_authenticate(do_update=False, throw401=False)
-
+    ###################################
+    # JUST VALUE FUNCTIONS
+    ###################################
     @property
     def spare_capacity(self) -> int:
-        if hasattr(self, '_spare_capacity'):
-            return int(self._spare_capacity)
+        if hasattr(self, '_web_spare_capacity'):
+            return int(self._web_spare_capacity)
 
     @property
     def senec_num(self) -> str:
         if self._app_raw_tech_data is not None and "casing" in self._app_raw_tech_data:
             return self._app_raw_tech_data["casing"]["serial"]
-        elif hasattr(self, '_dev_number'):
-            return str(self._dev_number)
+        elif hasattr(self, '_web_dev_number'):
+            return str(self._web_dev_number)
         else:
             return "UNKNOWN_SENEC_NUM"
 
@@ -4404,8 +4385,8 @@ class MySenecWebPortal:
 
     @property
     def zone_id(self) -> str:
-        if hasattr(self, '_zone_id'):
-            return str(self._zone_id)
+        if hasattr(self, '_web_zone_id'):
+            return str(self._web_zone_id)
 
     @property
     def versions(self) -> str:
@@ -4446,192 +4427,179 @@ class MySenecWebPortal:
         elif hasattr(self, '_web_master_plant_number') and self._web_master_plant_number is not None:
             return int(self._web_master_plant_number)
 
-    ##############################################
+    ###################################
     # from here the "real" sensor data starts... #
-    ##############################################
+    ###################################
     def _get_sum_for_index(self, index: int) -> float:
         if index > -1:
-            return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total_v2["timeseries"])
+            return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total["timeseries"])
 
     @property
     def accuimport_total(self) -> float:
-        if self._app_raw_total_v2 is not None:
+        if self._app_raw_total is not None:
             # yes this sounds strange 'BATTERY_IMPORT' (but finally SENEC have inverted it's logic) - but we must keep
             # the inverted stuff here!
-            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("BATTERY_EXPORT"))
-        elif self._app_raw_total_v1_outdated is not None and "storageConsumption" in self._app_raw_total_v1_outdated:
-            return float(self._app_raw_total_v1_outdated["storageConsumption"]["value"])
-        elif hasattr(self, '_energy_entities') and "accuimport_total" in self._energy_entities:
-            return self._energy_entities["accuimport_total"]
+            return self._get_sum_for_index(self._app_raw_total["measurements"].index("BATTERY_EXPORT"))
+        elif hasattr(self, '_web_energy_entities') and "accuimport_total" in self._web_energy_entities:
+            return self._web_energy_entities["accuimport_total"]
 
     @property
     def accuexport_total(self) -> float:
-        if self._app_raw_total_v2 is not None:
+        if self._app_raw_total is not None:
             # yes this sounds strange 'BATTERY_IMPORT' (but finally SENEC have inverted it's logic) - but we must keep
             # the inverted stuff here!
-            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("BATTERY_IMPORT"))
-        elif self._app_raw_total_v1_outdated is not None and "storageLoad" in self._app_raw_total_v1_outdated:
-            return float(self._app_raw_total_v1_outdated["storageLoad"]["value"])
-        elif hasattr(self, '_energy_entities') and "accuexport_total" in self._energy_entities:
-            return self._energy_entities["accuexport_total"]
+            return self._get_sum_for_index(self._app_raw_total["measurements"].index("BATTERY_IMPORT"))
+        elif hasattr(self, '_web_energy_entities') and "accuexport_total" in self._web_energy_entities:
+            return self._web_energy_entities["accuexport_total"]
 
     @property
     def gridimport_total(self) -> float:
-        if self._app_raw_total_v2 is not None:
-            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("GRID_IMPORT"))
-        elif self._app_raw_total_v1_outdated is not None and "gridConsumption" in self._app_raw_total_v1_outdated:
-            return float(self._app_raw_total_v1_outdated["gridConsumption"]["value"])
-        elif hasattr(self, '_energy_entities') and "gridimport_total" in self._energy_entities:
-            return self._energy_entities["gridimport_total"]
+        if self._app_raw_total is not None:
+            return self._get_sum_for_index(self._app_raw_total["measurements"].index("GRID_IMPORT"))
+        elif hasattr(self, '_web_energy_entities') and "gridimport_total" in self._web_energy_entities:
+            return self._web_energy_entities["gridimport_total"]
 
     @property
     def gridexport_total(self) -> float:
-        if self._app_raw_total_v2 is not None:
-            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("GRID_EXPORT"))
-        elif self._app_raw_total_v1_outdated is not None and "gridFeedIn" in self._app_raw_total_v1_outdated:
-            return float(self._app_raw_total_v1_outdated["gridFeedIn"]["value"])
-        elif hasattr(self, '_energy_entities') and "gridexport_total" in self._energy_entities:
-            return self._energy_entities["gridexport_total"]
+        if self._app_raw_total is not None:
+            return self._get_sum_for_index(self._app_raw_total["measurements"].index("GRID_EXPORT"))
+        elif hasattr(self, '_web_energy_entities') and "gridexport_total" in self._web_energy_entities:
+            return self._web_energy_entities["gridexport_total"]
 
     @property
     def powergenerated_total(self) -> float:
-        if self._app_raw_total_v2 is not None:
-            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("POWER_GENERATION"))
-        elif self._app_raw_total_v1_outdated is not None and "generation" in self._app_raw_total_v1_outdated:
-            return float(self._app_raw_total_v1_outdated["generation"]["value"])
-        elif hasattr(self, '_energy_entities') and "powergenerated_total" in self._energy_entities:
-            return self._energy_entities["powergenerated_total"]
+        if self._app_raw_total is not None:
+            return self._get_sum_for_index(self._app_raw_total["measurements"].index("POWER_GENERATION"))
+        elif hasattr(self, '_web_energy_entities') and "powergenerated_total" in self._web_energy_entities:
+            return self._web_energy_entities["powergenerated_total"]
 
     @property
     def consumption_total(self) -> float:
-        if self._app_raw_total_v2 is not None:
-            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("POWER_CONSUMPTION"))
-        elif self._app_raw_total_v1_outdated is not None and "totalUsage" in self._app_raw_total_v1_outdated:
-            return float(self._app_raw_total_v1_outdated["totalUsage"]["value"])
-        elif hasattr(self, '_energy_entities') and "consumption_total" in self._energy_entities:
-            return self._energy_entities["consumption_total"]
+        if self._app_raw_total is not None:
+            return self._get_sum_for_index(self._app_raw_total["measurements"].index("POWER_CONSUMPTION"))
+        elif hasattr(self, '_web_energy_entities') and "consumption_total" in self._web_energy_entities:
+            return self._web_energy_entities["consumption_total"]
 
     @property
     def wallbox_consumption_total(self) -> float:
-        if self._app_raw_total_v2 is not None and "measurements" in self._app_raw_total_v2:
-            return self._get_sum_for_index(self._app_raw_total_v2["measurements"].index("WALLBOX_CONSUMPTION"))
+        if self._app_raw_total is not None and "measurements" in self._app_raw_total:
+            return self._get_sum_for_index(self._app_raw_total["measurements"].index("WALLBOX_CONSUMPTION"))
 
 
     @property
     def accuimport_today(self) -> float:
         if self._app_raw_today is not None and "batteryDischargeInWh" in self._app_raw_today:
             return float(self._app_raw_today["batteryDischargeInWh"]) / 1000
-        if hasattr(self, '_energy_entities') and "accuimport_today" in self._energy_entities:
-            return self._energy_entities["accuimport_today"]
+        if hasattr(self, '_web_energy_entities') and "accuimport_today" in self._web_energy_entities:
+            return self._web_energy_entities["accuimport_today"]
 
     @property
     def accuexport_today(self) -> float:
         if self._app_raw_today is not None and "batteryChargeInWh" in self._app_raw_today:
             return float(self._app_raw_today["batteryChargeInWh"]) / 1000
-        elif hasattr(self, '_energy_entities') and "accuexport_today" in self._energy_entities:
-            return self._energy_entities["accuexport_today"]
+        elif hasattr(self, '_web_energy_entities') and "accuexport_today" in self._web_energy_entities:
+            return self._web_energy_entities["accuexport_today"]
 
     @property
     def gridimport_today(self) -> float:
         if self._app_raw_today is not None and "gridDrawInWh" in self._app_raw_today:
             return float(self._app_raw_today["gridDrawInWh"]) / 1000
-        elif hasattr(self, '_energy_entities') and "gridimport_today" in self._energy_entities:
-            return self._energy_entities["gridimport_today"]
+        elif hasattr(self, '_web_energy_entities') and "gridimport_today" in self._web_energy_entities:
+            return self._web_energy_entities["gridimport_today"]
 
     @property
     def gridexport_today(self) -> float:
         if self._app_raw_today is not None and "gridFeedInInWh" in self._app_raw_today:
             return float(self._app_raw_today["gridFeedInInWh"]) / 1000
-        elif hasattr(self, '_energy_entities') and "gridexport_today" in self._energy_entities:
-            return self._energy_entities["gridexport_today"]
+        elif hasattr(self, '_energy_entities') and "gridexport_today" in self._web_energy_entities:
+            return self._web_energy_entities["gridexport_today"]
 
     @property
     def powergenerated_today(self) -> float:
         if self._app_raw_today is not None and "powerGenerationInWh" in self._app_raw_today:
             return float(self._app_raw_today["powerGenerationInWh"]) / 1000
-        elif hasattr(self, '_energy_entities') and "powergenerated_today" in self._energy_entities:
-            return self._energy_entities["powergenerated_today"]
+        elif hasattr(self, '_web_energy_entities') and "powergenerated_today" in self._web_energy_entities:
+            return self._web_energy_entities["powergenerated_today"]
 
     @property
     def consumption_today(self) -> float:
         if self._app_raw_today is not None and "powerConsumptionInWh" in self._app_raw_today:
             return float(self._app_raw_today["powerConsumptionInWh"]) / 1000
-        elif hasattr(self, '_energy_entities') and "consumption_today" in self._energy_entities:
-            return self._energy_entities["consumption_today"]
+        elif hasattr(self, '_web_energy_entities') and "consumption_today" in self._web_energy_entities:
+            return self._web_energy_entities["consumption_today"]
 
     @property
     def accuimport_now(self) -> float:
         if self._app_raw_now is not None and "batteryDischargeInW" in self._app_raw_now:
             return float(self._app_raw_now["batteryDischargeInW"]) / 1000
-        elif hasattr(self, "_power_entities") and "accuimport_now" in self._power_entities:
-            return self._power_entities["accuimport_now"]
+        elif hasattr(self, "_web_power_entities") and "accuimport_now" in self._web_power_entities:
+            return self._web_power_entities["accuimport_now"]
 
     @property
     def accuexport_now(self) -> float:
         if self._app_raw_now is not None and "batteryChargeInW" in self._app_raw_now:
             return float(self._app_raw_now["batteryChargeInW"]) / 1000
-        elif hasattr(self, "_power_entities") and "accuexport_now" in self._power_entities:
-            return self._power_entities["accuexport_now"]
+        elif hasattr(self, "_web_power_entities") and "accuexport_now" in self._web_power_entities:
+            return self._web_power_entities["accuexport_now"]
 
     @property
     def gridimport_now(self) -> float:
         if self._app_raw_now is not None and "gridDrawInW" in self._app_raw_now:
             return float(self._app_raw_now["gridDrawInW"]) / 1000
-        if hasattr(self, "_power_entities") and "gridimport_now" in self._power_entities:
-            return self._power_entities["gridimport_now"]
+        if hasattr(self, "_web_power_entities") and "gridimport_now" in self._web_power_entities:
+            return self._web_power_entities["gridimport_now"]
 
     @property
     def gridexport_now(self) -> float:
         if self._app_raw_now is not None and "gridFeedInInW" in self._app_raw_now:
             return float(self._app_raw_now["gridFeedInInW"]) / 1000
-        elif hasattr(self, "_power_entities") and "gridexport_now" in self._power_entities:
-            return self._power_entities["gridexport_now"]
+        elif hasattr(self, "_web_power_entities") and "gridexport_now" in self._web_power_entities:
+            return self._web_power_entities["gridexport_now"]
 
     @property
     def powergenerated_now(self) -> float:
         if self._app_raw_now is not None and "powerGenerationInW" in self._app_raw_now:
             return float(self._app_raw_now["powerGenerationInW"]) / 1000
-        elif hasattr(self, "_power_entities") and "powergenerated_now" in self._power_entities:
-            return self._power_entities["powergenerated_now"]
+        elif hasattr(self, "_web_power_entities") and "powergenerated_now" in self._web_power_entities:
+            return self._web_power_entities["powergenerated_now"]
 
     @property
     def consumption_now(self) -> float:
         if self._app_raw_now is not None and "powerConsumptionInW" in self._app_raw_now:
             return float(self._app_raw_now["powerConsumptionInW"]) / 1000
-        elif hasattr(self, "_power_entities") and "consumption_now" in self._power_entities:
-            return self._power_entities["consumption_now"]
+        elif hasattr(self, "_web_power_entities") and "consumption_now" in self._web_power_entities:
+            return self._web_power_entities["consumption_now"]
 
     @property
     def acculevel_now(self) -> int:
         if self._app_raw_now is not None and "batteryLevelInPercent" in self._app_raw_now:
             return float(self._app_raw_now["batteryLevelInPercent"])
-        elif hasattr(self, "_battery_entities") and "acculevel_now" in self._battery_entities:
-            return self._battery_entities["acculevel_now"]
+        elif hasattr(self, "_web_battery_entities") and "acculevel_now" in self._web_battery_entities:
+            return self._web_battery_entities["acculevel_now"]
 
     @property
     def gridexport_limit(self) -> int:
-        if hasattr(self, "_peak_shaving_entities") and "einspeisebegrenzungKwpInPercent" in self._peak_shaving_entities:
-            return self._peak_shaving_entities["einspeisebegrenzungKwpInPercent"]
+        if hasattr(self, "_web_peak_shaving_entities") and "einspeisebegrenzungKwpInPercent" in self._web_peak_shaving_entities:
+            return self._web_peak_shaving_entities["einspeisebegrenzungKwpInPercent"]
 
     @property
     def peakshaving_mode(self) -> int:
-        if hasattr(self, "_peak_shaving_entities") and "peakShavingMode" in self._peak_shaving_entities:
-            return self._peak_shaving_entities["peakShavingMode"]
+        if hasattr(self, "_web_peak_shaving_entities") and "peakShavingMode" in self._web_peak_shaving_entities:
+            return self._web_peak_shaving_entities["peakShavingMode"]
 
     @property
     def peakshaving_capacitylimit(self) -> int:
-        if hasattr(self,
-                   "_peak_shaving_entities") and "peakShavingCapacityLimitInPercent" in self._peak_shaving_entities:
-            return self._peak_shaving_entities["peakShavingCapacityLimitInPercent"]
+        if hasattr(self, "_web_peak_shaving_entities") and "peakShavingCapacityLimitInPercent" in self._web_peak_shaving_entities:
+            return self._web_peak_shaving_entities["peakShavingCapacityLimitInPercent"]
 
     @property
     def peakshaving_enddate(self) -> int:
-        if hasattr(self, "_peak_shaving_entities") and "peakShavingEndDate" in self._peak_shaving_entities:
-            return self._peak_shaving_entities["peakShavingEndDate"]
+        if hasattr(self, "_web_peak_shaving_entities") and "peakShavingEndDate" in self._web_peak_shaving_entities:
+            return self._web_peak_shaving_entities["peakShavingEndDate"]
 
-    #############################
+    ###################################
     # NEW APP-API SENSOR VALUES #
-    #############################
+    ###################################
     @property
     def case_temp(self) -> float:
         # 'casing': {'serial': 'XXX', 'temperatureInCelsius': 28.95928382873535},
@@ -4649,7 +4617,7 @@ class MySenecWebPortal:
             elif "mainControllerUnitState" in self._app_raw_tech_data["mcu"]:
                 return self._app_raw_tech_data["mcu"]["mainControllerUnitState"]["name"].replace('_', ' ')
 
-    #######################################################################################################
+    ###################################
     # 'batteryInverter': {'state': {'name': 'RUN_GRID', 'severity': 'INFO'}, 'vendor': 'XXX',
     #                     'firmware': {'firmwareVersion': None,
     #                                  'firmwareVersionHumanMachineInterface': '0.01',
@@ -4658,7 +4626,7 @@ class MySenecWebPortal:
     #                     'temperatures': {'amb': 36.0, 'halfBridge1': None, 'halfBridge2': None,
     #                                     'throttle': None, 'max': 41.0},
     #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []},
-    #######################################################################################################
+    ###################################
     @property
     def battery_inverter_state(self) -> str:
         if self._app_raw_tech_data is not None:
@@ -4707,13 +4675,13 @@ class MySenecWebPortal:
             #            count = count + 1
             #    return temp_sum/count
 
-    #######################################################################################################
+    ###################################
     # 'batteryPack': {'numberOfBatteryModules': 4, 'technology': 'XXX', 'maxCapacityInKwh': 10.0,
     #                 'maxChargingPowerInKw': 2.5, 'maxDischargingPowerInKw': 3.75,
     #                 'currentChargingLevelInPercent': 4.040403842926025,
     #                 'currentVoltageInV': 46.26100158691406, 'currentCurrentInA': -0.10999999940395355,
     #                 'remainingCapacityInPercent': 99.9},
-    #######################################################################################################
+    ###################################
     @property
     def _battery_module_count(self) -> int:
         # internal use only...
@@ -4746,7 +4714,7 @@ class MySenecWebPortal:
             if "remainingCapacityInPercent" in self._app_raw_tech_data["batteryPack"]:
                 return self._app_raw_tech_data["batteryPack"]["remainingCapacityInPercent"]
 
-    #######################################################################################################
+    ###################################
     # 'batteryModules': [{'ordinal': 1, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
     #                     'serialNumber': '1231', 'firmwareVersion': '0.01',
     #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
@@ -4770,7 +4738,7 @@ class MySenecWebPortal:
     #                     'mainboardHardwareVersion': '0001', 'mainboardExtensionHardwareVersion': '0',
     #                     'minTemperature': 27.0, 'maxTemperature': 28.0,
     #                     'lastContact': {'time': 1700000000, 'severity': 'INFO'}, 'flags': []}],
-    #######################################################################################################
+    ###################################
     @property
     def battery_module_state(self) -> [str]:
         if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
@@ -4786,7 +4754,8 @@ class MySenecWebPortal:
             data = [-1] * self._battery_module_count
             bat_obj = self._app_raw_tech_data["batteryModules"]
             for idx in range(self._battery_module_count):
-                data[idx] = (bat_obj[idx]["minTemperature"] + bat_obj[idx]["maxTemperature"]) / 2
+                if "minTemperature" in bat_obj[idx] and "maxTemperature" in bat_obj[idx]:
+                    data[idx] = (bat_obj[idx]["minTemperature"] + bat_obj[idx]["maxTemperature"]) / 2
             return data
 
     @property
@@ -4795,7 +4764,8 @@ class MySenecWebPortal:
             data = [-1] * self._battery_module_count
             bat_obj = self._app_raw_tech_data["batteryModules"]
             for idx in range(self._battery_module_count):
-                data[idx] = bat_obj[idx]["minTemperature"]
+                if "minTemperature" in bat_obj[idx]:
+                    data[idx] = bat_obj[idx]["minTemperature"]
             return data
 
     @property
@@ -4804,24 +4774,24 @@ class MySenecWebPortal:
             data = [-1] * self._battery_module_count
             bat_obj = self._app_raw_tech_data["batteryModules"]
             for idx in range(self._battery_module_count):
-                data[idx] = bat_obj[idx]["maxTemperature"]
+                if "maxTemperature" in bat_obj[idx]:
+                    data[idx] = bat_obj[idx]["maxTemperature"]
             return data
 
     @property
     def sgready_mode_code(self) -> int:
-        if self.SGREADY_SUPPORTED and self._sgready_mode_code > 0:
-            return self._sgready_mode_code
+        if self.SGREADY_SUPPORTED and self._web_sgready_mode_code > 0:
+            return self._web_sgready_mode_code
 
     @property
     def sgready_mode(self) -> str:
-        if self.SGREADY_SUPPORTED and self._sgready_mode is not None:
-            return self._sgready_mode
+        if self.SGREADY_SUPPORTED and self._web_sgready_mode is not None:
+            return self._web_sgready_mode
 
     @property
     def sgready_enabled(self) -> bool:
-        if self.SGREADY_SUPPORTED and len(
-                self._sgready_conf_data) > 0 and SGREADY_CONFKEY_ENABLED in self._sgready_conf_data:
-            return self._sgready_conf_data[SGREADY_CONFKEY_ENABLED]
+        if self.SGREADY_SUPPORTED and len(self._web_sgready_conf_data) > 0 and SGREADY_CONFKEY_ENABLED in self._web_sgready_conf_data:
+            return self._web_sgready_conf_data[SGREADY_CONFKEY_ENABLED]
 
     async def switch_sgready_enabled(self, enabled: bool) -> bool:
         if self.SGREADY_SUPPORTED:
@@ -4829,76 +4799,6 @@ class MySenecWebPortal:
 
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
-
-    def clear_jar(self):
-        self.web_session._cookie_jar.clear()
-
-
-need_patch: bool = None
-
-
-@staticmethod
-def _require_lib_patch() -> bool:
-    global need_patch
-    if need_patch is None:
-        need_patch = version.parse(aiohttp.__version__) < version.parse("3.9.0")
-        if need_patch:
-            _LOGGER.info(
-                f"aiohttp version is below 3.9.0 (current version is: {aiohttp.__version__}) - CookieJar.filter_cookies(...) need to be patched")
-    return need_patch
-
-
-class MySenecCookieJar(aiohttp.CookieJar):
-
-    # Overwriting the default 'filter_cookies' impl - since the original will always return the last stored
-    # matching path... [but we need the 'best' path-matching cookie of our jar!]
-    def filter_cookies(self, request_url: URL = URL()) -> Union["BaseCookie[str]", "SimpleCookie[str]"]:
-        """Returns this jar's cookies filtered by their attributes."""
-        self._do_expiration()
-        request_url = URL(request_url)
-        filtered: Union["SimpleCookie[str]", "BaseCookie[str]"] = (
-            SimpleCookie() if self._quote_cookie else BaseCookie()
-        )
-        hostname = request_url.raw_host or ""
-        request_origin = URL()
-        with contextlib.suppress(ValueError):
-            request_origin = request_url.origin()
-
-        is_not_secure = (
-                request_url.scheme not in ("https", "wss")
-                and request_origin not in self._treat_as_secure_origin
-        )
-
-        for cookie in sorted(self, key=lambda c: len(c["path"])):
-            name = cookie.key
-            domain = cookie["domain"]
-
-            # Send shared cookies
-            if not domain:
-                filtered[name] = cookie.value
-                continue
-
-            if not self._unsafe and is_ip_address(hostname):
-                continue
-
-            if (domain, name) in self._host_only_cookies:
-                if domain != hostname:
-                    continue
-            elif not self._is_domain_match(domain, hostname):
-                continue
-
-            if not self._is_path_match(request_url.path, cookie["path"]):
-                continue
-
-            if is_not_secure and cookie["secure"]:
-                continue
-
-            mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
-            filtered[name] = mrsl_val
-
-        return filtered
-
 
 class IntBridge:
     app_api: MySenecWebPortal = None
