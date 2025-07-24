@@ -2974,6 +2974,7 @@ class MySenecWebPortal:
         self._web_dev_number = None
         self._web_serial_number = None
         self._web_product_name = None
+        self._web_raw = None
         self._web_energy_entities = {}
         self._web_power_entities = {}
         self._web_battery_entities = {}
@@ -3079,347 +3080,6 @@ class MySenecWebPortal:
             "SerialNumber": self._web_serial_number,
         }}
 
-    # async def app_authenticate(self, retry: bool = True, do_update: bool = False):
-    #     _LOGGER.debug("***** APP-API: app_authenticate(self) ********")
-    #     auth_payload = {
-    #         "username": self._SENEC_USERNAME,
-    #         "password": self._SENEC_PASSWORD
-    #     }
-    #     async with self.web_session.post(self._SENEC_APP_AUTH, headers={"User-Agent": USER_AGENT}, json=auth_payload, ssl=False) as res:
-    #         try:
-    #             res.raise_for_status()
-    #             if res.status == 200:
-    #                 try:
-    #                     r_json = await res.json()
-    #                     _LOGGER.debug(f"APP-API: response:{r_json}")
-    #                     if "token" in r_json:
-    #                         self._app_token = r_json["token"]
-    #                         self._app_is_authenticated = True
-    #                         await self.app_get_master_plant_id(retry)
-    #                         if self._app_master_plant_id is not None:
-    #                             _LOGGER.info("APP-API: Login successful")
-    #                             if do_update:
-    #                                 await self.update()
-    #                         else:
-    #                             _LOGGER.error("APP-API: could not fetch master plant id (aka 'anlagen:id')")
-    #                 except JSONDecodeError as jsonexc:
-    #                     _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json(): {jsonexc}")
-    #
-    #                 except ClientResponseError as ioexc:
-    #                     _LOGGER.warning(f"APP-API: ClientResponseError while 'await res.json(): {ioexc}")
-    #
-    #             else:
-    #                 _LOGGER.warning(f"APP-API: Login failed with Code {res.status}")
-    #
-    #         except ClientResponseError as ioexc:
-    #             _LOGGER.warning(f"APP-API: Could not login to APP-API: {type(ioexc)} - {ioexc}")
-    #
-    # async def app_update_context(self, retry: bool = True):
-    #     _LOGGER.debug("***** app_update_context(self) ********")
-    #     if self._app_is_authenticated:
-    #         await self.app_update_tech_data(retry=True)
-    #     else:
-    #         await self.app_authenticate()
-    #         if retry:
-    #             await self.app_update_context(retry=False)
-    #
-    # async def app_get_master_plant_id(self, retry: bool = True):
-    #     _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
-    #     if self._app_is_authenticated:
-    #         headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
-    #         try:
-    #             async with self.web_session.get(self._SENEC_APP_GET_SYSTEMS, headers=headers, ssl=False) as res:
-    #                 try:
-    #                     res.raise_for_status()
-    #                     if res.status == 200:
-    #                         data = None
-    #                         try:
-    #                             data = await res.json();
-    #                             _LOGGER.debug(f"APP-API response: {data}")
-    #                             if self._app_master_plant_number == -1:
-    #                                 self._app_master_plant_number = 0
-    #                             idx = int(self._app_master_plant_number)
-    #
-    #                             # when SENEC API only return a single system in the 'v1/senec/anlagen' request (even if
-    #                             # there are multiple systems)...
-    #                             if len(data) == 1 and idx > 0:
-    #                                 _LOGGER.debug(f"APP-API IGNORE requested 'master_plant_number' {idx} will use 0 instead!")
-    #                                 idx = 0
-    #
-    #                             if len(data) > idx:
-    #                                 if "id" in data[idx]:
-    #                                     self._app_master_plant_id = data[idx]["id"]
-    #                                     _LOGGER.debug(f"APP-API set _app_master_plant_id to {self._app_master_plant_id}")
-    #
-    #                                 if "wallboxIds" in data[idx]:
-    #                                     self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
-    #                                     _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {self._app_wallbox_num_max}")
-    #
-    #                                 if "steuereinheitnummer" in data[idx]:
-    #                                     self._app_serial_number = data[idx]["steuereinheitnummer"]
-    #                                     _LOGGER.debug(f"APP-API set _app_serialnumber to {self._app_serial_number}")
-    #                             else:
-    #                                 _LOGGER.warning(f"Index: {idx} not available in array data: '{data}'")
-    #                         except JSONDecodeError as jexc:
-    #                             _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {jexc}")
-    #                         except Exception as exc:
-    #                             if data is not None:
-    #                                 _LOGGER.error(
-    #                                     f"APP-API: Error when handling response '{res}' - Data: '{data}' - Exception:' {exc}' [retry={retry}]")
-    #                             else:
-    #                                 _LOGGER.error(
-    #                                     f"APP-API: Error when handling response '{res}' - Exception:' {exc}' [retry={retry}]")
-    #                     else:
-    #                         if retry:
-    #                             self._app_is_authenticated = False
-    #                             self._app_token = None
-    #                             self._app_master_plant_id = None
-    #                             await self.app_authenticate(retry=False)
-    #                 except Exception as exc:
-    #                     if res is not None:
-    #                         _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' - Response is: '{res}' [retry={retry}]")
-    #                     else:
-    #                         _LOGGER.error(f"APP-API: Error while access {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
-    #         except Exception as exc:
-    #             _LOGGER.error(f"APP-API: Error when try to call 'self.web_session.get()' for {self._SENEC_APP_GET_SYSTEMS}: '{exc}' [retry={retry}]")
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate(retry=False)
-    #
-    # async def app_get_data(self, a_url: str) -> dict:
-    #     _LOGGER.debug("***** APP-API: app_get_data(self) ********")
-    #     if self._app_token is not None:
-    #         _LOGGER.debug(f"APP-API get {a_url}")
-    #         try:
-    #             headers = {"Authorization": self._app_token,
-    #                        "User-Agent": USER_AGENT}
-    #             async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
-    #                 res.raise_for_status()
-    #                 if res.status in [200, 201, 202, 204, 205]:
-    #                     try:
-    #                         data = await res.json()
-    #                         _LOGGER.debug(f"APP-API response: {data}")
-    #                         return data
-    #                     except JSONDecodeError as exc:
-    #                         _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
-    #
-    #                 elif res.status == 500:
-    #                     _LOGGER.warning(f"APP-API: Not found {a_url} (http 500)")
-    #
-    #                 else:
-    #                     self._app_is_authenticated = False
-    #                     self._app_token = None
-    #                     self._app_master_plant_id = None
-    #
-    #                 return None
-    #
-    #         except Exception as exc:
-    #             try:
-    #                 if res.status == 500:
-    #                     _LOGGER.warning(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
-    #                 elif res.status == 400:
-    #                     # please note, we do this 'shit' ONLY on GET (and not when POST data) - since when we reach
-    #                     # any post command to the API, we expect that the TOKEN is valid (because we did previously
-    #                     # already at least one GET call)
-    #                     _LOGGER.warning(
-    #                         f"APP-API: Calling {a_url} caused [HTTP 400]: {exc} this is SO RIDICULOUS Senec - returning 400 without error code when TOKEN is invalid")
-    #                     self._app_is_authenticated = False
-    #                     self._app_token = None
-    #                     self._app_master_plant_id = None
-    #                 elif res.status == 401:
-    #                     _LOGGER.warning(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
-    #                     self._app_is_authenticated = False
-    #                     self._app_token = None
-    #                     self._app_master_plant_id = None
-    #                 else:
-    #                     _LOGGER.warning(f"APP-API: Could not get data from {a_url} causing: {exc}")
-    #             except NameError:
-    #                 _LOGGER.warning(f"APP-API: NO RES - Could not get data from {a_url} causing: {exc}")
-    #
-    #             return None
-    #     else:
-    #         # somehow we should pass a "callable"...
-    #         await self.app_authenticate()
-    #
-    # async def app_update_total_2025(self, retry: bool = True):
-    #     # https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{self._app_master_plant_id}/data-availability/timespan?timezone=Europe%2FBerlin
-    #
-    #     _LOGGER.debug("***** APP-API: app_update_total(self) ********")
-    #     if self._app_master_plant_id is not None:
-    #         # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
-    #
-    #         #today = datetime.now(timezone.utc) #+ relativedelta(months=+1)
-    #         #to_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
-    #         #status_url = f"{self._SENEC_APP_TOTAL_V3}" % (str(self._app_master_plant_id), to_date)
-    #
-    #         status_url = f"https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{self._app_master_plant_id}/measurements?resolution=MONTH&from=2024-12-31T23%3A00%3A00Z&to=2025-12-31T23%3A00%3A00Z"
-    #         data = await self.app_get_data(a_url=status_url)
-    #         _LOGGER.debug(f"APP-API: app_update_total_2025() - fetched data: {data}")
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             await self.app_update_total_2025(retry=False)
-    #
-    # async def app_update_total_not_working_anylonger(self, retry: bool = True):
-    #     _LOGGER.debug("***** APP-API: app_update_total(self) ********")
-    #     if self._app_master_plant_id is not None:
-    #         now_utc = datetime.now(timezone.utc)
-    #         current_year = now_utc.year
-    #         current_month = now_utc.month
-    #         current_day = now_utc.day
-    #
-    #         if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year:
-    #             # Loop from 2018 to current year [there are no older systems than 2018]
-    #             # we might like to store the first year, that actually has data?!
-    #             for a_year in range(2018, current_year):
-    #                 _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {a_year}")
-    #                 status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-    #                     str(self._app_master_plant_id),
-    #                     "YEAR",
-    #                     str(app_get_utc_date_start(a_year, 1)),
-    #                     str(app_get_utc_date_end(a_year, 12)))
-    #
-    #                 data = await self.app_get_data(a_url=status_url)
-    #                 if data is not None and app_has_dict_timeseries_with_values(data):
-    #                     data = app_aggregate_timeseries_data_if_needed(data)
-    #                     if self._static_TOTAL_SUMS_PREV_YEARS is None:
-    #                         self._static_TOTAL_SUMS_PREV_YEARS = data
-    #                     else:
-    #                         self._static_TOTAL_SUMS_PREV_YEARS = app_summ_total_dict_values(data, self._static_TOTAL_SUMS_PREV_YEARS)
-    #
-    #             self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year
-    #
-    #         if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month:
-    #             if current_month == 1:
-    #                 self._static_TOTAL_SUMS_PREV_MONTHS = None
-    #             else:
-    #                 _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
-    #                 status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-    #                     str(self._app_master_plant_id),
-    #                     "YEAR",
-    #                     str(app_get_utc_date_start(current_year, 1)),
-    #                     str(app_get_utc_date_end(current_year, current_month - 1)))
-    #
-    #                 data = await self.app_get_data(a_url=status_url)
-    #                 if data is not None and app_has_dict_timeseries_with_values(data):
-    #                     self._static_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data)
-    #
-    #             self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
-    #             # # as alternative fetching the start of the year - month by month...
-    #             # for a_month in range(1, current_month):
-    #             #     _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month {a_month}")
-    #             #     status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-    #             #         str(self._app_master_plant_id),
-    #             #         "MONTH",
-    #             #         str(app_get_utc_date_start(current_year, a_month)),
-    #             #         str(app_get_utc_date_end(current_year, a_month)))
-    #             #
-    #             #     data = await self.app_get_data(a_url=status_url)
-    #             #     if data is not None and app_has_dict_timeseries_with_values(data):
-    #             #         data = app_aggregate_timeseries_data_if_needed(data)
-    #             #         if self._static_TOTAL_SUMS_MONTH is None:
-    #             #             self._static_TOTAL_SUMS_MONTH = data
-    #             #         else:
-    #             #             self._static_TOTAL_SUMS_MONTH = app_summ_total_dict_values(data, self._static_TOTAL_SUMS)
-    #
-    #         if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day:
-    #             if current_day == 1:
-    #                 self._static_TOTAL_SUMS_PREV_DAYS = None
-    #             else:
-    #                 _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
-    #                 status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-    #                     str(self._app_master_plant_id),
-    #                     "MONTH",
-    #                     str(app_get_utc_date_start(current_year, current_month, 1)),
-    #                     str(app_get_utc_date_end(current_year, current_month, current_day - 1)))
-    #
-    #                 data = await self.app_get_data(a_url=status_url)
-    #                 if data is not None and app_has_dict_timeseries_with_values(data):
-    #                     self._static_TOTAL_SUMS_PREV_DAYS = app_aggregate_timeseries_data_if_needed(data)
-    #
-    #             self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day
-    #
-    #         # status_url = f"{self._SENEC_APP_TOTAL}" % (
-    #         #    str(self._app_master_plant_id), today.strftime('%Y'), today.strftime('%m'))
-    #         status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-    #             str(self._app_master_plant_id),
-    #             "DAY",
-    #             str(app_get_utc_date_start(current_year, current_month, current_day)),
-    #             str(int((now_utc + timedelta(hours=12)).timestamp())))
-    #
-    #         # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
-    #         # today = datetime.now(timezone.utc) + relativedelta(months=+1)
-    #         # to_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
-    #         # status_url = f"{self._SENEC_APP_TOTAL_V3}" % (str(self._app_master_plant_id), to_date)
-    #
-    #         data = await self.app_get_data(a_url=status_url)
-    #         if app_has_dict_timeseries_with_values(data):
-    #             data = app_aggregate_timeseries_data_if_needed(data)
-    #             # adding all from the previous years (all till 01.01.THIS YEAR 'minus 1 second')
-    #             if self._static_TOTAL_SUMS_PREV_YEARS is not None:
-    #                 data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_YEARS, data)
-    #             # adding all from this year till this-month minus 1 (from 01.01 THIS YEAR)
-    #             if self._static_TOTAL_SUMS_PREV_MONTHS is not None:
-    #                 data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_MONTHS, data)
-    #
-    #             if self._static_TOTAL_SUMS_PREV_DAYS is not None:
-    #                 data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_DAYS, data)
-    #
-    #             self._app_raw_total = data
-    #
-    #             # filename = f"./{start}.json"
-    #             # directory = os.path.dirname(filename)
-    #             # if not os.path.exists(directory):
-    #             #     os.makedirs(directory)
-    #             #
-    #             # #file_path = os.path.join(os.getcwd(), filename)
-    #             # with open(filename, "w", encoding="utf-8") as outfile:
-    #             #     json.dump(self._app_raw_total, outfile, indent=4)
-    #
-    #         else:
-    #             self._app_raw_total = None
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             await self.app_update_total_not_working_anylonger(retry=False)
-    #
-    # async def app_update_now(self, retry: bool = True):
-    #     _LOGGER.debug("***** APP-API: app_update_now(self) ********")
-    #     if self._app_master_plant_id is not None:
-    #         status_url = self._SENEC_APP_NOW % (str(self._app_master_plant_id))
-    #         data = await self.app_get_data(a_url=status_url)
-    #         if data is not None and "currently" in data:
-    #             self._app_raw_now = data["currently"]
-    #         else:
-    #             self._app_raw_now = None
-    #
-    #         # even if there are no active 'today' sensors we want to capture already the data
-    #         if data is not None and "today" in data:
-    #             self._app_raw_today = data["today"]
-    #         else:
-    #             self._app_raw_today = None
-    #
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             await self.app_update_now(retry=False)
-    #
-    # async def app_update_tech_data(self, retry: bool = True):
-    #     _LOGGER.debug("***** APP-API: app_update_tech_data(self) ********")
-    #     if self._app_master_plant_id is not None:
-    #         status_url = self._SENEC_APP_TECHDATA % (str(self._app_master_plant_id))
-    #         data = await self.app_get_data(a_url=status_url)
-    #         if data is not None:
-    #             self._app_raw_tech_data = data
-    #             # self._QUERY_TECH_DATA_TS = time()
-    #         else:
-    #             self._app_raw_tech_data = None
-    #             # self._QUERY_TECH_DATA_TS = 0
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             await self.app_update_tech_data(retry=False)
-    #
     # async def app_get_wallbox_data(self, wallbox_num: int = 1, retry: bool = True):
     #     _LOGGER.debug("***** APP-API: app_get_wallbox_data(self) ********")
     #     if self._app_master_plant_id is not None:
@@ -3939,36 +3599,19 @@ class MySenecWebPortal:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 # 2025/06/19 - changed to 6h... = 86400/4 = 21600
                 if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
-                    self.check_cookie_jar_type()
-                    if self._web_is_authenticated:
-                        await self.update_spare_capacity()
-                    else:
-                        await self.web_authenticate(do_update=True, throw401=False)
+                    await self.update_spare_capacity()
 
             if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
-                    self.check_cookie_jar_type()
-                    if self._web_is_authenticated:
-                        await self.update_peak_shaving()
-                    else:
-                        await self.web_authenticate(do_update=True, throw401=False)
+                    await self.update_peak_shaving()
 
             if self.SGREADY_SUPPORTED:
-                self.check_cookie_jar_type()
-                if self._web_is_authenticated:
-                    await self.update_sgready_state()
-                else:
-                    await self.web_authenticate(do_update=True, throw401=False)
+                await self.update_sgready_state()
 
                 # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                 if self._QUERY_SGREADY_CONF_TS + 86400 < time():
-                    self.check_cookie_jar_type()
-                    if self._web_is_authenticated:
-                        await self.update_sgready_conf()
-                    else:
-                        await self.web_authenticate(do_update=True, throw401=False)
-
+                    await self.update_sgready_conf()
         else:
             await self.web_authenticate(do_update=True, throw401=False)
 
@@ -3984,7 +3627,7 @@ class MySenecWebPortal:
                     try:
                         r_json = await res.json()
                         _LOGGER.debug(f"web_update_now() response-recaived: {r_json}")
-                        self._raw = parse(r_json)
+                        self._web_raw = parse(r_json)
                         for key in (self._WEB_REQUEST_KEYS + self._WEB_REQUEST_KEYS_EXTRA):
                             if key in r_json:
                                 if key == "acculevel":
@@ -4060,63 +3703,6 @@ class MySenecWebPortal:
 
                         self._web_is_authenticated = False
                         await self.update()
-
-    # async def update_original_not_working_2025_07_21(self):
-    #     if self._app_is_authenticated:
-    #         _LOGGER.info("***** update(self) ********")
-    #         await self.app_update_now()
-    #         # thanks - app_totals currently not working
-    #         # await self.web_update_total()
-    #
-    #         # 30 min = 30 * 60 sec = 1800 sec
-    #         # if self._QUERY_TECH_DATA_TS + 1800 < time():
-    #         # well since we also get the system-state from the tech_data we call this
-    #         # monster object every time [I dislike this!]
-    #         await self.app_update_tech_data()
-    #
-    #         if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
-    #             await self.app_update_all_wallboxes()
-    #
-    #         # not used any longer... [going to use the App-API]
-    #         # await self.update_now_kW_stats()
-    #         # await self.update_full_kWh_stats()
-    #
-    #         if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
-    #             # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-    #             # 2025/06/19 - changed to 6h... = 86400/4 = 21600
-    #             if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
-    #                 self.check_cookie_jar_type()
-    #                 if self._web_is_authenticated:
-    #                     await self.update_spare_capacity()
-    #                 else:
-    #                     await self.web_authenticate(do_update=True, throw401=False)
-    #
-    #         if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
-    #             # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-    #             if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
-    #                 self.check_cookie_jar_type()
-    #                 if self._web_is_authenticated:
-    #                     await self.update_peak_shaving()
-    #                 else:
-    #                     await self.web_authenticate(do_update=True, throw401=False)
-    #
-    #         if self.SGREADY_SUPPORTED:
-    #             self.check_cookie_jar_type()
-    #             if self._web_is_authenticated:
-    #                 await self.update_sgready_state()
-    #             else:
-    #                 await self.web_authenticate(do_update=True, throw401=False)
-    #
-    #             # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-    #             if self._QUERY_SGREADY_CONF_TS + 86400 < time():
-    #                 self.check_cookie_jar_type()
-    #                 if self._web_is_authenticated:
-    #                     await self.update_sgready_conf()
-    #                 else:
-    #                     await self.web_authenticate(do_update=True, throw401=False)
-    #
-    #     else:
-    #         await self.app_authenticate(do_update=True)
 
     """This function will update peak shaving information"""
     async def update_peak_shaving(self):
@@ -4331,20 +3917,6 @@ class MySenecWebPortal:
                 _LOGGER.debug(
                     f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._web_sgready_conf_data}")
 
-    ###################################
-    # DUMMY METHODS [for the Bridge]
-    ###################################
-    def app_get_local_wallbox_mode_from_api_values(self, param):
-        pass
-
-    async def app_set_wallbox_mode(self, local_mode_to_set, wallbox_num, sync):
-        pass
-
-    async def app_set_allow_intercharge_all(self, value_to_set, sync):
-        pass
-
-    async def app_set_wallbox_icmax(self, value_to_set, wallbox_num, sync):
-        pass
 
     ###################################
     # JUST VALUE FUNCTIONS
@@ -4806,5 +4378,7 @@ class IntBridge:
 
     @staticmethod
     def avail() -> bool:
-        _LOGGER.debug(f"IntBridge.avail() -> IntBridge.app_api: {IntBridge.app_api is not None} IntBridge.lala_cgi: {IntBridge.lala_cgi is not None}")
-        return IntBridge.app_api is not None and IntBridge.lala_cgi is not None
+        _LOGGER.debug(f"IntBridge.avail() TEMP DEACTIVATED")
+        return False
+        #_LOGGER.debug(f"IntBridge.avail() -> IntBridge.app_api: {IntBridge.app_api is not None} IntBridge.lala_cgi: {IntBridge.lala_cgi is not None}")
+        #return IntBridge.app_api is not None and IntBridge.lala_cgi is not None
