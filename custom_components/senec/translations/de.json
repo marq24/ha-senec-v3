@@ -1145,7 +1145,8 @@
       }
     },
     "button": {
-      "system_reboot": {"name": "System Neustart"}
+      "system_reboot": {"name": "System Neustart"},
+      "delete_cache": {"name":  "Session Daten löschen"}
     }
   }
 }

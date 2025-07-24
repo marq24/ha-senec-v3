@@ -10,6 +10,7 @@ from . import SenecEntity, SenecDataUpdateCoordinator
 from .const import (
     DOMAIN,
     MAIN_BUTTON_TYPES,
+    WEB_BUTTON_TYPES,
     ExtButtonEntityDescription,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB)
@@ -18,13 +19,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, add_entity_cb: AddEntitiesCallback):
-    _LOGGER.debug("BUTTON async_setup_entry")
+    _LOGGER.info("BUTTON async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        pass
+        _LOGGER.info("No buttons for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        pass
+        for description in WEB_BUTTON_TYPES:
+            entity = SenecButton(coordinator, description)
+            entities.append(entity)
     else:
         is_2408_or_higher: bool = await coordinator._async_is2408_or_later()
 

@@ -1145,7 +1145,8 @@
       }
     },
     "button": {
-      "system_reboot": {"name": "Reboot System"}
+      "system_reboot": {"name": "Reboot System"},
+      "delete_cache": {"name":  "Delete session data"}
     }
   }
 }

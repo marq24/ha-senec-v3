@@ -17,13 +17,13 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
-    _LOGGER.debug("BINARY_SENSOR async_setup_entry")
+    _LOGGER.info("BINARY_SENSOR async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No binary_sensors for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        _LOGGER.info("No binary_sensors for WebPortal...")
+        _LOGGER.info("No binary_sensors for SENEC.WebAPI...")
     else:
         for description in MAIN_BIN_SENSOR_TYPES:
             entity = SenecBinarySensor(coordinator, description)

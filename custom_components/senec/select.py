@@ -20,13 +20,13 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
     """Initialize sensor platform from config entry."""
-    _LOGGER.debug("SELECT async_setup_entry")
+    _LOGGER.info("SELECT async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No selects for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        _LOGGER.info("No selects for WebPortal...")
+        _LOGGER.info("No selects for SENEC.WebAPI...")
     else:
         for description in MAIN_SELECT_TYPES:
             entity = SenecSelect(coordinator, description)

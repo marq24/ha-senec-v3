@@ -1,29 +1,26 @@
 import asyncio
 import base64
 import calendar
-# required to patch the CookieJar of aiohttp - thanks for nothing!
-import contextlib
+import hashlib
+import json
 import logging
-
 # all for the new openId stuff
 import os
-import json
-import string
-import secrets
-import hashlib
 import random
 import re
+import secrets
+import string
+import traceback
 from base64 import urlsafe_b64encode
-from urllib.parse import quote, urlparse, parse_qs
-
 from datetime import datetime, timezone, timedelta
+from json import JSONDecodeError
 from time import time
-from typing import Union, cast, Final
+from typing import Final
+from urllib.parse import quote, urlparse, parse_qs
 
 import aiohttp
 import xmltodict
 from aiohttp import ClientResponseError, ClientConnectorError
-from json import JSONDecodeError
 
 from custom_components.senec.const import (
     QUERY_PV1_KEY,
@@ -37,10 +34,12 @@ from custom_components.senec.const import (
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
-    CONF_APP_TOKEN,
     CONF_APP_SYSTEMID,
     CONF_APP_SERIALNUM,
     CONF_APP_WALLBOX_COUNT,
+    CONF_APP_DATA_START,
+    CONF_APP_DATA_END,
+    CONF_APP_TOTAL_DATA
 )
 from custom_components.senec.pysenec_ha.constants import (
     SYSTEM_STATE_NAME,
@@ -82,6 +81,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_ENERGY_FIELDS,
     SENEC_ENERGY_FIELDS_2408_MIN,
 )
+from custom_components.senec.pysenec_ha.phones import PHONE_BUILD_MAPPING
 from custom_components.senec.pysenec_ha.util import parse
 
 # 4: "INITIAL CHARGE",
@@ -107,7 +107,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SET_COOKIE = "Set-Cookie"
 
-class Senec:
+class SenecLocal:
     """Senec Home Battery Sensor"""
 
     _defaultHeaders = {
@@ -123,8 +123,9 @@ class Senec:
         "Keep-Alive": "timeout=60, max=0",
     }
 
-    def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None):
-        _LOGGER.info(f"restarting Senec lala.cgi integration... for host: '{host}' with options: {options}")
+    def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None, integ_version: str = None):
+        self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
+        _LOGGER.info(f"__init__() -> (re)starting SenecLocal (lala.cgi) integration v{self._integration_version}... for host: '{host}' with options: {options}")
         self._lang = lang
 
         # this property will be finally set on config_read
@@ -2267,40 +2268,36 @@ class Senec:
     def wallbox_1_set_icmax_extrema(self) -> [float]:
         if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[0] is not None:
             wb_data = IntBridge.app_api._app_raw_wallbox[0]
-            if "maxPossibleChargingCurrentInA" in wb_data:
-                if "minPossibleChargingCurrentInA" in wb_data:
-                    return [float(wb_data["minPossibleChargingCurrentInA"]),
-                            float(wb_data["maxPossibleChargingCurrentInA"])]
+            if "maxPossibleChargingCurrentInA" in wb_data and "minPossibleChargingCurrentInA" in wb_data:
+                return [float(wb_data["minPossibleChargingCurrentInA"]),
+                        float(wb_data["maxPossibleChargingCurrentInA"])]
         return None
 
     @property
     def wallbox_2_set_icmax_extrema(self) -> [float]:
         if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[1] is not None:
             wb_data = IntBridge.app_api._app_raw_wallbox[1]
-            if "maxPossibleChargingCurrentInA" in wb_data:
-                if "minPossibleChargingCurrentInA" in wb_data:
-                    return [float(wb_data["minPossibleChargingCurrentInA"]),
-                            float(wb_data["maxPossibleChargingCurrentInA"])]
+            if "maxPossibleChargingCurrentInA" in wb_data and "minPossibleChargingCurrentInA" in wb_data:
+                return [float(wb_data["minPossibleChargingCurrentInA"]),
+                        float(wb_data["maxPossibleChargingCurrentInA"])]
         return None
 
     @property
     def wallbox_3_set_icmax_extrema(self) -> [float]:
         if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[2] is not None:
             wb_data = IntBridge.app_api._app_raw_wallbox[2]
-            if "maxPossibleChargingCurrentInA" in wb_data:
-                if "minPossibleChargingCurrentInA" in wb_data:
-                    return [float(wb_data["minPossibleChargingCurrentInA"]),
-                            float(wb_data["maxPossibleChargingCurrentInA"])]
+            if "maxPossibleChargingCurrentInA" in wb_data and "minPossibleChargingCurrentInA" in wb_data:
+                return [float(wb_data["minPossibleChargingCurrentInA"]),
+                        float(wb_data["maxPossibleChargingCurrentInA"])]
         return None
 
     @property
     def wallbox_4_set_icmax_extrema(self) -> [float]:
         if IntBridge.avail() and IntBridge.app_api._app_raw_wallbox[3] is not None:
             wb_data = IntBridge.app_api._app_raw_wallbox[3]
-            if "maxPossibleChargingCurrentInA" in wb_data:
-                if "minPossibleChargingCurrentInA" in wb_data:
-                    return [float(wb_data["minPossibleChargingCurrentInA"]),
-                            float(wb_data["maxPossibleChargingCurrentInA"])]
+            if "maxPossibleChargingCurrentInA" in wb_data and "minPossibleChargingCurrentInA" in wb_data:
+                return [float(wb_data["minPossibleChargingCurrentInA"]),
+                        float(wb_data["maxPossibleChargingCurrentInA"])]
         return None
 
     @property
@@ -2448,7 +2445,7 @@ class Senec:
             post_data[section_key] = {value_key: value_data}
 
 
-class Inverter:
+class InverterLocal:
     """Senec Home Inverter addon"""
 
     _keepAliveHeaders = {
@@ -2456,7 +2453,9 @@ class Inverter:
         "Keep-Alive": "timeout=60, max=0",
     }
 
-    def __init__(self, host, inv_session):
+    def __init__(self, host, inv_session, integ_version: str = None):
+        self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
+        _LOGGER.info(f"__init__() -> (re)starting Inverter integration v{self._integration_version}... for host: '{host}'")
         self.host = host
         self.inv_session: aiohttp.websession = inv_session
         self.url1 = f"http://{host}/all.xml"
@@ -2468,8 +2467,7 @@ class Inverter:
         self._raw = None
         self._raw_version = None
         self._YIELD_DATA_READ_TS = 0
-        self._timeout = aiohttp.ClientTimeout(total=10, connect=None, sock_connect=None, sock_read=None,
-                                              ceil_threshold=5)
+        self._timeout = aiohttp.ClientTimeout(total=10, connect=None, sock_connect=None, sock_read=None, ceil_threshold=5)
 
     def dict_data(self) -> dict:
         # will be called by the UpdateCoordinator (to get the current data)
@@ -2812,10 +2810,10 @@ class Inverter:
 
 def app_has_dict_timeseries_with_values(a_dict:dict) -> bool:
     if (a_dict is None or
-            "timeseries" not in a_dict or
-            len(a_dict["timeseries"]) == 0 or
-            "measurements" not in a_dict["timeseries"][0] or
-            "values" not in a_dict["timeseries"][0]["measurements"]):
+            "timeSeries" not in a_dict or
+            len(a_dict["timeSeries"]) == 0 or
+            "measurements" not in a_dict["timeSeries"][0] or
+            "values" not in a_dict["timeSeries"][0]["measurements"]):
         _LOGGER.debug(f"Data '{a_dict}' does not contain the expected structure for timeseries measurements.")
         return False
     return True
@@ -2825,25 +2823,25 @@ def app_summ_total_dict_values(src_dict, dest_dict):
     #src_dict = app_aggregate_timeseries_data_if_needed(src_dict)
 
     # Get the value arrays from both dictionaries
-    src_values = src_dict["timeseries"][0]["measurements"]["values"]
-    dest_values = dest_dict["timeseries"][0]["measurements"]["values"]
+    src_values = src_dict["timeSeries"][0]["measurements"]["values"]
+    dest_values = dest_dict["timeSeries"][0]["measurements"]["values"]
 
     # Add corresponding values together
     summed_values = [src_val + dest_val for src_val, dest_val in zip(src_values, dest_values)]
 
     # Create a result dictionary with the structure of the first one
-    dest_dict["timeseries"][0]["measurements"]["values"] = summed_values
+    dest_dict["timeSeries"][0]["measurements"]["values"] = summed_values
     return dest_dict
 
 def app_aggregate_timeseries_data_if_needed(data):
-    if data is None or not data["timeseries"] or len(data["timeseries"]) == 1:
+    if data is None or not data["timeSeries"] or len(data["timeSeries"]) == 1:
         return data
 
-    first_date = data["timeseries"][0]['date']
+    first_date = data["timeSeries"][0]['date']
     total_duration = 0
     total_values = [0] * len(data["measurements"])
 
-    for ts in data["timeseries"]:
+    for ts in data["timeSeries"]:
         total_duration += ts["measurements"]["durationInSeconds"]
         values = ts["measurements"]["values"]
         for i in range(len(values)):
@@ -2851,8 +2849,8 @@ def app_aggregate_timeseries_data_if_needed(data):
 
     return {
         "measurements": data["measurements"],
-        "totals": data["totals"],
-        "timeseries": [{
+        "totals": data["totals"] if "totals" in data else {},
+        "timeSeries": [{
             "date": first_date,
             "measurements": {
                 "durationInSeconds": total_duration,
@@ -2861,45 +2859,33 @@ def app_aggregate_timeseries_data_if_needed(data):
         }]
     }
 
-def app_get_utc_date_start(year, month:int=1, day:int=-1):
+STRFTIME_DATE_FORMAT:Final = '%Y-%m-%dT%H:%M:%SZ'
+def app_get_utc_date_start(year, month:int = 1, day:int = -1):
     # January 1st at 00:00:00 UTC+1 of the year
     if day < 1:
         day = 1
-    return int(datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+    #return int(datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+    return datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
-def app_get_utc_date_end(year, month:int=12, day:int=-1):
+def app_get_utc_date_end(year, month:int = 12, day:int = -1):
     # December 31st at 23:59:59 UTC+1 of the year
     if day < 1:
         day = calendar.monthrange(year, month)[1]
-    return int(datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).timestamp())
+    #return int(datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).timestamp())
+    return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
-class MySenecWebPortal:
+class SenecOnline:
+    USE_DEFAULT_USER_AGENT:Final = True
+    WALLBOX_IS_TODO:Final = True
 
-    #USER_AGENT: Final = "SENEC.App okhttp/4.12.0"
-    WEB_USER_AGENT: Final = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
-
-    _default_web_headers = {
-        "User-Agent": WEB_USER_AGENT,
-        "Connection": "keep-alive",
-        "Keep-Alive": "timeout=60, max=1000",
-    }
-
-    def __init__(self, user, pwd, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None):
+    def __init__(self, user, pwd, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None, tokens_location: str = None, integ_version: str = None):
+        self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
+        self._init_user_agents()
         self._lang = lang
         if options is not None:
-            logging_options = dict(options)
-            if CONF_APP_TOKEN in options:
-                del logging_options[CONF_APP_TOKEN]
-                logging_options[CONF_APP_TOKEN] = "<MASKED>"
-            if CONF_APP_SYSTEMID in options:
-                del logging_options[CONF_APP_SYSTEMID]
-                logging_options[CONF_APP_SYSTEMID] = "<MASKED>"
-            if CONF_APP_SERIALNUM in options:
-                del logging_options[CONF_APP_SERIALNUM]
-                logging_options[CONF_APP_SERIALNUM] = "<MASKED>"
-            _LOGGER.info(f"__init__() -> (re)starting MySenecWebPortal... for user: '{user}' with options: {logging_options}")
+            _LOGGER.info(f"__init__() -> (re)starting SenecOnline v{self._integration_version}... for user: '{user}' with options: {options}")
         else:
-            _LOGGER.info(f"__init__() -> (re)starting MySenecWebPortal... for user: '{user}' without options")
+            _LOGGER.info(f"__init__() -> (re)starting SenecOnline v{self._integration_version}... for user: '{user}' without options")
 
         # check if peak shaving is in options
         if options is not None and QUERY_WALLBOX_KEY in options:
@@ -2919,8 +2905,17 @@ class MySenecWebPortal:
         # Variable to save the latest update time for peak shaving
         self._QUERY_PEAK_SHAVING_TS = 0
 
+        # Variable to save the latest update time for SG-Ready state
+        self._QUERY_SGREADY_STATE_TS = 0
+
         # Variable to save the latest update time for SG-Ready configuration
         self._QUERY_SGREADY_CONF_TS = 0
+
+        # Variable to save the latest update time for Total data...
+        self._QUERY_TOTALS_TS = 0
+
+        # Variable to save the latest update time for system-details data...
+        self._QUERY_SYSTEM_DETAILS_TS = 0
 
         self.web_session: aiohttp.websession = web_session
 
@@ -2992,45 +2987,126 @@ class MySenecWebPortal:
         ###################################
         # SenecApp
         ###################################
-        if (options is not None and
-            CONF_APP_TOKEN in options and options[CONF_APP_TOKEN] is not None and
-            CONF_APP_SYSTEMID in options and options[CONF_APP_SYSTEMID] is not None and
-            CONF_APP_SERIALNUM in options and options[CONF_APP_SERIALNUM] is not None and
-            CONF_APP_WALLBOX_COUNT in options
-        ):
-            self._app_is_authenticated = True
-            self._app_token = options[CONF_APP_TOKEN]
-            self._app_master_plant_id = options[CONF_APP_SYSTEMID]
-            self._app_serial_number = options[CONF_APP_SERIALNUM]
-            self._app_wallbox_num_max = options[CONF_APP_WALLBOX_COUNT]
+        # OpenID related fields...
+        self.APP_OPENID_CLIENT_ID: Final= "endcustomer-app-frontend"
+        self.APP_REDIRECT_URI: Final    = "senec-app-auth://keycloak.prod"
+        #self.APP_SCOPE: Final           = "email roles profile web-origins meinsenec openid"
+        # based on the feedback from @ledermann we can use reduced scope
+        self.APP_SCOPE: Final           = "roles profile meinsenec"
+
+        # these fields are all not required - since 'mein-senec.de' will not include a 'code_challenge'
+        #self.WEB_OPENID_CLIENT_ID: Final= "meinsenec-login-portal"
+        #self.WEB_REDIRECT_URI: Final    = "https://mein-senec.de/login/oauth2/code/login-portal"
+        #self.WEB_SCOPE: Final           = "openid"
+
+        SSO_BASE_URL    = "https://sso.senec.com/realms/senec/protocol/openid-connect"
+        self.LOGIN_URL  = SSO_BASE_URL + "/auth?redirect_uri={redirect_url}&client_id={client_id}&response_type=code&prompt=login&state={state}&nonce={nonce}&scope={scope}&code_challenge={code_challenge}&code_challenge_method=S256"
+        self.TOKEN_URL  = SSO_BASE_URL + "/token"
+        self._code_verifier = None
+
+        APP_SYSTEM_BASE_URL         = "https://senec-app-systems-proxy.prod.senec.dev"
+        self.APP_SYSTEM_LIST        = APP_SYSTEM_BASE_URL + "/v1/systems"
+        self.APP_SYSTEM_DETAILS     = APP_SYSTEM_BASE_URL + "/systems/{master_plant_id}/details"
+        self.APP_SYSTEM_STATUS      = APP_SYSTEM_BASE_URL + "/systems/status/{master_plant_id}"
+
+        # post https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{{SENEC_ANLAGE}}/wallboxes/measurements?wallboxIds=1&resolution=HOUR&from=2025-07-20T22%3A00%3A00Z&to=2025-07-21T22%3A00%3A00Z
+        # patch https://senec-app-wallbox-proxy.prod.senec.dev/v1/systems/{{SENEC_ANLAGE}}/wallboxes/1/locked/true
+        # patch https://senec-app-wallbox-proxy.prod.senec.dev/v1/systems/{{SENEC_ANLAGE}}/wallboxes/1/locked/false
+        # THIS IS probably NOT correct!!!
+        APP_WALLBOX_BASE_URL        = "https://senec-app-wallbox-proxy.prod.senec.dev"
+        self.APP_SET_WALLBOX        = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}"
+
+        self.APP_WALLBOX_SEARCH     = APP_WALLBOX_BASE_URL + "/v1/systems/wallboxes/search"
+        self.APP_SET_WALLBOX_FC     = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/fast-charge"
+        self.APP_SET_WALLBOX_SC     = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/solar-charge"
+
+        APP_ABILITIES_BASE_URL      = "https://senec-app-abilities-proxy.prod.senec.dev"
+        self.APP_ABILITIES_LIST     = APP_ABILITIES_BASE_URL + "/abilities/packages/{master_plant_id}"
+
+        self.APP_MEASURE_BASE_URL   = "https://senec-app-measurements-proxy.prod.senec.dev"
+        self.APP_MEASURE_DATA_AVAIL = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
+        self.APP_MEASURE_DASHBOARD  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
+        self.APP_MEASURE_TOTAL      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
+
+        # https://senec-app-systems-proxy.prod.senec.dev/systems/settings/user-energy-settings?systemId={master_plant_id}
+        # -> http 204 NO-CONTENT
+
+        self._app_master_plant_number = app_master_plant_number
+        # app-token related stuff...
+        self._app_stored_tokens_location = None
+        if tokens_location is None:
+            self._app_stored_tokens_location = f".storage/senec/{user}_access_token.txt"
         else:
-            self._app_is_authenticated = False
-            self._app_token = None
-            self._app_master_plant_id = None
-            self._app_serial_number = None
-            self._app_wallbox_num_max = 4
+            self._app_stored_tokens_location = tokens_location
 
-        # we still need to init the objects...
+        self._app_token_object = {}
+        self._app_is_authenticated = False
+        self._app_token = None
+        # the '_app_master_plant_id' will be used in any further request to
+        # the senec endpoints as part of the URL..
+        self._app_master_plant_id = None
+        self._app_serial_number = None
+        self._app_wallbox_num_max = 4
+        self._app_data_start_ts = -1
+        self._app_data_end_ts = -1
+        self._app_abilities = None # list of available features []
+
+        # done...
         self._app_raw_now = None
+        self._app_raw_device_state = None
         self._app_raw_today = None
+        self._app_raw_system_details = None
+        self._app_raw_system_state_obj = None
         self._app_raw_total = None
-        self._app_raw_tech_data = None
-        self._app_raw_wallbox = [None, None, None, None]
-        # self._static_TOTAL_SUMS_PREV_YEARS = None
-        # self._static_TOTAL_SUMS_PREV_MONTHS = None
-        # self._static_TOTAL_SUMS_PREV_DAYS = None
-        # self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
-        # self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
-        # self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
+        # for our TOTAL values...
+        self._static_TOTAL_SUMS_PREV_YEARS = None
+        self._static_TOTAL_SUMS_PREV_MONTHS = None
+        self._static_TOTAL_SUMS_PREV_DAYS = None
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
 
-        # self._QUERY_TECH_DATA_TS = 0
+        # TODO: WALLBOX
+        self._app_raw_wallbox = [None, None, None, None]
+
         IntBridge.app_api = self
-        _LOGGER.debug(f"MySenecWebPortal initialized and IntBridge.app_api set to {self}")
+        _LOGGER.debug(f"SenecOnline initialized and IntBridge.app_api set to {self}")
         if IntBridge.avail():
             # ok local-polling (lala.cgi) is already existing...
             if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
                 self._QUERY_WALLBOX = True
                 _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
+
+    def _init_user_agents(self):
+        self.DEFAULT_USER_AGENT= f"SENEC.Home V2.x/V3/V4 Integration/{self._integration_version} (+https://github.com/marq24/ha-senec-v3)"
+        WEB_USER_AGENT: Final = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+        self._default_web_headers = {
+            "User-Agent": self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else WEB_USER_AGENT,
+            "Connection": "keep-alive",
+            "Keep-Alive": "timeout=60, max=1000",
+        }
+
+        phone_model = random.choice(list(PHONE_BUILD_MAPPING.keys()))
+        phone_data = PHONE_BUILD_MAPPING[phone_model]
+        build_version = random.choice(phone_data["builds"])
+        android_version = phone_data["android_version"]
+        api_level = phone_data["api_level"]
+
+        APP_WEB_USER_AGENT: Final = f"Mozilla/5.0 (Linux; Android {android_version}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36"
+        APP_APP_USER_AGENT: Final = f"SENEC.App/4.8.1 (com.senecapp; build:1613; Android SDK {api_level}; Model:{phone_model}) okhttp/4.12.0"
+        self.APP_SSO_USER_AGENT = f"Dalvik/2.1.0 (Linux; Android {android_version}; {phone_model} Build/{build_version})"
+
+        self._default_app_web_headers = {
+            "User-Agent": self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else APP_WEB_USER_AGENT,
+            "Connection": "keep-alive",
+            "Keep-Alive": "timeout=60, max=1000",
+        }
+        self._default_app_headers = {
+            "User-Agent": self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else APP_APP_USER_AGENT,
+            "Accept-Encoding": "gzip",
+            "Connection": "keep-alive",
+            "x-device-type": "mobile"
+        }
 
     def dict_data(self) -> dict:
         # will be called by the UpdateCoordinator (to get the current data)
@@ -3038,9 +3114,12 @@ class MySenecWebPortal:
             "now": self._app_raw_now,
             "today": self._app_raw_today,
             "total": self._app_raw_total,
-            "tech_data": self._app_raw_tech_data,
+            "system_state_name": self._app_raw_device_state,
+            "system_state_object": self._app_raw_system_state_obj,
+            "system_details": self._app_raw_system_details,
             "wallbox": self._app_raw_wallbox,
             "mein-senec": {
+                "raw": self._web_raw,
                 "energy_entities": self._web_energy_entities,
                 "power_entities": self._web_power_entities,
                 "battery_entities": self._web_battery_entities,
@@ -3059,12 +3138,13 @@ class MySenecWebPortal:
         if hasattr(self.web_session, "_cookie_jar"):
             self.web_session._cookie_jar.clear()
 
+    """Make sure that app and web will be initialized and authenticated before any other calls will be made"""
     async def authenticate_all(self):
-        # if not self._app_is_authenticated:
-        #     await self.app_authenticate(do_update=False, retry=False)
-        # else:
-        #     _LOGGER.debug(f"APP-API: already authenticated, skip app_authenticate() [{self._app_serial_number} - {self._app_master_plant_id}]")
+        # SenecApp stuff...
+        if not self._app_is_authenticated:
+            await self.app_authenticate()
 
+        # mein-senec.de Web stuff...
         if not self._web_is_authenticated:
             await self.web_authenticate(do_update=False, throw401=False)
 
@@ -3080,45 +3160,270 @@ class MySenecWebPortal:
             "SerialNumber": self._web_serial_number,
         }}
 
-    # async def app_get_wallbox_data(self, wallbox_num: int = 1, retry: bool = True):
+    async def update(self):
+        success = await self.app_update()
+        if not success:
+            await self.web_update()
+
+    async def app_update(self):
+        try:
+            if self._app_is_authenticated:
+                _LOGGER.info("***** app_update(self) ********")
+                # calling system details just on reastrt...
+                if self._app_raw_system_details is None:
+                    await self.app_get_system_details()
+                # # 30min * 60 sec = 1800 sec
+                # if self._QUERY_SYSTEM_DETAILS_TS + 1800 < time():
+                #     # since we also get the system-state from the system_details we call this
+                #     # monster object every time [I dislike this!]
+                #     await self.app_get_system_details()
+
+                await self.app_get_dashboard()
+                # the dashboard already contain a system-state (might be just in english)
+                # but for the start we can skipp this call
+                # await self.app_get_system_status()
+
+                # only request the totals at min update of 10 minutes
+                # 10min * 60 sec = 600 sec - 5sec
+                if self._QUERY_TOTALS_TS + 595 < time():
+                    await self.app_update_total()
+
+                if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
+                    await self.app_update_all_wallboxes()
+
+                if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
+                    # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                    # 2025/06/19 - changed to 6h... = 86400/4 = 21600
+                    if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
+                        await self.web_update_spare_capacity()
+
+                if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
+                    # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                    if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
+                        await self.web_update_peak_shaving()
+
+                if self.SGREADY_SUPPORTED:
+                    # 6h = 6 * 60 min = 6 * 60 * 60 sec = 21600 sec
+                    if self._QUERY_SGREADY_STATE_TS + 21600 < time():
+                        await self.web_update_sgready_state()
+                    # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                    if self._QUERY_SGREADY_CONF_TS + 86400 < time():
+                        await self.web_update_sgready_conf()
+
+                return True
+            else:
+                # just brute-force getting a new login...
+                await self._initial_token_request_01_start()
+        except BaseException as exc:
+            stack_trace = traceback.format_stack()
+            stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
+            _LOGGER.warn(f"app_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
+        return False
+
+    async def web_update(self):
+        try:
+            if self._web_is_authenticated:
+                _LOGGER.info("***** web_update(self) ********")
+                await self.web_update_now()
+                # update totals only every 20 minutes
+                if self._QUERY_TOTALS_TS + 1200 < time():
+                    await self.web_update_total()
+
+                if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
+                    # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                    # 2025/06/19 - changed to 6h... = 86400/4 = 21600
+                    if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
+                        await self.web_update_spare_capacity()
+
+                if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
+                    # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                    if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
+                        await self.web_update_peak_shaving()
+
+                if self.SGREADY_SUPPORTED:
+                    # 6h = 6 * 60 min = 6 * 60 * 60 sec = 21600 sec
+                    if self._QUERY_SGREADY_STATE_TS + 21600 < time():
+                        await self.web_update_sgready_state()
+                    # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
+                    if self._QUERY_SGREADY_CONF_TS + 86400 < time():
+                        await self.web_update_sgready_conf()
+
+            else:
+                await self.web_authenticate(do_update=True, throw401=False)
+        except BaseException as exc:
+            stack_trace = traceback.format_stack()
+            stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
+            _LOGGER.warn(f"web_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
+
+    # async def app_update_total_2025(self, retry: bool = True):
+    #     # https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{self._app_master_plant_id}/data-availability/timespan?timezone=Europe%2FBerlin
+    #
+    #     _LOGGER.debug("***** APP-API: app_update_total(self) ********")
+    #     if self._app_master_plant_id is not None:
+    #         # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
+    #
+    #         #today = datetime.now(timezone.utc) #+ relativedelta(months=+1)
+    #         #to_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
+    #         #status_url = f"{self._SENEC_APP_TOTAL_V3}" % (str(self._app_master_plant_id), to_date)
+    #
+    #         status_url = f"https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{self._app_master_plant_id}/measurements?resolution=MONTH&from=2024-12-31T23%3A00%3A00Z&to=2025-12-31T23%3A00%3A00Z"
+    #         data = await self.app_get_data(a_url=status_url)
+    #         _LOGGER.debug(f"APP-API: app_update_total_2025() - fetched data: {data}")
+    #     else:
+    #         if retry:
+    #             await self.app_authenticate()
+    #             await self.app_update_total_2025(retry=False)
+
+    """SENEC-APP OLD WALLBOX STUFF - MUST be still migrated"""
+    async def app_update_all_wallboxes(self):
+        # NEW OBJECT
+        # sample_data =[
+        #     {
+        #         "id": "1",
+        #         "productFamily": None,
+        #         "controllerId": "Sxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        #         "name": "Wallbox 1",
+        #         "prohibitUsage": False,
+        #         "isInterchargeAvailable": True,
+        #         "isSolarChargingAvailable": True,
+        #         "type": "V123",
+        #         "state": {
+        #             "electricVehicleConnected": False,
+        #             "hasError": False,
+        #             "temperatureInCelsius": 27.498,
+        #             "isCharging": False,
+        #             "statusCode": "WAITING_FOR_EV"
+        #         },
+        #         "chargingMode": {
+        #             "type": "SOLAR",
+        #             "allowIntercharge": True,
+        #             "compatibilityMode": True,
+        #             "fastChargingSettings": {
+        #                 "allowIntercharge": True
+        #             },
+        #             "comfortChargeSettings": {
+        #                 "allowIntercharge": False,
+        #                 "compatibilityMode": True,
+        #                 "configuredChargingCurrent": 9,
+        #                 "activeWeekDays": [
+        #                     "MON",
+        #                     "THU",
+        #                     "FRI"
+        #                 ],
+        #                 "useDynamicTariffs": None,
+        #                 "chargingPeriodFromGridInH": None,
+        #                 "priceLimitInCtPerKwh": None
+        #             },
+        #             "solarOptimizeSettings": {
+        #                 "compatibilityMode": True,
+        #                 "minChargingCurrentInA": 9,
+        #                 "useDynamicTariffs": None,
+        #                 "priceLimitInCtPerKwh": None
+        #             }
+        #         },
+        #         "chargingCurrents": {
+        #             "minPossibleCharging": 6,
+        #             "configuredChargingCurrent": 9,
+        #             "currentApparentChargingPowerInKw": 0
+        #         },
+        #         "chargingPowerStats": {
+        #             "phase1": {
+        #                 "min": 2.07,
+        #                 "max": 3.685
+        #             },
+        #             "phase2": {
+        #                 "min": 4.14,
+        #                 "max": 7.369
+        #             },
+        #             "phase3": {
+        #                 "min": 6.21,
+        #                 "max": 11.054
+        #             },
+        #             "numberOfPhasesUsed": 0
+        #         },
+        #         "disconnected": False
+        #     }
+        # ]
+
+        # OLD OBJECT
+        # sample_data = {
+        #     "id": 1,
+        #     "configurable": True,
+        #     "maxPossibleChargingCurrentInA": 16.02,
+        #     "minPossibleChargingCurrentInA": 6,
+        #     "chargingMode": "SMART_SELF_GENERATED_COMPATIBILITY_MODE",
+        #     "currentApparentChargingPowerInVa": 4928,
+        #     "electricVehicleConnected": True,
+        #     "hasError": False,
+        #     "statusText": "Lädt",
+        #     "configuredMaxChargingCurrentInA": 16.02,
+        #     "configuredMinChargingCurrentInA": 8,
+        #     "temperatureInCelsius": 17.284,
+        #     "numberOfElectricPowerPhasesUsed": 3,
+        #     "allowIntercharge": None,
+        #     "compatibilityMode": True
+        # }
+
+        _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
+        data = await self._app_do_get_request(self.APP_WALLBOX_SEARCH)
+        # the data should be an array... and this array should have the same length then
+        # our known wallboxes... [but it's better to check that]
+
+        # Check if data is valid and has content
+        if not data or not isinstance(data, list):
+            _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list {data}")
+            return
+
+        # Check if we have enough data for all expected wallboxes
+        if len(data) < self._app_wallbox_num_max:
+            _LOGGER.info(f"app_update_all_wallboxes(): Expected {self._app_wallbox_num_max} wallboxes but only received {len(data)}")
+
+        max_idx = min(len(data), self._app_wallbox_num_max)
+
+        # python: 'range(x, y)' will not include 'y'
+        for idx in range(0, max_idx):
+            self._app_raw_wallbox[idx] = data[idx]
+
+    # OLD WALLBOX Objects...
+    # async def app_get_wallbox_data(self, wallbox_num: int = 1):
+    #     # {
+    #     #     "id": 1,
+    #     #     "configurable": true,
+    #     #     "maxPossibleChargingCurrentInA": 16.02,
+    #     #     "minPossibleChargingCurrentInA": 6,
+    #     #     "chargingMode": "SMART_SELF_GENERATED_COMPATIBILITY_MODE",
+    #     #     "currentApparentChargingPowerInVa": 4928,
+    #     #     "electricVehicleConnected": true,
+    #     #     "hasError": false,
+    #     #     "statusText": "Lädt",
+    #     #     "configuredMaxChargingCurrentInA": 16.02,
+    #     #     "configuredMinChargingCurrentInA": 8,
+    #     #     "temperatureInCelsius": 17.284,
+    #     #     "numberOfElectricPowerPhasesUsed": 3,
+    #     #     "allowIntercharge": null,
+    #     #     "compatibilityMode": true
+    #     # }
     #     _LOGGER.debug("***** APP-API: app_get_wallbox_data(self) ********")
+    #     if self._app_master_plant_id is None:
+    #         await self.app_get_master_plant_id()
+    #
     #     if self._app_master_plant_id is not None:
     #         idx = wallbox_num - 1
-    #         wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
-    #         data = await self.app_get_data(a_url=wb_url)
+    #         wb_url = self.APP_SET_WALLBOX.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+    #         data = await self._app_do_get_request(a_url=wb_url)
     #         if data is not None:
     #             self._app_raw_wallbox[idx] = data
     #         else:
     #             self._app_raw_wallbox[idx] = None
+    #     # else:
+    #     #     if retry:
+    #     #         await self.app_authenticate()
+    #     #         if self._app_wallbox_num_max >= wallbox_num:
+    #     #             await self.app_get_wallbox_data(wallbox_num=wallbox_num, retry=False)
+    #     #         else:
+    #     #             _LOGGER.debug(f"APP-API cancel 'app_get_wallbox_data' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
     #
-    #         # {
-    #         #     "id": 1,
-    #         #     "configurable": true,
-    #         #     "maxPossibleChargingCurrentInA": 16.02,
-    #         #     "minPossibleChargingCurrentInA": 6,
-    #         #     "chargingMode": "SMART_SELF_GENERATED_COMPATIBILITY_MODE",
-    #         #     "currentApparentChargingPowerInVa": 4928,
-    #         #     "electricVehicleConnected": true,
-    #         #     "hasError": false,
-    #         #     "statusText": "Lädt",
-    #         #     "configuredMaxChargingCurrentInA": 16.02,
-    #         #     "configuredMinChargingCurrentInA": 8,
-    #         #     "temperatureInCelsius": 17.284,
-    #         #     "numberOfElectricPowerPhasesUsed": 3,
-    #         #     "allowIntercharge": null,
-    #         #     "compatibilityMode": true
-    #         # }
-    #
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             if self._app_wallbox_num_max >= wallbox_num:
-    #                 await self.app_get_wallbox_data(wallbox_num=wallbox_num, retry=False)
-    #             else:
-    #                 _LOGGER.debug(
-    #                     f"APP-API cancel 'app_get_wallbox_data' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
-    #
-    # async def app_update_all_wallboxes(self):
+    # async def app_update_all_wallboxes_before_sso(self):
     #     _LOGGER.debug(f"APP-API app_update_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
     #     # ok we go through all possible wallboxes [1-4] and check, if we can receive some
     #     # data - if there is no data, then we make sure, that next time we do not query
@@ -3130,7 +3435,692 @@ class MySenecWebPortal:
     #             if self._app_raw_wallbox[idx] is None and self._app_wallbox_num_max > idx:
     #                 _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
     #                 self._app_wallbox_num_max = idx
-    #
+
+    async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
+        # TODO: WALLBOX
+        if self.WALLBOX_IS_TODO:
+            _LOGGER.info(f"app_set_wallbox_mode() currently not supported by the APP-API")
+            return
+
+        _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
+        idx = wallbox_num - 1
+        cur_local_mode = self.app_get_local_wallbox_mode_from_api_values(idx)
+        if cur_local_mode == local_mode_to_set:
+            _LOGGER.debug(f"APP-API skipp mode change since '{local_mode_to_set}' already set")
+        else:
+            if self._app_master_plant_id is None:
+                await self.app_get_master_plant_id()
+
+            if self._app_master_plant_id is not None:
+                data = None
+                api_mode_to_set = None
+                compatibility_mode_to_set = None
+
+                if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
+                    data = {
+                        "mode": APP_API_WB_MODE_LOCKED
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_LOCKED
+                elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_3:
+                    data = {
+                        "mode": APP_API_WB_MODE_SSGCM,
+                        "compatibilityMode": True
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_SSGCM
+                    compatibility_mode_to_set = True
+                elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
+                    data = {
+                        "mode": APP_API_WB_MODE_SSGCM,
+                        "compatibilityMode": False
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_SSGCM
+                    compatibility_mode_to_set = False
+                elif local_mode_to_set == LOCAL_WB_MODE_FASTEST:
+                    data = {
+                        "mode": APP_API_WB_MODE_FASTEST
+                    }
+                    api_mode_to_set = APP_API_WB_MODE_FASTEST
+
+                if data is not None:
+                    wb_url = self.APP_SET_WALLBOX.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+                    success: bool = await self._app_do_post_request(a_url=wb_url, post_data=data)
+
+                    if success:
+                        # setting the internal storage value...
+                        if self._app_raw_wallbox[idx] is not None:
+                            self._app_raw_wallbox[idx]["chargingMode"] = api_mode_to_set
+                            if compatibility_mode_to_set is not None:
+                                self._app_raw_wallbox[idx]["compatibilityMode"] = compatibility_mode_to_set
+
+                        # do we need to sync the value back to the 'lala_cgi' integration?
+                        if sync and IntBridge.avail():
+                            # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
+                            # is no sync=False parameter here...
+                            await IntBridge.lala_cgi.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
+
+                        # when we changed the mode, the backend might have automatically adjusted the
+                        # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
+                        # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
+                        await asyncio.sleep(2)
+                        await self.app_get_wallbox_data(wallbox_num=wallbox_num)
+                        if self._app_raw_wallbox[idx] is not None:
+                            if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
+                                new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
+                            else:
+                                new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
+
+                            new_min_current = str(round(float(new_min_current_tmp), 2))
+                            cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+
+                            if cur_min_current != new_min_current:
+                                _LOGGER.debug(f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
+                                                                                   value=float(new_min_current),
+                                                                                   sync=False, verify_state=False)
+                            else:
+                                _LOGGER.debug(f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+
+                        else:
+                            _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
+            # else:
+            #     if retry:
+            #         await self.app_authenticate()
+            #         if self._app_wallbox_num_max >= wallbox_num:
+            #             await self.app_set_wallbox_mode(local_mode_to_set=local_mode_to_set, wallbox_num=wallbox_num, sync=sync, retry=False)
+            #         else:
+            #             _LOGGER.debug(f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+
+    async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
+        # TODO: WALLBOX
+        if self.WALLBOX_IS_TODO:
+            _LOGGER.info(f"app_set_wallbox_icmax() currently not supported by the APP-API")
+            return
+
+        _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        if self._app_master_plant_id is not None:
+            idx = wallbox_num - 1
+            current_mode = APP_API_WB_MODE_SSGCM
+
+            if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
+
+            data = {
+                "mode": current_mode,
+                "minChargingCurrentInA": float(round(value_to_set, 2))
+            }
+
+            wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+            success: bool = await self._app_do_post_request(a_url=wb_url, post_data=data)
+            if success:
+                # setting the internal storage value...
+                if self._app_raw_wallbox[idx] is not None:
+                    self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"] = value_to_set
+
+                # do we need to sync the value back to the 'lala_cgi' integration?
+                if sync and IntBridge.avail():
+                    await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
+        # else:
+        #     if retry:
+        #         await self.app_authenticate()
+        #         if self._app_wallbox_num_max >= wallbox_num:
+        #             await self.app_set_wallbox_icmax(value_to_set=value_to_set, wallbox_num=wallbox_num, sync=sync, retry=False)
+        #         else:
+        #             _LOGGER.debug(f"APP-API cancel 'app_set_wallbox_icmax' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+
+    async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
+        # TODO: WALLBOX
+        if self.WALLBOX_IS_TODO:
+            _LOGGER.info(f"app_set_allow_intercharge_all() currently not supported by the APP-API")
+            return
+
+        _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                res = await self._app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
+                if not res and self._app_wallbox_num_max > idx:
+                    _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
+                    self._app_wallbox_num_max = idx
+
+    async def _app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True) -> bool:
+        _LOGGER.debug("***** APP-API: _app_set_allow_intercharge(self) ********")
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        if self._app_master_plant_id is not None:
+            idx = wallbox_num - 1
+
+            current_mode = APP_API_WB_MODE_LOCKED
+            if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
+                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
+
+            data = {
+                "mode": current_mode,
+                "allowIntercharge": value_to_set
+            }
+
+            wb_url = self.APP_SET_WALLBOX_FC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+            success: bool = await self._app_do_post_request(a_url=wb_url, post_data=data)
+            if success:
+                # setting the internal storage value...
+                if self._app_raw_wallbox[idx] is not None:
+                    self._app_raw_wallbox[idx]["allowIntercharge"] = value_to_set
+
+                # do we need to sync the value back to the 'lala_cgi' integration?
+                if sync and IntBridge.avail():
+                    await IntBridge.lala_cgi.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
+            return success
+        # else:
+        #     if retry:
+        #         await self.app_authenticate()
+        #         if self._app_wallbox_num_max >= wallbox_num:
+        #             return await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=wallbox_num, sync=sync, retry=False)
+        #         else:
+        #             _LOGGER.debug(f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+        #             return False
+        #     else:
+        #         return False
+        return False
+
+    def app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
+        # TODO: WALLBOX
+        if self.WALLBOX_IS_TODO:
+            _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values() currently not supported by the APP-API")
+            return LOCAL_WB_MODE_UNKNOWN
+
+        if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+            if "chargingMode" in self._app_raw_wallbox[idx]:
+                api_mode = self._app_raw_wallbox[idx]["chargingMode"]
+
+                # TODO: WALLBOX I guess we have here new values 'APP_API_WB_MODE...'
+                if api_mode == APP_API_WB_MODE_SSGCM:
+                    if self.app_is_wallbox_compatibility_mode_on(idx=idx):
+                        return LOCAL_WB_MODE_SSGCM_3
+                    else:
+                        return LOCAL_WB_MODE_SSGCM_4
+
+                elif api_mode == APP_API_WB_MODE_FASTEST:
+                    return LOCAL_WB_MODE_FASTEST
+
+                elif api_mode == APP_API_WB_MODE_LOCKED:
+                    return LOCAL_WB_MODE_LOCKED
+
+        return LOCAL_WB_MODE_UNKNOWN
+
+    def app_get_api_wallbox_mode_from_local_value(self, local_mode: str) -> str:
+        if local_mode == LOCAL_WB_MODE_LOCKED:
+            return APP_API_WB_MODE_LOCKED
+        elif local_mode == LOCAL_WB_MODE_SSGCM_3:
+            return APP_API_WB_MODE_SSGCM
+        elif local_mode == LOCAL_WB_MODE_SSGCM_4:
+            return APP_API_WB_MODE_SSGCM
+        elif local_mode == LOCAL_WB_MODE_FASTEST:
+            return APP_API_WB_MODE_FASTEST
+        return local_mode
+
+    def app_is_wallbox_compatibility_mode_on(self, idx: int):
+        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
+            if "compatibilityMode" in self._app_raw_wallbox[idx]:
+                val = self._app_raw_wallbox[idx]["compatibilityMode"]
+                if isinstance(val, bool):
+                    return val
+                else:
+                    return str(val).lower() == 'true'
+        return False
+
+
+    """SENEC-APP from here"""
+    async def app_authenticate(self):
+        # SenecApp stuff...
+        await self.app_verify_token()
+        if not self._app_is_authenticated:
+            await self._initial_token_request_01_start()
+        elif self._app_master_plant_id is None:
+            _LOGGER.debug(f"authenticate_all(): 'app_master_plant_id' is None - calling app_get_master_plant_id()")
+            await self.app_get_master_plant_id()
+        else:
+            _LOGGER.debug(f"authenticate_all(): app already authenticated [app_serial_number: {self._app_serial_number} - app_master_plant_id: {self._app_master_plant_id}]")
+
+    @staticmethod
+    def _format_timedelta(td):
+        days = td.days
+        hours, remainder = divmod(td.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        parts = []
+        if days:
+            parts.append(f"{days}d")
+        if hours:
+            parts.append(f"{hours}h")
+        if minutes:
+            parts.append(f"{minutes}m")
+        if seconds or not parts:
+            parts.append(f"{seconds}s")
+        return " ".join(parts)
+
+    @staticmethod
+    def _base64_url_encode(data):
+        """Encode string to base64"""
+        return urlsafe_b64encode(data).rstrip(b'=')
+
+    def _generate_hash(self, code):
+        """Generate hash for login"""
+        hashengine = hashlib.sha256()
+        hashengine.update(code.encode('utf-8'))
+        return self._base64_url_encode(hashengine.digest()).decode('utf-8')
+
+    #####################
+    # fetch/refresh access_token
+    #####################
+    async def _initial_token_request_01_start(self):
+        # looks like that 'state' and 'nonce' does not really have a meaning in the OpenID impl from SENEC...
+        # ok - state is anyhow an object for us - which we will get back in the redirect URL
+        state = secrets.token_urlsafe(22)
+        nonce = secrets.token_urlsafe(22)
+        self._code_verifier = ''.join(random.choice(string.ascii_lowercase) for i in range(43))
+        hashed_code_verifier = self._generate_hash(self._code_verifier)
+
+        req_headers = self._default_app_web_headers.copy()
+        req_headers["Accept"]   = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+        #not needed based on the feedback from @ledermann
+        #req_headers["Host"]     = "sso.senec.com"
+        #req_headers["Referer"]  = "android-app://com.senecapp/"
+
+        a_url = self.LOGIN_URL.format(redirect_url=quote(self.APP_REDIRECT_URI, safe=''),
+                                      client_id=self.APP_OPENID_CLIENT_ID,
+                                      scope=quote(self.APP_SCOPE, safe=''),
+                                      state=state,
+                                      nonce=nonce,
+                                      code_challenge=hashed_code_verifier)
+
+        async with self.web_session.get(a_url, headers=req_headers) as res:
+            try:
+                _LOGGER.debug(f"initial_token_request_01_start(): requesting: {a_url}")
+                res.raise_for_status()
+                if res.status in [200, 201, 202, 204, 205]:
+                    html_content = await res.text()
+                    # that's quite evil - parsing HTML via RegEx
+
+                    # the simple variant, just take ANY form..
+                    # match = re.search(r'<form[^>]*action="([^"]+)"', html_content)
+                    # the_form_action_url = match.group(1) if match else None
+
+                    # the complex one, search for username & password inputs
+                    form_match = re.search(r'<form[^>]*action="([^"]+)"[^>]*>(.*?)</form>', html_content, re.DOTALL | re.IGNORECASE)
+                    the_form_action_url = None
+                    if form_match:
+                        form_content = form_match.group(2)
+                        # Check if the form contains both username and password inputs
+                        has_username = re.search(r'<input[^>]*(?:name|id)=["\']?(?:username|user|email)["\']?[^>]*>', form_content, re.IGNORECASE)
+                        has_password = re.search(r'<input[^>]*(?:name|id)=["\']?password["\']?[^>]*>', form_content, re.IGNORECASE)
+                        if has_username and has_password:
+                            # This is the login form we're looking for
+                            the_form_action_url = form_match.group(1)
+
+                    if the_form_action_url:
+                        await self._initial_token_request_02_post_login(the_form_action_url)
+                    else:
+                        _LOGGER.info(f"initial_token_request_01_start(): did not find the expected form action URL in the response HTML! {html_content}")
+                else:
+                    _LOGGER.info(f"initial_token_request_01_start(): unexpected [200] response code: {res.status} - {res}")
+            except BaseException as ex:
+                _LOGGER.debug(f"initial_token_request_01_start(): {type(ex)} - {ex}")
+
+    async def _initial_token_request_02_post_login(self, form_action_url):
+        req_headers = self._default_app_web_headers.copy()
+        req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+        #req_headers["Host"]             = "sso.senec.com"
+        req_headers["Content-Type"]     = "application/x-www-form-urlencoded"
+        req_headers["Cache-Control"]    = "max-age=0"
+        login_data= {
+            "username": self._SENEC_USERNAME,
+            "password": self._SENEC_PASSWORD
+        }
+
+        async with self.web_session.post(form_action_url, data=login_data, allow_redirects=False, headers=req_headers) as res:
+            try:
+                _LOGGER.debug(f"initial_token_request_02_post_login(): requesting: {form_action_url}")
+                res.raise_for_status()
+                if res.status == 302:
+                    location = res.headers.get("Location")
+                    if location:
+                        _LOGGER.debug(f"initial_token_request_02_post_login(): received an expected redirect to: {location}")
+                        await self._initial_token_request_03_get_token(location)
+                    else:
+                        _LOGGER.info(f"initial_token_request_02_post_login(): no 'Location' in response Header")
+                else:
+                    _LOGGER.info(f"initial_token_request_02_post_login(): unexpected [302] response code: {res.status} - {res}")
+
+            except BaseException as ex:
+                _LOGGER.info(f"initial_token_request_02_post_login(): {type(ex)} - {ex}")
+
+    async def _initial_token_request_03_get_token(self, redirect):
+        if redirect.startswith(self.APP_REDIRECT_URI):
+            # from the incoming redirect location url we are parsing the url parameters...
+            params = parse_qs(urlparse(redirect).query)
+
+            # Extract individual parameters - but code is the only thing that we need...
+            code = params.get('code', [None])[0]
+            # state = params.get('state', [None])[0]
+            # iss = params.get('iss', [None])[0]
+            # session_state = params.get('session_state', [None])[0]
+
+            _LOGGER.debug(f"initial_token_request_03_get_token(): got final code: '{code}' in redirect URL - going to continue...")
+
+            req_headers = self._default_app_web_headers.copy()
+            req_headers["User-Agent"]   = self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else self.APP_SSO_USER_AGENT
+            req_headers["Accept"]       = "application/json"
+            #req_headers["Host"]         = "sso.senec.com"
+            req_headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+            post_data = {
+                "code":             code,
+                "grant_type":       "authorization_code",
+                "redirect_uri":     self.APP_REDIRECT_URI,
+                "code_verifier":    self._code_verifier,
+                "client_id":        self.APP_OPENID_CLIENT_ID
+            }
+            # we have to follow the redirect...
+            async with self.web_session.post(self.TOKEN_URL, data=post_data, headers=req_headers) as res:
+                try:
+                    _LOGGER.debug(f"initial_token_request_03_get_token(): requesting: {self.TOKEN_URL} with {post_data}")
+                    res.raise_for_status()
+                    if res.status in [200, 201, 202, 204, 205]:
+                        token_data = await res.json()
+                        if "access_token" in token_data:
+                            _LOGGER.debug(f"initial_token_request_03_get_token(): received token data: {token_data}")
+                            await self._app_on_new_token_data_received(token_data)
+                        else:
+                            _LOGGER.info(f"initial_token_request_03_get_token(): NO access_token in {token_data}")
+                    else:
+                        _LOGGER.info(f"initial_token_request_03_get_token(): unexpected [200] response code: {res.status} - {res}")
+
+                except BaseException as ex:
+                    _LOGGER.info(f"initial_token_request_03_get_token(): {type(ex)} - {ex}")
+        else:
+            _LOGGER.info(f"initial_token_request_03_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_URI}' -> received: '{redirect}')")
+
+    async def _refresh_token_request(self, refresh_token):
+        req_headers = self._default_app_web_headers.copy()
+        req_headers["User-Agent"]   = self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else self.APP_SSO_USER_AGENT
+        req_headers["Accept"]       = "application/json"
+        #req_headers["Host"]         = "sso.senec.com"
+        req_headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+        post_data = {
+            "refresh_token": refresh_token,
+            "grant_type":   "refresh_token",
+            "client_id":    self.APP_OPENID_CLIENT_ID
+        }
+        # we have to follow the redirect...
+        async with self.web_session.post(self.TOKEN_URL, data=post_data, headers=req_headers) as res:
+            try:
+                _LOGGER.debug(f"_refresh_token_request(): requesting: {self.TOKEN_URL} with {post_data}")
+                res.raise_for_status()
+                if res.status in [200, 201, 202, 204, 205]:
+                    token_data = await res.json()
+                    if "access_token" in token_data:
+                        _LOGGER.debug(f"_refresh_token_request(): received token data: {token_data}")
+                        await self._app_on_new_token_data_received(token_data)
+                    else:
+                        _LOGGER.info(f"_refresh_token_request(): NO access_token in {token_data}")
+                else:
+                    _LOGGER.info(f"_refresh_token_request(): unexpected [200] response code: {res.status} - {res}")
+
+            except BaseException as ex:
+                _LOGGER.info(f"_refresh_token_request(): {type(ex)} - {ex}")
+
+
+    #####################
+    # read/write token_dict from/to filesystem
+    #####################
+    async def _write_token_to_storage(self, token_dict):
+        """Save token to file for reuse"""
+        if token_dict is None:
+            _LOGGER.info(f"write_token_to_storage() - DELETE")
+        else:
+            _LOGGER.debug(f"write_token_to_storage() - SAVE")
+
+        # Check if the parent directory exists
+        directory = os.path.dirname(self._app_stored_tokens_location)
+        if not os.path.exists(directory):
+            try:
+                await asyncio.get_running_loop().run_in_executor(None, lambda: os.makedirs(directory))
+            except OSError as exc:
+                # Handle exception as before
+                pass
+
+        # Write the file in executor
+        await asyncio.get_running_loop().run_in_executor(None, lambda: self.__write_token_int(token_dict))
+
+    def __write_token_int(self, token_dict):
+        """Synchronous method to write the token file, called from executor."""
+        if token_dict is None:
+            try:
+                os.remove(self._app_stored_tokens_location)
+                _LOGGER.debug(f"__write_token_int(): Token file deleted: {self._app_stored_tokens_location}")
+            except FileNotFoundError:
+                _LOGGER.debug(f"__write_token_int(): Token file not found, nothing to delete: {self._app_stored_tokens_location}")
+            except OSError as exc:
+                _LOGGER.info(f"__write_token_int(): Error deleting token file: {exc}")
+        else:
+            with open(self._app_stored_tokens_location, "w", encoding="utf-8") as outfile:
+                json.dump(token_dict, outfile)
+
+    async def _read_token_from_storage(self):
+        """Read saved token from a file"""
+        _LOGGER.debug(f"read_token_from_storage()")
+        try:
+            # Run blocking file operation in executor
+            token_data = await asyncio.get_running_loop().run_in_executor(None, self.__read_token_int)
+            return token_data
+        except ValueError:
+            _LOGGER.warning(f"read_token_from_storage: 'ValueError' invalidate TOKEN FILE -> mark_re_auth_required()")
+            #self.mark_re_auth_required()
+        return None
+
+    def __read_token_int(self):
+        """Synchronous method to read the token file, called from executor."""
+        if os.path.exists(self._app_stored_tokens_location):
+            with open(self._app_stored_tokens_location, encoding="utf-8") as token_file:
+                return json.load(token_file)
+        else:
+            return None
+
+
+    #####################
+    # helpers to make sure 'access_token' is ready to use
+    #####################
+    async def _app_on_new_token_data_received(self, token_data):
+        # loaded_datetime = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        now = datetime.now(timezone.utc)
+        if "expires_in" in token_data and "expires_at" not in token_data:
+            token_data["expires_at"]        = int((now + timedelta(seconds=(token_data["expires_in"] - 5))).timestamp())
+        if "refresh_expires_in" in token_data and "refresh_expires_at" not in token_data:
+            token_data["refresh_expires_at"]= int((now + timedelta(seconds=(token_data["refresh_expires_in"] - 5))).timestamp())
+
+        # we also persist our static data [we have fetched during the login]
+        if self._app_master_plant_id is not None and self._app_serial_number is not None and self._app_data_start_ts != -1:
+            token_data[CONF_APP_SYSTEMID]       = self._app_master_plant_id
+            token_data[CONF_APP_SERIALNUM]      = self._app_serial_number
+            token_data[CONF_APP_WALLBOX_COUNT]  = self._app_wallbox_num_max
+            token_data[CONF_APP_DATA_START]     = self._app_data_start_ts
+            token_data[CONF_APP_DATA_END]       = self._app_data_end_ts
+        elif self._app_token_object is not None and CONF_APP_SYSTEMID in self._app_token_object and self._app_token_object[CONF_APP_SYSTEMID] is not None:
+            token_data[CONF_APP_SYSTEMID]       = self._app_token_object[CONF_APP_SYSTEMID]
+            token_data[CONF_APP_SERIALNUM]      = self._app_token_object[CONF_APP_SERIALNUM]
+            token_data[CONF_APP_WALLBOX_COUNT]  = self._app_token_object[CONF_APP_WALLBOX_COUNT]
+            token_data[CONF_APP_DATA_START]     = self._app_token_object[CONF_APP_DATA_START]
+            token_data[CONF_APP_DATA_END]       = self._app_token_object[CONF_APP_DATA_END]
+
+        # this is our storage for our total usage data (so that we do not query that only once)
+        # if it's not included in the token_data that we want to save - then we check, if there
+        # is an existing object in the 'current' _app_token_object
+        if CONF_APP_TOTAL_DATA not in token_data and CONF_APP_TOTAL_DATA in self._app_token_object:
+            token_data[CONF_APP_TOTAL_DATA] = self._app_token_object[CONF_APP_TOTAL_DATA]
+
+        self._app_token_object = token_data
+        await self._write_token_to_storage(self._app_token_object)
+
+        # updating our internal state - and set the app_token value...
+        self.app_ensure_token_is_set()
+
+    async def app_has_token(self):
+        stored_data = await self._read_token_from_storage()
+        if stored_data is not None:
+            self._app_token_object = stored_data
+            if CONF_APP_TOTAL_DATA not in self._app_token_object:
+                # creating an initalized storage...
+                _LOGGER.debug(f"app_has_token(): no '{CONF_APP_TOTAL_DATA}' in _app_token_object: {self._app_token_object} - initializing it")
+                self._app_token_object[CONF_APP_TOTAL_DATA] = {
+                    "years":        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS,
+                    "years_data":   self._static_TOTAL_SUMS_PREV_YEARS,
+                    "months":       self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS,
+                    "months_data":  self._static_TOTAL_SUMS_PREV_MONTHS,
+                    "days":         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS,
+                    "days_data":    self._static_TOTAL_SUMS_PREV_DAYS
+                }
+            return True
+
+        return False
+
+    async def app_verify_token(self):
+        if self._app_token_object is not None:
+            if "expires_at" in self._app_token_object:
+                now = datetime.now(timezone.utc)
+                valid_till = datetime.fromtimestamp(self._app_token_object["expires_at"], tz=timezone.utc)
+                if now < valid_till:
+                    _LOGGER.debug(f"app_verify_token(): access_token is VALID [expires in: {self._format_timedelta(valid_till-now)}]")
+                    self.app_ensure_token_is_set()
+                elif "refresh_expires_at" in self._app_token_object:
+                    refresh_valid_till = datetime.fromtimestamp(self._app_token_object["refresh_expires_at"], tz=timezone.utc)
+                    if now < refresh_valid_till and "refresh_token" in self._app_token_object:
+                        _LOGGER.debug(f"app_verify_token(): access_token EXPIRED [{self._format_timedelta(now-valid_till)} ago] - refresh_token is VALID [expires in: {self._format_timedelta(refresh_valid_till-now)}]")
+                        await self._refresh_token_request(self._app_token_object["refresh_token"])
+                    else:
+                        _LOGGER.info(f"app_verify_token(): refresh_token EXPIRED [{self._format_timedelta(now-refresh_valid_till)} ago] - need to re-authenticate")
+                        await self._initial_token_request_01_start()
+                else:
+                    _LOGGER.info(f"app_verify_token(): access_token EXPIRED [{self._format_timedelta(now-valid_till)} ago] - no refresh_token available - need to re-authenticate")
+                    await self._initial_token_request_01_start()
+            else:
+                can_token_be_restored = await self.app_has_token()
+                if can_token_be_restored and "expires_at" in self._app_token_object:
+                    await self.app_verify_token()
+                else:
+                    _LOGGER.info(f"app_verify_token(): no 'expires_at' in _app_token_object: '{self._app_token_object}' - need to re-authenticate")
+                    await self._initial_token_request_01_start()
+        else:
+            can_token_be_restored = await self.app_has_token()
+            if can_token_be_restored:
+                await self.app_verify_token()
+            else:
+                _LOGGER.info("app_verify_token(): '_app_token_object' is None - need to re-authenticate")
+                await self._initial_token_request_01_start()
+
+    def app_ensure_token_is_set(self):
+        if self._app_token_object is not None and "access_token" in self._app_token_object:
+            self._app_token = f"Bearer {self._app_token_object["access_token"]}"
+            self._app_is_authenticated  = True
+            if CONF_APP_SYSTEMID in self._app_token_object and self._app_token_object[CONF_APP_SYSTEMID] is not None:
+                self._app_master_plant_id   = self._app_token_object[CONF_APP_SYSTEMID]
+                self._app_serial_number     = self._app_token_object[CONF_APP_SERIALNUM]
+                self._app_wallbox_num_max   = self._app_token_object[CONF_APP_WALLBOX_COUNT]
+                self._app_data_start_ts     = self._app_token_object[CONF_APP_DATA_START]
+                self._app_data_end_ts       = self._app_token_object[CONF_APP_DATA_END]
+        else:
+            _LOGGER.info(f"app_ensure_token(): no valid token data found - need to re-authenticate ?")
+            self._app_token = None
+            self._app_is_authenticated  = False
+            self._app_master_plant_id   = None
+            self._app_serial_number     = None
+            self._app_wallbox_num_max   = 4
+            self._app_data_start_ts     = -1
+            self._app_data_end_ts       = -1
+
+    #####################
+    # backend requests from here
+    # all token/login stuff should be fine...
+    #####################
+    async def _app_do_get_request(self, a_url:str):
+        _LOGGER.debug("***** APP-API: _app_do_get_request(self) ********")
+        await self.app_verify_token()
+        if self._app_is_authenticated:
+            req_headers = self._default_app_headers.copy()
+            req_headers["Authorization"] = self._app_token
+            try:
+                _LOGGER.debug(f"_app_do_get_request(): requesting: {a_url}")
+                async with self.web_session.get(a_url, headers=req_headers) as res:
+                    try:
+                        res.raise_for_status()
+                        if res.status in [200, 201, 202, 204, 205]:
+                            try:
+                                data = await res.json()
+                                _LOGGER.debug(f"_app_do_get_request(): response: {data}")
+                                return data
+
+                            except JSONDecodeError as jexc:
+                                _LOGGER.warning(f"_app_do_get_request(): JSONDecodeError while 'await res.json()' {jexc}")
+                            except Exception as exc:
+                                if data is not None:
+                                    _LOGGER.error(f"_app_do_get_request(): Error when handling response '{res}' - Data: '{data}' - Exception:' {exc}'")
+                                else:
+                                    _LOGGER.error(f"_app_do_get_request(): Error when handling response '{res}' - Exception:' {exc}'")
+                        else:
+                            _LOGGER.error(f"_app_do_get_request(): unexpected status code [200-205] {res.status} - {res}'")
+
+                    except Exception as exc:
+                        if res is not None:
+                            _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: '{exc}' - Response is: '{res}'")
+                        else:
+                            _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: '{exc}'")
+            except Exception as exc:
+                _LOGGER.error(f"_app_do_get_request(): Error when try to call {a_url}: '{exc}'")
+        else:
+            _LOGGER.error(f"_app_do_get_request(): 'self._app_is_authenticated' is False")
+
+    async def _app_do_post_request(self, a_url:str,  post_data: dict, read_response: bool = False):
+        _LOGGER.debug("***** APP-API: _app_do_post_request(self) ********")
+        await self.app_verify_token()
+        if self._app_is_authenticated:
+            req_headers = self._default_app_headers.copy()
+            req_headers["Authorization"] = self._app_token
+            try:
+                _LOGGER.debug(f"_app_do_post_request(): requesting: {a_url}")
+                async with self.web_session.post(a_url, headers=req_headers, json=post_data) as res:
+                    try:
+                        res.raise_for_status()
+                        if res.status in [200, 201, 202, 204, 205]:
+                            if read_response:
+                                try:
+                                    data = await res.json()
+                                    _LOGGER.debug(f"_app_do_post_request(): response: {data}")
+                                    return True
+                                except JSONDecodeError as jexc:
+                                    _LOGGER.warning(f"_app_do_post_request(): JSONDecodeError while 'await res.json()' {jexc}")
+                                except Exception as exc:
+                                    if data is not None:
+                                        _LOGGER.error(f"_app_do_post_request(): Error when handling response '{res}' - Data: '{data}' - Exception:' {exc}'")
+                                    else:
+                                        _LOGGER.error(f"_app_do_post_request(): Error when handling response '{res}' - Exception:' {exc}'")
+                            else:
+                                _LOGGER.debug(f"APP-API HTTP:200 for post {post_data} to {a_url}")
+                                return True
+                        else:
+                            _LOGGER.error(f"_app_do_post_request(): unexpected status code [200-205] {res.status} - {res}'")
+
+                    except Exception as exc:
+                        if res is not None:
+                            _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: '{exc}' - Response is: '{res}'")
+                        else:
+                            _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: '{exc}'")
+            except Exception as exc:
+                _LOGGER.error(f"_app_do_post_request(): Error when try to call {a_url}: '{exc}'")
+        else:
+            _LOGGER.error(f"_app_do_post_request(): 'self._app_is_authenticated' is False")
+        return False
+
     # async def app_post_data(self, a_url: str, post_data: dict, read_response: bool = False) -> bool:
     #     _LOGGER.debug("***** APP-API: app_post_data(self) ********")
     #     if self._app_token is not None:
@@ -3181,244 +4171,517 @@ class MySenecWebPortal:
     #         # somehow we should pass a "callable"...
     #         await self.app_authenticate()
     #         return False
-    #
-    # async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True, retry: bool = True):
-    #     _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
-    #     idx = wallbox_num - 1
-    #     cur_local_mode = self.app_get_local_wallbox_mode_from_api_values(idx)
-    #     if cur_local_mode == local_mode_to_set:
-    #         _LOGGER.debug(f"APP-API skipp mode change since '{local_mode_to_set}' already set")
-    #     else:
-    #         if self._app_master_plant_id is not None:
-    #             data = None
-    #             api_mode_to_set = None
-    #             compatibility_mode_to_set = None
-    #
-    #             if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
-    #                 data = {
-    #                     "mode": APP_API_WB_MODE_LOCKED
-    #                 }
-    #                 api_mode_to_set = APP_API_WB_MODE_LOCKED
-    #             elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_3:
-    #                 data = {
-    #                     "mode": APP_API_WB_MODE_SSGCM,
-    #                     "compatibilityMode": True
-    #                 }
-    #                 api_mode_to_set = APP_API_WB_MODE_SSGCM
-    #                 compatibility_mode_to_set = True
-    #             elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
-    #                 data = {
-    #                     "mode": APP_API_WB_MODE_SSGCM,
-    #                     "compatibilityMode": False
-    #                 }
-    #                 api_mode_to_set = APP_API_WB_MODE_SSGCM
-    #                 compatibility_mode_to_set = False
-    #             elif local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-    #                 data = {
-    #                     "mode": APP_API_WB_MODE_FASTEST
-    #                 }
-    #                 api_mode_to_set = APP_API_WB_MODE_FASTEST
-    #
-    #             if data is not None:
-    #                 wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
-    #                 success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
-    #
-    #                 if success:
-    #                     # setting the internal storage value...
-    #                     if self._app_raw_wallbox[idx] is not None:
-    #                         self._app_raw_wallbox[idx]["chargingMode"] = api_mode_to_set
-    #                         if compatibility_mode_to_set is not None:
-    #                             self._app_raw_wallbox[idx]["compatibilityMode"] = compatibility_mode_to_set
-    #
-    #                     # do we need to sync the value back to the 'lala_cgi' integration?
-    #                     if sync and IntBridge.avail():
-    #                         # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
-    #                         # is no sync=False parameter here...
-    #                         await IntBridge.lala_cgi.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
-    #
-    #                     # when we changed the mode, the backend might have automatically adjusted the
-    #                     # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
-    #                     # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
-    #                     await asyncio.sleep(2)
-    #                     await self.app_get_wallbox_data(wallbox_num=wallbox_num)
-    #                     if self._app_raw_wallbox[idx] is not None:
-    #                         if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-    #                             new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
-    #                         else:
-    #                             new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
-    #
-    #                         new_min_current = str(round(float(new_min_current_tmp), 2))
-    #                         cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
-    #
-    #                         if cur_min_current != new_min_current:
-    #                             _LOGGER.debug(
-    #                                 f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-    #                             await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
-    #                                                                                value=float(new_min_current),
-    #                                                                                sync=False, verify_state=False)
-    #                         else:
-    #                             _LOGGER.debug(
-    #                                 f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
-    #
-    #                     else:
-    #                         _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
-    #
-    #         else:
-    #             if retry:
-    #                 await self.app_authenticate()
-    #                 if self._app_wallbox_num_max >= wallbox_num:
-    #                     await self.app_set_wallbox_mode(local_mode_to_set=local_mode_to_set, wallbox_num=wallbox_num,
-    #                                                     sync=sync, retry=False)
-    #                 else:
-    #                     _LOGGER.debug(
-    #                         f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
-    #
-    # async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True, retry: bool = True):
-    #     _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
-    #     if self._app_master_plant_id is not None:
-    #         idx = wallbox_num - 1
-    #         current_mode = APP_API_WB_MODE_SSGCM
-    #
-    #         if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
-    #             current_mode = self._app_raw_wallbox[idx]["chargingMode"]
-    #
-    #         data = {
-    #             "mode": current_mode,
-    #             "minChargingCurrentInA": float(round(value_to_set, 2))
-    #         }
-    #
-    #         wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
-    #         success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
-    #         if success:
-    #             # setting the internal storage value...
-    #             if self._app_raw_wallbox[idx] is not None:
-    #                 self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"] = value_to_set
-    #
-    #             # do we need to sync the value back to the 'lala_cgi' integration?
-    #             if sync and IntBridge.avail():
-    #                 await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             if self._app_wallbox_num_max >= wallbox_num:
-    #                 await self.app_set_wallbox_icmax(value_to_set=value_to_set, wallbox_num=wallbox_num,
-    #                                                  sync=sync, retry=False)
-    #             else:
-    #                 _LOGGER.debug(
-    #                     f"APP-API cancel 'app_set_wallbox_icmax' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
-    #
-    # async def app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True, retry: bool = True) -> bool:
-    #     _LOGGER.debug("***** APP-API: app_set_allow_intercharge(self) ********")
-    #     if self._app_master_plant_id is not None:
-    #         idx = wallbox_num - 1
-    #
-    #         current_mode = APP_API_WB_MODE_LOCKED
-    #         if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
-    #             current_mode = self._app_raw_wallbox[idx]["chargingMode"]
-    #
-    #         data = {
-    #             "mode": current_mode,
-    #             "allowIntercharge": value_to_set
-    #         }
-    #
-    #         wb_url = self._SENEC_APP_SET_WALLBOX % (str(self._app_master_plant_id), str(wallbox_num))
-    #         success: bool = await self.app_post_data(a_url=wb_url, post_data=data)
-    #         if success:
-    #             # setting the internal storage value...
-    #             if self._app_raw_wallbox[idx] is not None:
-    #                 self._app_raw_wallbox[idx]["allowIntercharge"] = value_to_set
-    #
-    #             # do we need to sync the value back to the 'lala_cgi' integration?
-    #             if sync and IntBridge.avail():
-    #                 await IntBridge.lala_cgi.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
-    #         return success
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             if self._app_wallbox_num_max >= wallbox_num:
-    #                 return await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=wallbox_num,
-    #                                                             sync=sync, retry=False)
-    #             else:
-    #                 _LOGGER.debug(
-    #                     f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
-    #                 return False
-    #         else:
-    #             return False
-    #
-    # async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
-    #     _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
-    #     for idx in range(0, self._app_wallbox_num_max):
-    #         if self._app_wallbox_num_max > idx:
-    #             res = await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
-    #             if not res and self._app_wallbox_num_max > idx:
-    #                 _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
-    #                 self._app_wallbox_num_max = idx
-    #
-    # async def app_get_system_abilities(self):
-    #     # 'app_get_system_abilities' not used (yet)
-    #     if self._app_master_plant_id is not None and self._app_token is not None:
-    #         headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
-    #         a_url = self._SENEC_APP_GET_ABILITIES % str(self._app_master_plant_id)
-    #         async with self.web_session.get(url=a_url, headers=headers, ssl=False) as res:
-    #             res.raise_for_status()
-    #             if res.status == 200:
-    #                 try:
-    #                     data = await res.json()
-    #                     _LOGGER.debug(f"APP-API response: {data}")
-    #                 except JSONDecodeError as exc:
-    #                     _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
-    #             else:
-    #                 self._app_is_authenticated = False
-    #                 # somehow we should pass a "callable"...
-    #                 await self.app_get_master_plant_id()
-    #     else:
-    #         # somehow we should pass a "callable"...
+
+    async def app_get_master_plant_id(self):
+        _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
+        data = await self._app_do_get_request(self.APP_SYSTEM_LIST)
+        if data is not None:
+            if self._app_master_plant_number == -1:
+                self._app_master_plant_number = 0
+            idx = int(self._app_master_plant_number)
+
+            # when SENEC API only return a single system in the 'v1/senec/anlagen' request (even if
+            # there are multiple systems)...
+            if len(data) == 1 and idx > 0:
+                _LOGGER.debug(f"app_get_master_plant_id(): IGNORE requested 'master_plant_number' {idx} will use 0 instead!")
+                idx = 0
+
+            if len(data) > idx:
+                if "id" in data[idx]:
+                    self._app_master_plant_id = data[idx]["id"]
+                    _LOGGER.debug(f"app_get_master_plant_id(): set _app_master_plant_id to {self._app_master_plant_id}")
+
+                if "wallboxIds" in data[idx]:
+                    self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
+                    _LOGGER.debug(f"app_get_master_plant_id(): set _app_wallbox_num_max to {self._app_wallbox_num_max}")
+
+                if "controlUnitNumber" in data[idx]:
+                    self._app_serial_number = data[idx]["controlUnitNumber"]
+                    _LOGGER.debug(f"app_get_master_plant_id(): set _app_serial_number to {self._app_serial_number}")
+
+            # when we have successfully collected our primary meta-data, then we should also capture the start-end date
+            # timestamps for the total data
+            if self._app_data_start_ts == -1:
+                await self.app_get_data_start_and_end_ts()
+
+            # we must update out token-object on the local storage [when we have a new master_plant_id]
+            if CONF_APP_SYSTEMID not in self._app_token_object or self._app_token_object[CONF_APP_SYSTEMID] != self._app_master_plant_id:
+                await self._app_on_new_token_data_received(self._app_token_object)
+
+        return data
+
+    async def app_get_system_details(self):
+        # https://senec-app-systems-proxy.prod.senec.dev/systems/{master_plant_id}/details
+        # sample_data = {
+        #   "systemOverview": {
+        #     "systemId": self.master_plant_id,
+        #     "hid": None,
+        #     "productName": "SENEC.HOME V3 hybrid duo LFP",
+        #     "installationDateTime": "2022-08-09T22:00:00Z",
+        #     "exchangedSystemId": None
+        #   },
+        #   "casing": {
+        #     "serial": "DE-V3-HD-03LI10-XXXXX",
+        #     "temperatureInCelsius": 31.388556
+        #   },
+        #   "mcu": {
+        #     "mainControllerSerial": "XXXXXXXXXXXXXXXXXXXXXXXXXX",
+        #     "mainControllerUnitState": {
+        #         "name": "LADEN",
+        #         "severity": "INFO",
+        #         "operatingMode": "FULL_OPERATION"
+        #     },
+        #     "firmwareVersion": "833",
+        #     "guiVersion": 970,
+        #     "lastContact": {
+        #       "timestamp": "2025-07-22T06:06:53.304Z",
+        #       "severity": "INFO"
+        #     },
+        #     "ipAddress": None
+        #   },
+        #   "warranty": {
+        #     "endDateTime": "20XX-XX-XXT22:00:00Z",
+        #     "warrantyTermInMonths": 100
+        #   },
+        #   "batteryPack": {
+        #     "numberOfBatteryModules": 2,
+        #     "technology": "LITHIUM_IRON_PHOSPHATE",
+        #     "currentChargingLevelInPercent": 62,
+        #     "maxCapacityInKwh": 10
+        #   },
+        #   "batteryModules": [
+        #     {
+        #       "ordinal": 1,
+        #       "serialNumber": "000nnnn",
+        #       "state": {
+        #         "state": "OK",
+        #         "severity": "OK"
+        #       },
+        #       "lastContact": {
+        #         "timestamp": "2025-07-22T06:06:51Z",
+        #         "severity": "OK"
+        #       },
+        #       "firmwareVersion": None
+        #     },
+        #     {
+        #       "ordinal": 2,
+        #       "serialNumber": "000nnnn",
+        #       "state": {
+        #         "state": "OK",
+        #         "severity": "OK"
+        #       },
+        #       "lastContact": {
+        #         "timestamp": "2025-07-22T06:06:51Z",
+        #         "severity": "OK"
+        #       },
+        #       "firmwareVersion": None
+        #     }
+        #   ],
+        #   "installer": {
+        #     "companyName": "XXX",
+        #     "email": "XXX",
+        #     "phoneNumber": "+XXX",
+        #     "address": {
+        #       "street": "XXX",
+        #       "houseNumber": "XX",
+        #       "postcode": "XXX",
+        #       "city": "XXX",
+        #       "countryCode": "XX",
+        #       "region": "XXX",
+        #       "timezone": "Europe/Berlin"
+        #     },
+        #     "onlineMonitoringAllowed": True,
+        #     "website": "XXX"
+        #   }
+        # }
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug("***** APP-API: app_get_system_details(self) ********")
+        a_url = self.APP_SYSTEM_DETAILS.format(master_plant_id=self._app_master_plant_id)
+        data = await self._app_do_get_request(a_url)
+        if data is not None:
+            self._app_raw_system_details = data
+            _QUERY_SYSTEM_DETAILS_TS = time()
+        else:
+            self._app_raw_system_details = None
+
+        return data
+
+    async def app_get_abilities(self):
+        # https://senec-app-abilities-proxy.prod.senec.dev/abilities/packages/{master_plant_id}
+        # samle_data = {
+        #   "warrantyPackage": null,
+        #   "packageTypes": [
+        #     "MOBILITY",
+        #     "PEAK_SHAVING",
+        #     "SG_READY",
+        #     "HEATING_ROD"
+        #   ]
+        # }
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug("***** APP-API: app_get_abilities(self) ********")
+        a_url = self.APP_ABILITIES_LIST.format(master_plant_id=self._app_master_plant_id)
+        data = await self._app_do_get_request(a_url)
+        if data is not None:
+            if "packageTypes" in data:
+                self._app_abilities = data["packageTypes"]
+        return data
+
+    async def app_get_data_start_and_end_ts(self):
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug("***** APP-API: app_get_data_start_and_end_ts(self) ********")
+        a_url = self.APP_MEASURE_DATA_AVAIL.format(master_plant_id=self._app_master_plant_id, tz="UTC")
+        data = await self._app_do_get_request(a_url)
+        if data is not None:
+            if "periodStartDateInMilliseconds" in data:
+                self._app_data_start_ts = data["periodStartDateInMilliseconds"] / 1000
+            if "periodEndDateInMilliseconds" in data:
+                self._app_data_end_ts = data["periodEndDateInMilliseconds"] / 1000
+        return data
+
+    async def app_get_system_status(self):
+        # https://senec-app-systems-proxy.prod.senec.dev/systems/status/{master_plant_id}
+        # sample_data = {
+        #   "name": "LADEN",
+        #   "severity": "INFO",
+        #   "firmwareVersion": "833",
+        #   "guiVersion": 970,
+        #   "lastContact": "2025-07-22T06:06:53.304Z",
+        #   "operatingMode": "FULL_OPERATION"
+        # }
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug("***** APP-API: app_get_system_status(self) ********")
+        a_url = self.APP_SYSTEM_STATUS.format(master_plant_id=self._app_master_plant_id)
+        data = await self._app_do_get_request(a_url)
+        if data is not None:
+            self._app_raw_system_state_obj = data
+        else:
+            self._app_raw_system_state_obj = None
+        return data
+
+    async def app_get_dashboard(self):
+        # https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{master_plant_id}/dashboard
+        # sample_data = {
+        #   "currently": {
+        #     "powerGenerationInW": 1781.0947265625,
+        #     "powerConsumptionInW": 520.94,
+        #     "gridFeedInInW": 13.096284866333008,
+        #     "gridDrawInW": 2.4555535316467285,
+        #     "batteryChargeInW": 1246.693603515625,
+        #     "batteryDischargeInW": 0,
+        #     "batteryLevelInPercent": 62,
+        #     "selfSufficiencyInPercent": 99.53,
+        #     "wallboxInW": 0
+        #   },
+        #   "today": {
+        #     "powerGenerationInWh": 916.50390625,
+        #     "powerConsumptionInWh": 3205.93,
+        #     "gridFeedInInWh": 87.158203125,
+        #     "gridDrawInWh": 66.41387939453125,
+        #     "batteryChargeInWh": 445.281982421875,
+        #     "batteryDischargeInWh": 2755.92041015625,
+        #     "batteryLevelInPercent": 62,
+        #     "selfSufficiencyInPercent": 97.93,
+        #     "wallboxInWh": 0
+        #   },
+        #   "timestamp": "2025-07-22T06:06:51Z",
+        #   "electricVehicleConnected": False,
+        #   "numberOfWallboxes": 0,
+        #   "systemId": self.master_plant_id,
+        #   "systemType": "V123",
+        #   "storageDeviceState": "CHARGING"
+        # }
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug("***** APP-API: app_get_dashboard(self) ********")
+        a_url = self.APP_MEASURE_DASHBOARD.format(master_plant_id=self._app_master_plant_id)
+        data = await self._app_do_get_request(a_url)
+        if data is not None:
+            if "currently" in data:
+                self._app_raw_now = data["currently"]
+            else:
+                self._app_raw_now = None
+
+            # even if there are no active 'today' sensors we want to capture already the data
+            if data is not None and "today" in data:
+                self._app_raw_today = data["today"]
+            else:
+                self._app_raw_today = None
+
+            if "storageDeviceState" in data:
+                self._app_raw_device_state = data["storageDeviceState"]
+
+        return data
+
+    async def _app_get_total(self, type_value:str, from_value:str, to_value:str):
+        # https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{master_plant_id}/measurements?resolution=FIVE_MINUTES&from=2025-07-18T22%3A00%3A00Z&to=2025-07-22T16%3A28%3A17.100Z
+        # https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{master_plant_id}/measurements?resolution=MONTH&from=2023-12-31T23%3A00%3A00Z&to=2024-12-31T23%3A00%3A00Z
+        # sample_data = {
+        #     "timeSeries": [
+        #         {
+        #             "date": "2025-04-30T22:00:00Z",
+        #             "measurements": {
+        #                 "durationInSeconds": 2678400,
+        #                 "values": [
+        #                     453.727294921875,
+        #                     275.7222595214844,
+        #                     41.69596862792969,
+        #                     218.02720642089844,
+        #                     54.24029541015625,
+        #                     49.47010803222656,
+        #                     87.21552276611328,
+        #                     84.88,
+        #                     0
+        #                 ]
+        #             }
+        #         },
+        #         {
+        #             "date": "2025-05-31T22:00:00Z",
+        #             "measurements": {
+        #                 "durationInSeconds": 2592000,
+        #                 "values": [
+        #                     2043.3262939453125,
+        #                     840.2120361328125,
+        #                     35.74931335449219,
+        #                     1234.857177734375,
+        #                     146.384521484375,
+        #                     138.48309326171875,
+        #                     87.75665283203125,
+        #                     95.75,
+        #                     0
+        #                 ]
+        #             }
+        #         },
+        #         {
+        #             "date": "2025-06-30T22:00:00Z",
+        #             "measurements": {
+        #                 "durationInSeconds": 2678400,
+        #                 "values": [
+        #                     1253.9814453125,
+        #                     698.794677734375,
+        #                     13.055213928222656,
+        #                     560.6070556640625,
+        #                     123.37608337402344,
+        #                     114.9639892578125,
+        #                     88.3036880493164,
+        #                     98.13,
+        #                     0
+        #                 ]
+        #             }
+        #         }
+        #     ],
+        #     "measurements": [
+        #         "POWER_GENERATION",
+        #         "POWER_CONSUMPTION",
+        #         "GRID_IMPORT",
+        #         "GRID_EXPORT",
+        #         "BATTERY_IMPORT",
+        #         "BATTERY_EXPORT",
+        #         "BATTERY_LEVEL_IN_PERCENT",
+        #         "AUTARKY_IN_PERCENT",
+        #         "WALLBOX_CONSUMPTION"
+        #     ],
+        #     "electricVehicleConnected": False
+        # }
+
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug("***** APP-API: app_get_total(self) ********")
+        a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                              res_type=type_value.upper(),
+                                              from_val=quote(from_value, safe=''),
+                                              to_val=quote(to_value, safe=''))
+        data = await self._app_do_get_request(a_url)
+        if data is not None:
+            pass
+        return data
+
+    # async def app_get_total(self):
+    #     if self._app_master_plant_id is None:
     #         await self.app_get_master_plant_id()
-    #
-    # def app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
-    #     if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-    #         if "chargingMode" in self._app_raw_wallbox[idx]:
-    #             api_mode = self._app_raw_wallbox[idx]["chargingMode"]
-    #             if api_mode == APP_API_WB_MODE_SSGCM:
-    #                 if self.app_is_wallbox_compatibility_mode_on(idx=idx):
-    #                     return LOCAL_WB_MODE_SSGCM_3
-    #                 else:
-    #                     return LOCAL_WB_MODE_SSGCM_4
-    #             elif api_mode == APP_API_WB_MODE_FASTEST:
-    #                 return LOCAL_WB_MODE_FASTEST
-    #             elif api_mode == APP_API_WB_MODE_LOCKED:
-    #                 return LOCAL_WB_MODE_LOCKED
-    #     return LOCAL_WB_MODE_UNKNOWN
-    #
-    # def app_get_api_wallbox_mode_from_local_value(self, local_mode: str) -> str:
-    #     if local_mode == LOCAL_WB_MODE_LOCKED:
-    #         return APP_API_WB_MODE_LOCKED
-    #     elif local_mode == LOCAL_WB_MODE_SSGCM_3:
-    #         return APP_API_WB_MODE_SSGCM
-    #     elif local_mode == LOCAL_WB_MODE_SSGCM_4:
-    #         return APP_API_WB_MODE_SSGCM
-    #     elif local_mode == LOCAL_WB_MODE_FASTEST:
-    #         return APP_API_WB_MODE_FASTEST
-    #     return local_mode
-    #
-    # def app_is_wallbox_compatibility_mode_on(self, idx: int):
-    #     if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
-    #         if "compatibilityMode" in self._app_raw_wallbox[idx]:
-    #             val = self._app_raw_wallbox[idx]["compatibilityMode"]
-    #             if isinstance(val, bool):
-    #                 return val
-    #             else:
-    #                 return str(val).lower() == 'true'
-    #     return False
+    #     _LOGGER.debug("***** APP-API: app_get_total(self) ********")
+    #     a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+    #                                           res_type=type.upper(),
+    #                                           from_val=quote(from_value, safe=''),
+    #                                           to_val=quote(to_value, safe=''))
+    #     data = await self._app_do_get_request(a_url)
+    #     if data is not None:
+    #         pass
+    #     return data
+
+    async def app_update_total(self):
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug("***** APP-API: app_update_total(self) ********")
+        now_utc = datetime.now(timezone.utc)
+        current_year = now_utc.year
+        current_month = now_utc.month
+        current_day = now_utc.day
+        do_persist = False
+
+        # restore the data from our persistant storage
+        if CONF_APP_TOTAL_DATA in self._app_token_object:
+            storage = self._app_token_object[CONF_APP_TOTAL_DATA]
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS  = storage.get("years",      self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS)
+            self._static_TOTAL_SUMS_PREV_YEARS                  = storage.get("years_data", self._static_TOTAL_SUMS_PREV_YEARS)
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = storage.get("months",     self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS)
+            self._static_TOTAL_SUMS_PREV_MONTHS                 = storage.get("months_data",self._static_TOTAL_SUMS_PREV_MONTHS)
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS   = storage.get("days",       self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS)
+            self._static_TOTAL_SUMS_PREV_DAYS                   = storage.get("days_data",  self._static_TOTAL_SUMS_PREV_DAYS)
+
+        # getting PREVIOUS_YEARS - only ONCE
+        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year:
+            do_persist = True
+            # Loop from the data-available-start to current year [there are no older systems than 2018]
+            # we might like to store the first year, that actually has data?!
+            start_year = 2018
+            if self._app_data_start_ts > 0:
+                start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
+                _LOGGER.debug(f"***** APP-API: app_update_total() - data start year is set to {start_year}")
+
+            for a_year in range(start_year, current_year):
+                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {a_year}")
+                a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                      res_type  ="MONTH",
+                                                      from_val  =quote(app_get_utc_date_start(a_year, 1), safe=''),
+                                                      to_val    =quote(app_get_utc_date_end(a_year, 12), safe=''))
+
+                # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
+                #     str(self._app_master_plant_id),
+                #     "YEAR",
+                #     str(app_get_utc_date_start(a_year, 1)),
+                #     str(app_get_utc_date_end(a_year, 12)))
+
+                data = await self._app_do_get_request(a_url=a_url)
+                if data is not None and app_has_dict_timeseries_with_values(data):
+                    data = app_aggregate_timeseries_data_if_needed(data)
+                    if self._static_TOTAL_SUMS_PREV_YEARS is None:
+                        self._static_TOTAL_SUMS_PREV_YEARS = data
+                    else:
+                        self._static_TOTAL_SUMS_PREV_YEARS = app_summ_total_dict_values(data, self._static_TOTAL_SUMS_PREV_YEARS)
+
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year
+
+        # getting PREVIOUS_MONTH - only ONCE
+        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month:
+            do_persist = True
+            if current_month == 1:
+                self._static_TOTAL_SUMS_PREV_MONTHS = None
+            else:
+                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
+                a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                      res_type  ="MONTH",
+                                                      from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
+                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
+
+                # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
+                #     str(self._app_master_plant_id),
+                #     "YEAR",
+                #     str(app_get_utc_date_start(current_year, 1)),
+                #     str(app_get_utc_date_end(current_year, current_month - 1)))
+
+                data = await self._app_do_get_request(a_url=a_url)
+                if data is not None and app_has_dict_timeseries_with_values(data):
+                    self._static_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data)
+
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
+
+        # getting CURRENT_MONTH - only ONCE
+        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day:
+            do_persist = True
+            if current_day == 1:
+                self._static_TOTAL_SUMS_PREV_DAYS = None
+            else:
+                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
+                a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                      res_type  ="MONTH",
+                                                      from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
+                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
+
+                # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
+                #     str(self._app_master_plant_id),
+                #     "MONTH",
+                #     str(app_get_utc_date_start(current_year, current_month, 1)),
+                #     str(app_get_utc_date_end(current_year, current_month, current_day - 1)))
+
+                data = await self._app_do_get_request(a_url=a_url)
+                if data is not None and app_has_dict_timeseries_with_values(data):
+                    self._static_TOTAL_SUMS_PREV_DAYS = app_aggregate_timeseries_data_if_needed(data)
+
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day
+
+        if do_persist:
+            # persist the historic-data - so we just must fetch it once
+            self._app_token_object[CONF_APP_TOTAL_DATA] = {
+                "years":        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS,
+                "years_data":   self._static_TOTAL_SUMS_PREV_YEARS,
+                "months":       self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS,
+                "months_data":  self._static_TOTAL_SUMS_PREV_MONTHS,
+                "days":         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS,
+                "days_data":    self._static_TOTAL_SUMS_PREV_DAYS
+            }
+            await self._app_on_new_token_data_received(self._app_token_object)
+
+        # getting TODAY
+        a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                              res_type  ="DAY",
+                                              from_val  =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
+                                              to_val    =quote((now_utc + timedelta(hours=12)).strftime(STRFTIME_DATE_FORMAT), safe=''))
+
+        # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
+        #     str(self._app_master_plant_id),
+        #     "DAY",
+        #     str(app_get_utc_date_start(current_year, current_month, current_day)),
+        #     str(int((now_utc + timedelta(hours=12)).timestamp())))
+
+        data = await self._app_do_get_request(a_url=a_url)
+        if app_has_dict_timeseries_with_values(data):
+            data = app_aggregate_timeseries_data_if_needed(data)
+            # adding all from the previous years (all till 01.01.THIS YEAR 'minus 1 second')
+            if self._static_TOTAL_SUMS_PREV_YEARS is not None:
+                data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_YEARS, data)
+            # adding all from this year till this-month minus 1 (from 01.01 THIS YEAR)
+            if self._static_TOTAL_SUMS_PREV_MONTHS is not None:
+                data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_MONTHS, data)
+            if self._static_TOTAL_SUMS_PREV_DAYS is not None:
+                data = app_summ_total_dict_values(self._static_TOTAL_SUMS_PREV_DAYS, data)
+
+            self._app_raw_total = data
+
+            # filename = f"./{start}.json"
+            # directory = os.path.dirname(filename)
+            # if not os.path.exists(directory):
+            #     os.makedirs(directory)
+            #
+            # #file_path = os.path.join(os.getcwd(), filename)
+            # with open(filename, "w", encoding="utf-8") as outfile:
+            #     json.dump(self._app_raw_total, outfile, indent=4)
+
+        else:
+            self._app_raw_total = None
+
+        # ok - store the last successful query timestamp
+        self._QUERY_TOTALS_TS = time()
+        return data
 
     """MEIN-SENEC.DE from here"""
     async def web_authenticate(self, do_update:bool=False, throw401:bool=False):
         if not self._web_is_authenticated:
             _LOGGER.debug("***** WEB-API: web_authenticate(self) ********")
             try:
-                async with self.web_session.get(self._WEB_BASE_URL, allow_redirects=True, max_redirects=20, headers=self._default_web_headers) as res:
+                async with (self.web_session.get(self._WEB_BASE_URL, allow_redirects=True, max_redirects=20, headers=self._default_web_headers) as res):
                     res.raise_for_status()
-                    if res.status == 200:
+                    if res.status in [200, 201, 202, 204, 205]:
                         html_content = await res.text()
                         # that's quite evil - parsing HTML via RegEx
 
@@ -3441,7 +4704,12 @@ class MySenecWebPortal:
                         if the_form_action_url:
                             await self._web_authenticate_part_02(the_form_action_url.replace('&amp;', '&'), do_update, throw401)
                         else:
-                            _LOGGER.error(f"web_authenticate(): no form action url could be found {html_content}")
+                            if (str(res.request_info.url).lower().startswith(self._WEB_BASE_URL.lower()) or
+                                    self._web_validate_html_structure(html_content=html_content)):
+                                _LOGGER.info(f"web_authenticate(): looks like are already authenticated")
+                                await self._web_set_is_authenticated(do_update=do_update)
+                            else:
+                                _LOGGER.error(f"web_authenticate(): no form action url could be found {html_content}")
                     else:
                         _LOGGER.error(f"web_authenticate(): unexpected status code [200] {res.status} - {res}")
             except Exception as exc:
@@ -3449,6 +4717,28 @@ class MySenecWebPortal:
                     raise exc
                 else:
                     _LOGGER.error(f"web_authenticate(): Error when try to call {self._WEB_BASE_URL}: '{exc}'")
+
+    def _web_validate_html_structure(self, html_content: str) -> bool:
+        """Quick check for main Angular components in the HTML content"""
+        required_components = [
+            r'ng-controller="MainController"',
+            r'<nav[^>]*id="header"',
+            r'ng-include="\'static/templates/header\.html',
+            r'ng-include="\'static/templates/navigation\.html',
+            r'<div[^>]*ng-view[^>]*ng-if="endkunde"',
+            r'ng-include="\'static/templates/footer\.html'
+        ]
+        missing_components = []
+        for component in required_components:
+            if not re.search(component, html_content, re.IGNORECASE):
+                missing_components.append(component)
+
+        if missing_components:
+            _LOGGER.info(f"_web_validate_html_structure(): Missing HTML components: {missing_components}")
+            return False
+
+        _LOGGER.debug("_web_validate_html_structure(): All required HTML components found")
+        return True
 
     async def _web_authenticate_part_02(self, form_action_url, do_update:bool=False, throw401:bool=False):
         req_headers = self._default_web_headers.copy()
@@ -3468,17 +4758,10 @@ class MySenecWebPortal:
             try:
                 _LOGGER.debug(f"_web_authenticate_part_02(): requesting: {form_action_url}")
                 res.raise_for_status()
-                if res.status == 200:
+                if res.status in [200, 201, 202, 204, 205]:
                     content = await res.text()
                     _LOGGER.debug(f"finally reached: {res.request_info.url}")
-                    self._web_is_authenticated = True
-                    if self._web_master_plant_number is None:
-                        await self.web_update_context()
-
-                    if self._web_master_plant_number is not None:
-                        _LOGGER.info("Login successful")
-                        if do_update:
-                            await self.update()
+                    await self._web_set_is_authenticated(do_update=do_update)
                 else:
                     self.purge_senec_cookies()
                     _LOGGER.info(f"_web_authenticate_part_02(): unexpected [200] response code: {res.status} - {res}")
@@ -3493,6 +4776,16 @@ class MySenecWebPortal:
                         self._web_is_authenticated = False
                     else:
                         self.purge_senec_cookies()
+
+    async def _web_set_is_authenticated(self, do_update:bool=False):
+        self._web_is_authenticated = True
+        if self._web_master_plant_number is None:
+            await self.web_update_context()
+
+        if self._web_master_plant_number is not None:
+            _LOGGER.info("Login successful")
+            if do_update:
+                await self.update()
 
     async def web_update_context(self, force_autodetect:bool = False):
         _LOGGER.debug("***** web_update_context(self) ********")
@@ -3589,32 +4882,6 @@ class MySenecWebPortal:
                 self._web_is_authenticated = False
                 await self.web_authenticate(do_update=False, throw401=False)
 
-    async def update(self):
-        if self._web_is_authenticated:
-            _LOGGER.info("***** update(self) ********")
-            await self.web_update_now()
-            # await self.web_update_total()
-
-            if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
-                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                # 2025/06/19 - changed to 6h... = 86400/4 = 21600
-                if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
-                    await self.update_spare_capacity()
-
-            if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
-                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
-                    await self.update_peak_shaving()
-
-            if self.SGREADY_SUPPORTED:
-                await self.update_sgready_state()
-
-                # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                if self._QUERY_SGREADY_CONF_TS + 86400 < time():
-                    await self.update_sgready_conf()
-        else:
-            await self.web_authenticate(do_update=True, throw401=False)
-
     async def web_update_now(self):
         _LOGGER.debug("***** web_update_now(self) ********")
         # grab NOW and TODAY stats
@@ -3623,7 +4890,7 @@ class MySenecWebPortal:
             try:
                 _LOGGER.debug(f"web_update_now() requesting: {a_url}")
                 res.raise_for_status()
-                if res.status == 200:
+                if res.status in [200, 201, 202, 204, 205]:
                     try:
                         r_json = await res.json()
                         _LOGGER.debug(f"web_update_now() response-recaived: {r_json}")
@@ -3680,7 +4947,7 @@ class MySenecWebPortal:
                     _LOGGER.debug(f"web_update_total() requesting: {a_url}")
                     try:
                         res.raise_for_status()
-                        if res.status == 200:
+                        if res.status in [200, 201, 202, 204, 205]:
                             try:
                                 r_json = await res.json()
                                 _LOGGER.debug(f"web_update_total() response-recaived: {r_json}")
@@ -3704,14 +4971,17 @@ class MySenecWebPortal:
                         self._web_is_authenticated = False
                         await self.update()
 
+            # ok - store the last successful query timestamp
+            self._QUERY_TOTALS_TS = time()
+
     """This function will update peak shaving information"""
-    async def update_peak_shaving(self):
-        _LOGGER.info("***** update_peak_shaving(self) ********")
+    async def web_update_peak_shaving(self):
+        _LOGGER.info("***** web_update_peak_shaving(self) ********")
         a_url = f"{self._WEB_GET_PEAK_SHAVING}{self._web_master_plant_number}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 res.raise_for_status()
-                if res.status == 200:
+                if res.status in [200, 201, 202, 204, 205]:
                     try:
                         r_json = await res.json()
                         # GET Data from JSON
@@ -3744,7 +5014,7 @@ class MySenecWebPortal:
         async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 res.raise_for_status()
-                if res.status == 200:
+                if res.status in [200, 201, 202, 204, 205]:
                     _LOGGER.debug("***** Set Peak Shaving successfully ********")
                     # Reset the timer in order that the Peak Shaving is updated immediately after the change
                     self._QUERY_PEAK_SHAVING_TS = 0
@@ -3763,8 +5033,8 @@ class MySenecWebPortal:
                 await self.set_peak_shaving(new_peak_shaving)
 
     """This function will update the spare capacity over the web api"""
-    async def update_spare_capacity(self):
-        _LOGGER.info("***** update_spare_capacity(self) ********")
+    async def web_update_spare_capacity(self):
+        _LOGGER.info("***** web_update_spare_capacity(self) ********")
         a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_GET_SPARE_CAPACITY}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as response:
             try:
@@ -3800,7 +5070,7 @@ class MySenecWebPortal:
         async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 res.raise_for_status()
-                if res.status == 200:
+                if res.status in [200, 201, 202, 204, 205]:
                     _LOGGER.debug("***** Set Spare Capacity successfully ********")
                     # Reset the timer in order that the Spare Capacity is updated immediately after the change
                     self._QUERY_SPARE_CAPACITY_TS = 0
@@ -3817,14 +5087,14 @@ class MySenecWebPortal:
                 await self.web_authenticate(do_update=False, throw401=True)
                 await self.set_spare_capacity(new_spare_capacity)
 
-    async def update_sgready_state(self):
+    async def web_update_sgready_state(self):
         if self.SGREADY_SUPPORTED:
-            _LOGGER.info("***** update_update_sgready_state(self) ********")
+            _LOGGER.info("***** web_update_sgready_state(self) ********")
             a_url = self._WEB_GET_SGREADY_STATE % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
                     res.raise_for_status()
-                    if res.status == 200:
+                    if res.status in [200, 201, 202, 204, 205]:
                         try:
                             r_json = await res.json()
                             plain = str(r_json)
@@ -3835,6 +5105,9 @@ class MySenecWebPortal:
                                         self._web_sgready_mode = SGREADY_MODES[self._lang].get(self._web_sgready_mode_code,"UNKNOWN")
                                     else:
                                         self._web_sgready_mode = SGREADY_MODES["en"].get(self._web_sgready_mode_code, "UNKNOWN")
+
+                                    # ok we have got our data...
+                                    _QUERY_SGREADY_STATE_TS = time()
 
                         except JSONDecodeError as exc:
                             _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
@@ -3849,14 +5122,14 @@ class MySenecWebPortal:
                     self._web_is_authenticated = False
                     await self.update()
 
-    async def update_sgready_conf(self):
+    async def web_update_sgready_conf(self):
         if self.SGREADY_SUPPORTED:
-            _LOGGER.info("***** update_update_sgready_conf(self) ********")
+            _LOGGER.info("***** web_update_sgready_conf(self) ********")
             a_url = self._WEB_GET_SGREADY_CONF % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
                     res.raise_for_status()
-                    if res.status == 200:
+                    if res.status in [200, 201, 202, 204, 205]:
                         try:
                             r_json = await res.json()
                             self._web_sgready_conf_data = r_json
@@ -3896,9 +5169,10 @@ class MySenecWebPortal:
                 async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False, json=post_data) as res:
                     try:
                         res.raise_for_status()
-                        if res.status == 200:
+                        if res.status in [200, 201, 202, 204, 205]:
                             _LOGGER.debug("***** Set SG-Ready CONF successfully ********")
-                            # Reset the timer in order that the Peak Shaving is updated immediately after the change
+                            # Reset the timer in order that the SGReady state is updated immediately after the change
+                            self._QUERY_SGREADY_STATE_TS = 0
                             self._QUERY_SGREADY_CONF_TS = 0
 
                         else:
@@ -3917,7 +5191,6 @@ class MySenecWebPortal:
                 _LOGGER.debug(
                     f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._web_sgready_conf_data}")
 
-
     ###################################
     # JUST VALUE FUNCTIONS
     ###################################
@@ -3928,8 +5201,8 @@ class MySenecWebPortal:
 
     @property
     def senec_num(self) -> str:
-        if self._app_raw_tech_data is not None and "casing" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["casing"]["serial"]
+        if self._app_raw_system_details is not None and "casing" in self._app_raw_system_details:
+            return self._app_raw_system_details["casing"]["serial"]
         elif hasattr(self, '_web_dev_number'):
             return str(self._web_dev_number)
         else:
@@ -3937,8 +5210,8 @@ class MySenecWebPortal:
 
     @property
     def serial_number(self) -> str:
-        if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["mcu"]["mainControllerSerial"]
+        if self._app_raw_system_details is not None and "mcu" in self._app_raw_system_details:
+            return self._app_raw_system_details["mcu"]["mainControllerSerial"]
         elif hasattr(self, '_app_serial_number') and self._app_serial_number is not None:
             return str(self._app_serial_number)
         elif hasattr(self, '_web_serial_number'):
@@ -3948,8 +5221,8 @@ class MySenecWebPortal:
 
     @property
     def product_name(self) -> str:
-        if self._app_raw_tech_data is not None and "systemOverview" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["systemOverview"]["productName"]
+        if self._app_raw_system_details is not None and "systemOverview" in self._app_raw_system_details:
+            return self._app_raw_system_details["systemOverview"]["productName"]
         elif hasattr(self, '_web_product_name'):
             return str(self._web_product_name)
         else:
@@ -3968,12 +5241,12 @@ class MySenecWebPortal:
         d = None
         e = None
         f = None
-        if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
-            a = self._app_raw_tech_data["mcu"]["guiVersion"]
-            b = self._app_raw_tech_data["mcu"]["firmwareVersion"]
+        if self._app_raw_system_details is not None and "mcu" in self._app_raw_system_details:
+            a = self._app_raw_system_details["mcu"]["guiVersion"]
+            b = self._app_raw_system_details["mcu"]["firmwareVersion"]
 
-        if self._app_raw_tech_data is not None and "batteryInverter" in self._app_raw_tech_data:
-            bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+        if self._app_raw_system_details is not None and "batteryInverter" in self._app_raw_system_details:
+            bat_inv_obj = self._app_raw_system_details["batteryInverter"]
             if "firmware" in bat_inv_obj:
                 c = bat_inv_obj["firmware"]["firmwareVersion"]
                 d = bat_inv_obj["firmware"]["firmwareVersionHumanMachineInterface"]
@@ -4004,7 +5277,7 @@ class MySenecWebPortal:
     ###################################
     def _get_sum_for_index(self, index: int) -> float:
         if index > -1:
-            return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total["timeseries"])
+            return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total["timeSeries"])
 
     @property
     def accuimport_total(self) -> float:
@@ -4175,19 +5448,23 @@ class MySenecWebPortal:
     @property
     def case_temp(self) -> float:
         # 'casing': {'serial': 'XXX', 'temperatureInCelsius': 28.95928382873535},
-        if self._app_raw_tech_data is not None and "casing" in self._app_raw_tech_data:
-            return self._app_raw_tech_data["casing"]["temperatureInCelsius"]
+        if self._app_raw_system_details is not None and "casing" in self._app_raw_system_details:
+            return self._app_raw_system_details["casing"]["temperatureInCelsius"]
 
     @property
     def system_state(self) -> str:
         # 'mcu': {'mainControllerSerial': 'XXX',
         #        'mainControllerState': {'name': 'EIGENVERBRAUCH', 'severity': 'INFO'}, 'firmwareVersion': '123',
         #        'guiVersion': 123}, 'warranty': {'endDate': 1700000000, 'warrantyTermInMonths': 123},
-        if self._app_raw_tech_data is not None and "mcu" in self._app_raw_tech_data:
-            if "mainControllerState" in self._app_raw_tech_data["mcu"]:
-                return self._app_raw_tech_data["mcu"]["mainControllerState"]["name"].replace('_', ' ')
-            elif "mainControllerUnitState" in self._app_raw_tech_data["mcu"]:
-                return self._app_raw_tech_data["mcu"]["mainControllerUnitState"]["name"].replace('_', ' ')
+        if self._app_raw_device_state is not None:
+            return self._app_raw_device_state.replace('_', ' ')
+        if self._app_raw_system_state_obj is not None and "name" in self._app_raw_system_state_obj:
+            return self._app_raw_system_state_obj["name"].replace('_', ' ')
+        if self._app_raw_system_details is not None and "mcu" in self._app_raw_system_details:
+            if "mainControllerState" in self._app_raw_system_details["mcu"]:
+                return self._app_raw_system_details["mcu"]["mainControllerState"]["name"].replace('_', ' ')
+            elif "mainControllerUnitState" in self._app_raw_system_details["mcu"]:
+                return self._app_raw_system_details["mcu"]["mainControllerUnitState"]["name"].replace('_', ' ')
 
     ###################################
     # 'batteryInverter': {'state': {'name': 'RUN_GRID', 'severity': 'INFO'}, 'vendor': 'XXX',
@@ -4201,24 +5478,24 @@ class MySenecWebPortal:
     ###################################
     @property
     def battery_inverter_state(self) -> str:
-        if self._app_raw_tech_data is not None:
-            if "batteryInverter" in self._app_raw_tech_data:
-                bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+        if self._app_raw_system_details is not None:
+            if "batteryInverter" in self._app_raw_system_details:
+                bat_inv_obj = self._app_raw_system_details["batteryInverter"]
                 if "state" in bat_inv_obj and "name" in bat_inv_obj["state"] and bat_inv_obj["state"][
                     "name"] is not None:
                     return bat_inv_obj["state"]["name"].replace('_', ' ')
 
             # just a fallback...
-            if "mcu" in self._app_raw_tech_data:
-                mcu_obj = self._app_raw_tech_data["mcu"]
+            if "mcu" in self._app_raw_system_details:
+                mcu_obj = self._app_raw_system_details["mcu"]
                 if "mainControllerState" in mcu_obj and "name" in mcu_obj["mainControllerState"] and mcu_obj["mainControllerState"]["name"] is not None:
                     return mcu_obj["mainControllerState"]["name"].replace('_', ' ')
 
     @property
     def battery_temp(self) -> float:
-        if self._app_raw_tech_data is not None:
-            if "batteryInverter" in self._app_raw_tech_data:
-                bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+        if self._app_raw_system_details is not None:
+            if "batteryInverter" in self._app_raw_system_details:
+                bat_inv_obj = self._app_raw_system_details["batteryInverter"]
                 if "temperatures" in bat_inv_obj and "amb" in bat_inv_obj["temperatures"] and bat_inv_obj["temperatures"]["amb"] is not None:
                     return bat_inv_obj["temperatures"]["amb"]
 
@@ -4230,9 +5507,9 @@ class MySenecWebPortal:
 
     @property
     def battery_temp_max(self) -> float:
-        if self._app_raw_tech_data is not None:
-            if "batteryInverter" in self._app_raw_tech_data:
-                bat_inv_obj = self._app_raw_tech_data["batteryInverter"]
+        if self._app_raw_system_details is not None:
+            if "batteryInverter" in self._app_raw_system_details:
+                bat_inv_obj = self._app_raw_system_details["batteryInverter"]
                 if "temperatures" in bat_inv_obj and "max" in bat_inv_obj["temperatures"] and bat_inv_obj["temperatures"]["max"] is not None:
                     return bat_inv_obj["temperatures"]["max"]
 
@@ -4257,34 +5534,34 @@ class MySenecWebPortal:
     @property
     def _battery_module_count(self) -> int:
         # internal use only...
-        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            if "numberOfBatteryModules" in self._app_raw_tech_data["batteryPack"]:
-                return self._app_raw_tech_data["batteryPack"]["numberOfBatteryModules"]
+        if self._app_raw_system_details is not None and "batteryPack" in self._app_raw_system_details:
+            if "numberOfBatteryModules" in self._app_raw_system_details["batteryPack"]:
+                return self._app_raw_system_details["batteryPack"]["numberOfBatteryModules"]
         return 0
 
     @property
     def battery_state_voltage(self) -> float:
-        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            if "currentVoltageInV" in self._app_raw_tech_data["batteryPack"]:
-                return self._app_raw_tech_data["batteryPack"]["currentVoltageInV"]
+        if self._app_raw_system_details is not None and "batteryPack" in self._app_raw_system_details:
+            if "currentVoltageInV" in self._app_raw_system_details["batteryPack"]:
+                return self._app_raw_system_details["batteryPack"]["currentVoltageInV"]
 
     @property
     def battery_state_current(self) -> float:
-        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            if "currentCurrentInA" in self._app_raw_tech_data["batteryPack"]:
-                return self._app_raw_tech_data["batteryPack"]["currentCurrentInA"]
+        if self._app_raw_system_details is not None and "batteryPack" in self._app_raw_system_details:
+            if "currentCurrentInA" in self._app_raw_system_details["batteryPack"]:
+                return self._app_raw_system_details["batteryPack"]["currentCurrentInA"]
 
     @property
     def _not_used_currentChargingLevelInPercent(self) -> float:
-        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            if "currentChargingLevelInPercent" in self._app_raw_tech_data["batteryPack"]:
-                return self._app_raw_tech_data["batteryPack"]["currentChargingLevelInPercent"]
+        if self._app_raw_system_details is not None and "batteryPack" in self._app_raw_system_details:
+            if "currentChargingLevelInPercent" in self._app_raw_system_details["batteryPack"]:
+                return self._app_raw_system_details["batteryPack"]["currentChargingLevelInPercent"]
 
     @property
     def battery_soh_remaining_capacity(self) -> float:
-        if self._app_raw_tech_data is not None and "batteryPack" in self._app_raw_tech_data:
-            if "remainingCapacityInPercent" in self._app_raw_tech_data["batteryPack"]:
-                return self._app_raw_tech_data["batteryPack"]["remainingCapacityInPercent"]
+        if self._app_raw_system_details is not None and "batteryPack" in self._app_raw_system_details:
+            if "remainingCapacityInPercent" in self._app_raw_system_details["batteryPack"]:
+                return self._app_raw_system_details["batteryPack"]["remainingCapacityInPercent"]
 
     ###################################
     # 'batteryModules': [{'ordinal': 1, 'state': {'state': 'OK', 'severity': 'INFO'}, 'vendor': 'XXX',
@@ -4313,18 +5590,18 @@ class MySenecWebPortal:
     ###################################
     @property
     def battery_module_state(self) -> [str]:
-        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
+        if self._app_raw_system_details is not None and "batteryModules" in self._app_raw_system_details:
             data = ["UNKNOWN"] * self._battery_module_count
-            bat_obj = self._app_raw_tech_data["batteryModules"]
+            bat_obj = self._app_raw_system_details["batteryModules"]
             for idx in range(self._battery_module_count):
                 data[idx] = bat_obj[idx]["state"]["state"].replace('_', ' ')
             return data
 
     @property
     def battery_module_temperature_avg(self) -> [float]:
-        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
-            data = [-1] * self._battery_module_count
-            bat_obj = self._app_raw_tech_data["batteryModules"]
+        if self._app_raw_system_details is not None and "batteryModules" in self._app_raw_system_details:
+            data = [None] * self._battery_module_count
+            bat_obj = self._app_raw_system_details["batteryModules"]
             for idx in range(self._battery_module_count):
                 if "minTemperature" in bat_obj[idx] and "maxTemperature" in bat_obj[idx]:
                     data[idx] = (bat_obj[idx]["minTemperature"] + bat_obj[idx]["maxTemperature"]) / 2
@@ -4332,9 +5609,9 @@ class MySenecWebPortal:
 
     @property
     def battery_module_temperature_min(self) -> [float]:
-        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
-            data = [-1] * self._battery_module_count
-            bat_obj = self._app_raw_tech_data["batteryModules"]
+        if self._app_raw_system_details is not None and "batteryModules" in self._app_raw_system_details:
+            data = [None] * self._battery_module_count
+            bat_obj = self._app_raw_system_details["batteryModules"]
             for idx in range(self._battery_module_count):
                 if "minTemperature" in bat_obj[idx]:
                     data[idx] = bat_obj[idx]["minTemperature"]
@@ -4342,9 +5619,9 @@ class MySenecWebPortal:
 
     @property
     def battery_module_temperature_max(self) -> [float]:
-        if self._app_raw_tech_data is not None and "batteryModules" in self._app_raw_tech_data:
-            data = [-1] * self._battery_module_count
-            bat_obj = self._app_raw_tech_data["batteryModules"]
+        if self._app_raw_system_details is not None and "batteryModules" in self._app_raw_system_details:
+            data = [None] * self._battery_module_count
+            bat_obj = self._app_raw_system_details["batteryModules"]
             for idx in range(self._battery_module_count):
                 if "maxTemperature" in bat_obj[idx]:
                     data[idx] = bat_obj[idx]["maxTemperature"]
@@ -4369,16 +5646,59 @@ class MySenecWebPortal:
         if self.SGREADY_SUPPORTED:
             await self.set_sgready_conf(new_sgready_data={SGREADY_CONFKEY_ENABLED: enabled})
 
+    ###################################
+    # SWITCH-STUFF
+    ###################################
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
 
-class IntBridge:
-    app_api: MySenecWebPortal = None
-    lala_cgi: Senec = None
+    ###################################
+    # BUTTON-STUFF
+    ###################################
+    async def _trigger_button(self, key: str, payload: str):
+        return await getattr(self, 'trigger_' + key)(payload)
 
+    async def trigger_delete_cache(self, payload:str):
+        await self._write_token_to_storage(token_dict=None)
+        # reset all our internal objects...
+        self._QUERY_TOTALS_TS = 0
+        self._QUERY_SYSTEM_DETAILS_TS = 0
+        self._app_token_object = {}
+        self._app_is_authenticated = False
+        self._app_token = None
+        self._app_master_plant_id = None
+        self._app_serial_number = None
+        self._app_wallbox_num_max = 4
+        self._app_data_start_ts = -1
+        self._app_data_end_ts = -1
+        self._app_abilities = None
+        self._app_raw_now = None
+        self._app_raw_device_state = None
+        self._app_raw_today = None
+        self._app_raw_system_details = None
+        self._app_raw_system_state_obj = None
+        self._app_raw_total = None
+        self._static_TOTAL_SUMS_PREV_YEARS = None
+        self._static_TOTAL_SUMS_PREV_MONTHS = None
+        self._static_TOTAL_SUMS_PREV_DAYS = None
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
+        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
+        await self.app_authenticate()
+        return True
+
+class IntBridge:
+    app_api: SenecOnline = None
+    lala_cgi: SenecLocal = None
+
+    # IntBridge.app_api.app_set_allow_intercharge_all(value_to_set=value, sync=False)
+    # IntBridge.app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
+    # IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
+
+    # READ
+    # IntBridge.app_api.app_get_local_wallbox_mode_from_api_values(pos)
     @staticmethod
     def avail() -> bool:
-        _LOGGER.debug(f"IntBridge.avail() TEMP DEACTIVATED")
-        return False
-        #_LOGGER.debug(f"IntBridge.avail() -> IntBridge.app_api: {IntBridge.app_api is not None} IntBridge.lala_cgi: {IntBridge.lala_cgi is not None}")
-        #return IntBridge.app_api is not None and IntBridge.lala_cgi is not None
+        _LOGGER.debug(f"IntBridge.avail() -> IntBridge.app_api: {IntBridge.app_api is not None} IntBridge.lala_cgi: {IntBridge.lala_cgi is not None}")
+        return IntBridge.app_api is not None and IntBridge.lala_cgi is not None
+

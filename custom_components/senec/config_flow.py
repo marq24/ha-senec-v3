@@ -6,8 +6,8 @@ import voluptuous as vol
 from aiohttp import ClientResponseError
 from requests.exceptions import HTTPError, Timeout
 
-from custom_components.senec.pysenec_ha import Inverter
-from custom_components.senec.pysenec_ha import Senec, MySenecWebPortal
+from custom_components.senec.pysenec_ha import InverterLocal
+from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.config_entries import ConfigFlowResult, SOURCE_RECONFIGURE
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
@@ -56,11 +56,6 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
     CONF_IGNORE_SYSTEM_STATE,
-    CONF_APP_TOKEN,
-    CONF_APP_SYSTEMID,
-    CONF_APP_SERIALNUM,
-    CONF_APP_WALLBOX_COUNT,
-
     CONFIG_VERSION,
     CONFIG_MINOR_VERSION
 )
@@ -139,11 +134,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._device_version = ""
         self._stats_available = False
 
-        self._app_token = None
-        self._app_master_plant_id = None
-        self._app_serial_number = None
-        self._app_wallbox_num_max = None
-
         # just a container to transport the user-input data to the next step...
         self._xdata = None
         self._xname = None
@@ -172,11 +162,11 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_abort(reason="reconfigure_error")
 
-    async def _test_connection_senec(self, host, use_https):
+    async def _test_connection_senec_local(self, host, use_https):
         """Check if we can connect to the Senec device."""
         self._errors = {}
         try:
-            senec_client = Senec(host=host, use_https=use_https, lala_session=async_create_clientsession(self.hass, verify_ssl=False))
+            senec_client = SenecLocal(host=host, use_https=use_https, lala_session=async_create_clientsession(self.hass, verify_ssl=False))
             await senec_client.update_version()
             await senec_client.update()
             self._use_https = use_https
@@ -201,7 +191,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Check if we can connect to the Senec device."""
         self._errors = {}
         try:
-            inverter_client = Inverter(host=host, inv_session=async_create_clientsession(self.hass))
+            inverter_client = InverterLocal(host=host, inv_session=async_create_clientsession(self.hass))
             await inverter_client.update_version()
             self._support_bdc = inverter_client.has_bdc
 
@@ -218,58 +208,54 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.warning(f"Could not connect to build-in Inverter device at {host}, check host ip address")
         return False
 
-    async def _test_connection_webapi(self, user: str, pwd: str, user_master_plant: int):
+    async def _test_connection_senec_online(self, user: str, pwd: str, user_master_plant: int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
         web_session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
-            senec_web_client = MySenecWebPortal(user=user, pwd=pwd, web_session=web_session,
-                                                app_master_plant_number=user_master_plant)
+            senec_online = SenecOnline(user=user, pwd=pwd, web_session=web_session,
+                                           app_master_plant_number=user_master_plant)
 
-            # 2025/21/07 APPAuth is not working...
-            # await senec_web_client.app_authenticate(retry=False, do_update=False)
-            # if senec_web_client._app_is_authenticated:
-                # await senec_web_client.app_update_context()
-                # self._app_master_plant_number = senec_web_client.appMasterPlantNumber
-                # await senec_web_client.app_update_tech_data()
-            await senec_web_client.web_authenticate(do_update=False, throw401=True)
-            if senec_web_client._web_is_authenticated and senec_web_client._web_master_plant_number is not None:
-                # looks strange, but we have a fallback to webMaterPlantNumber inplace!
-                self._app_master_plant_number = senec_web_client.appMasterPlantNumber
+            # we check, if we can authenticate with the APP-API
+            await senec_online.app_authenticate()
+            if senec_online._app_is_authenticated:
+                # the 'app_authenticate()' call will also update all the required meta data
+                # so we don't have the need for additional calls... and also our properties
+                # are already stored in the token file!
 
-                if senec_web_client.product_name is None:
+                # well - we need the system details... *sigh*
+                await self.app_get_system_details()
+
+                # the 'app_authenticate()' have also probably corrected the
+                # master plant number... so we use it..
+                self._app_master_plant_number = senec_online.appMasterPlantNumber
+
+                # collecting other properties...
+                if senec_online.product_name is None:
                     prod_name = "UNKNOWN_PROD_NAME"
                 else:
-                    prod_name = senec_web_client.product_name
+                    prod_name = senec_online.product_name
 
-                if senec_web_client.senec_num is None:
+                if senec_online.senec_num is None:
                     senec_num = "UNKNOWN_SENEC_NUM"
                 else:
-                    senec_num = senec_web_client.senec_num
+                    senec_num = senec_online.senec_num
 
-                if senec_web_client.serial_number is None:
+                if senec_online.serial_number is None:
                     serial_num = "UNKNOWN_SERIAL_NUM"
                 else:
-                    serial_num = senec_web_client.serial_number
+                    serial_num = senec_online.serial_number
 
                 # these values will also read with every restart...
                 self._device_type = SYSTYPE_NAME_WEBAPI
                 self._device_model = f"{prod_name} | SENEC.Num: {senec_num}"
                 self._device_serial = serial_num
-                self._app_token = senec_web_client._app_token
-                self._app_master_plant_id = senec_web_client._app_master_plant_id
-                self._app_serial_number = senec_web_client._app_serial_number
-                self._app_wallbox_num_max = senec_web_client._app_wallbox_num_max
-                self._device_version = senec_web_client.versions
+                self._device_version = senec_online.versions
 
                 loc_device_info = {
                     "device_type": self._device_type,
                     "device_model": self._device_model,
                     "device_serial": self._device_serial,
-                    "app_token": f"{self._app_token[:4]}..." if self._app_token is not None else None,
-                    "app_master_plant_id": self._app_master_plant_id,
-                    "app_serial_number": self._app_serial_number,
-                    "app_wallbox_num_max": self._app_wallbox_num_max,
                     "device_version": self._device_version
                 }
                 _LOGGER.info(f"Successfully connect to mein-senec.de and APP-API with '{user}' -> {loc_device_info}")
@@ -373,8 +359,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # SENEC.Home stuff
             else:
-                if (await self._test_connection_senec(host_entry, False) or
-                        await self._test_connection_senec(host_entry, True)):
+                if (await self._test_connection_senec_local(host_entry, False) or
+                        await self._test_connection_senec_local(host_entry, True)):
                     local_data = {
                         CONF_TYPE: CONF_SYSTYPE_SENEC,
                         CONF_NAME: name_entry,
@@ -469,7 +455,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._errors[CONF_USERNAME] = "already_configured"
                     raise data_entry_flow.AbortFlow("already_configured")
 
-            if await self._test_connection_webapi(user_entry, pwd_entry, master_plant_num):
+            if await self._test_connection_senec_online(user_entry, pwd_entry, master_plant_num):
                 web_data = {
                     CONF_TYPE: CONF_SYSTYPE_WEB,
                     CONF_NAME: name_entry,
@@ -477,20 +463,13 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_USERNAME: user_entry,
                     CONF_PASSWORD: pwd_entry,
                     CONF_SCAN_INTERVAL: scan_entry,
-                    CONF_DEV_TYPE_INT: self._device_type_internal,
+                    CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
                     CONF_DEV_TYPE: self._device_type,
                     CONF_DEV_MODEL: self._device_model,
                     CONF_DEV_SERIAL: self._device_serial,
                     CONF_DEV_VERSION: self._device_version,
                     CONF_DEV_MASTER_NUM: self._app_master_plant_number
                 }
-
-                if all(x is not None for x in [self._app_token, self._app_master_plant_id, self._app_serial_number, self._app_wallbox_num_max]):
-                    web_data[CONF_APP_TOKEN] = self._app_token
-                    web_data[CONF_APP_SYSTEMID] = self._app_master_plant_id
-                    web_data[CONF_APP_SERIALNUM] = self._app_serial_number
-                    web_data[CONF_APP_WALLBOX_COUNT] = self._app_wallbox_num_max
-
                 if self.source == SOURCE_RECONFIGURE:
                     return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data)
                 else:
