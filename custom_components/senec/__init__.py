@@ -7,13 +7,14 @@ from typing import Final
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
+from homeassistant.loader import Integration, async_get_integration
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as config_val, entity_registry
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from custom_components.senec.pysenec_ha import Senec, Inverter, MySenecWebPortal, util
+from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
     SENEC_SECTION_BMS_CELLS,
@@ -52,10 +53,6 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
     CONF_IGNORE_SYSTEM_STATE,
-    CONF_APP_TOKEN,
-    CONF_APP_SYSTEMID,
-    CONF_APP_SERIALNUM,
-    CONF_APP_WALLBOX_COUNT,
 
     MAIN_SENSOR_TYPES,
     MAIN_BIN_SENSOR_TYPES,
@@ -113,11 +110,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         value = "UNKOWN"
         hass.data.setdefault(DOMAIN, {"manifest_version": value})
 
-    coordinator = SenecDataUpdateCoordinator(hass, config_entry)
+    # check if we have a valid manifest_version
+    the_integration = await async_get_integration(hass, DOMAIN)
+    intg_version = the_integration.version if the_integration is not None else "UNKNOWN"
+    coordinator = SenecDataUpdateCoordinator(hass, config_entry, intg_version)
+
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         # we need to log in into the SenecApp and authenticate the user via the web-portal
         await coordinator.senec.authenticate_all()
-        _LOGGER.info(f"authenticate_all() completed DONE -> important data: {coordinator.senec.get_debug_login_data()}")
+        _LOGGER.info(f"authenticate_all() completed -> main data: {coordinator.senec.get_debug_login_data()}")
 
     await coordinator.async_refresh()
     if not coordinator.last_update_success:
@@ -150,24 +151,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.device_versions
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        # after an initial data-sync we check if our stored credentials are still the same...
-        # and if not, we trigger an update of the config_entry (which is only possible via the
-        # conf_flow)...
-        app_token = coordinator.senec._app_token
-        app_master_plant_id = coordinator.senec._app_master_plant_id
-        app_serial_number = coordinator.senec._app_serial_number
-        app_wallbox_num_max = coordinator.senec._app_wallbox_num_max
 
-        if (config_entry.data.get(CONF_APP_TOKEN, "") != app_token or
-                config_entry.data.get(CONF_APP_SYSTEMID, "") != app_master_plant_id or
-                config_entry.data.get(CONF_APP_SERIALNUM, "") != app_serial_number or
-                config_entry.data.get(CONF_APP_WALLBOX_COUNT, -1) != app_wallbox_num_max
-        ):
-            _LOGGER.info("need to update config_entry with new data by calling update_conf_entry in as task...")
-
-            hass.async_create_task(
-                update_conf_entry(hass, config_entry, app_token, app_master_plant_id, app_serial_number, app_wallbox_num_max),
-                f"update_config_entry {config_entry.title} {config_entry.domain} {config_entry.entry_id}")
+        # this is obsolete with v2025.7.13+
+        # _LOGGER.info("need to update config_entry with new data by calling update_conf_entry in as task...")
+        # hass.async_create_task(
+        #     update_conf_entry(hass, config_entry, app_token, app_master_plant_id, app_serial_number, app_wallbox_num_max),
+        #     f"update_config_entry {config_entry.title} {config_entry.domain} {config_entry.entry_id}")
 
         # need review! - since currently there is no 'app_update_context()' method in the MySenecWebPortal
         if coordinator.senec.product_name is None or coordinator.senec.product_name == "UNKNOWN_PROD_NAME":
@@ -189,26 +178,33 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return True
 
 
-async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_token: str, app_master_plant_id: str, app_serial_number:str, app_wallbox_num_max: int):
-    if config_entry is not None:
-        _LOGGER.debug(f"update_conf_entry called...")  # with user_input: {user_input} and context: {self.context}")
+# async def update_conf_entry(hass: HomeAssistant, config_entry: ConfigEntry, app_token: str, app_master_plant_id: str, app_serial_number:str, app_wallbox_num_max: int):
+#     if config_entry is not None:
+#         _LOGGER.debug(f"update_conf_entry called...")  # with user_input: {user_input} and context: {self.context}")
+#
+#         _data = dict(config_entry.data)
+#         # if "dataAAAA" in _data:
+#         #    del _data["dataAAAA"]
+#
+#         _data[CONF_APP_TOKEN] = app_token
+#         _data[CONF_APP_SYSTEMID] = app_master_plant_id
+#         _data[CONF_APP_SERIALNUM] = app_serial_number
+#         _data[CONF_APP_WALLBOX_COUNT] = app_wallbox_num_max
+#
+#         # _data["dataAAAA"] = time()
+#
+#         await asyncio.sleep(5)
+#
+#         _LOGGER.debug(f"finally saving new data to config_entry - add_update_listener will take care about a possible the restart...")
+#         hass.config_entries.async_update_entry(config_entry, data=_data)
 
-        _data = dict(config_entry.data)
-        # if "dataAAAA" in _data:
-        #    del _data["dataAAAA"]
 
-        _data[CONF_APP_TOKEN] = app_token
-        _data[CONF_APP_SYSTEMID] = app_master_plant_id
-        _data[CONF_APP_SERIALNUM] = app_serial_number
-        _data[CONF_APP_WALLBOX_COUNT] = app_wallbox_num_max
-
-        # _data["dataAAAA"] = time()
-
-        await asyncio.sleep(5)
-
-        _LOGGER.debug(f"finally saving new data to config_entry - add_update_listener will take care about a possible the restart...")
-        hass.config_entries.async_update_entry(config_entry, data=_data)
-
+async def get_integration_version(self, hass: HomeAssistant):
+    try:
+        integration: Integration = await hass.async_get_integration(DOMAIN)
+        return integration.version
+    except Exception:
+        return "UNKNOWN"
 
 # Map platforms to their corresponding search lists
 PLATFORM_MAPPING: Final = {
@@ -232,13 +228,14 @@ SECTION_MAPPING: Final = {
 class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     """Define an object to hold Senec data."""
 
-    def __init__(self, hass: HomeAssistant, config_entry):
+    def __init__(self, hass: HomeAssistant, config_entry, intg_version: str):
+        self._integration_version = intg_version
         """Initialize."""
         # Build-In INVERTER
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
             # host can be changed in the options...
             self._host = config_entry.data[CONF_HOST]
-            self.senec = Inverter(self._host, inv_session=async_create_clientsession(hass))
+            self.senec = InverterLocal(host=self._host, inv_session=async_create_clientsession(hass), integ_version=self._integration_version)
 
         # WEB-API Version...
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
@@ -258,17 +255,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 QUERY_SPARE_CAPACITY_KEY: False,
                 QUERY_PEAK_SHAVING_KEY: False
             }
-
-            # additional (optional) APP-API credentials & settings...
-            token = config_entry.data.get(CONF_APP_TOKEN, None)
-            mpid = config_entry.data.get(CONF_APP_SYSTEMID, None)
-            serial = config_entry.data.get(CONF_APP_SERIALNUM, None)
-            wbmax = config_entry.data.get(CONF_APP_WALLBOX_COUNT, None)
-            if token is not None and mpid is not None and serial is not None and wbmax is not None:
-                opt[CONF_APP_TOKEN] = token
-                opt[CONF_APP_SYSTEMID] = mpid
-                opt[CONF_APP_SERIALNUM] = serial
-                opt[CONF_APP_WALLBOX_COUNT] = wbmax
 
             if hass is not None and config_entry.title is not None:
                 # we do not need to listen to changed to the entity - since the integration will be automatically
@@ -314,10 +300,11 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # SO to get out of this mess, we will store the master_plant_id in our config entry and use this as our
             # general key - then when we access the web-portal, we will use assigned serial_number to the master_plant_id
             # and then query the web-portal anlagenNummer 0,1,2 ... till we find the one with the matching serial_number
-            self.senec = MySenecWebPortal(user=user, pwd=pwd, web_session=async_create_clientsession(hass),
-                                          app_master_plant_number=app_master_plant_number, # we will not set the master_plant number - we will always use "autodetect
-                                          lang=hass.config.language.lower(),
-                                          options=opt)
+            self.senec = SenecOnline(user=user, pwd=pwd, web_session=async_create_clientsession(hass),
+                                     app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
+                                     lang=hass.config.language.lower(),
+                                     options=opt,
+                                     integ_version=self._integration_version)
             self._warning_counter = 0
         # lala.cgi Version...
         else:
@@ -366,8 +353,9 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                         _LOGGER.debug(f"Found a EntityDescription for '{a_entity.entity_id}' key: {a_entity_desc.key}")
                                         break
 
-            self.senec = Senec(host=self._host, use_https=self._use_https, lala_session=async_create_clientsession(hass, verify_ssl=False),
-                               lang=hass.config.language.lower(), options=opt)
+            self.senec = SenecLocal(host=self._host, use_https=self._use_https, lala_session=async_create_clientsession(hass, verify_ssl=False),
+                                    lang=hass.config.language.lower(), options=opt,
+                                    integ_version=self._integration_version)
 
         self.name = config_entry.title
         self._config_entry = config_entry
