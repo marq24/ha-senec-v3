@@ -1,5 +1,4 @@
 """The senec integration."""
-import asyncio
 import logging
 from datetime import timedelta
 from typing import Final
@@ -7,12 +6,12 @@ from typing import Final
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
-from homeassistant.loader import Integration, async_get_integration
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as config_val, entity_registry
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.loader import Integration, async_get_integration
 
 from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util
 from custom_components.senec.pysenec_ha.constants import (
@@ -29,7 +28,6 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
-
 from . import service as SenecService
 from .const import (
     DOMAIN,
@@ -277,6 +275,9 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                      options=opt,
                                      integ_version=self._integration_version)
             self._warning_counter = 0
+            max_val = max(20, config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
+            SCAN_INTERVAL = timedelta(seconds=max_val)
+
         # lala.cgi Version...
         else:
             # host can be changed in the options...

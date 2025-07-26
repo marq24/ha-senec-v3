@@ -2,7 +2,7 @@
   "selector": {
     "stype": {
       "options": {
-        "systype_senecv4": "SENEC.Home V4/SENEC.Home V4 hybrid",
+        "systype_senecv4": "SENEC.Home V4|P4/SENEC.Home V4|P4 hybrid",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 oder älteres System",
         "systype_webapi": "WEB.API: mein-senec.de Portal (für alle SENEC.Home Varianten einsetzbar)",
@@ -39,7 +39,8 @@
   "config": {
     "abort": {
       "already_configured": "Integration ist bereits eingerichtet",
-      "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich",
+      "no_filesystem_access": "Diese Integration benötigt Zugriff auf das lokale Dateisystem Deiner HomeAssistant Installation, um einen Schlüssel für Deinen SENEC Account speichern zu können.\n\nHierzu wird im in dem Ordner '.storage/' einen Unterordner anlegen. Dies ist jedoch derzeit nicht möglich. Ein interne Test ist fehlgeschlagen. Details hierzu findest Du im LOG Deiner Home Assistant Instanz.\n\nBitte stelle sicher, dass Du die Home Assistant Installation mit dem richtigen Benutzer ausführst, der Schreibzugriff auf das lokale Dateisystem hat.\n\nWenn Du Home Assistant in einem Docker-Container ausführst, stelle sicher, dass Du den Container mit dem richtigen Benutzer ausführst und dass der Container Zugriff auf das lokale Dateisystem hat.\n\nBitte prüfe Deine installation und starte die Einrichtung dieser Integration neu, sobald der Zugriff auf das lokale Dateisystem möglich ist."
     },
     "error": {
       "login_failed": "Login fehlgeschlagen - bitte Benutzername und/oder Passwort prüfen",
@@ -63,12 +64,12 @@
         }
       },
       "websetup": {
-        "description": "Bitte gib Deine mein-senec.de-Zugangsdaten ein, um Home Assistant mit Deinem mein-senec.de-Konto zu verbinden.\n\n\nBitte beachte, dass dies derzeit die einzige Option für SENEC.Home V4-Besitzer ist Daten in Home Assistent einzubinden!\n\n\nWenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
+        "description": "Bitte gib Deine mein-senec.de-Zugangsdaten ein, um Home Assistant mit Deinem mein-senec.de-Konto zu verbinden.\n\n\nBitte beachte, dass dies derzeit die einzige Option für SENEC.Home V4|P4-Besitzer ist Daten in Home Assistent einzubinden!\n\n\nWenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
         "data": {
           "name": "Anzeige Name",
           "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
           "password": "Dein 'mein-senec.de' Passwort",
-          "scan_interval": "Aktualisierungsintervall in Sekunden [> 60 Sekunden (20 Sekunden für SENEC.Home V4)]",
+          "scan_interval": "Aktualisierungsintervall in Sekunden [> 60 Sekunden (20 Sekunden für SENEC.Home V4|P4)]",
           "master_plant_number": "Anlagennummer (Experten Einstellung: Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden)"
         }
       },
@@ -95,7 +96,7 @@
           "name": "Anzeige Name",
           "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
           "password": "Dein 'mein-senec.de' Passwort",
-          "scan_interval": "Aktualisierungsintervall in Sekunden [Minimum 60 Sekunden (30 Sekunden für SENEC.Home V4)]"
+          "scan_interval": "Aktualisierungsintervall in Sekunden [Minimum 60 Sekunden (20 Sekunden für SENEC.Home V4|P4)]"
         }
       }
     }

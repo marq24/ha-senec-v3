@@ -3710,6 +3710,34 @@ class SenecOnline:
         hashengine.update(code.encode('utf-8'))
         return self._base64_url_encode(hashengine.digest()).decode('utf-8')
 
+    """Check if we can write to the file system - should be called from the setup UI"""
+    @staticmethod
+    def check_general_fs_access() -> bool:
+        _LOGGER.debug(f"check_general_fs_access()")
+        can_create_file = False
+        testfile = f".storage/senec/write_test@file.txt"
+        # Check if the parent directory exists
+        directory = os.path.dirname(testfile)
+        if not os.path.exists(directory):
+            try:
+                os.makedirs(directory)
+            except OSError as exc:
+                _LOGGER.warning(f"check_general_fs_access(): could not create directory '{directory}': {type(exc)} - {exc}")
+
+        if os.path.exists(directory):
+            try:
+                with open(testfile, "w", encoding="utf-8") as outfile:
+                    json.dump({"test": "file"}, outfile)
+            except OSError as exc:
+                _LOGGER.warning(f"check_general_fs_access(): could not create test file '{testfile}': {type(exc)} - {exc}")
+
+            if os.path.exists(testfile):
+                can_create_file = True
+                _LOGGER.debug(f"check_general_fs_access(): successfully created test file: '{testfile}'")
+                os.remove(testfile)
+
+        return can_create_file
+
     #####################
     # fetch/refresh access_token
     #####################
@@ -3878,9 +3906,9 @@ class SenecOnline:
     async def _write_token_to_storage(self, token_dict):
         """Save token to file for reuse"""
         if token_dict is None:
-            _LOGGER.info(f"write_token_to_storage() - DELETE")
+            _LOGGER.info(f"_write_token_to_storage() - DELETE")
         else:
-            _LOGGER.debug(f"write_token_to_storage() - SAVE")
+            _LOGGER.debug(f"_write_token_to_storage() - SAVE")
 
         # Check if the parent directory exists
         directory = os.path.dirname(self._app_stored_tokens_location)
@@ -3888,11 +3916,11 @@ class SenecOnline:
             try:
                 await asyncio.get_running_loop().run_in_executor(None, lambda: os.makedirs(directory))
             except OSError as exc:
-                # Handle exception as before
-                pass
+                _LOGGER.warning(f"_write_token_to_storage(): could not create directory '{directory}': {type(exc)} - {exc}")
 
         # Write the file in executor
-        await asyncio.get_running_loop().run_in_executor(None, lambda: self.__write_token_int(token_dict))
+        if os.path.exists(directory):
+            await asyncio.get_running_loop().run_in_executor(None, lambda: self.__write_token_int(token_dict))
 
     def __write_token_int(self, token_dict):
         """Synchronous method to write the token file, called from executor."""
@@ -3903,10 +3931,13 @@ class SenecOnline:
             except FileNotFoundError:
                 _LOGGER.debug(f"__write_token_int(): Token file not found, nothing to delete: {self._app_stored_tokens_location}")
             except OSError as exc:
-                _LOGGER.info(f"__write_token_int(): Error deleting token file: {exc}")
+                _LOGGER.info(f"__write_token_int(): Error deleting token file: {type(exc)} - {exc}")
         else:
-            with open(self._app_stored_tokens_location, "w", encoding="utf-8") as outfile:
-                json.dump(token_dict, outfile)
+            try:
+                with open(self._app_stored_tokens_location, "w", encoding="utf-8") as outfile:
+                    json.dump(token_dict, outfile)
+            except OSError as exc:
+                _LOGGER.info(f"__write_token_int(): could not write token file: {type(exc)} - {exc}")
 
     async def _read_token_from_storage(self):
         """Read saved token from a file"""

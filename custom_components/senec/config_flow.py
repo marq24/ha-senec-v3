@@ -1,13 +1,10 @@
 """Config flow for senec integration."""
+import asyncio
 import logging
 from typing import Any
 
 import voluptuous as vol
 from aiohttp import ClientResponseError
-from requests.exceptions import HTTPError, Timeout
-
-from custom_components.senec.pysenec_ha import InverterLocal
-from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.config_entries import ConfigFlowResult, SOURCE_RECONFIGURE
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
@@ -15,6 +12,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.util import slugify
+from requests.exceptions import HTTPError, Timeout
+
+from custom_components.senec.pysenec_ha import InverterLocal
+from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
@@ -224,7 +225,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # are already stored in the token file!
 
                 # well - we need the system details... *sigh*
-                await self.app_get_system_details()
+                await senec_online.app_get_system_details()
 
                 # the 'app_authenticate()' have also probably corrected the
                 # master plant number... so we use it..
@@ -499,25 +500,29 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB
 
-        return self.async_show_form(
-            step_id="websetup",
-            data_schema=vol.Schema({
-                vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
-                vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
-                vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
-                    selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=MASTER_PLANT_NUMBERS,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                            translation_key=CONF_DEV_MASTER_NUM,
-                        )
-                    ),
-                vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
-            }),
-            last_step=True,
-            errors=self._errors,
-        )
+        has_fs_write_access = await asyncio.get_running_loop().run_in_executor(None, SenecOnline.check_general_fs_access)
+        if not has_fs_write_access:
+            return self.async_abort(reason="no_filesystem_access")
+        else:
+            return self.async_show_form(
+                step_id="websetup",
+                data_schema=vol.Schema({
+                    vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
+                    vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
+                    vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
+                    vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=MASTER_PLANT_NUMBERS,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                                translation_key=CONF_DEV_MASTER_NUM,
+                            )
+                        ),
+                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
+                }),
+                last_step=True,
+                errors=self._errors,
+            )
 
     async def async_step_optional_websetup_required_info(self, user_input=None):
         return self.async_create_entry(title=self._xname, data=self._xdata)
