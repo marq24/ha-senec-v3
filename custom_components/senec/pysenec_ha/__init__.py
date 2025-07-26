@@ -3869,12 +3869,40 @@ class SenecOnline:
                 _LOGGER.info(f"_refresh_token_request(): {type(ex)} - {ex}")
 
 
+    """Check if we can write to the file system - should be called from the setup UI"""
+    @staticmethod
+    def check_general_fs_access() -> bool:
+        _LOGGER.debug(f"check_general_fs_access()")
+        can_create_file = False
+        testfile = f".storage/senec/write_test@file.txt"
+        # Check if the parent directory exists
+        directory = os.path.dirname(testfile)
+        if not os.path.exists(directory):
+            try:
+                os.makedirs(directory)
+            except OSError as exc:
+                _LOGGER.warning(f"check_general_fs_access(): could not create directory '{directory}': {type(exc)} - {exc}")
+
+        if os.path.exists(directory):
+            try:
+                with open(testfile, "w", encoding="utf-8") as outfile:
+                    json.dump({"test": "file"}, outfile)
+            except OSError as exc:
+                _LOGGER.warning(f"check_general_fs_access(): could not create test file '{testfile}': {type(exc)} - {exc}")
+
+            if os.path.exists(testfile):
+                can_create_file = True
+                _LOGGER.debug(f"check_general_fs_access(): successfully created test file: '{testfile}'")
+                os.remove(testfile)
+
+        return can_create_file
+
     #####################
     # read/write token_dict from/to filesystem
     #####################
     async def _write_token_to_storage(self, token_dict):
         """Save token to file for reuse"""
-        _LOGGER.debug(f"write_token_to_storage()")
+        _LOGGER.debug(f"_write_token_to_storage()")
 
         # Check if the parent directory exists
         directory = os.path.dirname(self._app_stored_tokens_location)
@@ -3882,16 +3910,22 @@ class SenecOnline:
             try:
                 await asyncio.get_running_loop().run_in_executor(None, lambda: os.makedirs(directory))
             except OSError as exc:
-                # Handle exception as before
-                pass
+                _LOGGER.error(f"_write_token_to_storage(): Failed to create directory '{directory}': {type(exc)} - {exc}")
 
-        # Write the file in executor
-        await asyncio.get_running_loop().run_in_executor(None, lambda: self.__write_token_int(token_dict))
+        if os.path.exists(directory):
+            # Write the file in executor
+            await asyncio.get_running_loop().run_in_executor(None, lambda: self.__write_token_int(token_dict))
+        else:
+            _LOGGER.wrning(f"_write_token_to_storage(): Directory '{directory}' does not exist, cannot write token file.")
+
 
     def __write_token_int(self, token_dict):
-        """Synchronous method to write the token file, called from executor."""
-        with open(self._app_stored_tokens_location, "w", encoding="utf-8") as outfile:
-            json.dump(token_dict, outfile)
+        try:
+            """Synchronous method to write the token file, called from executor."""
+            with open(self._app_stored_tokens_location, "w", encoding="utf-8") as outfile:
+                json.dump(token_dict, outfile)
+        except OSError as exc:
+            _LOGGER.error(f"_write_token_to_storage(): Failed to create directory '{self._app_stored_tokens_location}': {type(exc)} - {exc}")
 
     async def _read_token_from_storage(self):
         """Read saved token from a file"""

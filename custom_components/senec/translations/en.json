@@ -2,7 +2,7 @@
   "selector": {
     "stype": {
       "options": {
-        "systype_senecv4": "SENEC.Home V4/SENEC.Home V4 hybrid",
+        "systype_senecv4": "SENEC.Home V4|P4/SENEC.Home V4|P4 hybrid",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 or older",
         "systype_webapi": "WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)",
@@ -39,7 +39,8 @@
   "config": {
     "abort": {
       "already_configured": "Integration is already configured",
-      "reconfigure_successful": "Re-configuration was successful"
+      "reconfigure_successful": "Re-configuration was successful",
+      "no_filesystem_access": "This integration requires access to the local file system of your HomeAssistant installation to store a key for your Senec account.\n\nTo do this, a subfolder will be created in the '.storage/' folder. However, this is currently not possible. An internal test failed. You can find details in the log of your Home Assistant instance.\n\nPlease ensure that you are running the Home Assistant installation with the correct user who has write access to the local file system.\n\nIf you are running Home Assistant in a Docker container, ensure that you are running the container with the correct user and that the container has access to the local file system.\n\nPlease check your installation and restart the setup of this integration once access to the local file system is possible."
     },
     "error": {
       "login_failed": "Login failed - please check username and/or password",
@@ -63,12 +64,12 @@
         }
       },
       "websetup": {
-        "description": "Please provide your mein-senec.de login credentials in order to connect home assistant with your mein-senec.de account.\n\n\nPlease note, that currently this is the only option for SENEC.Home V4 Users - Sorry!\n\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
+        "description": "Please provide your mein-senec.de login credentials in order to connect home assistant with your mein-senec.de account.\n\n\nPlease note, that currently this is the only option for SENEC.Home V4|P4 Users - Sorry!\n\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
         "data": {
           "name": "Display name",
           "username": "Your 'mein-senec.de' username",
           "password": "Your 'mein-senec.de' password",
-          "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4)]"
+          "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4|P4)]"
         }
       },
       "optional_websetup_required_info": {
@@ -94,7 +95,7 @@
           "name": "Display name",
           "username": "Your 'mein-senec.de' username",
           "password": "Your 'mein-senec.de' password",
-          "scan_interval": "Polling Interval in seconds [minimum 60 seconds (30 seconds for SENEC.Home V4)]",
+          "scan_interval": "Polling Interval in seconds [minimum 60 seconds (20 seconds for SENEC.Home V4|P4)]",
           "master_plant_number": "System number (expert setting: only when using multiple master instances - otherwise use 'Autodetect')"
         }
       }
