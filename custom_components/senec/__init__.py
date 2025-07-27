@@ -6,7 +6,6 @@ from typing import Final
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as config_val, entity_registry
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
@@ -73,7 +72,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(seconds=60)
 
 PLATFORMS = ["binary_sensor", "button", "number", "select", "sensor", "switch"]
 CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
@@ -99,10 +97,8 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
-    global SCAN_INTERVAL
-    # update_interval can be adjusted in the options (not for WebAPI)
-    SCAN_INTERVAL = timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
-    _LOGGER.info(f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{SCAN_INTERVAL} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
+    log_scan_interval = timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
+    _LOGGER.info(f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{log_scan_interval} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
 
     if DOMAIN not in hass.data:
         value = "UNKOWN"
@@ -118,12 +114,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         await coordinator.senec.authenticate_all()
         _LOGGER.info(f"authenticate_all() completed -> main data: {coordinator.senec.get_debug_login_data()}")
 
-    await coordinator.async_refresh()
-    if not coordinator.last_update_success:
-        raise ConfigEntryNotReady
-    else:
-        # here we can do some init stuff (like read all data)...
-        pass
+    # HA can check if we can make a initial data refresh and report the state
+    # back to HA (we don't have to code this by ourselves, HA will do this for us)
+    await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
@@ -198,6 +191,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     """Define an object to hold Senec data."""
 
     def __init__(self, hass: HomeAssistant, config_entry, intg_version: str):
+        UPD_INTERVAL_IN_SECONDS = config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2)
+
         self._integration_version = intg_version
         """Initialize."""
         # Build-In INVERTER
@@ -275,8 +270,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                      options=opt,
                                      integ_version=self._integration_version)
             self._warning_counter = 0
-            max_val = max(20, config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
-            SCAN_INTERVAL = timedelta(seconds=max_val)
+            UPD_INTERVAL_IN_SECONDS = max(20, UPD_INTERVAL_IN_SECONDS)
 
         # lala.cgi Version...
         else:
@@ -337,7 +331,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         self._device_serial = None
         self._device_version = None
         self._statistics_available = False
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=UPD_INTERVAL_IN_SECONDS))
 
     # Callable[[Event], Any]
     def __call__(self, evt: Event) -> bool:
