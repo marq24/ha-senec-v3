@@ -68,7 +68,7 @@ from .const import (
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
     SERVICE_SET_PEAKSHAVING,
-    CONFIG_VERSION, CONFIG_MINOR_VERSION
+    CONFIG_VERSION, CONFIG_MINOR_VERSION, QUERY_TOTALS_KEY, QUERY_SYSTEM_DETAILS_KEY
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -169,14 +169,14 @@ async def get_integration_version(self, hass: HomeAssistant):
         return "UNKNOWN"
 
 # Map platforms to their corresponding search lists
-PLATFORM_MAPPING: Final = {
+LOCAL_PLATFORM_MAPPING: Final = {
     "sensor": MAIN_SENSOR_TYPES,
     "binary_sensor": MAIN_BIN_SENSOR_TYPES,
     "switch": MAIN_SWITCH_TYPES,
     "number": MAIN_NUMBER_TYPES,
     "select": MAIN_SELECT_TYPES
 }
-SECTION_MAPPING: Final = {
+LOCAL_SECTION_MAPPING: Final = {
     SENEC_SECTION_PV1:      (QUERY_PV1_KEY,     "***** QUERY_PV1-DATA ********"),
     SENEC_SECTION_PM1OBJ1:  (QUERY_PM1OBJ1_KEY, "***** QUERY_PM1OBJ1-DATA ********"),
     SENEC_SECTION_PM1OBJ2:  (QUERY_PM1OBJ2_KEY, "***** QUERY_PM1OBJ2-DATA ********"),
@@ -191,7 +191,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     """Define an object to hold Senec data."""
 
     def __init__(self, hass: HomeAssistant, config_entry, intg_version: str):
-        UPD_INTERVAL_IN_SECONDS = config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2)
+        UPDATE_INTERVAL_IN_SECONDS = config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2)
 
         self._integration_version = intg_version
         """Initialize."""
@@ -213,11 +213,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
 
-            # we need to know if the 'spare_capacity' and 'peak_shaving' code should be called or not?!
+            # defining the default query options for APP & WEB...
             opt = {
+                # by default we do not query the Wallbox data for WEB/API -> the SenecLOCAL will turn this on/off
                 QUERY_WALLBOX_KEY: False,
                 QUERY_SPARE_CAPACITY_KEY: False,
-                QUERY_PEAK_SHAVING_KEY: False
+                QUERY_PEAK_SHAVING_KEY: False,
+                QUERY_TOTALS_KEY: False,
+                QUERY_SYSTEM_DETAILS_KEY: False
             }
 
             if hass is not None and config_entry.title is not None:
@@ -235,30 +238,57 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_entities)}")
                     for a_entity in all_entities:
                         if a_entity.disabled_by is None:
-                            _LOGGER.debug(f"Entity '{a_entity.entity_id}' is enabled for {config_entry.title}")
+                            a_id = a_entity.entity_id
+                            _LOGGER.debug(f"Entity '{a_id}' is enabled for {config_entry.title}")
 
-                            # Spare Capacity
-                            if not opt[QUERY_SPARE_CAPACITY_KEY] and a_entity.entity_id.startswith("number."):
-                                if a_entity.entity_id.endswith("_spare_capacity"):
-                                    _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
-                                    opt[QUERY_SPARE_CAPACITY_KEY] = True
+                            if a_id.startswith("sensor."):
+                                if not opt[QUERY_SYSTEM_DETAILS_KEY]:
+                                    if a_id.endswith("_system_state") or a_id.endswith("_case_temp"):
+                                        _LOGGER.info("***** QUERY_SYSTEM_DETAILS! ********")
+                                        opt[QUERY_SYSTEM_DETAILS_KEY] = True
 
-                            # Peak Shaving
-                            if not opt[QUERY_PEAK_SHAVING_KEY] and a_entity.entity_id.startswith("sensor."):
-                                a_id = a_entity.entity_id
-                                if any(a_id.endswith(suffix) for suffix in ("_gridexport_limit", "_peakshaving_mode", "_peakshaving_capacitylimit", "_peakshaving_enddate")):
-                                    _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
-                                    opt[QUERY_PEAK_SHAVING_KEY] = True
+                                # total statistic values [in the web-portal, each total statistic value
+                                # would require a separate request]
+                                if not opt[QUERY_TOTALS_KEY]:
+                                    #if a_id.endswith("_total"):
+                                    if any(a_id.endswith(suffix) for suffix in (
+                                            "_consumption_total", "_powergenerated_total",
+                                            "_accuimport_total", "_accuexport_total",
+                                            "_gridimport_total", "gridexport_total",
+                                            "_wallbox_consumption_total")):
+                                        _LOGGER.info("***** QUERY_TOTALS! ********")
+                                        opt[QUERY_TOTALS_KEY] = True
 
-                            # when we have both, we can break the loop
-                            if opt[QUERY_PEAK_SHAVING_KEY] and opt[QUERY_SPARE_CAPACITY_KEY]:
+                                # Peak Shaving
+                                if not opt[QUERY_PEAK_SHAVING_KEY]:
+                                    if any(a_id.endswith(suffix) for suffix in (
+                                            "_gridexport_limit", "_peakshaving_mode",
+                                            "_peakshaving_capacitylimit", "_peakshaving_enddate")):
+                                        _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
+                                        opt[QUERY_PEAK_SHAVING_KEY] = True
+
+                            elif a_id.startswith("number."):
+                                # Spare Capacity
+                                if not opt[QUERY_SPARE_CAPACITY_KEY]:
+                                    if a_id.endswith("_spare_capacity"):
+                                        _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
+                                        opt[QUERY_SPARE_CAPACITY_KEY] = True
+
+
+                            # when we have ALL, we can break the loop
+                            if (opt[QUERY_PEAK_SHAVING_KEY] and
+                                opt[QUERY_SPARE_CAPACITY_KEY] and
+                                opt[QUERY_TOTALS_KEY] and
+                                opt[QUERY_SYSTEM_DETAILS_KEY]
+                            ):
+                                _LOGGER.debug(f"All required options are set: {opt} - can cancel the checking loop")
                                 break
 
                     # we need to check, if there are any Wallbox entities...
                     # opt[QUERY_WALLBOX_KEY] = True
 
             # we will not set the master_plant number any longer - we will always use "autodetect" option, since the
-            # The SenecApp use a master_plant_id while the MeinSenec.de web is using a master_plant_number (and to make
+            # SenecApp use a master_plant_id while the MeinSenec.de web is using a master_plant_number (and to make
             # things worse, the App just can have one master_plant, while the web can have multiple...
             # once more: "Thanks for Nothing!")
             # SO to get out of this mess, we will store the master_plant_id in our config entry and use this as our
@@ -270,7 +300,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                      options=opt,
                                      integ_version=self._integration_version)
             self._warning_counter = 0
-            UPD_INTERVAL_IN_SECONDS = max(20, UPD_INTERVAL_IN_SECONDS)
+            UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
 
         # lala.cgi Version...
         else:
@@ -305,13 +335,13 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                             _LOGGER.debug(f"Entity '{a_entity.entity_id}' is enabled for {config_entry.title}")
                             # check if the entity is a sensor, binary_sensor, switch, number or select
                             a_entity_platform = a_entity.entity_id.split(".")[0]
-                            if a_entity_platform in PLATFORM_MAPPING:
-                                for a_entity_desc in PLATFORM_MAPPING[a_entity_platform]:
+                            if a_entity_platform in LOCAL_PLATFORM_MAPPING:
+                                for a_entity_desc in LOCAL_PLATFORM_MAPPING[a_entity_platform]:
                                     if a_entity.entity_id.endswith(a_entity_desc.key):
                                         if hasattr(a_entity_desc, "senec_lala_section"):
                                             a_lala_section  = a_entity_desc.senec_lala_section
-                                            if a_lala_section in SECTION_MAPPING:
-                                                query_option_key, a_log_msg = SECTION_MAPPING[a_lala_section]
+                                            if a_lala_section in LOCAL_SECTION_MAPPING:
+                                                query_option_key, a_log_msg = LOCAL_SECTION_MAPPING[a_lala_section]
                                                 if not opt[query_option_key]:
                                                     opt[query_option_key] = True
                                                     _LOGGER.info(a_log_msg)
@@ -331,7 +361,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         self._device_serial = None
         self._device_version = None
         self._statistics_available = False
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=UPD_INTERVAL_IN_SECONDS))
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=UPDATE_INTERVAL_IN_SECONDS))
 
     # Callable[[Event], Any]
     def __call__(self, evt: Event) -> bool:

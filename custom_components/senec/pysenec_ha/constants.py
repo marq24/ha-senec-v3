@@ -563,6 +563,31 @@ WALLBOX_CHARGING_MODES : Final = {
     3: LOCAL_WB_MODE_FASTEST
 }
 
+NO_LIMIT: Final         = "no_limit"
+EVERY_MINUTE: Final     = "one_minute"
+EVERY_5_MINUTES: Final  = "five_minutes"
+EVERY_10_MINUTES: Final = "ten_minutes"
+EVERY_15_MINUTES: Final = "fifteen_minutes"
+EVERY_20_MINUTES: Final = "twenty_minutes"
+EVERY_30_MINUTES: Final = "thirty_minutes"
+EVERY_60_MINUTES: Final = "sixty_minutes"
+EVERY_2_HOURS: Final    = "two_hours"
+EVERY_4_HOURS: Final    = "four_hours"
+
+UPDATE_INTERVALS: Final = {
+    NO_LIMIT: 0,
+    EVERY_MINUTE: 55,       # 1 minute
+    EVERY_5_MINUTES: 295,   # 5 minutes
+    EVERY_10_MINUTES: 595,  # 10 minutes
+    EVERY_15_MINUTES: 895,  # 15 minutes
+    EVERY_20_MINUTES: 1195, # 20 minutes
+    EVERY_30_MINUTES: 1795, # 30 minutes
+    EVERY_60_MINUTES: 3595, # 60 minutes
+    EVERY_2_HOURS: 7195,    # 2 hours
+    EVERY_4_HOURS: 14395    # 4 hours
+}
+UPDATE_INTERVAL_OPTIONS: Final = [NO_LIMIT, EVERY_MINUTE, EVERY_5_MINUTES, EVERY_10_MINUTES, EVERY_15_MINUTES, EVERY_20_MINUTES, EVERY_30_MINUTES, EVERY_60_MINUTES, EVERY_2_HOURS, EVERY_4_HOURS]
+
 SGREADY_CONFKEY_ENABLED: Final = "enabled"
 SGREADY_CONFKEY_MODE_DELAY: Final = "modeChangeDelayInMinutes"
 SGREADY_CONFKEY_PON_PROPOSAL: Final = "powerOnProposalThresholdInWatt"

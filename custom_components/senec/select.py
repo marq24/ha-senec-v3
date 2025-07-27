@@ -10,8 +10,10 @@ from homeassistant.core import State
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, ExtSelectEntityDescription
+from .const import DOMAIN, MAIN_SELECT_TYPES, WEB_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
+    ExtSelectEntityDescription
 from .pysenec_ha import LOCAL_WB_MODE_UNKNOWN
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,7 +28,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No selects for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        _LOGGER.info("No selects for SENEC.WebAPI...")
+        for description in WEB_SELECT_TYPES:
+            entity = SenecSelect(coordinator, description)
+            entities.append(entity)
     else:
         for description in MAIN_SELECT_TYPES:
             entity = SenecSelect(coordinator, description)
@@ -58,17 +62,18 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
         self._attr_has_entity_name = True
 
         self._previous_value: str | None = None
-        self._is_local_persistence: bool = description is not None and isinstance(description,
-                                                                                  ExtSelectEntityDescription) and hasattr(
-            description,
-            "controls") and description.controls is not None and "local_persistence" in description.controls
+
+        has_control: bool = (description is not None and isinstance(description, ExtSelectEntityDescription) and
+                             hasattr(description, "controls") and description.controls is not None)
+
+        self._is_local_persistence: bool = has_control and "local_persistence" in description.controls
+        self._restore_from_local_persistence: bool = has_control and "restore_from_local_persistence" in description.controls
 
     @property
     def current_option(self) -> str | None:
         try:
             if self.entity_description.array_key is not None:
-                value = getattr(self.coordinator.senec, self.entity_description.array_key)[
-                    self.entity_description.array_pos]
+                value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos]
             else:
                 value = getattr(self.coordinator.senec, self.entity_description.key)
 
@@ -100,8 +105,7 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
                 await self.coordinator._async_set_string_value(self.entity_description.key, option)
 
             self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description,
-                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+            if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
                 self.async_schedule_update_ha_state(force_refresh=True)
 
@@ -117,11 +121,12 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
         if self._is_local_persistence:
             # get the last known value
             last_sensor_data = await self.async_get_last_state()
-            if last_sensor_data is not None and isinstance(last_sensor_data,
-                                                           State) and last_sensor_data.state is not None:
+            if last_sensor_data is not None and isinstance(last_sensor_data, State) and last_sensor_data.state is not None:
                 if str(last_sensor_data.state).lower() != "unknown":
                     _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
                     self._previous_value = str(last_sensor_data.state)
+                    if self._restore_from_local_persistence:
+                        _LOGGER.debug(f"set restored value '{self._previous_value}' as current value")
+                        await self.async_select_option(self._previous_value)
                 else:
-                    _LOGGER.debug(
-                        f"SKIPP restored prev value for key {self._attr_translation_key} cause value is :'{last_sensor_data.state}'")
+                    _LOGGER.debug(f"SKIPP restored prev value for key {self._attr_translation_key} cause value is :'{last_sensor_data.state}'")

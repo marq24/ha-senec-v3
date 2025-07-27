@@ -190,6 +190,21 @@
           "optimized_4": "OPTIMIERT [0/Ladeunterbrechung AUS]",
           "fastest": "SCHNELL"
         }
+      },
+      "request_throttling": {
+        "name": "Request Drosselung",
+        "state": {
+          "no_limit":         "-keine-",
+          "one_minute":       "Jede Minute",
+          "five_minutes":     "Alle 5 Minuten",
+          "ten_minutes":      "Alle 10 Minuten",
+          "fifteen_minutes":  "Alle 15 Minuten",
+          "twenty_minutes":   "Alle 20 Minuten",
+          "thirty_minutes":   "Alle 30 Minuten",
+          "sixty_minutes":    "Jede Stunde",
+          "two_hours":        "Alle 2 Stunden",
+          "four_hours":       "Alle 4 Stunden"
+        }
       }
     },
     "number": {

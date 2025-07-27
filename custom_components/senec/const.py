@@ -1,6 +1,5 @@
 """Constants for the Senec integration."""
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Final
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
@@ -40,7 +39,8 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_STATISTIC,
     SENEC_SECTION_SOCKETS,
     SENEC_SECTION_WALLBOX,
-    WALLBOX_CHARGING_MODES
+    WALLBOX_CHARGING_MODES,
+    UPDATE_INTERVAL_OPTIONS
 )
 
 # WEB_IS_OVER_DATETIME:Final = datetime(year=2025, month=7, day=23, hour=0, minute=0, second=0, tzinfo=timezone.utc)
@@ -127,6 +127,9 @@ QUERY_WALLBOX_KEY: Final = "query_wallbox_data"
 QUERY_SOCKETS_KEY: Final = "query_sockets_data"
 QUERY_SPARE_CAPACITY_KEY: Final = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY: Final = "query_peak_shaving"
+QUERY_TOTALS_KEY: Final = "query_totals"
+QUERY_SYSTEM_DETAILS_KEY: Final = "query_system_details"
+
 IGNORE_SYSTEM_STATE_KEY: Final = CONF_IGNORE_SYSTEM_STATE
 
 # Peak Shaving Options
@@ -740,6 +743,17 @@ WEB_BUTTON_TYPES =[
         icon="mdi:restart",
         entity_registry_enabled_default=False,
     ),
+]
+
+WEB_SELECT_TYPES = [
+    ExtSelectEntityDescription(
+        key="request_throttling",
+        name="Request Throttling",
+        icon="mdi:gauge-low",
+        options=UPDATE_INTERVAL_OPTIONS,
+        controls=["local_persistence", "restore_from_local_persistence"],
+        entity_registry_enabled_default=True,
+    )
 ]
 
 INVERTER_SENSOR_TYPES = [
