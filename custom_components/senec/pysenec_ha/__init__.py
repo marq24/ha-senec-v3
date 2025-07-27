@@ -14,7 +14,7 @@ import traceback
 from base64 import urlsafe_b64encode
 from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
-from time import time
+from time import time, strftime, localtime
 from typing import Final
 from urllib.parse import quote, urlparse, parse_qs
 
@@ -33,6 +33,8 @@ from custom_components.senec.const import (
     QUERY_SOCKETS_KEY,
     QUERY_SPARE_CAPACITY_KEY,
     QUERY_PEAK_SHAVING_KEY,
+    QUERY_TOTALS_KEY,
+    QUERY_SYSTEM_DETAILS_KEY,
     IGNORE_SYSTEM_STATE_KEY,
     CONF_APP_SYSTEMID,
     CONF_APP_SERIALNUM,
@@ -80,6 +82,10 @@ from custom_components.senec.pysenec_ha.constants import (
     SGREADY_CONFKEY_ENABLED,
     SENEC_ENERGY_FIELDS,
     SENEC_ENERGY_FIELDS_2408_MIN,
+
+    NO_LIMIT,
+    UPDATE_INTERVALS,
+    UPDATE_INTERVAL_OPTIONS
 )
 from custom_components.senec.pysenec_ha.phones import PHONE_BUILD_MAPPING
 from custom_components.senec.pysenec_ha.util import parse
@@ -2887,35 +2893,46 @@ class SenecOnline:
         else:
             _LOGGER.info(f"__init__() -> (re)starting SenecOnline v{self._integration_version}... for user: '{user}' without options")
 
-        # check if peak shaving is in options
         if options is not None and QUERY_WALLBOX_KEY in options:
             self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
+        else:
+            self._QUERY_WALLBOX = False
 
         # Check if spare capacity is in options
         if options is not None and QUERY_SPARE_CAPACITY_KEY in options:
             self._QUERY_SPARE_CAPACITY = options[QUERY_SPARE_CAPACITY_KEY]
+        else:
+            self._QUERY_SPARE_CAPACITY = False
+        # Variable to save latest update time for spare capacity
+        self._QUERY_SPARE_CAPACITY_TS = 0
 
         # check if peak shaving is in options
         if options is not None and QUERY_PEAK_SHAVING_KEY in options:
             self._QUERY_PEAK_SHAVING = options[QUERY_PEAK_SHAVING_KEY]
-
-        # Variable to save latest update time for spare capacity
-        self._QUERY_SPARE_CAPACITY_TS = 0
-
+        else:
+            self._QUERY_PEAK_SHAVING = False
         # Variable to save the latest update time for peak shaving
         self._QUERY_PEAK_SHAVING_TS = 0
 
-        # Variable to save the latest update time for SG-Ready state
-        self._QUERY_SGREADY_STATE_TS = 0
-
-        # Variable to save the latest update time for SG-Ready configuration
-        self._QUERY_SGREADY_CONF_TS = 0
-
+        if options is not None and QUERY_TOTALS_KEY in options:
+            self._QUERY_TOTALS = options[QUERY_TOTALS_KEY]
+        else:
+            self._QUERY_TOTALS = False
         # Variable to save the latest update time for Total data...
         self._QUERY_TOTALS_TS = 0
 
-        # Variable to save the latest update time for system-details data...
+        if options is not None and QUERY_SYSTEM_DETAILS_KEY in options:
+            self._QUERY_SYSTEM_DETAILS = options[QUERY_SYSTEM_DETAILS_KEY]
+        else:
+            self._QUERY_SYSTEM_DETAILS = False
+        # Variable to save the latest update time for system-details/system_state data...
         self._QUERY_SYSTEM_DETAILS_TS = 0
+        self._QUERY_SYSTEM_STATE_TS = 0
+
+        # Variable to save the latest update time for SG-Ready state
+        self._QUERY_SGREADY_STATE_TS = 0
+        # Variable to save the latest update time for SG-Ready configuration
+        self._QUERY_SGREADY_CONF_TS = 0
 
         self.web_session: aiohttp.websession = web_session
 
@@ -3053,7 +3070,7 @@ class SenecOnline:
 
         # done...
         self._app_raw_now = None
-        self._app_raw_device_state = None
+        self._app_raw_battery_device_state = None
         self._app_raw_today = None
         self._app_raw_system_details = None
         self._app_raw_system_state_obj = None
@@ -3114,7 +3131,7 @@ class SenecOnline:
             "now": self._app_raw_now,
             "today": self._app_raw_today,
             "total": self._app_raw_total,
-            "system_state_name": self._app_raw_device_state,
+            "system_battery_state": self._app_raw_battery_device_state,
             "system_state_object": self._app_raw_system_state_obj,
             "system_details": self._app_raw_system_details,
             "wallbox": self._app_raw_wallbox,
@@ -3160,54 +3177,64 @@ class SenecOnline:
             "SerialNumber": self._web_serial_number,
         }}
 
+    # by default, we update as fast as possible
+    _UPDATE_INTERVAL = NO_LIMIT
+    _LAST_UPDATE_TS = 0
+
     async def update(self):
-        success = await self.app_update()
-        if not success:
-            await self.web_update()
+        if self._LAST_UPDATE_TS + UPDATE_INTERVALS[self._UPDATE_INTERVAL] < time():
+            success = await self.app_update()
+            if not success:
+                await self.web_update()
+
+            self._LAST_UPDATE_TS = time()
+        else:
+            _LOGGER.debug(f"update(): SKIPP UPDATE REQUEST - last update was at {strftime('%Y-%m-%d %H:%M:%S', localtime(self._LAST_UPDATE_TS))} and we are still within the update interval of '{self._UPDATE_INTERVAL}' [{UPDATE_INTERVALS[self._UPDATE_INTERVAL]} seconds]")
 
     async def app_update(self):
         try:
             if self._app_is_authenticated:
                 _LOGGER.info("***** app_update(self) ********")
-                # calling system details just on reastrt...
-                if self._app_raw_system_details is None:
-                    await self.app_get_system_details()
-                # # 30min * 60 sec = 1800 sec
-                # if self._QUERY_SYSTEM_DETAILS_TS + 1800 < time():
-                #     # since we also get the system-state from the system_details we call this
-                #     # monster object every time [I dislike this!]
-                #     await self.app_get_system_details()
+                if self._QUERY_SYSTEM_DETAILS:
+                    # 60min * 60 sec = 3600 sec
+                    if self._QUERY_SYSTEM_DETAILS_TS + 3595 < time():
+                        # since we also get the case-temp & system-state from the system_details
+                        # we call this monster object every time [I dislike this!]
+                        await self.app_get_system_details()
+                    else:
+                        # if we do not query the system_details, we might want/must update the
+                        # system_state every 10 minutes
+                        if self._QUERY_SYSTEM_STATE_TS + 595 < time():
+                            await self.app_get_system_status()
 
                 await self.app_get_dashboard()
-                # the dashboard already contain a system-state (might be just in english)
-                # but for the start we can skipp this call
-                # await self.app_get_system_status()
 
-                # only request the totals at min update of 10 minutes
-                # 10min * 60 sec = 600 sec - 5sec
-                if self._QUERY_TOTALS_TS + 595 < time():
-                    await self.app_update_total()
+                if self._QUERY_TOTALS:
+                    # only request the totals at min update of 15 minutes
+                    # 15min * 60 sec = 900 sec - 5sec
+                    if self._QUERY_TOTALS_TS + 895 < time():
+                        await self.app_update_total()
 
-                if hasattr(self, '_QUERY_WALLBOX') and self._QUERY_WALLBOX:
+                if self._QUERY_WALLBOX:
                     await self.app_update_all_wallboxes()
 
-                if hasattr(self, '_QUERY_SPARE_CAPACITY') and self._QUERY_SPARE_CAPACITY:
+                if self._QUERY_SPARE_CAPACITY:
                     # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
                     # 2025/06/19 - changed to 6h... = 86400/4 = 21600
-                    if self._QUERY_SPARE_CAPACITY_TS + 21600 < time():
+                    if self._QUERY_SPARE_CAPACITY_TS + 21595 < time():
                         await self.web_update_spare_capacity()
 
-                if hasattr(self, '_QUERY_PEAK_SHAVING') and self._QUERY_PEAK_SHAVING:
+                if self._QUERY_PEAK_SHAVING:
                     # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                    if self._QUERY_PEAK_SHAVING_TS + 86400 < time():
+                    if self._QUERY_PEAK_SHAVING_TS + 86395 < time():
                         await self.web_update_peak_shaving()
 
                 if self.SGREADY_SUPPORTED:
                     # 6h = 6 * 60 min = 6 * 60 * 60 sec = 21600 sec
-                    if self._QUERY_SGREADY_STATE_TS + 21600 < time():
+                    if self._QUERY_SGREADY_STATE_TS + 21595 < time():
                         await self.web_update_sgready_state()
                     # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
-                    if self._QUERY_SGREADY_CONF_TS + 86400 < time():
+                    if self._QUERY_SGREADY_CONF_TS + 86395 < time():
                         await self.web_update_sgready_conf()
 
                 return True
@@ -4333,6 +4360,8 @@ class SenecOnline:
         data = await self._app_do_get_request(a_url)
         if data is not None:
             self._app_raw_system_details = data
+            # see 'system_state' property for details! (why this is a hack)
+            self._app_raw_system_state_obj = None
             _QUERY_SYSTEM_DETAILS_TS = time()
         else:
             self._app_raw_system_details = None
@@ -4393,6 +4422,7 @@ class SenecOnline:
         data = await self._app_do_get_request(a_url)
         if data is not None:
             self._app_raw_system_state_obj = data
+            self._QUERY_SYSTEM_STATE_TS = time()
         else:
             self._app_raw_system_state_obj = None
         return data
@@ -4448,7 +4478,7 @@ class SenecOnline:
                 self._app_raw_today = None
 
             if "storageDeviceState" in data:
-                self._app_raw_device_state = data["storageDeviceState"]
+                self._app_raw_battery_device_state = data["storageDeviceState"]
 
         return data
 
@@ -5303,12 +5333,24 @@ class SenecOnline:
         elif hasattr(self, '_web_master_plant_number') and self._web_master_plant_number is not None:
             return int(self._web_master_plant_number)
 
+
     ###################################
     # from here the "real" sensor data starts... #
     ###################################
     def _get_sum_for_index(self, index: int) -> float:
         if index > -1:
             return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total["timeSeries"])
+
+    async def set_string_value(self, key: str, value: str):
+        return await getattr(self, 'set_string_value_' + key)(value)
+
+    @property
+    def request_throttling(self) -> str:
+        return self._UPDATE_INTERVAL
+
+    async def set_string_value_request_throttling(self, value: str):
+        if value in UPDATE_INTERVAL_OPTIONS:
+            self._UPDATE_INTERVAL = value
 
     @property
     def accuimport_total(self) -> float:
@@ -5484,18 +5526,35 @@ class SenecOnline:
 
     @property
     def system_state(self) -> str:
+        # some sort of hack - when we set the '_app_raw_system_details', then we going to set
+        # the '_app_raw_system_state_obj' to None ;-)
+        state = self.system_state_from_state
+        if state is not None:
+            return state
+        else:
+            return self.system_state_from_details
+
+    @property
+    def system_state_from_state(self) -> str:
+        if self._app_raw_system_state_obj is not None and "name" in self._app_raw_system_state_obj:
+            return self._app_raw_system_state_obj["name"].replace('_', ' ')
+
+    @property
+    def system_state_from_details(self) -> str:
         # 'mcu': {'mainControllerSerial': 'XXX',
         #        'mainControllerState': {'name': 'EIGENVERBRAUCH', 'severity': 'INFO'}, 'firmwareVersion': '123',
         #        'guiVersion': 123}, 'warranty': {'endDate': 1700000000, 'warrantyTermInMonths': 123},
-        if self._app_raw_device_state is not None:
-            return self._app_raw_device_state.replace('_', ' ')
-        if self._app_raw_system_state_obj is not None and "name" in self._app_raw_system_state_obj:
-            return self._app_raw_system_state_obj["name"].replace('_', ' ')
         if self._app_raw_system_details is not None and "mcu" in self._app_raw_system_details:
-            if "mainControllerState" in self._app_raw_system_details["mcu"]:
-                return self._app_raw_system_details["mcu"]["mainControllerState"]["name"].replace('_', ' ')
-            elif "mainControllerUnitState" in self._app_raw_system_details["mcu"]:
+            if "mainControllerUnitState" in self._app_raw_system_details["mcu"]:
                 return self._app_raw_system_details["mcu"]["mainControllerUnitState"]["name"].replace('_', ' ')
+            # old response might contained 'mainControllerState'
+            elif "mainControllerState" in self._app_raw_system_details["mcu"]:
+                return self._app_raw_system_details["mcu"]["mainControllerState"]["name"].replace('_', ' ')
+
+    @property
+    def battery_state(self) -> str:
+        if self._app_raw_battery_device_state is not None:
+            return self._app_raw_battery_device_state.replace('_', ' ')
 
     ###################################
     # 'batteryInverter': {'state': {'name': 'RUN_GRID', 'severity': 'INFO'}, 'vendor': 'XXX',
@@ -5694,6 +5753,7 @@ class SenecOnline:
         # reset all our internal objects...
         self._QUERY_TOTALS_TS = 0
         self._QUERY_SYSTEM_DETAILS_TS = 0
+        self._QUERY_SYSTEM_STATE_TS = 0
         self._app_token_object = {}
         self._app_is_authenticated = False
         self._app_token = None
@@ -5704,7 +5764,7 @@ class SenecOnline:
         self._app_data_end_ts = -1
         self._app_abilities = None
         self._app_raw_now = None
-        self._app_raw_device_state = None
+        self._app_raw_battery_device_state = None
         self._app_raw_today = None
         self._app_raw_system_details = None
         self._app_raw_system_state_obj = None

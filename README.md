@@ -337,6 +337,63 @@ Once you have connected the inverter(s) with your LAN you can add another integr
 
 Repeat step 3, 4 & 5 of this procedure, if you have build in two inverters into your SENEC.Home.
 
+## Reduce the footprint of your WebAPI integration
+
+When you are using the WebAPI integration, you might like to reduce the footprint of the WebAPI integration at SENECs infrastructure. E.g. after sunset the PV production becomes zero, and so you might want to reduce the frequency in which the integration will query the WebAPI.
+
+> [!NOTE]
+> When you want to make use of this feature, you must obviously configure the update interval of the WebAPI integration to your minimum update frequency you would like to use.
+> 
+> So when you configure the WebAPI integration to update every 10 minutes, and you select `Every 5 minutes` in the Request Throttling Select entity, then the WebAPI integration will still update only every 10 minutes.
+
+### Example automation to reduce the WebAPI footprint when the sun is down
+
+> [!NOTE]
+> The select `entity_id` might be different in your ha installation.
+
+```yaml
+alias: Reduce WebAPI footprint
+description: "When the sun is down, reduce the frequency of the WebAPI polling to 2 hours / and restore it on sunrise to 5 minutes"
+triggers:
+  - trigger: state
+    entity_id:
+      - sun.sun
+conditions: []
+actions:
+  - if:
+      - condition: sun
+        after: sunrise
+    then:
+      - action: select.select_option
+        data:
+          option: five_minutes
+        target:
+          entity_id: select.senec_webapi_request_throttling
+  - if:
+      - condition: sun
+        after: sunset
+    then:
+      - action: select.select_option
+        data:
+          option: two_hours
+        target:
+          entity_id: select.senec_webapi_request_throttling
+mode: single
+```
+
+Here is the complete list of available options for the WebAPI `request_throttling` select entity:
+- no_limit
+- one_minute
+- five_minutes
+- ten_minutes
+- fifteen_minutes
+- twenty_minutes
+- thirty_minutes
+- sixty_minutes
+- two_hours
+- four_hours
+
+
 ## Using the Home Assistant Energy Dashboard
 
 This integration supports Home Assistant's [Energy Management](https://www.home-assistant.io/docs/energy/).

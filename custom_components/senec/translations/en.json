@@ -190,6 +190,21 @@
           "optimized_4": "OPTIMIZED [0/charge interruption OFF]",
           "fastest": "FASTEST"
         }
+      },
+      "request_throttling": {
+        "name": "Request Throttling",
+        "state": {
+          "no_limit": "-none-",
+          "one_minute": "Every minute",
+          "five_minutes": "Every 5 minutes",
+          "ten_minutes": "Every 10 minutes",
+          "fifteen_minutes": "Every 15 minutes",
+          "twenty_minutes": "Every 20 minutes",
+          "thirty_minutes": "Every 30 minutes",
+          "sixty_minutes": "Every hour",
+          "two_hours": "Every 2 hours",
+          "four_hours": "Every 4 hours"
+        }
       }
     },
     "number": {
