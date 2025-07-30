@@ -14,6 +14,7 @@ import traceback
 from base64 import urlsafe_b64encode
 from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
+from pathlib import Path
 from time import time, strftime, localtime
 from typing import Final
 from urllib.parse import quote, urlparse, parse_qs
@@ -41,7 +42,7 @@ from custom_components.senec.const import (
     CONF_APP_WALLBOX_COUNT,
     CONF_APP_DATA_START,
     CONF_APP_DATA_END,
-    CONF_APP_TOTAL_DATA
+    CONF_APP_TOTAL_DATA, DOMAIN
 )
 from custom_components.senec.pysenec_ha.constants import (
     SYSTEM_STATE_NAME,
@@ -2884,7 +2885,8 @@ class SenecOnline:
     USE_DEFAULT_USER_AGENT:Final = True
     WALLBOX_IS_TODO:Final = True
 
-    def __init__(self, user, pwd, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None, tokens_location: str = None, integ_version: str = None):
+    def __init__(self, user, pwd, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None,
+                 storage_path: Path = None, tokens_location: str = None, integ_version: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         self._init_user_agents()
         self._lang = lang
@@ -3052,7 +3054,10 @@ class SenecOnline:
         # app-token related stuff...
         self._app_stored_tokens_location = None
         if tokens_location is None:
-            self._app_stored_tokens_location = f".storage/senec/{user}_access_token.txt"
+            if storage_path is not None:
+                self._app_stored_tokens_location = str(storage_path.joinpath(DOMAIN, f"{user}_access_token.txt"))
+            else:
+                self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}_access_token.txt"
         else:
             self._app_stored_tokens_location = tokens_location
 
@@ -3392,7 +3397,7 @@ class SenecOnline:
         # }
 
         _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
-        data = await self._app_do_get_request(self.APP_WALLBOX_SEARCH)
+        data = await self._app_do_post_request(self.APP_WALLBOX_SEARCH, post_data={"systemIds":[self._app_master_plant_id]}, read_response=True)
         # the data should be an array... and this array should have the same length then
         # our known wallboxes... [but it's better to check that]
 
@@ -3739,15 +3744,18 @@ class SenecOnline:
 
     """Check if we can write to the file system - should be called from the setup UI"""
     @staticmethod
-    def check_general_fs_access() -> bool:
-        _LOGGER.debug(f"check_general_fs_access()")
+    def check_general_fs_access(a_storage_path:Path) -> bool:
+        _LOGGER.debug(f"check_general_fs_access(): storage_path is: '{a_storage_path}'")
         can_create_file = False
-        testfile = f".storage/senec/write_test@file.txt"
+        if a_storage_path is not None:
+            testfile = str(a_storage_path.joinpath(DOMAIN, "write_test@file.txt"))
+        else:
+            testfile = f".storage/{DOMAIN}/write_test@file.txt"
         # Check if the parent directory exists
         directory = os.path.dirname(testfile)
         if not os.path.exists(directory):
             try:
-                os.makedirs(directory)
+                os.makedirs(directory, exist_ok=True)
             except OSError as exc:
                 _LOGGER.warning(f"check_general_fs_access(): could not create directory '{directory}': {type(exc)} - {exc}")
 
@@ -3941,7 +3949,7 @@ class SenecOnline:
         directory = os.path.dirname(self._app_stored_tokens_location)
         if not os.path.exists(directory):
             try:
-                await asyncio.get_running_loop().run_in_executor(None, lambda: os.makedirs(directory))
+                await asyncio.get_running_loop().run_in_executor(None, lambda: os.makedirs(directory, exist_ok=True))
             except OSError as exc:
                 _LOGGER.warning(f"_write_token_to_storage(): could not create directory '{directory}': {type(exc)} - {exc}")
 
@@ -4154,7 +4162,7 @@ class SenecOnline:
                                 try:
                                     data = await res.json()
                                     _LOGGER.debug(f"_app_do_post_request(): response: {data}")
-                                    return True
+                                    return data
                                 except JSONDecodeError as jexc:
                                     _LOGGER.warning(f"_app_do_post_request(): JSONDecodeError while 'await res.json()' {jexc}")
                                 except Exception as exc:

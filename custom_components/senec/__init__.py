@@ -1,6 +1,7 @@
 """The senec integration."""
 import logging
 from datetime import timedelta
+from pathlib import Path
 from typing import Final
 
 from homeassistant.config_entries import ConfigEntry
@@ -9,6 +10,7 @@ from homeassistant.core import HomeAssistant, Event
 from homeassistant.helpers import config_validation as config_val, entity_registry
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
+from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.loader import Integration, async_get_integration
 
@@ -298,6 +300,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                      app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
                                      lang=hass.config.language.lower(),
                                      options=opt,
+                                     storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR),
                                      integ_version=self._integration_version)
             self._warning_counter = 0
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)

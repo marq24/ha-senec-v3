@@ -1,6 +1,7 @@
 """Config flow for senec integration."""
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
@@ -11,6 +12,7 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_T
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import slugify
 from requests.exceptions import HTTPError, Timeout
 
@@ -215,7 +217,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         web_session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             senec_online = SenecOnline(user=user, pwd=pwd, web_session=web_session,
-                                           app_master_plant_number=user_master_plant)
+                                       app_master_plant_number=user_master_plant,
+                                       storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR))
 
             # we check, if we can authenticate with the APP-API
             await senec_online.app_authenticate()
@@ -500,7 +503,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB
 
-        has_fs_write_access = await asyncio.get_running_loop().run_in_executor(None, SenecOnline.check_general_fs_access)
+        has_fs_write_access = await asyncio.get_running_loop().run_in_executor(None,
+                                                                               SenecOnline.check_general_fs_access,
+                                                                               Path(self.hass.config.config_dir).joinpath(STORAGE_DIR))
         if not has_fs_write_access:
             return self.async_abort(reason="no_filesystem_access")
         else:
