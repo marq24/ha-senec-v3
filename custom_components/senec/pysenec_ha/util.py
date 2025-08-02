@@ -4,8 +4,10 @@ from struct import unpack, pack
 
 _LOGGER = logging.getLogger(__name__)
 
-_MASKED_VALUES = ["host", "username", "password", "app_token", "app_master_plant_id", "dserial", "device_id"]
-
+_MASKED_VALUES = ["host", "username", "password", "street", "email", "phonenumber", "housenumber", "website",
+                  "app_token", "access_token", "refresh_token", "id_token",
+                  "maincontrollerserial", "serial", "serialnumber", "dserial",
+                  "device_id", "controllerid", "systemid", "app_master_plant_id"]
 
 def mask_map(d: dict) -> dict:
     if not isinstance(d, dict):
@@ -20,12 +22,26 @@ def mask_map_internal(d: dict) -> dict:
             d.pop(k)
             d[k] = v
             mask_map_internal(v)
+        elif isinstance(v, list):
+            d.pop(k)
+            d[k] = [mask_map_internal(item) if isinstance(item, dict) else
+                    ("<MASKED>" if isinstance(item, str) and k.lower() in _MASKED_VALUES else item)
+                    for item in v]
         else:
             if k.lower() in _MASKED_VALUES:
                 v = "<MASKED>"
             d.pop(k)
             d[k] = v
     return d
+
+def mask_string(text: str, show_chars: int = 6) -> str:
+    """Return a masked string showing only first and last characters with dots in between"""
+    if text is None or len(text) <= show_chars * 2:
+        if show_chars > 3:
+            return mask_string(text, show_chars=show_chars-1)
+        else:
+            return text
+    return f"{text[:show_chars]}…{text[-show_chars:]}"
 
 def parse_value(value: str):
     """Parses numeric values, Senec supplies them as hex."""

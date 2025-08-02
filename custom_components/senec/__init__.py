@@ -114,7 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         # we need to log in into the SenecApp and authenticate the user via the web-portal
         await coordinator.senec.authenticate_all()
-        _LOGGER.info(f"authenticate_all() completed -> main data: {coordinator.senec.get_debug_login_data()}")
+        _LOGGER.info(f"authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
 
     # HA can check if we can make a initial data refresh and report the state
     # back to HA (we don't have to code this by ourselves, HA will do this for us)
