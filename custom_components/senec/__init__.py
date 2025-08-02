@@ -300,7 +300,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                      app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
                                      lang=hass.config.language.lower(),
                                      options=opt,
-                                     storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR),
+                                     storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
                                      integ_version=self._integration_version)
             self._warning_counter = 0
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)

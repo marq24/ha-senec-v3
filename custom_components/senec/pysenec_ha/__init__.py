@@ -370,8 +370,11 @@ class SenecLocal:
             #     "MPP_POWER": ""},
             # # SENEC_SECTION_PWR_UNIT: {"POWER_L1": "", "POWER_L2": "", "POWER_L3": ""}
             form[SENEC_SECTION_PV1] = {"MPP_VOL": "", "MPP_CUR": "", "MPP_POWER": ""}
-        if self._QUERY_PM1OBJ1:
+
+        # when we query wallbox data, then we also need the U_AC values in ''
+        if self._QUERY_PM1OBJ1 or self._QUERY_WALLBOX:
             form[SENEC_SECTION_PM1OBJ1] = {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""}
+
         if self._QUERY_PM1OBJ2:
             form[SENEC_SECTION_PM1OBJ2] = {"FREQ": "", "U_AC": "", "I_AC": "", "P_AC": "", "P_TOTAL": ""}
 
@@ -1749,10 +1752,13 @@ class SenecLocal:
         Wallbox Total Charging Power (W)
         Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
         """
-        if self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX]:
+        if (self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and
+                "L1_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L2_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L3_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                SENEC_SECTION_PM1OBJ1 in self._raw and "U_AC" in self._raw[SENEC_SECTION_PM1OBJ1] and
+                len(self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"]) >= 3
+        ):
             total = 0
             if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][0] == 1:
                 total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][0] * \
@@ -1838,10 +1844,13 @@ class SenecLocal:
         Wallbox Total Charging Power (W)
         Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
         """
-        if self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX]:
+        if (self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and
+                "L1_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L2_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L3_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                SENEC_SECTION_PM1OBJ1 in self._raw and "U_AC" in self._raw[SENEC_SECTION_PM1OBJ1] and
+                len(self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"]) >= 3
+        ):
             total = 0
             if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][1] == 1:
                 total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][1] * \
@@ -1927,10 +1936,13 @@ class SenecLocal:
         Wallbox Total Charging Power (W)
         Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
         """
-        if self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX]:
+        if (self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and
+                "L1_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L2_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L3_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                SENEC_SECTION_PM1OBJ1 in self._raw and "U_AC" in self._raw[SENEC_SECTION_PM1OBJ1] and
+                len(self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"]) >= 3
+        ):
             total = 0
             if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][2] == 1:
                 total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][2] * \
@@ -2016,10 +2028,13 @@ class SenecLocal:
         Wallbox Total Charging Power (W)
         Derived from the 3 phase voltages multiplied with the phase currents from the wallbox
         """
-        if self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and "L1_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L2_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX] and "L3_CHARGING_CURRENT" in self._raw[
-            SENEC_SECTION_WALLBOX]:
+        if (self._raw is not None and SENEC_SECTION_WALLBOX in self._raw and
+                "L1_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L2_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                "L3_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX] and
+                SENEC_SECTION_PM1OBJ1 in self._raw and "U_AC" in self._raw[SENEC_SECTION_PM1OBJ1] and
+                len(self._raw[SENEC_SECTION_PM1OBJ1]["U_AC"]) >= 3
+        ):
             total = 0
             if self._raw[SENEC_SECTION_WALLBOX]["L1_USED"][3] == 1:
                 total += self._raw[SENEC_SECTION_WALLBOX]["L1_CHARGING_CURRENT"][3] * \
@@ -3249,14 +3264,14 @@ class SenecOnline:
         except BaseException as exc:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
-            _LOGGER.warn(f"app_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
+            _LOGGER.warning(f"app_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
         return False
 
     async def web_update(self):
         try:
             if self._web_is_authenticated:
                 _LOGGER.info("***** web_update(self) ********")
-                await self.web_update_now()
+                await self.web_update_now(retry=True)
                 # update totals only every 20 minutes
                 if self._QUERY_TOTALS_TS + 1200 < time():
                     await self.web_update_total()
@@ -3403,7 +3418,7 @@ class SenecOnline:
 
         # Check if data is valid and has content
         if not data or not isinstance(data, list):
-            _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list {data}")
+            _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
             return
 
         # Check if we have enough data for all expected wallboxes
@@ -4951,7 +4966,7 @@ class SenecOnline:
                 self._web_is_authenticated = False
                 await self.web_authenticate(do_update=False, throw401=False)
 
-    async def web_update_now(self):
+    async def web_update_now(self, retry:bool=False):
         _LOGGER.debug("***** web_update_now(self) ********")
         # grab NOW and TODAY stats
         a_url = f"{self._WEB_GET_OVERVIEW_URL}" % str(self._web_master_plant_number)
@@ -4995,14 +5010,16 @@ class SenecOnline:
 
                 else:
                     self._is_authenticated = False
-                    await self.update()
+                    if retry:
+                        await self.web_update(retry=False)
 
             except ClientResponseError as exc:
                 if exc.status == 401:
                     self.purge_senec_cookies()
 
                 self._is_authenticated = False
-                await self.update()
+                if retry:
+                    await self.web_update(retry=False)
 
     async def web_update_total(self):
         # grab TOTAL stats
@@ -5030,15 +5047,15 @@ class SenecOnline:
                                 _LOGGER.warning(f"web_update_total(): JSONDecodeError while 'await res.json()' {exc}")
 
                         else:
+                            _LOGGER.info(f"web_update_total(): while requesting data from {a_url}: {res.status} - {res}")
                             self._web_is_authenticated = False
-                            await self.update()
 
                     except ClientResponseError as exc:
+                        _LOGGER.info(f"web_update_total(): while requesting data from {a_url}: {type(exc)} - {exc}")
                         if exc.status == 401:
                             self.purge_senec_cookies()
 
                         self._web_is_authenticated = False
-                        await self.update()
 
             # ok - store the last successful query timestamp
             self._QUERY_TOTALS_TS = time()
@@ -5063,15 +5080,15 @@ class SenecOnline:
                     except JSONDecodeError as exc:
                         _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
                 else:
+                    _LOGGER.info(f"web_update_peak_shaving(): while requesting data from {a_url}: {res.status} - {res}")
                     self._web_is_authenticated = False
-                    await self.update()
 
             except ClientResponseError as exc:
+                _LOGGER.info(f"web_update_peak_shaving(): while requesting data from {a_url}: {type(exc)} - {exc}")
                 if exc.status == 401:
                     self.purge_senec_cookies()
 
                 self._web_is_authenticated = False
-                await self.update()
 
     """This function will set the peak shaving data over the web api"""
     async def set_peak_shaving(self, new_peak_shaving: dict):
@@ -5105,11 +5122,11 @@ class SenecOnline:
     async def web_update_spare_capacity(self):
         _LOGGER.info("***** web_update_spare_capacity(self) ********")
         a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_GET_SPARE_CAPACITY}"
-        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as response:
+        async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
-                response.raise_for_status()
-                if 200 <= response.status <= 205:
-                    content = await response.text()
+                res.raise_for_status()
+                if 200 <= res.status <= 205:
+                    content = await res.text()
                     if content is not None and len(content) > 0:
                         try:
                             self._web_spare_capacity = int(content)
@@ -5121,15 +5138,15 @@ class SenecOnline:
                         _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
                         self._web_spare_capacity = 0
                 else:
+                    _LOGGER.info(f"web_update_spare_capacity(): while requesting data from {a_url}: {res.status} - {res}")
                     self._web_is_authenticated = False
-                    await self.update()
 
             except ClientResponseError as exc:
+                _LOGGER.info(f"web_update_spare_capacity(): while requesting data from {a_url}: {type(exc)} - {exc}")
                 if exc.status == 401:
                     self.purge_senec_cookies()
 
                 self._web_is_authenticated = False
-                await self.update()
 
     """This function will set the spare capacity over the web api"""
     async def set_spare_capacity(self, new_spare_capacity: int):
@@ -5181,15 +5198,15 @@ class SenecOnline:
                         except JSONDecodeError as exc:
                             _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
                     else:
+                        _LOGGER.info(f"web_update_sgready_state(): while requesting data from {a_url}: {res.status} - {res}")
                         self._web_is_authenticated = False
-                        await self.update()
 
                 except ClientResponseError as exc:
+                    _LOGGER.info(f"web_update_sgready_state(): while requesting data from {a_url}: {type(exc)} - {exc}")
                     if exc.status == 401:
                         self.purge_senec_cookies()
 
                     self._web_is_authenticated = False
-                    await self.update()
 
     async def web_update_sgready_conf(self):
         if self.SGREADY_SUPPORTED:
@@ -5207,15 +5224,15 @@ class SenecOnline:
                         except JSONDecodeError as exc:
                             _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
                     else:
+                        _LOGGER.info(f"web_update_sgready_conf(): while requesting data from {a_url}: {res.status} - {res}")
                         self._web_is_authenticated = False
-                        await self.update()
 
                 except ClientResponseError as exc:
+                    _LOGGER.info(f"web_update_sgready_conf(): while requesting data from {a_url}: {type(exc)} - {exc}")
                     if exc.status == 401:
                         self.purge_senec_cookies()
 
                     self._web_is_authenticated = False
-                    await self.update()
 
     async def set_sgready_conf(self, new_sgready_data: dict):
         if self.SGREADY_SUPPORTED:
