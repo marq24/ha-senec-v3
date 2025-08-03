@@ -4265,10 +4265,10 @@ class SenecOnline:
             start_year = 2018
             if self._app_data_start_ts > 0:
                 start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
-                _LOGGER.debug(f"***** APP-API: app_update_total() - data start year is set to {start_year}")
+                _LOGGER.debug(f"app_update_total(): - data start year is set to {start_year}")
 
             for a_year in range(start_year, current_year):
-                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {a_year}")
+                _LOGGER.debug(f"app_update_total(): - fetching data for year {a_year}")
                 a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                       res_type  ="MONTH",
                                                       from_val  =quote(app_get_utc_date_start(a_year, 1), safe=''),
@@ -4283,6 +4283,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
                     data = app_aggregate_timeseries_data_if_needed(data)
+                    _LOGGER.debug(f"app_update_total(): aggregated data for year {a_year} -> {data}")
                     if self._static_TOTAL_SUMS_PREV_YEARS is None:
                         self._static_TOTAL_SUMS_PREV_YEARS = data
                     else:
@@ -4296,17 +4297,11 @@ class SenecOnline:
             if current_month == 1:
                 self._static_TOTAL_SUMS_PREV_MONTHS = None
             else:
-                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
+                _LOGGER.debug(f"app_update_total(): - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
                 a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                       res_type  ="MONTH",
                                                       from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
                                                       to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
-
-                # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-                #     str(self._app_master_plant_id),
-                #     "YEAR",
-                #     str(app_get_utc_date_start(current_year, 1)),
-                #     str(app_get_utc_date_end(current_year, current_month - 1)))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
@@ -4396,7 +4391,9 @@ class SenecOnline:
         _LOGGER.debug(f"APP-API app_update_total_all_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
         for idx in range(0, self._app_wallbox_num_max):
             if self._app_wallbox_num_max > idx:
-                await self._app_update_wallbox_total(idx)
+                await self._app_update_single_wallbox_total(idx)
+
+        return self.wallbox_consumption_total
 
     async def _app_update_single_wallbox_total(self, idx:int):
         if self._app_master_plant_id is None:
@@ -4430,10 +4427,10 @@ class SenecOnline:
             start_year = 2018
             if self._app_data_start_ts > 0:
                 start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
-                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - data start year is set to {start_year}")
+                _LOGGER.debug(f"_app_update_single_wallbox_total() - data start year is set to {start_year}")
 
             for a_year in range(start_year, current_year):
-                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {a_year}")
+                _LOGGER.debug(f"_app_update_single_wallbox_total() - fetching data for year {a_year}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                          wb_id=str((idx + 1)),
                                                          res_type="MONTH",
@@ -4443,6 +4440,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
                     data = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
+                    _LOGGER.debug(f"_app_update_single_wallbox_total(): aggregated data for year {a_year} -> {data}")
                     if local_TOTAL_SUMS_PREV_YEARS is None:
                         local_TOTAL_SUMS_PREV_YEARS = data
                     else:
@@ -5607,6 +5605,42 @@ class SenecOnline:
             return self._get_sum_for_index(self._app_raw_total["measurements"].index("POWER_CONSUMPTION"))
         elif hasattr(self, '_web_energy_entities') and "consumption_total" in self._web_energy_entities:
             return self._web_energy_entities["consumption_total"]
+
+    @property
+    def wallbox_1_consumption_total(self) -> float:
+        if self._app_raw_wb_total is not None:
+            if len(self._app_raw_wb_total) > 0:
+                a_wallbox_measure = self._app_raw_wb_total[0]
+                if a_wallbox_measure is not None and "measurements" in a_wallbox_measure:
+                    return self._get_sum_for_index_wb(a_wallbox_measure["measurements"].index("WALLBOX_CONSUMPTION"), a_wallbox_measure)
+        return None
+
+    @property
+    def wallbox_2_consumption_total(self) -> float:
+        if self._app_raw_wb_total is not None:
+            if len(self._app_raw_wb_total) > 1:
+                a_wallbox_measure = self._app_raw_wb_total[1]
+                if a_wallbox_measure is not None and "measurements" in a_wallbox_measure:
+                    return self._get_sum_for_index_wb(a_wallbox_measure["measurements"].index("WALLBOX_CONSUMPTION"), a_wallbox_measure)
+        return None
+
+    @property
+    def wallbox_3_consumption_total(self) -> float:
+        if self._app_raw_wb_total is not None:
+            if len(self._app_raw_wb_total) > 2:
+                a_wallbox_measure = self._app_raw_wb_total[2]
+                if a_wallbox_measure is not None and "measurements" in a_wallbox_measure:
+                    return self._get_sum_for_index_wb(a_wallbox_measure["measurements"].index("WALLBOX_CONSUMPTION"), a_wallbox_measure)
+        return None
+
+    @property
+    def wallbox_4_consumption_total(self) -> float:
+        if self._app_raw_wb_total is not None:
+            if len(self._app_raw_wb_total) > 3:
+                a_wallbox_measure = self._app_raw_wb_total[3]
+                if a_wallbox_measure is not None and "measurements" in a_wallbox_measure:
+                    return self._get_sum_for_index_wb(a_wallbox_measure["measurements"].index("WALLBOX_CONSUMPTION"), a_wallbox_measure)
+        return None
 
     @property
     def wallbox_consumption_total(self) -> float:
