@@ -116,7 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         await coordinator.senec.authenticate_all()
         _LOGGER.info(f"authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
 
-    # HA can check if we can make a initial data refresh and report the state
+    # HA can check if we can make an initial data refresh and report the state
     # back to HA (we don't have to code this by ourselves, HA will do this for us)
     await coordinator.async_config_entry_first_refresh()
 
