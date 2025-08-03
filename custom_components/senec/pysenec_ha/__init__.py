@@ -1,10 +1,11 @@
 import asyncio
 import base64
 import calendar
+# all for the new openId stuff
+import copy
 import hashlib
 import json
 import logging
-# all for the new openId stuff
 import os
 import random
 import re
@@ -42,7 +43,8 @@ from custom_components.senec.const import (
     CONF_APP_WALLBOX_COUNT,
     CONF_APP_DATA_START,
     CONF_APP_DATA_END,
-    CONF_APP_TOTAL_DATA, DOMAIN
+    CONF_APP_TOTAL_DATA,
+    DOMAIN
 )
 from custom_components.senec.pysenec_ha.constants import (
     SYSTEM_STATE_NAME,
@@ -2843,40 +2845,40 @@ class InverterLocal:
         return None
 
 
-def app_has_dict_timeseries_with_values(a_dict:dict) -> bool:
+def app_has_dict_timeseries_with_values(a_dict:dict, ts_key_name:str="timeSeries") -> bool:
     if (a_dict is None or
-            "timeSeries" not in a_dict or
-            len(a_dict["timeSeries"]) == 0 or
-            "measurements" not in a_dict["timeSeries"][0] or
-            "values" not in a_dict["timeSeries"][0]["measurements"]):
+            ts_key_name not in a_dict or
+            len(a_dict[ts_key_name]) == 0 or
+            "measurements" not in a_dict[ts_key_name][0] or
+            "values" not in a_dict[ts_key_name][0]["measurements"]):
         _LOGGER.debug(f"Data '{a_dict}' does not contain the expected structure for timeseries measurements.")
         return False
     return True
 
-def app_summ_total_dict_values(src_dict, dest_dict):
+def app_summ_total_dict_values(src_dict, dest_dict, ts_key_name:str="timeSeries"):
     """Add corresponding values from two measurement dictionaries"""
     #src_dict = app_aggregate_timeseries_data_if_needed(src_dict)
 
     # Get the value arrays from both dictionaries
-    src_values = src_dict["timeSeries"][0]["measurements"]["values"]
-    dest_values = dest_dict["timeSeries"][0]["measurements"]["values"]
+    src_values = src_dict[ts_key_name][0]["measurements"]["values"]
+    dest_values = dest_dict[ts_key_name][0]["measurements"]["values"]
 
     # Add corresponding values together
     summed_values = [src_val + dest_val for src_val, dest_val in zip(src_values, dest_values)]
 
     # Create a result dictionary with the structure of the first one
-    dest_dict["timeSeries"][0]["measurements"]["values"] = summed_values
+    dest_dict[ts_key_name][0]["measurements"]["values"] = summed_values
     return dest_dict
 
-def app_aggregate_timeseries_data_if_needed(data):
-    if data is None or not data["timeSeries"] or len(data["timeSeries"]) == 1:
+def app_aggregate_timeseries_data_if_needed(data, ts_key_name:str="timeSeries"):
+    if data is None or not data[ts_key_name] or len(data[ts_key_name]) == 1:
         return data
 
-    first_date = data["timeSeries"][0]['date']
+    first_date = data[ts_key_name][0]['date']
     total_duration = 0
     total_values = [0] * len(data["measurements"])
 
-    for ts in data["timeSeries"]:
+    for ts in data[ts_key_name]:
         total_duration += ts["measurements"]["durationInSeconds"]
         values = ts["measurements"]["values"]
         for i in range(len(values)):
@@ -2885,7 +2887,7 @@ def app_aggregate_timeseries_data_if_needed(data):
     return {
         "measurements": data["measurements"],
         "totals": data["totals"] if "totals" in data else {},
-        "timeSeries": [{
+        ts_key_name: [{
             "date": first_date,
             "measurements": {
                 "durationInSeconds": total_duration,
@@ -2910,8 +2912,8 @@ def app_get_utc_date_end(year, month:int = 12, day:int = -1):
     return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
 class SenecOnline:
+
     USE_DEFAULT_USER_AGENT:Final = True
-    WALLBOX_IS_TODO:Final = True
 
     def __init__(self, user, pwd, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None,
                  storage_path: Path = None, tokens_location: str = None, integ_version: str = None):
@@ -3076,6 +3078,7 @@ class SenecOnline:
         self.APP_MEASURE_DATA_AVAIL = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
         self.APP_MEASURE_DASHBOARD  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
         self.APP_MEASURE_TOTAL      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
+        self.APP_MEASURE_WB_TOTAL   = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/measurements?wallboxIds={wb_id}&resolution={res_type}&from={from_val}&to={to_val}"
 
         # https://senec-app-systems-proxy.prod.senec.dev/systems/settings/user-energy-settings?systemId={master_plant_id}
         # -> http 204 NO-CONTENT
@@ -3110,6 +3113,7 @@ class SenecOnline:
         self._app_raw_system_details = None
         self._app_raw_system_state_obj = None
         self._app_raw_total = None
+        self._app_raw_wb_total = [None, None, None, None]
         # for our TOTAL values…
         self._static_TOTAL_SUMS_PREV_YEARS = None
         self._static_TOTAL_SUMS_PREV_MONTHS = None
@@ -3117,7 +3121,16 @@ class SenecOnline:
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
+
         self._app_raw_wallbox = [None, None, None, None]
+        self._static_A_WALLBOX_STORAGE = {
+            "years":        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS,
+            "years_data":   self._static_TOTAL_SUMS_PREV_YEARS,
+            "months":       self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS,
+            "months_data":  self._static_TOTAL_SUMS_PREV_MONTHS,
+            "days":         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS,
+            "days_data":    self._static_TOTAL_SUMS_PREV_DAYS}
+        self._static_TOTAL_WALLBOX_DATA = [copy.deepcopy(self._static_A_WALLBOX_STORAGE) for _ in range(4)]
 
         IntBridge.app_api = self
         _LOGGER.debug(f"SenecOnline initialized and IntBridge.app_api set to {self}")
@@ -3168,6 +3181,7 @@ class SenecOnline:
             "system_state_object": self._app_raw_system_state_obj,
             "system_details": self._app_raw_system_details,
             "wallbox": self._app_raw_wallbox,
+            "wb_total": self._app_raw_wb_total,
             "mein-senec": {
                 "raw": self._web_raw,
                 "energy_entities": self._web_energy_entities,
@@ -3247,6 +3261,8 @@ class SenecOnline:
                     # 15min * 60 sec = 900 sec - 5sec
                     if self._QUERY_TOTALS_TS + 895 < time():
                         await self.app_update_total()
+                        if self._QUERY_WALLBOX:
+                            await self.app_update_total_all_wallboxes()
 
                 if self._QUERY_WALLBOX:
                     await self.app_update_all_wallboxes()
@@ -3658,8 +3674,15 @@ class SenecOnline:
                     "months":       self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS,
                     "months_data":  self._static_TOTAL_SUMS_PREV_MONTHS,
                     "days":         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS,
-                    "days_data":    self._static_TOTAL_SUMS_PREV_DAYS
+                    "days_data":    self._static_TOTAL_SUMS_PREV_DAYS,
+                    "wallbox":      self._static_TOTAL_WALLBOX_DATA
                 }
+            else:
+                # JUST FOR THE UPDATE required...
+                # ok we have 'CONF_APP_TOTAL_DATA' but is there also the wallbox data present?
+                if "wallbox" not in self._app_token_object[CONF_APP_TOTAL_DATA]:
+                    self._app_token_object[CONF_APP_TOTAL_DATA]["wallbox"] = self._static_TOTAL_WALLBOX_DATA
+
             return True
 
         return False
@@ -4224,7 +4247,7 @@ class SenecOnline:
         current_day = now_utc.day
         do_persist = False
 
-        # restore the data from our persistant storage
+        # restore the data from our persistent storage
         if CONF_APP_TOTAL_DATA in self._app_token_object:
             storage = self._app_token_object[CONF_APP_TOTAL_DATA]
             self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS  = storage.get("years",      self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS)
@@ -4368,6 +4391,144 @@ class SenecOnline:
         # ok - store the last successful query timestamp
         self._QUERY_TOTALS_TS = time()
         return data
+
+    async def app_update_total_all_wallboxes(self):
+        _LOGGER.debug(f"APP-API app_update_total_all_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                await self._app_update_wallbox_total(idx)
+
+    async def _app_update_single_wallbox_total(self, idx:int):
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total(self) index: {idx} ********")
+        now_utc = datetime.now(timezone.utc)
+        current_year = now_utc.year
+        current_month = now_utc.month
+        current_day = now_utc.day
+        do_persist = False
+
+        # restore the data from our persistent storage
+        if CONF_APP_TOTAL_DATA in self._app_token_object and "wallbox" in self._app_token_object[CONF_APP_TOTAL_DATA]:
+            storage = self._app_token_object[CONF_APP_TOTAL_DATA]["wallbox"][idx]
+        else:
+            storage = self._static_TOTAL_WALLBOX_DATA[idx]
+
+        local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS  = storage.get("years",      self._static_TOTAL_WALLBOX_DATA[idx].get("years"))
+        local_TOTAL_SUMS_PREV_YEARS                  = storage.get("years_data", self._static_TOTAL_WALLBOX_DATA[idx].get("years_data"))
+        local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = storage.get("months",     self._static_TOTAL_WALLBOX_DATA[idx].get("months"))
+        local_TOTAL_SUMS_PREV_MONTHS                 = storage.get("months_data",self._static_TOTAL_WALLBOX_DATA[idx].get("months_data"))
+        local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS   = storage.get("days",       self._static_TOTAL_WALLBOX_DATA[idx].get("days"))
+        local_TOTAL_SUMS_PREV_DAYS                   = storage.get("days_data",  self._static_TOTAL_WALLBOX_DATA[idx].get("days_data"))
+
+        # getting PREVIOUS_YEARS - only ONCE
+        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year:
+            do_persist = True
+            # Loop from the data-available-start to current year [there are no older systems than 2018]
+            # we might like to store the first year, that actually has data?!
+            start_year = 2018
+            if self._app_data_start_ts > 0:
+                start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
+                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - data start year is set to {start_year}")
+
+            for a_year in range(start_year, current_year):
+                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {a_year}")
+                a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                         wb_id=str((idx + 1)),
+                                                         res_type="MONTH",
+                                                         from_val=quote(app_get_utc_date_start(a_year, 1), safe=''),
+                                                         to_val=quote(app_get_utc_date_end(a_year, 12), safe=''))
+
+                data = await self._app_do_get_request(a_url=a_url)
+                if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
+                    data = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
+                    if local_TOTAL_SUMS_PREV_YEARS is None:
+                        local_TOTAL_SUMS_PREV_YEARS = data
+                    else:
+                        local_TOTAL_SUMS_PREV_YEARS = app_summ_total_dict_values(data, local_TOTAL_SUMS_PREV_YEARS, ts_key_name="timeseries")
+
+            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year
+
+        # getting PREVIOUS_MONTH - only ONCE
+        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month:
+            do_persist = True
+            if current_month == 1:
+                local_TOTAL_SUMS_PREV_MONTHS = None
+            else:
+                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
+                a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                      wb_id=str((idx + 1)),
+                                                      res_type  ="MONTH",
+                                                      from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
+                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
+
+                data = await self._app_do_get_request(a_url=a_url)
+                if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
+                    local_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
+
+            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
+
+        # getting CURRENT_MONTH - only ONCE
+        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day:
+            do_persist = True
+            if current_day == 1:
+                local_TOTAL_SUMS_PREV_DAYS = None
+            else:
+                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
+                a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                      wb_id=str((idx + 1)),
+                                                      res_type  ="MONTH",
+                                                      from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
+                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
+
+                data = await self._app_do_get_request(a_url=a_url)
+                if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
+                    local_TOTAL_SUMS_PREV_DAYS = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
+
+            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day
+
+        if do_persist:
+            # persist the historic-data - so we just must fetch it once
+            if "wallbox" not in self._app_token_object[CONF_APP_TOTAL_DATA]:
+                self._app_token_object[CONF_APP_TOTAL_DATA]["wallbox"] = self._static_TOTAL_WALLBOX_DATA
+
+            self._app_token_object[CONF_APP_TOTAL_DATA]["wallbox"][idx] = {
+                "years":        local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS,
+                "years_data":   local_TOTAL_SUMS_PREV_YEARS,
+                "months":       local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS,
+                "months_data":  local_TOTAL_SUMS_PREV_MONTHS,
+                "days":         local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS,
+                "days_data":    local_TOTAL_SUMS_PREV_DAYS
+            }
+            await self._app_on_new_token_data_received(self._app_token_object)
+
+        # getting TODAY
+        a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                 wb_id      =str((idx + 1)),
+                                                 res_type   ="DAY",
+                                                 from_val   =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
+                                                 to_val     =quote((now_utc + timedelta(hours=12)).strftime(STRFTIME_DATE_FORMAT), safe=''))
+
+        data = await self._app_do_get_request(a_url=a_url)
+        if app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
+            data = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
+            # adding all from the previous years (all till 01.01.THIS YEAR 'minus 1 second')
+            if local_TOTAL_SUMS_PREV_YEARS is not None:
+                data = app_summ_total_dict_values(local_TOTAL_SUMS_PREV_YEARS, data, ts_key_name="timeseries")
+            # adding all from this year till this-month minus 1 (from 01.01 THIS YEAR)
+            if local_TOTAL_SUMS_PREV_MONTHS is not None:
+                data = app_summ_total_dict_values(local_TOTAL_SUMS_PREV_MONTHS, data, ts_key_name="timeseries")
+            if local_TOTAL_SUMS_PREV_DAYS is not None:
+                data = app_summ_total_dict_values(local_TOTAL_SUMS_PREV_DAYS, data, ts_key_name="timeseries")
+
+            self._app_raw_wb_total[idx] = data
+
+        else:
+            self._app_raw_wb_total[idx] = None
+
+        return data
+
 
     #####################
     # all new WALLBOX stuff
@@ -5386,6 +5547,10 @@ class SenecOnline:
         if index > -1:
             return sum(entry["measurements"]["values"][index] for entry in self._app_raw_total["timeSeries"])
 
+    def _get_sum_for_index_wb(self, index: int, a_dict) -> float:
+        if index > -1:
+            return sum(entry["measurements"]["values"][index] for entry in a_dict["timeseries"])
+
     async def set_string_value(self, key: str, value: str):
         return await getattr(self, 'set_string_value_' + key)(value)
 
@@ -5445,9 +5610,16 @@ class SenecOnline:
 
     @property
     def wallbox_consumption_total(self) -> float:
-        if self._app_raw_total is not None and "measurements" in self._app_raw_total:
-            return self._get_sum_for_index(self._app_raw_total["measurements"].index("WALLBOX_CONSUMPTION"))
-
+        if self._app_raw_wb_total is not None:
+            sum = 0
+            for idx in range(0, self._app_wallbox_num_max):
+                if len(self._app_raw_wb_total) > idx:
+                    a_wallbox_measure = self._app_raw_wb_total[idx]
+                    if a_wallbox_measure is not None and "measurements" in a_wallbox_measure:
+                        sum = sum + self._get_sum_for_index_wb(a_wallbox_measure["measurements"].index("WALLBOX_CONSUMPTION"), a_wallbox_measure)
+            if sum > 0:
+                return sum
+        return None
 
     @property
     def accuimport_today(self) -> float:
@@ -5820,6 +5992,7 @@ class SenecOnline:
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
+        self._static_TOTAL_WALLBOX_DATA = [copy.deepcopy(self._static_A_WALLBOX_STORAGE) for _ in range(4)]
         await self.app_authenticate()
         return True
 
