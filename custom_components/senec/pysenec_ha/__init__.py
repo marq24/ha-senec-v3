@@ -2833,6 +2833,7 @@ class InverterLocal:
             return self._yield_produced_total
         return None
 
+
 def app_has_dict_timeseries_with_values(a_dict:dict) -> bool:
     if (a_dict is None or
             "timeSeries" not in a_dict or
@@ -3107,8 +3108,6 @@ class SenecOnline:
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = 1970
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = 0
         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = 0
-
-        # TODO: WALLBOX
         self._app_raw_wallbox = [None, None, None, None]
 
         IntBridge.app_api = self
@@ -3306,451 +3305,6 @@ class SenecOnline:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
             _LOGGER.warn(f"web_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
-
-    # async def app_update_total_2025(self, retry: bool = True):
-    #     # https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{self._app_master_plant_id}/data-availability/timespan?timezone=Europe%2FBerlin
-    #
-    #     _LOGGER.debug("***** APP-API: app_update_total(self) ********")
-    #     if self._app_master_plant_id is not None:
-    #         # 2025/06/11 [might be required later, when SENEC will shut down the old endpoints]
-    #
-    #         #today = datetime.now(timezone.utc) #+ relativedelta(months=+1)
-    #         #to_date = today.strftime('%Y-%m-%dT%H:%M:%SZ')
-    #         #status_url = f"{self._SENEC_APP_TOTAL_V3}" % (str(self._app_master_plant_id), to_date)
-    #
-    #         status_url = f"https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{self._app_master_plant_id}/measurements?resolution=MONTH&from=2024-12-31T23%3A00%3A00Z&to=2025-12-31T23%3A00%3A00Z"
-    #         data = await self.app_get_data(a_url=status_url)
-    #         _LOGGER.debug(f"APP-API: app_update_total_2025() - fetched data: {data}")
-    #     else:
-    #         if retry:
-    #             await self.app_authenticate()
-    #             await self.app_update_total_2025(retry=False)
-
-    """SENEC-APP OLD WALLBOX STUFF - MUST be still migrated"""
-    async def app_update_all_wallboxes(self):
-        # NEW OBJECT
-        # sample_data =[
-        #     {
-        #         "id": "1",
-        #         "productFamily": None,
-        #         "controllerId": "Sxxxxxxxxxxxxxxxxxxxxxxxxxx",
-        #         "name": "Wallbox 1",
-        #         "prohibitUsage": False,
-        #         "isInterchargeAvailable": True,
-        #         "isSolarChargingAvailable": True,
-        #         "type": "V123",
-        #         "state": {
-        #             "electricVehicleConnected": False,
-        #             "hasError": False,
-        #             "temperatureInCelsius": 27.498,
-        #             "isCharging": False,
-        #             "statusCode": "WAITING_FOR_EV"
-        #         },
-        #         "chargingMode": {
-        #             "type": "SOLAR",
-        #             "allowIntercharge": True,
-        #             "compatibilityMode": True,
-        #             "fastChargingSettings": {
-        #                 "allowIntercharge": True
-        #             },
-        #             "comfortChargeSettings": {
-        #                 "allowIntercharge": False,
-        #                 "compatibilityMode": True,
-        #                 "configuredChargingCurrent": 9,
-        #                 "activeWeekDays": [
-        #                     "MON",
-        #                     "THU",
-        #                     "FRI"
-        #                 ],
-        #                 "useDynamicTariffs": None,
-        #                 "chargingPeriodFromGridInH": None,
-        #                 "priceLimitInCtPerKwh": None
-        #             },
-        #             "solarOptimizeSettings": {
-        #                 "compatibilityMode": True,
-        #                 "minChargingCurrentInA": 9,
-        #                 "useDynamicTariffs": None,
-        #                 "priceLimitInCtPerKwh": None
-        #             }
-        #         },
-        #         "chargingCurrents": {
-        #             "minPossibleCharging": 6,
-        #             "configuredChargingCurrent": 9,
-        #             "currentApparentChargingPowerInKw": 0
-        #         },
-        #         "chargingPowerStats": {
-        #             "phase1": {
-        #                 "min": 2.07,
-        #                 "max": 3.685
-        #             },
-        #             "phase2": {
-        #                 "min": 4.14,
-        #                 "max": 7.369
-        #             },
-        #             "phase3": {
-        #                 "min": 6.21,
-        #                 "max": 11.054
-        #             },
-        #             "numberOfPhasesUsed": 0
-        #         },
-        #         "disconnected": False
-        #     }
-        # ]
-
-        # OLD OBJECT
-        # sample_data = {
-        #     "id": 1,
-        #     "configurable": True,
-        #     "maxPossibleChargingCurrentInA": 16.02,
-        #     "minPossibleChargingCurrentInA": 6,
-        #     "chargingMode": "SMART_SELF_GENERATED_COMPATIBILITY_MODE",
-        #     "currentApparentChargingPowerInVa": 4928,
-        #     "electricVehicleConnected": True,
-        #     "hasError": False,
-        #     "statusText": "Lädt",
-        #     "configuredMaxChargingCurrentInA": 16.02,
-        #     "configuredMinChargingCurrentInA": 8,
-        #     "temperatureInCelsius": 17.284,
-        #     "numberOfElectricPowerPhasesUsed": 3,
-        #     "allowIntercharge": None,
-        #     "compatibilityMode": True
-        # }
-
-        _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
-        data = await self._app_do_post_request(self.APP_WALLBOX_SEARCH, post_data={"systemIds":[self._app_master_plant_id]}, read_response=True)
-        # the data should be an array… and this array should have the same length then
-        # our known wallboxes… [but it's better to check that]
-
-        # Check if data is valid and has content
-        if not data or not isinstance(data, list):
-            _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
-            return
-
-        # Check if we have enough data for all expected wallboxes
-        if len(data) < self._app_wallbox_num_max:
-            _LOGGER.info(f"app_update_all_wallboxes(): Expected {self._app_wallbox_num_max} wallboxes but only received {len(data)}")
-
-        max_idx = min(len(data), self._app_wallbox_num_max)
-
-        # python: 'range(x, y)' will not include 'y'
-        for idx in range(0, max_idx):
-            self._app_raw_wallbox[idx] = data[idx]
-
-    # OLD WALLBOX Objects…
-    # async def app_get_wallbox_data(self, wallbox_num: int = 1):
-    #     # {
-    #     #     "id": 1,
-    #     #     "configurable": true,
-    #     #     "maxPossibleChargingCurrentInA": 16.02,
-    #     #     "minPossibleChargingCurrentInA": 6,
-    #     #     "chargingMode": "SMART_SELF_GENERATED_COMPATIBILITY_MODE",
-    #     #     "currentApparentChargingPowerInVa": 4928,
-    #     #     "electricVehicleConnected": true,
-    #     #     "hasError": false,
-    #     #     "statusText": "Lädt",
-    #     #     "configuredMaxChargingCurrentInA": 16.02,
-    #     #     "configuredMinChargingCurrentInA": 8,
-    #     #     "temperatureInCelsius": 17.284,
-    #     #     "numberOfElectricPowerPhasesUsed": 3,
-    #     #     "allowIntercharge": null,
-    #     #     "compatibilityMode": true
-    #     # }
-    #     _LOGGER.debug("***** APP-API: app_get_wallbox_data(self) ********")
-    #     if self._app_master_plant_id is None:
-    #         await self.app_get_master_plant_id()
-    #
-    #     if self._app_master_plant_id is not None:
-    #         idx = wallbox_num - 1
-    #         wb_url = self.APP_SET_WALLBOX.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
-    #         data = await self._app_do_get_request(a_url=wb_url)
-    #         if data is not None:
-    #             self._app_raw_wallbox[idx] = data
-    #         else:
-    #             self._app_raw_wallbox[idx] = None
-    #     # else:
-    #     #     if retry:
-    #     #         await self.app_authenticate()
-    #     #         if self._app_wallbox_num_max >= wallbox_num:
-    #     #             await self.app_get_wallbox_data(wallbox_num=wallbox_num, retry=False)
-    #     #         else:
-    #     #             _LOGGER.debug(f"APP-API cancel 'app_get_wallbox_data' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
-    #
-    # async def app_update_all_wallboxes_before_sso(self):
-    #     _LOGGER.debug(f"APP-API app_update_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
-    #     # ok we go through all possible wallboxes [1-4] and check, if we can receive some
-    #     # data - if there is no data, then we make sure, that next time we do not query
-    #     # this wallbox again…
-    #     # python: 'range(x, y)' will not include 'y'
-    #     for idx in range(0, self._app_wallbox_num_max):
-    #         if self._app_wallbox_num_max > idx:
-    #             await self.app_get_wallbox_data(wallbox_num=(idx + 1))
-    #             if self._app_raw_wallbox[idx] is None and self._app_wallbox_num_max > idx:
-    #                 _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
-    #                 self._app_wallbox_num_max = idx
-
-    async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
-        _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
-        idx = wallbox_num - 1
-        cur_local_mode = self.app_get_local_wallbox_mode_from_api_values(idx)
-        if cur_local_mode == local_mode_to_set:
-            _LOGGER.debug(f"app_set_wallbox_mode(): skipp mode change since '{local_mode_to_set}' already set")
-        else:
-            # first check if we are initialized…
-            if self._app_master_plant_id is None:
-                await self.app_get_master_plant_id()
-
-            success = False
-            if self._app_master_plant_id is not None:
-                # check, if we switch to the LOCK mode
-                if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
-                    wb_url = self.APP_SET_WALLBOX_LOCK.format(master_plant_id=str(self._app_master_plant_id),
-                                                              wb_id=str(wallbox_num),
-                                                              lc_lock_state="true")
-
-                    data = await self._app_do_get_request(wb_url, do_as_patch=True)
-                    if data is not None:
-                        self._app_raw_wallbox[idx] = data
-                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
-                        success = True
-
-                else:
-                    # when we switch to any other mode, we must check
-                    # if we are currently locked - and if we are locked, we
-                    # must unlock first
-                    if cur_local_mode == LOCAL_WB_MODE_LOCKED:
-                        wb_url = self.APP_SET_WALLBOX_LOCK.format(master_plant_id=str(self._app_master_plant_id),
-                                                                  wb_id=str(wallbox_num),
-                                                                  lc_lock_state="false")
-
-                        data = await self._app_do_get_request(wb_url, do_as_patch=True)
-                        if data is not None:
-                            self._app_raw_wallbox[idx] = data
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
-                            success = True
-
-                    # now setting the final mode…
-                    if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-                        # setting FAST MODE
-                        wb_url = self.APP_SET_WALLBOX_FC.format(master_plant_id=str(self._app_master_plant_id),
-                                                                wb_id=str(wallbox_num))
-
-                        # I just can guess, that 'allowIntercharge' means to use battery…
-                        allow_intercharge = True  # default value
-                        if IntBridge.avail() and IntBridge.local_api is not None:
-                            allow_intercharge = IntBridge.local_api.wallbox_allow_intercharge
-
-                        data = await self._app_do_post_request(wb_url, post_data={"allowIntercharge": allow_intercharge}, read_response=True)
-                        if data is not None:
-                            self._app_raw_wallbox[idx] = data
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST: {util.mask_map(data)}")
-                            success = True
-
-                    else:
-                        # setting SOLAR mode (with or without compatibility)
-                        the_post_data = {
-                            "compatibilityMode": True if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 else False,
-                        }
-
-                        # try to copy over all other attributes from the current chargingMode:solarOptimizeSettings
-                        a_wallbox_object = self._app_raw_wallbox[idx]
-                        if (a_wallbox_object is None and "chargingMode" in a_wallbox_object and
-                                "solarOptimizeSettings" in a_wallbox_object["chargingMode"]):
-                            solar_optimize_settings = a_wallbox_object["chargingMode"]["solarOptimizeSettings"]
-                            if solar_optimize_settings is not None:
-                                for a_field in ["minChargingCurrentInA", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
-                                    a_value = solar_optimize_settings.get(a_field, None)
-                                    if a_value is not None:
-                                        the_post_data[a_field] = a_value
-                        else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} has no 'chargingMode' or 'solarOptimizeSettings' - using default values" - {a_wallbox_object})
-
-                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR final post data: {the_post_data}")
-                        wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id),
-                                                                wb_id=str(wallbox_num))
-
-                        data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
-                        if data is not None:
-                            self._app_raw_wallbox[idx] = data
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR: {util.mask_map(data)}")
-                            success = True
-
-                if success:
-                    # do we need to sync the value back to the 'lala_cgi' integration?
-                    if sync and IntBridge.avail():
-                        # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
-                        # is no sync=False parameter here…
-                        await IntBridge.lala_cgi.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
-
-
-                    # TODO: WALLBOX
-                    if self.WALLBOX_IS_TODO:
-                        _LOGGER.info(f"app_set_wallbox_mode(): currently 'maxPossibleChargingCurrentInA' not supported by the APP-API")
-                        return
-
-                    # when we changed the mode, the backend might have automatically adjusted the
-                    # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
-                    # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
-                    await asyncio.sleep(2)
-                    await self.app_get_wallbox_data(wallbox_num=wallbox_num)
-                    if self._app_raw_wallbox[idx] is not None:
-                        if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-                            new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
-                        else:
-                            new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
-
-                        new_min_current = str(round(float(new_min_current_tmp), 2))
-                        cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
-
-                        if cur_min_current != new_min_current:
-                            _LOGGER.debug(f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                            await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
-                                                                               value=float(new_min_current),
-                                                                               sync=False, verify_state=False)
-                        else:
-                            _LOGGER.debug(f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
-
-                    else:
-                        _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
-
-
-
-    async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
-        # TODO: WALLBOX
-        if self.WALLBOX_IS_TODO:
-            _LOGGER.info(f"app_set_wallbox_icmax() currently not supported by the APP-API")
-            return
-
-        _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
-        if self._app_master_plant_id is None:
-            await self.app_get_master_plant_id()
-
-        if self._app_master_plant_id is not None:
-            idx = wallbox_num - 1
-            current_mode = APP_API_WB_MODE_SSGCM
-
-            if self._app_raw_wallbox[idx] is not None and "chargingMode" in self._app_raw_wallbox[idx]:
-                current_mode = self._app_raw_wallbox[idx]["chargingMode"]
-
-            data = {
-                "mode": current_mode,
-                "minChargingCurrentInA": float(round(value_to_set, 2))
-            }
-
-            wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
-            success: bool = await self._app_do_post_request(a_url=wb_url, post_data=data)
-            if success:
-                # setting the internal storage value…
-                if self._app_raw_wallbox[idx] is not None:
-                    self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"] = value_to_set
-
-                # do we need to sync the value back to the 'lala_cgi' integration?
-                if sync and IntBridge.avail():
-                    await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
-        # else:
-        #     if retry:
-        #         await self.app_authenticate()
-        #         if self._app_wallbox_num_max >= wallbox_num:
-        #             await self.app_set_wallbox_icmax(value_to_set=value_to_set, wallbox_num=wallbox_num, sync=sync, retry=False)
-        #         else:
-        #             _LOGGER.debug(f"APP-API cancel 'app_set_wallbox_icmax' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
-
-    async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
-        _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
-        for idx in range(0, self._app_wallbox_num_max):
-            if self._app_wallbox_num_max > idx:
-                res = await self._app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
-                if not res and self._app_wallbox_num_max > idx:
-                    _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
-                    self._app_wallbox_num_max = idx
-
-    async def _app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True) -> bool:
-        _LOGGER.debug("***** APP-API: _app_set_allow_intercharge(self) ********")
-        if self._app_master_plant_id is None:
-            await self.app_get_master_plant_id()
-
-        if self._app_master_plant_id is not None:
-            idx = wallbox_num - 1
-            data = {
-                "allowIntercharge": value_to_set
-            }
-            wb_url = self.APP_SET_WALLBOX_FC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
-            data = await self._app_do_post_request(a_url=wb_url, post_data=data, read_response=True)
-            if data is not None:
-                # setting the internal storage value…
-                if self._app_raw_wallbox[idx] is not None:
-                    self._app_raw_wallbox[idx] = data
-
-                # do we need to sync the value back to the 'lala_cgi' integration?
-                if sync and IntBridge.avail():
-                    await IntBridge.lala_cgi.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
-
-                return True
-
-        return False
-        # else:
-        #     if retry:
-        #         await self.app_authenticate()
-        #         if self._app_wallbox_num_max >= wallbox_num:
-        #             return await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=wallbox_num, sync=sync, retry=False)
-        #         else:
-        #             _LOGGER.debug(f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
-        #             return False
-        #     else:
-        #         return False
-        return False
-
-    def app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
-        if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-            a_wallbox_obj = self._app_raw_wallbox[idx]
-
-            # step 1 checking the LOCK/UNLOCK state…
-            if "prohibitUsage" in a_wallbox_obj:
-                if a_wallbox_obj["prohibitUsage"]:
-                    return LOCAL_WB_MODE_LOCKED
-            else:
-                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'prohibitUsage' in {a_wallbox_obj}")
-
-            # step 2 checking the chargingMode…
-            if "chargingMode" in a_wallbox_obj:
-                charging_mode_obj = a_wallbox_obj["chargingMode"]
-                if charging_mode_obj is not None and "type" in charging_mode_obj:
-                    a_type = charging_mode_obj["type"]
-                    if a_type is not None:
-                        # FAST or SOLAR
-                        if a_type.uppper() == APP_API_WB_MODE_2025_SOLAR:
-                            if "compatibilityMode" in charging_mode_obj and charging_mode_obj["compatibilityMode"] is not None:
-                                compatibility_mode = charging_mode_obj["compatibilityMode"]
-                                if isinstance(compatibility_mode, bool) and compatibility_mode or str(compatibility_mode).lower() == 'true':
-                                    return LOCAL_WB_MODE_SSGCM_3
-                                else:
-                                    return LOCAL_WB_MODE_SSGCM_4
-                            else:
-                                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'compatibilityMode' issue: {charging_mode_obj}")
-
-                        elif a_type.uppper() == APP_API_WB_MODE_2025_FAST:
-                            return LOCAL_WB_MODE_FASTEST
-                        else:
-                            _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
-                    else:
-                        _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'type' is None in {charging_mode_obj}")
-                else:
-                    _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'type' in {charging_mode_obj}")
-            else:
-                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'chargingMode' in {a_wallbox_obj}")
-
-        return LOCAL_WB_MODE_UNKNOWN
-
-    # def app_get_api_wallbox_mode_from_local_value(self, local_mode: str) -> str:
-    #     if local_mode == LOCAL_WB_MODE_LOCKED:
-    #         return APP_API_WB_MODE_LOCKED
-    #     elif local_mode == LOCAL_WB_MODE_SSGCM_3:
-    #         return APP_API_WB_MODE_SSGCM
-    #     elif local_mode == LOCAL_WB_MODE_SSGCM_4:
-    #         return APP_API_WB_MODE_SSGCM
-    #     elif local_mode == LOCAL_WB_MODE_FASTEST:
-    #         return APP_API_WB_MODE_FASTEST
-    #     return local_mode
-
 
 
     """SENEC-APP from here"""
@@ -4805,6 +4359,430 @@ class SenecOnline:
         # ok - store the last successful query timestamp
         self._QUERY_TOTALS_TS = time()
         return data
+
+    #####################
+    # all new WALLBOX stuff
+    #
+    #####################
+    # NEW OBJECT
+    # sample_data =[
+    #     {
+    #         "id": "1",
+    #         "productFamily": None,
+    #         "controllerId": "Sxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    #         "name": "Wallbox 1",
+    #         "prohibitUsage": False,
+    #         "isInterchargeAvailable": True,
+    #         "isSolarChargingAvailable": True,
+    #         "type": "V123",
+    #         "state": {
+    #             "electricVehicleConnected": False,
+    #             "hasError": False,
+    #             "temperatureInCelsius": 27.498,
+    #             "isCharging": False,
+    #             "statusCode": "WAITING_FOR_EV"
+    #         },
+    #         "chargingMode": {
+    #             "type": "SOLAR",
+    #             "allowIntercharge": True,
+    #             "compatibilityMode": True,
+    #             "fastChargingSettings": {
+    #                 "allowIntercharge": True
+    #             },
+    #             "comfortChargeSettings": {
+    #                 "allowIntercharge": False,
+    #                 "compatibilityMode": True,
+    #                 "configuredChargingCurrent": 9,
+    #                 "activeWeekDays": [
+    #                     "MON",
+    #                     "THU",
+    #                     "FRI"
+    #                 ],
+    #                 "useDynamicTariffs": None,
+    #                 "chargingPeriodFromGridInH": None,
+    #                 "priceLimitInCtPerKwh": None
+    #             },
+    #             "solarOptimizeSettings": {
+    #                 "compatibilityMode": True,
+    #                 "minChargingCurrentInA": 9,
+    #                 "useDynamicTariffs": None,
+    #                 "priceLimitInCtPerKwh": None
+    #             }
+    #         },
+    #         "chargingCurrents": {
+    #             "minPossibleCharging": 6,
+    #             "configuredChargingCurrent": 9,
+    #             "currentApparentChargingPowerInKw": 0
+    #         },
+    #         "chargingPowerStats": {
+    #             "phase1": {
+    #                 "min": 2.07,
+    #                 "max": 3.685
+    #             },
+    #             "phase2": {
+    #                 "min": 4.14,
+    #                 "max": 7.369
+    #             },
+    #             "phase3": {
+    #                 "min": 6.21,
+    #                 "max": 11.054
+    #             },
+    #             "numberOfPhasesUsed": 0
+    #         },
+    #         "disconnected": False
+    #     }
+    # ]
+
+    # OLD OBJECT
+    # sample_data = {
+    #     "id": 1,
+    #     "configurable": True,
+    #     "maxPossibleChargingCurrentInA": 16.02,
+    #     "minPossibleChargingCurrentInA": 6,
+    #     "chargingMode": "SMART_SELF_GENERATED_COMPATIBILITY_MODE",
+    #     "currentApparentChargingPowerInVa": 4928,
+    #     "electricVehicleConnected": True,
+    #     "hasError": False,
+    #     "statusText": "Lädt",
+    #     "configuredMaxChargingCurrentInA": 16.02,
+    #     "configuredMinChargingCurrentInA": 8,
+    #     "temperatureInCelsius": 17.284,
+    #     "numberOfElectricPowerPhasesUsed": 3,
+    #     "allowIntercharge": None,
+    #     "compatibilityMode": True
+    # }
+
+    async def app_update_all_wallboxes(self):
+        _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
+        data = await self._app_do_post_request(self.APP_WALLBOX_SEARCH, post_data={"systemIds":[self._app_master_plant_id]}, read_response=True)
+        # the data should be an array… and this array should have the same length then
+        # our known wallboxes… [but it's better to check that]
+
+        # Check if data is valid and has content
+        if not data or not isinstance(data, list):
+            _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+            return
+
+        # Check if we have enough data for all expected wallboxes
+        if len(data) < self._app_wallbox_num_max:
+            _LOGGER.info(f"app_update_all_wallboxes(): Expected {self._app_wallbox_num_max} wallboxes but only received {len(data)}")
+
+        max_idx = min(len(data), self._app_wallbox_num_max)
+
+        # python: 'range(x, y)' will not include 'y'
+        for idx in range(0, max_idx):
+            self._app_raw_wallbox[idx] = data[idx]
+
+    async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
+        _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
+        idx = wallbox_num - 1
+        cur_local_mode = self.app_get_local_wallbox_mode_from_api_values(idx)
+        if cur_local_mode == local_mode_to_set:
+            _LOGGER.debug(f"app_set_wallbox_mode(): skipp mode change since '{local_mode_to_set}' already set")
+        else:
+            # first check if we are initialized…
+            if self._app_master_plant_id is None:
+                await self.app_get_master_plant_id()
+
+            success = False
+            if self._app_master_plant_id is not None:
+                # check, if we switch to the LOCK mode
+                if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
+                    wb_url = self.APP_SET_WALLBOX_LOCK.format(master_plant_id=str(self._app_master_plant_id),
+                                                              wb_id=str(wallbox_num),
+                                                              lc_lock_state="true")
+
+                    data = await self._app_do_get_request(wb_url, do_as_patch=True)
+                    if data is not None:
+                        if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+                            self._app_raw_wallbox[idx] = data
+                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
+                        success = True
+                    else:
+                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} LOCK FAILED")
+                else:
+                    # when we switch to any other mode, we must check
+                    # if we are currently locked - and if we are locked, we
+                    # must unlock first
+                    if cur_local_mode == LOCAL_WB_MODE_LOCKED:
+                        wb_url = self.APP_SET_WALLBOX_LOCK.format(master_plant_id=str(self._app_master_plant_id),
+                                                                  wb_id=str(wallbox_num),
+                                                                  lc_lock_state="false")
+
+                        data = await self._app_do_get_request(wb_url, do_as_patch=True)
+                        if data is not None:
+                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+                                self._app_raw_wallbox[idx] = data
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
+                            success = True
+                        else:
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} UNLOCK FAILED")
+
+                    # now setting the final mode…
+                    if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
+                        # setting FAST MODE
+                        wb_url = self.APP_SET_WALLBOX_FC.format(master_plant_id=str(self._app_master_plant_id),
+                                                                wb_id=str(wallbox_num))
+
+                        # I just can guess, that 'allowIntercharge' means to use battery…
+                        allow_intercharge = True  # default value
+                        if IntBridge.avail() and IntBridge.local_api is not None:
+                            allow_intercharge = IntBridge.local_api.wallbox_allow_intercharge
+
+                        data = await self._app_do_post_request(wb_url, post_data={"allowIntercharge": allow_intercharge}, read_response=True)
+                        if data is not None:
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST: {util.mask_map(data)}")
+                            success = True
+                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+                                self._app_raw_wallbox[idx] = data
+                        else:
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} FAST FAILED")
+
+                    elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 or local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
+                        # setting SOLAR mode (with or without compatibility)
+                        the_post_data = {
+                            "compatibilityMode": True if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 else False,
+                        }
+
+                        # try to copy over all other attributes from the current chargingMode:solarOptimizeSettings
+                        a_wallbox_object = self._app_raw_wallbox[idx]
+                        if a_wallbox_object is None and isinstance(a_wallbox_object, dict):
+                            solar_optimize_settings = a_wallbox_object.get("chargingMode", {}).get("solarOptimizeSettings", None)
+                            if solar_optimize_settings is not None:
+                                for a_field in ["minChargingCurrentInA", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                                    a_value = solar_optimize_settings.get(a_field, None)
+                                    if a_value is not None:
+                                        the_post_data[a_field] = a_value
+                            else:
+                                _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
+                        else:
+                            _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
+
+                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR final post data: {the_post_data}")
+                        wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id),
+                                                                wb_id=str(wallbox_num))
+
+                        data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
+                        if data is not None:
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR: {util.mask_map(data)}")
+                            success = True
+                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+                                self._app_raw_wallbox[idx] = data
+                        else:
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} SOLAR FAILED")
+                    else:
+                        _LOGGER.infor(f"app_set_wallbox_mode(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
+
+                if success:
+                    # do we need to sync the value back to the 'lala_cgi' integration?
+                    if sync and IntBridge.avail():
+                        # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
+                        # is no sync=False parameter here…
+                        await IntBridge.lala_cgi.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
+
+                    # when we changed the mode, the backend might have automatically adjusted the
+                    # 'chargingMode:solarOptimizeSettings:minChargingCurrentInA' so we need to sync
+                    # this possible change with the LaLa_cgi no matter, if the 'app_set_wallbox_mode'
+                    # have been called with sync=False (or not)!!!
+                    if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 or local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
+                        await asyncio.sleep(2)
+                        await self.app_update_all_wallboxes()
+
+                        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
+                            a_wallbox_obj = self._app_raw_wallbox[idx]
+                            if a_wallbox_object is None and isinstance(a_wallbox_object, dict):
+                                a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+                                a_charging_mode_type = a_charging_mode_obj.get("type", None)
+                                if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
+                                    a_solar_settings_obj = a_charging_mode_obj.get("solarOptimizeSettings", {})
+                                    min_charging_current_in_a_value = a_solar_settings_obj.get("minChargingCurrentInA", None)
+                                    if min_charging_current_in_a_value is not None:
+                                        new_min_current = str(round(float(min_charging_current_in_a_value), 2))
+                                        cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+
+                                        if cur_min_current != new_min_current:
+                                            _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                            await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
+                                                                                               value=float(new_min_current),
+                                                                                               sync=False, verify_state=False)
+                                        else:
+                                            _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+                        else:
+                            _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
+
+                    # OLD-IMPLEMENTATION HERE (just as reference)
+                    # # when we changed the mode, the backend might have automatically adjusted the
+                    # # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
+                    # # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
+                    # await asyncio.sleep(2)
+                    # await self.app_get_wallbox_data(wallbox_num=wallbox_num)
+                    # if self._app_raw_wallbox[idx] is not None:
+                    #     if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
+                    #         new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
+                    #     else:
+                    #         new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
+                    #
+                    #     new_min_current = str(round(float(new_min_current_tmp), 2))
+                    #     cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+                    #
+                    #     if cur_min_current != new_min_current:
+                    #         _LOGGER.debug(f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                    #         await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
+                    #                                                            value=float(new_min_current),
+                    #                                                            sync=False, verify_state=False)
+                    #     else:
+                    #         _LOGGER.debug(f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+                    #
+                    # else:
+                    #     _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
+
+    async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
+        _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        if self._app_master_plant_id is not None:
+            success = False
+            idx = wallbox_num - 1
+            if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
+                a_wallbox_object = self._app_raw_wallbox[idx]
+                if a_wallbox_object is None and isinstance(a_wallbox_object, dict):
+                    a_charging_mode_obj = a_wallbox_object.get("chargingMode", {})
+                    a_charging_mode_type = a_charging_mode_obj.get("type", None)
+
+                    # only if the current mode is the SOLAR, we can set the 'minChargingCurrentInA'
+                    if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
+                        the_post_data = {
+                            "minChargingCurrentInA": float(round(value_to_set, 2))
+                        }
+                        solar_optimize_settings = a_charging_mode_obj.get("solarOptimizeSettings", None)
+                        if solar_optimize_settings is not None:
+                            for a_field in ["compatibilityMode", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                                a_value = solar_optimize_settings.get(a_field, None)
+                                if a_value is not None:
+                                    the_post_data[a_field] = a_value
+                        else:
+                            _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
+
+                        # continue...
+                        wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+                        data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
+                        if data is not None:
+                            _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR attributes: {util.mask_map(data)}")
+                            success = True
+                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+                                self._app_raw_wallbox[idx] = data
+                        else:
+                            _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR FAILED")
+                    else:
+                        _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR, so we cannot set 'minChargingCurrentInA' - current mode: '{a_charging_mode_type}' - wallbox object: {a_wallbox_object}")
+                else:
+                    _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - NO VALID wallbox object: {a_wallbox_object}")
+            else:
+                _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - NO VALID wallbox object - idx: {idx} - raw wallbox data: {self._app_raw_wallbox}")
+
+            if success:
+                # do we need to sync the value back to the 'lala_cgi' integration?
+                if sync and IntBridge.avail():
+                    await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
+
+    async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
+        _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                res = await self._app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
+                if not res and self._app_wallbox_num_max > idx:
+                    _LOGGER.debug(f"APP-API set _app_wallbox_num_max to {idx}")
+                    self._app_wallbox_num_max = idx
+
+    async def _app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True) -> bool:
+        _LOGGER.debug("***** APP-API: _app_set_allow_intercharge(self) ********")
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
+
+        if self._app_master_plant_id is not None:
+            idx = wallbox_num - 1
+            data = {
+                "allowIntercharge": value_to_set
+            }
+            wb_url = self.APP_SET_WALLBOX_FC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+            data = await self._app_do_post_request(a_url=wb_url, post_data=data, read_response=True)
+            if data is not None:
+                # setting the internal storage value…
+                if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
+                    self._app_raw_wallbox[idx] = data
+
+                # do we need to sync the value back to the 'lala_cgi' integration?
+                if sync and IntBridge.avail():
+                    await IntBridge.lala_cgi.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
+
+                return True
+
+        return False
+        # else:
+        #     if retry:
+        #         await self.app_authenticate()
+        #         if self._app_wallbox_num_max >= wallbox_num:
+        #             return await self.app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=wallbox_num, sync=sync, retry=False)
+        #         else:
+        #             _LOGGER.debug(f"APP-API cancel 'set_wallbox_mode' since after login the max '{self._app_wallbox_num_max}' is < then '{wallbox_num}' (wallbox number to request)")
+        #             return False
+        #     else:
+        #         return False
+        return False
+
+    def app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
+        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
+            a_wallbox_obj = self._app_raw_wallbox[idx]
+
+            # step 1 checking the LOCK/UNLOCK state…
+            if "prohibitUsage" in a_wallbox_obj:
+                if a_wallbox_obj["prohibitUsage"]:
+                    return LOCAL_WB_MODE_LOCKED
+            else:
+                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'prohibitUsage' in {a_wallbox_obj}")
+
+            # step 2 checking the chargingMode…
+            if "chargingMode" in a_wallbox_obj:
+                charging_mode_obj = a_wallbox_obj["chargingMode"]
+                if charging_mode_obj is not None and "type" in charging_mode_obj:
+                    a_type = charging_mode_obj["type"]
+                    if a_type is not None:
+                        # FAST or SOLAR
+                        if a_type.uppper() == APP_API_WB_MODE_2025_SOLAR:
+                            if "compatibilityMode" in charging_mode_obj and charging_mode_obj["compatibilityMode"] is not None:
+                                compatibility_mode = charging_mode_obj["compatibilityMode"]
+                                if isinstance(compatibility_mode, bool) and compatibility_mode or str(compatibility_mode).lower() == 'true':
+                                    return LOCAL_WB_MODE_SSGCM_3
+                                else:
+                                    return LOCAL_WB_MODE_SSGCM_4
+                            else:
+                                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'compatibilityMode' issue: {charging_mode_obj}")
+
+                        elif a_type.uppper() == APP_API_WB_MODE_2025_FAST:
+                            return LOCAL_WB_MODE_FASTEST
+                        else:
+                            _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+                    else:
+                        _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'type' is None in {charging_mode_obj}")
+                else:
+                    _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'type' in {charging_mode_obj}")
+            else:
+                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'chargingMode' in {a_wallbox_obj}")
+
+        return LOCAL_WB_MODE_UNKNOWN
+
+    # def app_get_api_wallbox_mode_from_local_value(self, local_mode: str) -> str:
+    #     if local_mode == LOCAL_WB_MODE_LOCKED:
+    #         return APP_API_WB_MODE_LOCKED
+    #     elif local_mode == LOCAL_WB_MODE_SSGCM_3:
+    #         return APP_API_WB_MODE_SSGCM
+    #     elif local_mode == LOCAL_WB_MODE_SSGCM_4:
+    #         return APP_API_WB_MODE_SSGCM
+    #     elif local_mode == LOCAL_WB_MODE_FASTEST:
+    #         return APP_API_WB_MODE_FASTEST
+    #     return local_mode
+
 
     """MEIN-SENEC.DE from here"""
     async def web_authenticate(self, do_update:bool=False, throw401:bool=False):

@@ -35,12 +35,13 @@ def mask_map_internal(d: dict) -> dict:
     return d
 
 def mask_string(text: str, show_chars: int = 6) -> str:
-    """Return a masked string showing only first and last characters with dots in between"""
+    """Return a masked string showing only the first and last characters with dots in between"""
     if text is None or len(text) <= show_chars * 2:
         if show_chars > 3:
             return mask_string(text, show_chars=show_chars-1)
         else:
             return text
+
     return f"{text[:show_chars]}…{text[-show_chars:]}"
 
 def parse_value(value: str):
