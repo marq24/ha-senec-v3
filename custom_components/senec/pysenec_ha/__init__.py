@@ -2732,12 +2732,6 @@ class InverterLocal:
         return None
 
     @property
-    def dc_current1(self) -> float:
-        if (hasattr(self, '_dc_current1')):
-            return self._dc_current1
-        return None
-
-    @property
     def bdc_bat_voltage(self) -> float:
         if (hasattr(self, '_bdc_bat_voltage')):
             return self._bdc_bat_voltage
@@ -3304,7 +3298,7 @@ class SenecOnline:
         except BaseException as exc:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
-            _LOGGER.warn(f"web_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
+            _LOGGER.warning(f"web_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
 
 
     """SENEC-APP from here"""
@@ -3691,7 +3685,7 @@ class SenecOnline:
 
     def app_ensure_token_is_set(self):
         if self._app_token_object is not None and "access_token" in self._app_token_object:
-            self._app_token = f"Bearer {self._app_token_object["access_token"]}"
+            self._app_token = f"Bearer {self._app_token_object['access_token']}"
             self._app_is_authenticated  = True
             if CONF_APP_SYSTEMID in self._app_token_object and self._app_token_object[CONF_APP_SYSTEMID] is not None:
                 self._app_master_plant_id   = self._app_token_object[CONF_APP_SYSTEMID]
@@ -4452,6 +4446,17 @@ class SenecOnline:
     #     "compatibilityMode": True
     # }
 
+    def app_get_wallbox_object_at_index(self, idx:int):
+        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
+            a_wallbox_obj = self._app_raw_wallbox[idx]
+            if a_wallbox_obj is not None and isinstance(a_wallbox_obj, dict):
+                return a_wallbox_obj
+        return {}
+
+    def app_set_wallbox_object_at_index(self, idx:int, data:dict):
+        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx and self._app_raw_wallbox[idx] is not None:
+            self._app_raw_wallbox[idx] = data
+
     async def app_update_all_wallboxes(self):
         _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
         data = await self._app_do_post_request(self.APP_WALLBOX_SEARCH, post_data={"systemIds":[self._app_master_plant_id]}, read_response=True)
@@ -4494,8 +4499,7 @@ class SenecOnline:
 
                     data = await self._app_do_get_request(wb_url, do_as_patch=True)
                     if data is not None:
-                        if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-                            self._app_raw_wallbox[idx] = data
+                        self.app_set_wallbox_object_at_index(idx, data)
                         _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
                         success = True
                     else:
@@ -4511,10 +4515,8 @@ class SenecOnline:
 
                         data = await self._app_do_get_request(wb_url, do_as_patch=True)
                         if data is not None:
-                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-                                self._app_raw_wallbox[idx] = data
+                            self.app_set_wallbox_object_at_index(idx, data)
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
-                            success = True
                         else:
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} UNLOCK FAILED")
 
@@ -4531,10 +4533,9 @@ class SenecOnline:
 
                         data = await self._app_do_post_request(wb_url, post_data={"allowIntercharge": allow_intercharge}, read_response=True)
                         if data is not None:
+                            self.app_set_wallbox_object_at_index(idx, data)
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST: {util.mask_map(data)}")
                             success = True
-                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-                                self._app_raw_wallbox[idx] = data
                         else:
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} FAST FAILED")
 
@@ -4545,18 +4546,15 @@ class SenecOnline:
                         }
 
                         # try to copy over all other attributes from the current chargingMode:solarOptimizeSettings
-                        a_wallbox_object = self._app_raw_wallbox[idx]
-                        if a_wallbox_object is None and isinstance(a_wallbox_object, dict):
-                            solar_optimize_settings = a_wallbox_object.get("chargingMode", {}).get("solarOptimizeSettings", None)
-                            if solar_optimize_settings is not None:
-                                for a_field in ["minChargingCurrentInA", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
-                                    a_value = solar_optimize_settings.get(a_field, None)
-                                    if a_value is not None:
-                                        the_post_data[a_field] = a_value
-                            else:
-                                _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
+                        a_wallbox_object = self.app_get_wallbox_object_at_index(idx)
+                        solar_optimize_settings = a_wallbox_object.get("chargingMode", {}).get("solarOptimizeSettings", None)
+                        if solar_optimize_settings is not None:
+                            for a_field in ["minChargingCurrentInA", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                                a_value = solar_optimize_settings.get(a_field, None)
+                                if a_value is not None:
+                                    the_post_data[a_field] = a_value
                         else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
+                            _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
 
                         _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR final post data: {the_post_data}")
                         wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id),
@@ -4564,14 +4562,13 @@ class SenecOnline:
 
                         data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
                         if data is not None:
+                            self.app_set_wallbox_object_at_index(idx, data)
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR: {util.mask_map(data)}")
                             success = True
-                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-                                self._app_raw_wallbox[idx] = data
                         else:
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} SOLAR FAILED")
                     else:
-                        _LOGGER.infor(f"app_set_wallbox_mode(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
+                        _LOGGER.info(f"app_set_wallbox_mode(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
 
                 if success:
                     # do we need to sync the value back to the 'lala_cgi' integration?
@@ -4588,27 +4585,23 @@ class SenecOnline:
                         await asyncio.sleep(2)
                         await self.app_update_all_wallboxes()
 
-                        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
-                            a_wallbox_obj = self._app_raw_wallbox[idx]
-                            if a_wallbox_object is None and isinstance(a_wallbox_object, dict):
-                                a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
-                                a_charging_mode_type = a_charging_mode_obj.get("type", None)
-                                if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
-                                    a_solar_settings_obj = a_charging_mode_obj.get("solarOptimizeSettings", {})
-                                    min_charging_current_in_a_value = a_solar_settings_obj.get("minChargingCurrentInA", None)
-                                    if min_charging_current_in_a_value is not None:
-                                        new_min_current = str(round(float(min_charging_current_in_a_value), 2))
-                                        cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+                        a_wallbox_obj = self.app_get_wallbox_object_at_index(idx)
+                        a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+                        a_charging_mode_type = a_charging_mode_obj.get("type", None)
+                        if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
+                            a_solar_settings_obj = a_charging_mode_obj.get("solarOptimizeSettings", {})
+                            min_charging_current_in_a_value = a_solar_settings_obj.get("minChargingCurrentInA", None)
+                            if min_charging_current_in_a_value is not None:
+                                new_min_current = str(round(float(min_charging_current_in_a_value), 2))
+                                cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
 
-                                        if cur_min_current != new_min_current:
-                                            _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                                            await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
-                                                                                               value=float(new_min_current),
-                                                                                               sync=False, verify_state=False)
-                                        else:
-                                            _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
-                        else:
-                            _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
+                                if cur_min_current != new_min_current:
+                                    _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                    await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
+                                                                                       value=float(new_min_current),
+                                                                                       sync=False, verify_state=False)
+                                else:
+                                    _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
 
                     # OLD-IMPLEMENTATION HERE (just as reference)
                     # # when we changed the mode, the backend might have automatically adjusted the
@@ -4644,42 +4637,36 @@ class SenecOnline:
         if self._app_master_plant_id is not None:
             success = False
             idx = wallbox_num - 1
-            if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
-                a_wallbox_object = self._app_raw_wallbox[idx]
-                if a_wallbox_object is None and isinstance(a_wallbox_object, dict):
-                    a_charging_mode_obj = a_wallbox_object.get("chargingMode", {})
-                    a_charging_mode_type = a_charging_mode_obj.get("type", None)
+            a_wallbox_obj = self.app_get_wallbox_object_at_index(idx)
+            a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+            a_charging_mode_type = a_charging_mode_obj.get("type", None)
 
-                    # only if the current mode is the SOLAR, we can set the 'minChargingCurrentInA'
-                    if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
-                        the_post_data = {
-                            "minChargingCurrentInA": float(round(value_to_set, 2))
-                        }
-                        solar_optimize_settings = a_charging_mode_obj.get("solarOptimizeSettings", None)
-                        if solar_optimize_settings is not None:
-                            for a_field in ["compatibilityMode", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
-                                a_value = solar_optimize_settings.get(a_field, None)
-                                if a_value is not None:
-                                    the_post_data[a_field] = a_value
-                        else:
-                            _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
-
-                        # continue...
-                        wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
-                        data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
-                        if data is not None:
-                            _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR attributes: {util.mask_map(data)}")
-                            success = True
-                            if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-                                self._app_raw_wallbox[idx] = data
-                        else:
-                            _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR FAILED")
-                    else:
-                        _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR, so we cannot set 'minChargingCurrentInA' - current mode: '{a_charging_mode_type}' - wallbox object: {a_wallbox_object}")
+            # only if the current mode is the SOLAR, we can set the 'minChargingCurrentInA'
+            if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
+                the_post_data = {
+                    "minChargingCurrentInA": float(round(value_to_set, 2))
+                }
+                solar_optimize_settings = a_charging_mode_obj.get("solarOptimizeSettings", None)
+                if solar_optimize_settings is not None:
+                    for a_field in ["compatibilityMode", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                        a_value = solar_optimize_settings.get(a_field, None)
+                        if a_value is not None:
+                            the_post_data[a_field] = a_value
                 else:
-                    _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - NO VALID wallbox object: {a_wallbox_object}")
+                    _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_obj}")
+
+                # continue...
+                wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+                data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
+                if data is not None:
+                    self.app_set_wallbox_object_at_index(idx, data)
+                    _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR attributes: {util.mask_map(data)}")
+                    success = True
+                else:
+                    _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR FAILED")
             else:
-                _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - NO VALID wallbox object - idx: {idx} - raw wallbox data: {self._app_raw_wallbox}")
+                _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR, so we cannot set 'minChargingCurrentInA' - current mode: '{a_charging_mode_type}' - wallbox object: {a_wallbox_obj}")
+
 
             if success:
                 # do we need to sync the value back to the 'lala_cgi' integration?
@@ -4709,8 +4696,7 @@ class SenecOnline:
             data = await self._app_do_post_request(a_url=wb_url, post_data=data, read_response=True)
             if data is not None:
                 # setting the internal storage value…
-                if self._app_raw_wallbox[idx] is not None and len(self._app_raw_wallbox) > idx:
-                    self._app_raw_wallbox[idx] = data
+                self.app_set_wallbox_object_at_index(idx, data)
 
                 # do we need to sync the value back to the 'lala_cgi' integration?
                 if sync and IntBridge.avail():
@@ -4732,43 +4718,39 @@ class SenecOnline:
         return False
 
     def app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
-        if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx:
-            a_wallbox_obj = self._app_raw_wallbox[idx]
+        a_wallbox_obj = self.app_get_wallbox_object_at_index(idx)
 
-            # step 1 checking the LOCK/UNLOCK state…
-            if "prohibitUsage" in a_wallbox_obj:
-                if a_wallbox_obj["prohibitUsage"]:
-                    return LOCAL_WB_MODE_LOCKED
-            else:
-                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'prohibitUsage' in {a_wallbox_obj}")
+        # step 1 checking the LOCK/UNLOCK state…
+        if "prohibitUsage" in a_wallbox_obj:
+            if a_wallbox_obj["prohibitUsage"]:
+                return LOCAL_WB_MODE_LOCKED
+        else:
+            _LOGGER.debug(f"app_get_local_wallbox_mode_from_api_values(): no 'prohibitUsage' in {a_wallbox_obj}")
 
-            # step 2 checking the chargingMode…
-            if "chargingMode" in a_wallbox_obj:
-                charging_mode_obj = a_wallbox_obj["chargingMode"]
-                if charging_mode_obj is not None and "type" in charging_mode_obj:
-                    a_type = charging_mode_obj["type"]
-                    if a_type is not None:
-                        # FAST or SOLAR
-                        if a_type.uppper() == APP_API_WB_MODE_2025_SOLAR:
-                            if "compatibilityMode" in charging_mode_obj and charging_mode_obj["compatibilityMode"] is not None:
-                                compatibility_mode = charging_mode_obj["compatibilityMode"]
-                                if isinstance(compatibility_mode, bool) and compatibility_mode or str(compatibility_mode).lower() == 'true':
-                                    return LOCAL_WB_MODE_SSGCM_3
-                                else:
-                                    return LOCAL_WB_MODE_SSGCM_4
-                            else:
-                                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'compatibilityMode' issue: {charging_mode_obj}")
-
-                        elif a_type.uppper() == APP_API_WB_MODE_2025_FAST:
-                            return LOCAL_WB_MODE_FASTEST
+        # step 2 checking the chargingMode…
+        charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+        if "type" in charging_mode_obj:
+            a_type = charging_mode_obj.get("type", None)
+            if a_type is not None:
+                # FAST or SOLAR
+                if a_type.uppper() == APP_API_WB_MODE_2025_SOLAR:
+                    if "compatibilityMode" in charging_mode_obj and charging_mode_obj["compatibilityMode"] is not None:
+                        compatibility_mode = charging_mode_obj["compatibilityMode"]
+                        if isinstance(compatibility_mode, bool) and compatibility_mode or str(compatibility_mode).lower() == 'true':
+                            return LOCAL_WB_MODE_SSGCM_3
                         else:
-                            _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+                            return LOCAL_WB_MODE_SSGCM_4
                     else:
-                        _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'type' is None in {charging_mode_obj}")
+                        _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'compatibilityMode' issue: {charging_mode_obj}")
+
+                elif a_type.uppper() == APP_API_WB_MODE_2025_FAST:
+                    return LOCAL_WB_MODE_FASTEST
                 else:
-                    _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'type' in {charging_mode_obj}")
+                    _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
             else:
-                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'chargingMode' in {a_wallbox_obj}")
+                _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): 'type' is None in {charging_mode_obj}")
+        else:
+            _LOGGER.info(f"app_get_local_wallbox_mode_from_api_values(): no 'type' in {charging_mode_obj}")
 
         return LOCAL_WB_MODE_UNKNOWN
 
@@ -4961,7 +4943,7 @@ class SenecOnline:
                                 _LOGGER.debug(f"set _web_master_plant_number to {a_plant_number} (Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{self._web_product_name}])")
                             else:
                                 # ok it looks like the serial number does not match… let's request another system
-                                _LOGGER.debug(f"Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{r_json["produktName"]}] - but not matching the SenecApp serial number: {util.mask_string(self._app_serial_number)}")
+                                _LOGGER.debug(f"Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{r_json['produktName']}] - but not matching the SenecApp serial number: {util.mask_string(self._app_serial_number)}")
                                 a_plant_number += 1
                                 await self.web_update_get_systems(a_plant_number, autodetect_mode)
                         else:
@@ -4995,7 +4977,7 @@ class SenecOnline:
     async def web_update_now(self, retry:bool=True):
         _LOGGER.debug("***** web_update_now(self) ********")
         # grab NOW and TODAY stats
-        a_url = f"{self._WEB_GET_OVERVIEW_URL}" % str(self._web_master_plant_number)
+        a_url = self._WEB_GET_OVERVIEW_URL % str(self._web_master_plant_number)
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
                 _LOGGER.debug(f"web_update_now() requesting: {a_url}")
@@ -5054,7 +5036,7 @@ class SenecOnline:
         else:
             _LOGGER.debug("***** web_update_total(self) ********")
             for key in self._WEB_REQUEST_KEYS:
-                a_url = f"{self._WEB_GET_STATUS}" % (key, str(self._web_master_plant_number))
+                a_url = self._WEB_GET_STATUS % (key, str(self._web_master_plant_number))
                 async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                     _LOGGER.debug(f"web_update_total() requesting: {a_url}")
                     try:
