@@ -2902,14 +2902,16 @@ def app_get_utc_date_start(year, month:int = 1, day:int = -1):
     if day < 1:
         day = 1
     #return int(datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).timestamp())
-    return datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
+    #return datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
+    return datetime(year, month, day, 0, 0, 0).astimezone(timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
 def app_get_utc_date_end(year, month:int = 12, day:int = -1):
     # December 31st at 23:59:59 UTC+1 of the year
     if day < 1:
         day = calendar.monthrange(year, month)[1]
     #return int(datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).timestamp())
-    return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
+    #return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
+    return (datetime(year, month, day, 0, 0, 0) + timedelta(days=1)).astimezone(timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
 class SenecOnline:
 
@@ -3074,11 +3076,12 @@ class SenecOnline:
         APP_ABILITIES_BASE_URL      = "https://senec-app-abilities-proxy.prod.senec.dev"
         self.APP_ABILITIES_LIST     = APP_ABILITIES_BASE_URL + "/abilities/packages/{master_plant_id}"
 
-        self.APP_MEASURE_BASE_URL   = "https://senec-app-measurements-proxy.prod.senec.dev"
-        self.APP_MEASURE_DATA_AVAIL = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
-        self.APP_MEASURE_DASHBOARD  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
-        self.APP_MEASURE_TOTAL      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
-        self.APP_MEASURE_WB_TOTAL   = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/measurements?wallboxIds={wb_id}&resolution={res_type}&from={from_val}&to={to_val}"
+        self.APP_MEASURE_BASE_URL       = "https://senec-app-measurements-proxy.prod.senec.dev"
+        self.APP_MEASURE_DATA_AVAIL     = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
+        self.APP_MEASURE_DASHBOARD      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
+        self.APP_MEASURE_TOTAL          = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
+        self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}&wallboxIds={wb_ids}"
+        self.APP_MEASURE_WB_TOTAL       = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/measurements?wallboxIds={wb_id}&resolution={res_type}&from={from_val}&to={to_val}"
 
         # https://senec-app-systems-proxy.prod.senec.dev/systems/settings/user-energy-settings?systemId={master_plant_id}
         # -> http 204 NO-CONTENT
@@ -3260,7 +3263,10 @@ class SenecOnline:
                     # only request the totals at min update of 15 minutes
                     # 15min * 60 sec = 900 sec - 5sec
                     if self._QUERY_TOTALS_TS + 895 < time():
-                        await self.app_update_total()
+                        the_wb_ids = None
+                        if self._app_wallbox_num_max > 0:
+                            the_wb_ids = ",".join(str(i) for i in range(1, self._app_wallbox_num_max + 1))
+                        await self.app_update_total(wb_ids=the_wb_ids)
                         if self._QUERY_WALLBOX:
                             await self.app_update_total_all_wallboxes()
 
@@ -3909,6 +3915,8 @@ class SenecOnline:
                 if "wallboxIds" in data[idx]:
                     self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
                     _LOGGER.debug(f"app_get_master_plant_id(): set _app_wallbox_num_max to {self._app_wallbox_num_max}")
+                else:
+                    self._app_wallbox_num_max = 0
 
                 if "controlUnitNumber" in data[idx]:
                     self._app_serial_number = data[idx]["controlUnitNumber"]
@@ -4236,7 +4244,7 @@ class SenecOnline:
     #         pass
     #     return data
 
-    async def app_update_total(self):
+    async def app_update_total(self, wb_ids:str=None):
         if self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
@@ -4269,16 +4277,18 @@ class SenecOnline:
 
             for a_year in range(start_year, current_year):
                 _LOGGER.debug(f"app_update_total(): - fetching data for year {a_year}")
-                a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                      res_type  ="MONTH",
-                                                      from_val  =quote(app_get_utc_date_start(a_year, 1), safe=''),
-                                                      to_val    =quote(app_get_utc_date_end(a_year, 12), safe=''))
+                if wb_ids is not None:
+                    a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
+                                                                  wb_ids    =wb_ids,
+                                                                  res_type  ="MONTH",
+                                                                  from_val  =quote(app_get_utc_date_start(a_year, 1), safe=''),
+                                                                  to_val    =quote(app_get_utc_date_end(a_year, 12), safe=''))
 
-                # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-                #     str(self._app_master_plant_id),
-                #     "YEAR",
-                #     str(app_get_utc_date_start(a_year, 1)),
-                #     str(app_get_utc_date_end(a_year, 12)))
+                else:
+                    a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                          res_type  ="MONTH",
+                                                          from_val  =quote(app_get_utc_date_start(a_year, 1), safe=''),
+                                                          to_val    =quote(app_get_utc_date_end(a_year, 12), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
@@ -4298,10 +4308,18 @@ class SenecOnline:
                 self._static_TOTAL_SUMS_PREV_MONTHS = None
             else:
                 _LOGGER.debug(f"app_update_total(): - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
-                a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                      res_type  ="MONTH",
-                                                      from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
-                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
+                if wb_ids is not None:
+                    a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
+                                                                  wb_ids    =wb_ids,
+                                                                  res_type  ="MONTH",
+                                                                  from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
+                                                                  to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
+
+                else:
+                    a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                          res_type  ="MONTH",
+                                                          from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
+                                                          to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
@@ -4317,16 +4335,18 @@ class SenecOnline:
                 self._static_TOTAL_SUMS_PREV_DAYS = None
             else:
                 _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
-                a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                      res_type  ="MONTH",
-                                                      from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
-                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
+                if wb_ids is not None:
+                    a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
+                                                                  wb_ids    =wb_ids,
+                                                                  res_type  ="MONTH",
+                                                                  from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
+                                                                  to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
 
-                # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-                #     str(self._app_master_plant_id),
-                #     "MONTH",
-                #     str(app_get_utc_date_start(current_year, current_month, 1)),
-                #     str(app_get_utc_date_end(current_year, current_month, current_day - 1)))
+                else:
+                    a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                          res_type  ="MONTH",
+                                                          from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
+                                                          to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
@@ -4347,16 +4367,18 @@ class SenecOnline:
             await self._app_on_new_token_data_received(self._app_token_object)
 
         # getting TODAY
-        a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                              res_type  ="DAY",
-                                              from_val  =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
-                                              to_val    =quote((now_utc + timedelta(hours=12)).strftime(STRFTIME_DATE_FORMAT), safe=''))
+        if wb_ids is not None:
+            a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
+                                                          wb_ids    =wb_ids,
+                                                          res_type  ="DAY",
+                                                          from_val  =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
+                                                          to_val    =quote((now_utc + timedelta(hours=12)).strftime(STRFTIME_DATE_FORMAT), safe=''))
 
-        # status_url = self._SENEC_APP_TOTAL_V2_with_TYPE_START_END % (
-        #     str(self._app_master_plant_id),
-        #     "DAY",
-        #     str(app_get_utc_date_start(current_year, current_month, current_day)),
-        #     str(int((now_utc + timedelta(hours=12)).timestamp())))
+        else:
+            a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
+                                                  res_type  ="DAY",
+                                                  from_val  =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
+                                                  to_val    =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
 
         data = await self._app_do_get_request(a_url=a_url)
         if app_has_dict_timeseries_with_values(data):
@@ -4477,10 +4499,10 @@ class SenecOnline:
             else:
                 _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                      wb_id=str((idx + 1)),
-                                                      res_type  ="MONTH",
-                                                      from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
-                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
+                                                         wb_id     =str((idx + 1)),
+                                                         res_type  ="MONTH",
+                                                         from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
+                                                         to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
@@ -4508,7 +4530,7 @@ class SenecOnline:
                                                  wb_id      =str((idx + 1)),
                                                  res_type   ="DAY",
                                                  from_val   =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
-                                                 to_val     =quote((now_utc + timedelta(hours=12)).strftime(STRFTIME_DATE_FORMAT), safe=''))
+                                                 to_val     =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
 
         data = await self._app_do_get_request(a_url=a_url)
         if app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
@@ -6004,9 +6026,15 @@ class SenecOnline:
     async def trigger_delete_cache(self, payload:str):
         await self._write_token_to_storage(token_dict=None)
         # reset all our internal objects…
+        self._LAST_UPDATE_TS = 0
         self._QUERY_TOTALS_TS = 0
         self._QUERY_SYSTEM_DETAILS_TS = 0
         self._QUERY_SYSTEM_STATE_TS = 0
+        self._QUERY_SPARE_CAPACITY_TS = 0
+        self._QUERY_PEAK_SHAVING_TS = 0
+        self._QUERY_SGREADY_STATE_TS = 0
+        self._QUERY_SGREADY_CONF_TS = 0
+
         self._app_token_object = {}
         self._app_is_authenticated = False
         self._app_token = None

@@ -196,6 +196,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         UPDATE_INTERVAL_IN_SECONDS = config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2)
 
         self._integration_version = intg_version
+        self._total_increasing_sensors = []
+
         """Initialize."""
         # Build-In INVERTER
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
@@ -432,6 +434,18 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         except BaseException as fatal:
             _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
             raise UpdateFailed() from fatal
+
+    def add_total_increasing_sensor(self, sensor):
+        self._total_increasing_sensors.append(sensor)
+        _LOGGER.debug(f"Added total increasing sensor: {sensor.entity_description.key} to coordinator")
+
+    def reset_total_increasing_values(self):
+        for sensor in self._total_increasing_sensors:
+            if hasattr(sensor, "_previous_float_value") and sensor._previous_float_value is not None:
+                _LOGGER.debug(f"Resetting total increasing value for sensor: {sensor.entity_description.key}")
+                sensor._previous_float_value = None
+            else:
+                _LOGGER.debug(f"No previous float value to reset for sensor: {sensor.entity_description.key}")
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):

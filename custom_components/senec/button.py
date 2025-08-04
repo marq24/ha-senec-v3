@@ -6,6 +6,7 @@ from homeassistant.const import CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
+
 from . import SenecEntity, SenecDataUpdateCoordinator
 from .const import (
     DOMAIN,
@@ -68,5 +69,7 @@ class SenecButton(SenecEntity, ButtonEntity):
     async def async_press(self, **kwargs):
         try:
             await self.coordinator._async_trigger_button(trigger_key=self.entity_description.key, payload=self.entity_description.payload)
+            if self.entity_description.key == 'delete_cache':
+                self.coordinator.reset_total_increasing_values()
         except ValueError:
             return "unavailable"
