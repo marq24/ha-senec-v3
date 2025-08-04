@@ -151,6 +151,11 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                         # return this _previous_float_value
                         _LOGGER.info(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
                         return self._previous_float_value
+                    elif int(value) == 0:
+                        if (self._previous_float_value is not None) and (self._previous_float_value > 5):
+                            # if the previous value was larger than 5, we return the previous value
+                            _LOGGER.info(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
+                            return self._previous_float_value
                     else:
                         self._previous_float_value = value
                         return value
