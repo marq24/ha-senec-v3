@@ -89,6 +89,27 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 new_data = config_entry.data
             hass.config_entries.async_update_entry(config_entry, data=new_data, options={}, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
             _LOGGER.debug(f"Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
+
+    # update from 2.0 [completed wallbox implementation - and fixed total statistics stuff]
+    if config_entry.version == 2 and config_entry.minor_version == 0:
+        _LOGGER.info(f"Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+        if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+            _LOGGER.info("Migration: for WebAPI we must clean the cache file ONCE")
+            # we need to remove the cache file, so that the next time we will
+            # access the webAPI, we will get a fresh copy of the data
+            user = config_entry.data.get(CONF_USERNAME, None)
+            pwd = config_entry.data.get(CONF_PASSWORD, None)
+            if user is not None:
+                web_api = SenecOnline(user=user, pwd=pwd, web_session=None,
+                                      storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
+                                      integ_version=f"MIGRATION_v{config_entry.version}.{config_entry.minor_version}_to_v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+
+                # this will remove the cache file...
+                await web_api._write_token_to_storage(token_dict=None)
+                _LOGGER.info(f"Migration: cache file cleared for WebAPI - migrated to version {config_entry.version}.{config_entry.minor_version}")
+
+        hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
+
     return True
 
 

@@ -3135,13 +3135,17 @@ class SenecOnline:
             "days_data":    self._static_TOTAL_SUMS_PREV_DAYS}
         self._static_TOTAL_WALLBOX_DATA = [copy.deepcopy(self._static_A_WALLBOX_STORAGE) for _ in range(4)]
 
-        IntBridge.app_api = self
-        _LOGGER.debug(f"SenecOnline initialized and IntBridge.app_api set to {self}")
-        if IntBridge.avail():
-            # ok local-polling (lala.cgi) is already existing…
-            if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
-                self._QUERY_WALLBOX = True
-                _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
+        # only init the bridge, if we have a 'web_session'
+        if self.web_session is not None:
+            IntBridge.app_api = self
+            _LOGGER.debug(f"SenecOnline initialized and IntBridge.app_api set to {self}")
+            if IntBridge.avail():
+                # ok local-polling (lala.cgi) is already existing…
+                if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
+                    self._QUERY_WALLBOX = True
+                    _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
+        else:
+            _LOGGER.debug(f"SenecOnline initialized [RAW - no websession]")
 
     def _init_user_agents(self):
         self.DEFAULT_USER_AGENT= f"SENEC.Home V2.x/V3/V4 Integration/{self._integration_version} (+https://github.com/marq24/ha-senec-v3)"
