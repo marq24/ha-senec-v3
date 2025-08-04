@@ -4306,6 +4306,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
                     self._static_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data)
+                    _LOGGER.debug(f"app_update_total(): aggregated data for year {current_year} month 01 - {(current_month-1):02d} -> {self._static_TOTAL_SUMS_PREV_MONTHS}")
 
             self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
 
@@ -4464,6 +4465,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
                     local_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
+                    _LOGGER.debug(f"_app_update_single_wallbox_total(): aggregated data for year {current_year} month 01 - {(current_month-1):02d} -> {local_TOTAL_SUMS_PREV_MONTHS}")
 
             local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
 
@@ -4647,7 +4649,7 @@ class SenecOnline:
             a_type = charging_mode_obj.get("type", None)
             if a_type is not None:
                 # FAST or SOLAR
-                if a_type.uppper() == APP_API_WB_MODE_2025_SOLAR:
+                if a_type.upper() == APP_API_WB_MODE_2025_SOLAR:
                     if "compatibilityMode" in charging_mode_obj and charging_mode_obj["compatibilityMode"] is not None:
                         compatibility_mode = charging_mode_obj["compatibilityMode"]
                         if isinstance(compatibility_mode, bool) and compatibility_mode or str(compatibility_mode).lower() == 'true':
@@ -4657,7 +4659,7 @@ class SenecOnline:
                     else:
                         _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): 'compatibilityMode' issue: {charging_mode_obj}")
 
-                elif a_type.uppper() == APP_API_WB_MODE_2025_FAST:
+                elif a_type.upper() == APP_API_WB_MODE_2025_FAST:
                     return LOCAL_WB_MODE_FASTEST
                 else:
                     _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
