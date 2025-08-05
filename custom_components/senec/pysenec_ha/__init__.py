@@ -5,6 +5,7 @@ import calendar
 import copy
 import hashlib
 import json
+# import pyotp
 import logging
 import os
 import random
@@ -2976,6 +2977,7 @@ class SenecOnline:
         ###################################
         # mein-senec.de
         ###################################
+        self.web_totp_required = False
         self._WEB_BASE_URL          = "https://mein-senec.de"
         self._WEB_GET_CUSTOMER      = f"{self._WEB_BASE_URL}/endkunde/api/context/getEndkunde"
         self._WEB_GET_SYSTEM_INFO   = f"{self._WEB_BASE_URL}/endkunde/api/context/getAnlageBasedNavigationViewModel?anlageNummer=%s"
@@ -3039,8 +3041,9 @@ class SenecOnline:
         # SenecApp
         ###################################
         # OpenID related fields…
-        self.APP_OPENID_CLIENT_ID: Final= "endcustomer-app-frontend"
-        self.APP_REDIRECT_URI: Final    = "senec-app-auth://keycloak.prod"
+        self.APP_OPENID_CLIENT_ID: Final        = "endcustomer-app-frontend"
+        self.APP_REDIRECT_KEYCLOAK_URI: Final   = "senec-app-auth://keycloak.prod"
+        self.APP_REDIRECT_OTP_URI: Final        = "https://sso.senec.com/realms/senec/login-actions/authenticate"
         #self.APP_SCOPE: Final           = "email roles profile web-origins meinsenec openid"
         # based on the feedback from @ledermann we can use reduced scope
         self.APP_SCOPE: Final           = "roles profile meinsenec"
@@ -3307,6 +3310,10 @@ class SenecOnline:
         return False
 
     async def web_update(self):
+        if self.web_totp_required:
+            _LOGGER.info("***** web_update(self) ********")
+            return
+
         try:
             if self._web_is_authenticated:
                 _LOGGER.info("***** web_update(self) ********")
@@ -3429,7 +3436,7 @@ class SenecOnline:
         #req_headers["Host"]     = "sso.senec.com"
         #req_headers["Referer"]  = "android-app://com.senecapp/"
 
-        a_url = self.LOGIN_URL.format(redirect_url=quote(self.APP_REDIRECT_URI, safe=''),
+        a_url = self.LOGIN_URL.format(redirect_url=quote(self.APP_REDIRECT_KEYCLOAK_URI, safe=''),
                                       client_id=self.APP_OPENID_CLIENT_ID,
                                       scope=quote(self.APP_SCOPE, safe=''),
                                       state=state,
@@ -3482,23 +3489,56 @@ class SenecOnline:
 
         async with self.web_session.post(form_action_url, data=login_data, allow_redirects=False, headers=req_headers) as res:
             try:
-                _LOGGER.debug(f"initial_token_request_02_post_login(): requesting: {form_action_url}")
+                _LOGGER.debug(f"_initial_token_request_02_post_login(): requesting: {form_action_url}")
                 res.raise_for_status()
                 if res.status == 302:
                     location = res.headers.get("Location")
                     if location:
-                        _LOGGER.debug(f"initial_token_request_02_post_login(): received an expected redirect to: {location}")
-                        await self._initial_token_request_03_get_token(location)
+                        if location.startswith(self.APP_REDIRECT_KEYCLOAK_URI):
+                            _LOGGER.debug(f"_initial_token_request_02_post_login(): received an expected redirect to: {location}")
+                            await self._initial_token_request_03_get_token(location)
+                        else:
+                            _LOGGER.error(f"_initial_token_request_02_post_login(): received UNEXPECTED redirect to: {location}")
                     else:
-                        _LOGGER.info(f"initial_token_request_02_post_login(): no 'Location' in response Header")
+                        _LOGGER.info(f"_initial_token_request_02_post_login(): no 'Location' in response Header")
                 else:
-                    _LOGGER.info(f"initial_token_request_02_post_login(): unexpected [302] response code: {res.status} - {res}")
+                    _LOGGER.info(f"_initial_token_request_02_post_login(): unexpected [302] response code: {res.status} - {res}")
 
             except BaseException as ex:
-                _LOGGER.info(f"initial_token_request_02_post_login(): {type(ex)} - {ex}")
+                _LOGGER.info(f"_initial_token_request_02_post_login(): {type(ex)} - {ex}")
+
+    # async def _initial_token_request_02_post_otp(self, form_action_url):
+    #
+    #     totp = pyotp.TOTP("self._SENEC_USER_OTP_SECRET")
+    #
+    #     req_headers = self._default_app_web_headers.copy()
+    #     req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+    #     #req_headers["Host"]             = "sso.senec.com"
+    #     req_headers["Content-Type"]     = "application/x-www-form-urlencoded"
+    #     req_headers["Cache-Control"]    = "max-age=0"
+    #     otp_data= {
+    #         "code": totp.now(),  # generate the current TOTP code
+    #     }
+    #
+    #     async with self.web_session.post(form_action_url, data=otp_data, allow_redirects=False, headers=req_headers) as res:
+    #         try:
+    #             _LOGGER.debug(f"_initial_token_request_02_post_otp(): requesting: {form_action_url}")
+    #             res.raise_for_status()
+    #             if res.status == 302:
+    #                 location = res.headers.get("Location")
+    #                 if location:
+    #                     _LOGGER.debug(f"_initial_token_request_02_post_otp(): received an expected redirect to: {location}")
+    #                     await self._initial_token_request_03_get_token(location)
+    #                 else:
+    #                     _LOGGER.info(f"_initial_token_request_02_post_otp(): no 'Location' in response Header")
+    #             else:
+    #                 _LOGGER.info(f"_initial_token_request_02_post_otp(): unexpected [302] response code: {res.status} - {res}")
+    #
+    #         except BaseException as ex:
+    #             _LOGGER.info(f"_initial_token_request_02_post_otp(): {type(ex)} - {ex}")
 
     async def _initial_token_request_03_get_token(self, redirect):
-        if redirect.startswith(self.APP_REDIRECT_URI):
+        if redirect.startswith(self.APP_REDIRECT_KEYCLOAK_URI):
             # from the incoming redirect location url we are parsing the url parameters…
             params = parse_qs(urlparse(redirect).query)
 
@@ -3519,7 +3559,7 @@ class SenecOnline:
             post_data = {
                 "code":             code,
                 "grant_type":       "authorization_code",
-                "redirect_uri":     self.APP_REDIRECT_URI,
+                "redirect_uri":     self.APP_REDIRECT_KEYCLOAK_URI,
                 "code_verifier":    self._code_verifier,
                 "client_id":        self.APP_OPENID_CLIENT_ID
             }
@@ -3541,7 +3581,7 @@ class SenecOnline:
                 except BaseException as ex:
                     _LOGGER.info(f"initial_token_request_03_get_token(): {type(ex)} - {ex}")
         else:
-            _LOGGER.info(f"initial_token_request_03_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_URI}' -> received: '{redirect}')")
+            _LOGGER.info(f"initial_token_request_03_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
 
     async def _refresh_token_request(self, refresh_token):
         req_headers = self._default_app_web_headers.copy()
@@ -3677,7 +3717,7 @@ class SenecOnline:
             self._app_token_object = stored_data
             if CONF_APP_TOTAL_DATA not in self._app_token_object:
                 # creating an initalized storage…
-                _LOGGER.debug(f"app_has_token(): no '{CONF_APP_TOTAL_DATA}' in _app_token_object: {self._app_token_object} - initializing it")
+                _LOGGER.debug(f"app_has_token(): no '{CONF_APP_TOTAL_DATA}' in _app_token_object: {util.mask_map(self._app_token_object)} - initializing it")
                 self._app_token_object[CONF_APP_TOTAL_DATA] = {
                     "years":        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS,
                     "years_data":   self._static_TOTAL_SUMS_PREV_YEARS,
@@ -5048,8 +5088,12 @@ class SenecOnline:
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     content = await res.text()
-                    _LOGGER.debug(f"finally reached: {res.request_info.url}")
-                    await self._web_set_is_authenticated(do_update=do_update)
+                    if "configure_totp" in str(res.request_info.url).lower():
+                        self.web_totp_required = True
+                        _LOGGER.warning(f"SENEC require TOTP configuration - currently not supported by the Integration - some features will not work! - {res.request_info.url}")
+                    else:
+                        _LOGGER.debug(f"finally reached: {res.request_info.url}")
+                        await self._web_set_is_authenticated(do_update=do_update)
                 else:
                     self.purge_senec_cookies()
                     _LOGGER.info(f"_web_authenticate_part_02(): unexpected [200] response code: {res.status} - {res}")
@@ -5076,6 +5120,10 @@ class SenecOnline:
                 await self.update()
 
     async def web_update_context(self, force_autodetect:bool = False):
+        if self.web_totp_required:
+            _LOGGER.info("***** skipped cause TOTP required - web_update_context(self) ********")
+            return
+
         _LOGGER.debug("***** web_update_context(self) ********")
         if self._web_is_authenticated:
             await self.web_update_get_customer()
@@ -5100,6 +5148,10 @@ class SenecOnline:
                 await self.web_update_context()
 
     async def web_update_get_customer(self):
+        if self.web_totp_required:
+            _LOGGER.info("***** skipped cause TOTP required - web_update_get_customer(self) ********")
+            return
+
         _LOGGER.debug("***** web_update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
@@ -5116,6 +5168,10 @@ class SenecOnline:
                 await self.web_authenticate(do_update=False, throw401=False)
 
     async def web_update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
+        if self.web_totp_required:
+            _LOGGER.info(f"***** skipped cause TOTP required - web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
+            return
+
         _LOGGER.debug(f"***** web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
 
         a_url = self._WEB_GET_SYSTEM_INFO % str(a_plant_number)
@@ -5171,6 +5227,10 @@ class SenecOnline:
                 await self.web_authenticate(do_update=False, throw401=False)
 
     async def web_update_now(self, retry:bool=True):
+        if self.web_totp_required:
+            _LOGGER.info("***** skipped cause TOTP required - web_update_now(self) ********")
+            return
+
         _LOGGER.debug("***** web_update_now(self) ********")
         # grab NOW and TODAY stats
         a_url = self._WEB_GET_OVERVIEW_URL % str(self._web_master_plant_number)
@@ -5223,9 +5283,13 @@ class SenecOnline:
                 if exc.status != 408:
                     self._is_authenticated = False
                 if retry:
-                    await self.web_update(retry=False)
+                    await self.web_update_now(retry=False)
 
     async def web_update_total(self):
+        if self.web_totp_required:
+            _LOGGER.info("***** skipped cause TOTP required - web_update_total(self) ********")
+            return
+
         # grab TOTAL stats
         if self._web_master_plant_number is None or self._web_master_plant_number == -1:
             _LOGGER.warning("web_update_total() called without valid web master plant number, skipping update.")
@@ -5266,6 +5330,10 @@ class SenecOnline:
 
     """This function will update peak shaving information"""
     async def web_update_peak_shaving(self):
+        if self.web_totp_required:
+            _LOGGER.info("***** skipped cause TOTP required - web_update_peak_shaving(self) ********")
+            return
+
         _LOGGER.info("***** web_update_peak_shaving(self) ********")
         a_url = f"{self._WEB_GET_PEAK_SHAVING}{self._web_master_plant_number}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
@@ -5325,6 +5393,10 @@ class SenecOnline:
 
     """This function will update the spare capacity over the web api"""
     async def web_update_spare_capacity(self):
+        if self.web_totp_required:
+            _LOGGER.info("***** skipped cause TOTP required - web_update_spare_capacity(self) ********")
+            return
+
         _LOGGER.info("***** web_update_spare_capacity(self) ********")
         a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_GET_SPARE_CAPACITY}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
@@ -5381,6 +5453,10 @@ class SenecOnline:
 
     async def web_update_sgready_state(self):
         if self.SGREADY_SUPPORTED:
+            if self.web_totp_required:
+                _LOGGER.info("***** skipped cause TOTP required - web_update_sgready_state(self) ********")
+                return
+
             _LOGGER.info("***** web_update_sgready_state(self) ********")
             a_url = self._WEB_GET_SGREADY_STATE % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
@@ -5416,6 +5492,10 @@ class SenecOnline:
 
     async def web_update_sgready_conf(self):
         if self.SGREADY_SUPPORTED:
+            if self.web_totp_required:
+                _LOGGER.info("***** skipped cause TOTP required - web_update_sgready_conf(self) ********")
+                return
+
             _LOGGER.info("***** web_update_sgready_conf(self) ********")
             a_url = self._WEB_GET_SGREADY_CONF % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
