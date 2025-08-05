@@ -52,7 +52,7 @@ DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
 
 CONFIG_VERSION: Final = 2
-CONFIG_MINOR_VERSION: Final = 0
+CONFIG_MINOR_VERSION: Final = 1
 
 SYSTYPE_SENECV4: Final = "systype_senecv4"
 SYSTYPE_WEBAPI: Final = "systype_webapi"

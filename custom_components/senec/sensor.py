@@ -9,6 +9,7 @@ from homeassistant.core import State
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity, InverterLocal
 from .const import (
     DOMAIN,
@@ -108,6 +109,9 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                                           description.controls is not None and
                                           "check_plausibility" in description.controls)
 
+        if self._is_total_increasing:
+            coordinator.add_total_increasing_sensor(self)
+
     @property
     def native_value(self):
         """Return the current state."""
@@ -147,6 +151,11 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                         # return this _previous_float_value
                         _LOGGER.info(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
                         return self._previous_float_value
+                    elif int(value) == 0:
+                        if (self._previous_float_value is not None) and (self._previous_float_value > 5):
+                            # if the previous value was larger than 5, we return the previous value
+                            _LOGGER.info(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
+                            return self._previous_float_value
                     else:
                         self._previous_float_value = value
                         return value
@@ -181,8 +190,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
         if self._is_total_increasing or self._check_plausibility:
             # get the last known value
             last_sensor_data = await self.async_get_last_state()
-            if last_sensor_data is not None and isinstance(last_sensor_data,
-                                                           State) and last_sensor_data.state is not None:
+            if last_sensor_data is not None and isinstance(last_sensor_data, State) and last_sensor_data.state is not None:
                 try:
                     a_float_value = float(last_sensor_data.state)
                     self._previous_float_value = a_float_value
@@ -190,4 +198,3 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                 except:
                     _LOGGER.debug(f"ignoring prev value for key {self._attr_translation_key}: cause value is: {last_sensor_data.state}")
                     self._previous_float_value = None
-                    pass
