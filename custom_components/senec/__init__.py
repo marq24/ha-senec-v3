@@ -106,7 +106,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
                 # this will remove the cache file...
                 await web_api._write_token_to_storage(token_dict=None)
-                _LOGGER.info(f"Migration: cache file cleared for WebAPI - migrated to version {config_entry.version}.{config_entry.minor_version}")
+                _LOGGER.info(f"Migration: cache file cleared for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
 
         hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
 

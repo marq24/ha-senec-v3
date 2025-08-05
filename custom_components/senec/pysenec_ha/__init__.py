@@ -4767,8 +4767,8 @@ class SenecOnline:
 
                         # I just can guess, that 'allowIntercharge' means to use battery…
                         allow_intercharge = True  # default value
-                        if IntBridge.avail() and IntBridge.local_api is not None:
-                            allow_intercharge = IntBridge.local_api.wallbox_allow_intercharge
+                        if IntBridge.avail() and IntBridge.lala_cgi is not None:
+                            allow_intercharge = IntBridge.lala_cgi.wallbox_allow_intercharge
 
                         data = await self._app_do_post_request(wb_url, post_data={"allowIntercharge": allow_intercharge}, read_response=True)
                         if data is not None:
