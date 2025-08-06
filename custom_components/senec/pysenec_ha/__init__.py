@@ -3214,13 +3214,29 @@ class SenecOnline:
 
     """Make sure that app and web will be initialized and authenticated before any other calls will be made"""
     async def authenticate_all(self):
+        web_login_required = False
+        # if we request additionally to the APP-API some values from the mein-senec.de portal,
+        # then we MUST first login via SSO to the API, then we can use also mein-senec.de without
+        # any additional login (since the web session is already authenticated)
+        # Since 2025/08/06 the mein-senec.de portal now force the user to configure/setup TOTP...
+        if self._QUERY_SPARE_CAPACITY or self._QUERY_PEAK_SHAVING or self.SGREADY_SUPPORTED:
+            web_login_required = True
+
         # SenecApp stuff…
         if not self._app_is_authenticated:
-            await self.app_authenticate()
+            # if the web_login is requeired, we ignore any existing tokens
+            # and directly login into the API...
+            await self.app_authenticate(check_for_existing_tokens = not web_login_required)
 
-        # mein-senec.de Web stuff…
-        if not self._web_is_authenticated:
-            await self.web_authenticate(do_update=False, throw401=False)
+        if web_login_required:
+            # mein-senec.de Web stuff…
+            if not self._web_is_authenticated:
+                await self.web_authenticate(do_update=False, throw401=False)
+        else:
+            # make sure that we do not male web calls by accident (yes 'web_totp_required' is not the correct
+            # attribute - but it will work for sure (now)...
+            self.web_totp_required = True
+
 
     def get_debug_login_data(self):
         return {"app":{
@@ -3350,9 +3366,15 @@ class SenecOnline:
 
 
     """SENEC-APP from here"""
-    async def app_authenticate(self):
+    async def app_authenticate(self, check_for_existing_tokens: bool = True):
         # SenecApp stuff…
-        await self.app_verify_token()
+        if check_for_existing_tokens:
+            await self.app_verify_token()
+        else:
+            # even if we skip the check for existing tokens... we MUSt resore all existing
+            # 'other' data from a possible existing token file...
+            await self.app_has_token()
+
         if not self._app_is_authenticated:
             await self._initial_token_request_01_start()
         elif self._app_master_plant_id is None:
@@ -3548,7 +3570,7 @@ class SenecOnline:
             # iss = params.get('iss', [None])[0]
             # session_state = params.get('session_state', [None])[0]
 
-            _LOGGER.debug(f"initial_token_request_03_get_token(): got final code: '{code}' in redirect URL - going to continue…")
+            _LOGGER.debug(f"_initial_token_request_03_get_token(): got final code: '{util.mask_string(code)}' in redirect URL - going to continue…")
 
             req_headers = self._default_app_web_headers.copy()
             req_headers["User-Agent"]   = self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else self.APP_SSO_USER_AGENT
@@ -3566,22 +3588,22 @@ class SenecOnline:
             # we have to follow the redirect…
             async with self.web_session.post(self.TOKEN_URL, data=post_data, headers=req_headers) as res:
                 try:
-                    _LOGGER.debug(f"initial_token_request_03_get_token(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
+                    _LOGGER.debug(f"_initial_token_request_03_get_token(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         token_data = await res.json()
                         if "access_token" in token_data:
-                            _LOGGER.debug(f"initial_token_request_03_get_token(): received token data: {util.mask_map(token_data)}")
+                            _LOGGER.debug(f"_initial_token_request_03_get_token(): received token data: {util.mask_map(token_data)}")
                             await self._app_on_new_token_data_received(token_data)
                         else:
-                            _LOGGER.info(f"initial_token_request_03_get_token(): NO access_token in {util.mask_map(token_data)}")
+                            _LOGGER.info(f"_initial_token_request_03_get_token(): NO access_token in {util.mask_map(token_data)}")
                     else:
-                        _LOGGER.info(f"initial_token_request_03_get_token(): unexpected [200] response code: {res.status} - {res}")
+                        _LOGGER.info(f"_initial_token_request_03_get_token(): unexpected [200] response code: {res.status} - {res}")
 
                 except BaseException as ex:
-                    _LOGGER.info(f"initial_token_request_03_get_token(): {type(ex)} - {ex}")
+                    _LOGGER.info(f"_initial_token_request_03_get_token(): {type(ex)} - {ex}")
         else:
-            _LOGGER.info(f"initial_token_request_03_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
+            _LOGGER.info(f"_initial_token_request_03_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
 
     async def _refresh_token_request(self, refresh_token):
         req_headers = self._default_app_web_headers.copy()
