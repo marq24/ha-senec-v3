@@ -41,6 +41,7 @@ from .const import (
     SYSTYPE_NAME_INVERTER,
     SYSTYPE_NAME_WEBAPI,
 
+    CONF_TOTP,
     CONF_USE_HTTPS,
     CONF_DEV_TYPE,
     CONF_DEV_MODEL,
@@ -100,7 +101,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             user = config_entry.data.get(CONF_USERNAME, None)
             pwd = config_entry.data.get(CONF_PASSWORD, None)
             if user is not None:
-                web_api = SenecOnline(user=user, pwd=pwd, web_session=None,
+                web_api = SenecOnline(user=user, pwd=pwd, totp=None, web_session=None,
                                       storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
                                       integ_version=f"MIGRATION_v{config_entry.version}.{config_entry.minor_version}_to_v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
 
@@ -237,6 +238,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # user & pwd can be changed via the options...
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
+            totp = config_entry.data[CONF_TOTP] if CONF_TOTP in config_entry.data else None
 
             # defining the default query options for APP & WEB...
             opt = {
@@ -319,7 +321,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # SO to get out of this mess, we will store the master_plant_id in our config entry and use this as our
             # general key - then when we access the web-portal, we will use assigned serial_number to the master_plant_id
             # and then query the web-portal anlagenNummer 0,1,2 ... till we find the one with the matching serial_number
-            self.senec = SenecOnline(user=user, pwd=pwd, web_session=async_create_clientsession(hass),
+            self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_create_clientsession(hass),
                                      app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
                                      lang=hass.config.language.lower(),
                                      options=opt,

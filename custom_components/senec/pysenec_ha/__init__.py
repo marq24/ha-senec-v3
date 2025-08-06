@@ -2918,7 +2918,7 @@ class SenecOnline:
 
     USE_DEFAULT_USER_AGENT:Final = True
 
-    def __init__(self, user, pwd, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None,
+    def __init__(self, user, pwd, totp, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None,
                  storage_path: Path = None, tokens_location: str = None, integ_version: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         self._init_user_agents()
@@ -2973,6 +2973,7 @@ class SenecOnline:
 
         self._SENEC_USERNAME = user
         self._SENEC_PASSWORD = pwd
+        self._SENEC_TOTP = totp
 
         ###################################
         # mein-senec.de

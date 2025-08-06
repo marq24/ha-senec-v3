@@ -3,6 +3,7 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse, unquote, parse_qs
 
 import voluptuous as vol
 from aiohttp import ClientResponseError
@@ -47,6 +48,7 @@ from .const import (
     SYSTYPE_NAME_WEBAPI,
 
     SETUP_SYS_TYPE,
+    CONF_TOTP,
     CONF_DEV_TYPE,
     CONF_DEV_TYPE_INT,
     CONF_USE_HTTPS,
@@ -120,6 +122,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # web-api defaults
         self._default_user = None
         self._default_pwd = None
+        self._default_totp = None
         self._default_master_plant_number = None
 
         """Initialize."""
@@ -160,6 +163,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_interval  = entry_data[CONF_SCAN_INTERVAL]
             self._default_user      = entry_data[CONF_USERNAME]
             self._default_pwd       = entry_data[CONF_PASSWORD]
+            self._default_totp      = entry_data.get(CONF_TOTP, "") # TOTP can be empty!!!
             self._default_master_plant_number = entry_data[CONF_DEV_MASTER_NUM]
             return await self.async_step_websetup()
 
@@ -211,12 +215,12 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.warning(f"Could not connect to build-in Inverter device at {host}, check host ip address")
         return False
 
-    async def _test_connection_senec_online(self, user: str, pwd: str, user_master_plant: int):
+    async def _test_connection_senec_online(self, user: str, pwd: str, totp_secret: str, user_master_plant: int):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
         web_session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
-            senec_online = SenecOnline(user=user, pwd=pwd, web_session=web_session,
+            senec_online = SenecOnline(user=user, pwd=pwd, totp=totp_secret, web_session=web_session,
                                        app_master_plant_number=user_master_plant,
                                        storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR))
 
@@ -441,62 +445,93 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             scan_entry = max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL_WEB)
             user_entry = user_input[CONF_USERNAME]
             pwd_entry = user_input[CONF_PASSWORD]
-
-            # when the user has multiple masters, the auto-detect does
-            # not work - so we allow the specification of the AnlagenNummer
-            master_plant_val = user_input[CONF_DEV_MASTER_NUM]
-            if master_plant_val == 'auto':
-                already_exist_ident = user_entry
-                master_plant_num = -1
-            else:
-                already_exist_ident = f"{user_entry}_{master_plant_val}"
-                master_plant_num = int(master_plant_val)
-
-            if self.source == SOURCE_RECONFIGURE:
-                self._abort_if_unique_id_configured()
-            else:
-                if host_in_configuration_exists(self.hass, already_exist_ident):
-                    self._errors[CONF_USERNAME] = "already_configured"
-                    raise data_entry_flow.AbortFlow("already_configured")
-
-            if await self._test_connection_senec_online(user_entry, pwd_entry, master_plant_num):
-                web_data = {
-                    CONF_TYPE: CONF_SYSTYPE_WEB,
-                    CONF_NAME: name_entry,
-                    CONF_HOST: user_entry,
-                    CONF_USERNAME: user_entry,
-                    CONF_PASSWORD: pwd_entry,
-                    CONF_SCAN_INTERVAL: scan_entry,
-                    CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
-                    CONF_DEV_TYPE: self._device_type,
-                    CONF_DEV_MODEL: self._device_model,
-                    CONF_DEV_SERIAL: self._device_serial,
-                    CONF_DEV_VERSION: self._device_version,
-                    CONF_DEV_MASTER_NUM: self._app_master_plant_number
-                }
-                if self.source == SOURCE_RECONFIGURE:
-                    return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data)
+            totp_entry = user_input[CONF_TOTP]
+            if totp_entry is not None:
+                if len(totp_entry) == 0:
+                    totp_entry = None
                 else:
-                    return self.async_create_entry(title=name_entry, data=web_data)
+                    # check, if the user has pasted a TOTP-Secret URL
+                    if totp_entry.startswith("otpauth://"):
+                        parsed_uri = urlparse(unquote(totp_entry))
+                        totp_entry = parse_qs(parsed_uri.query).get('secret', [None])[0]
+
+                #validate, if the 'totp_entry' can be processed by the lib
+                if totp_entry is not None:
+                    try:
+                        import pyotp
+                        totp002 = pyotp.TOTP(totp_entry)
+                        current_otp = totp002.now()
+                        if len(current_otp) == 6:
+                            _LOGGER.debug(f"async_step_websetup(): current TOTP code: {current_otp}")
+                        else:
+                            self._errors[CONF_TOTP] = "invalid_totp_secret"
+                    except ValueError as e:
+                        _LOGGER.error(f"async_step_websetup(): Invalid TOTP secret: {type(e)} - {e}")
+                        self._errors[CONF_TOTP] = "invalid_totp_secret"
+
+            if CONF_TOTP not in self._errors:
+                # when the user has multiple masters, the auto-detect does
+                # not work - so we allow the specification of the AnlagenNummer
+                master_plant_val = user_input[CONF_DEV_MASTER_NUM]
+                if master_plant_val == 'auto':
+                    already_exist_ident = user_entry
+                    master_plant_num = -1
+                else:
+                    already_exist_ident = f"{user_entry}_{master_plant_val}"
+                    master_plant_num = int(master_plant_val)
+
+                if self.source == SOURCE_RECONFIGURE:
+                    self._abort_if_unique_id_configured()
+                else:
+                    if host_in_configuration_exists(self.hass, already_exist_ident):
+                        self._errors[CONF_USERNAME] = "already_configured"
+                        raise data_entry_flow.AbortFlow("already_configured")
+
+                if await self._test_connection_senec_online(user_entry, pwd_entry, totp_entry, master_plant_num):
+                    web_data = {
+                        CONF_TYPE: CONF_SYSTYPE_WEB,
+                        CONF_NAME: name_entry,
+                        CONF_HOST: user_entry,
+                        CONF_USERNAME: user_entry,
+                        CONF_PASSWORD: pwd_entry,
+                        CONF_TOTP: totp_entry,
+                        CONF_SCAN_INTERVAL: scan_entry,
+                        CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
+                        CONF_DEV_TYPE: self._device_type,
+                        CONF_DEV_MODEL: self._device_model,
+                        CONF_DEV_SERIAL: self._device_serial,
+                        CONF_DEV_VERSION: self._device_version,
+                        CONF_DEV_MASTER_NUM: self._app_master_plant_number
+                    }
+                    if self.source == SOURCE_RECONFIGURE:
+                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data)
+                    else:
+                        return self.async_create_entry(title=name_entry, data=web_data)
+                else:
+                    _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
+                    self._errors[CONF_USERNAME]
+                    self._errors[CONF_PASSWORD]
+                    if CONF_TOTP in self._errors:
+                        self._errors[CONF_TOTP]
             else:
                 _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
-                self._errors[CONF_USERNAME]
-                self._errors[CONF_PASSWORD]
-
+                self._errors[CONF_TOTP]
         else:
             user_input = {}
             if all(x is not None for x in
-                   [self._default_name, self._default_user, self._default_pwd,
+                   [self._default_name, self._default_user, self._default_pwd, self._default_totp,
                     self._default_master_plant_number, self._default_interval]):
                 user_input[CONF_NAME] = self._default_name
                 user_input[CONF_USERNAME] = self._default_user
                 user_input[CONF_PASSWORD] = self._default_pwd
+                user_input[CONF_TOTP] = self._default_totp
                 user_input[CONF_DEV_MASTER_NUM] = str(self._default_master_plant_number)
                 user_input[CONF_SCAN_INTERVAL] = self._default_interval
             else:
                 user_input[CONF_NAME] = DEFAULT_NAME_WEB
                 user_input[CONF_USERNAME] = DEFAULT_USERNAME
                 user_input[CONF_PASSWORD] = ""
+                user_input[CONF_TOTP] = ""
                 user_input[CONF_DEV_MASTER_NUM] = "auto"
                 if self._selected_system == SYSTYPE_SENECV4:
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
@@ -515,6 +550,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
                     vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
                     vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
+                    vol.Optional(CONF_TOTP, default=user_input[CONF_TOTP]): str,
                     vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
                         selector.SelectSelector(
                             selector.SelectSelectorConfig(

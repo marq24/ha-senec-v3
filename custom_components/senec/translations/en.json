@@ -40,12 +40,14 @@
     "abort": {
       "already_configured": "Integration is already configured",
       "reconfigure_successful": "Re-configuration was successful",
-      "no_filesystem_access": "This integration requires access to the local file system of your HomeAssistant installation to store a key for your Senec account.\n\nTo do this, a subfolder will be created in the '.storage/' folder. However, this is currently not possible. An internal test failed. You can find details in the log of your Home Assistant instance.\n\nPlease ensure that you are running the Home Assistant installation with the correct user who has write access to the local file system.\n\nIf you are running Home Assistant in a Docker container, ensure that you are running the container with the correct user and that the container has access to the local file system.\n\nPlease check your installation and restart the setup of this integration once access to the local file system is possible."
+      "no_filesystem_access": "This integration requires access to the local file system of your HomeAssistant installation to store a key for your Senec account.\n\nTo do this, a subfolder will be created in the '.storage/' folder. However, this is currently not possible. An internal test failed. You can find details in the log of your Home Assistant instance.\n\nPlease ensure that you are running the Home Assistant installation with the correct user who has write access to the local file system.\n\nIf you are running Home Assistant in a Docker container, ensure that you are running the container with the correct user and that the container has access to the local file system.\n\nPlease check your installation and restart the setup of this integration once access to the local file system is possible.",
+      "invalid_totp_secret": "The provided OTP-auth-Secret could not be interpreted"
     },
     "error": {
       "login_failed": "Login failed - please check username and/or password",
       "cannot_connect": "Failed to connect",
-      "unknown": "Unknown error"
+      "unknown": "Unknown error",
+      "invalid_totp_secret": "OTP-auth-Secret invalid"
     },
     "step": {
       "user": {
@@ -69,6 +71,7 @@
           "name": "Display name",
           "username": "Your 'mein-senec.de' username",
           "password": "Your 'mein-senec.de' password",
+          "totp_secret": "Your 'mein-senec.de' OTP-auth-Secret (if you have been forced to configure MFA)",
           "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4|P4)]"
         }
       },
