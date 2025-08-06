@@ -14,7 +14,7 @@ from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.loader import Integration, async_get_integration
 
-from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util
+from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
     SENEC_SECTION_BMS_CELLS,
@@ -135,8 +135,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         # we need to log in into the SenecApp and authenticate the user via the web-portal
-        await coordinator.senec.authenticate_all()
-        _LOGGER.info(f"authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
+        try:
+            await coordinator.senec.authenticate_all()
+            _LOGGER.info(f"authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
+        except ReConfigurationRequired:
+            _LOGGER.warning("ReConfigurationRequired - we need to re-authenticate the user")
+            # we will not do this here, but let the HomeAssistant handle this for us
+            # by calling the async_start_reauth() method on the config_entry
+            hass.add_job(config_entry.async_start_reauth, hass)
 
     # HA can check if we can make an initial data refresh and report the state
     # back to HA (we don't have to code this by ourselves, HA will do this for us)
@@ -321,12 +327,17 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # SO to get out of this mess, we will store the master_plant_id in our config entry and use this as our
             # general key - then when we access the web-portal, we will use assigned serial_number to the master_plant_id
             # and then query the web-portal anlagenNummer 0,1,2 ... till we find the one with the matching serial_number
-            self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_create_clientsession(hass),
-                                     app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
-                                     lang=hass.config.language.lower(),
-                                     options=opt,
-                                     storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
-                                     integ_version=self._integration_version)
+            try:
+                self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_create_clientsession(hass),
+                                         app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
+                                         lang=hass.config.language.lower(),
+                                         options=opt,
+                                         storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
+                                         integ_version=self._integration_version)
+            except ReConfigurationRequired as exc:
+                _LOGGER.warning(f"SenecOnline could not be created: {type(exc)} - {exc}")
+                hass.add_job(config_entry.async_start_reauth, hass)
+
             self._warning_counter = 0
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
 

@@ -5,7 +5,6 @@ import calendar
 import copy
 import hashlib
 import json
-# import pyotp
 import logging
 import os
 import random
@@ -2914,6 +2913,9 @@ def app_get_utc_date_end(year, month:int = 12, day:int = -1):
     #return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
     return (datetime(year, month, day, 0, 0, 0) + timedelta(days=1)).astimezone(timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
+class ReConfigurationRequired(Exception):
+    """The provided TOTP Secret could not be validated"""
+
 class SenecOnline:
 
     USE_DEFAULT_USER_AGENT:Final = True
@@ -2973,7 +2975,23 @@ class SenecOnline:
 
         self._SENEC_USERNAME = user
         self._SENEC_PASSWORD = pwd
-        self._SENEC_TOTP = totp
+
+        if totp is not None:
+            # make sure that the TOTP secret is a string without spaces
+            if ' ' in totp:
+                totp  = totp.replace(' ', '')
+
+            import pyotp
+            try:
+                if len(pyotp.TOTP(totp).now()) != 6:
+                    raise ValueError("Invalid TOTP secret length")
+            except BaseException as exc:
+                _LOGGER.error(f"Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc)} - {exc}")
+                totp = None
+                raise ReConfigurationRequired(exc)
+        
+        # if we passed all tests, we can set the propperty
+        self._SENEC_TOTP_SECRET = totp
 
         ###################################
         # mein-senec.de
@@ -3044,7 +3062,6 @@ class SenecOnline:
         # OpenID related fields…
         self.APP_OPENID_CLIENT_ID: Final        = "endcustomer-app-frontend"
         self.APP_REDIRECT_KEYCLOAK_URI: Final   = "senec-app-auth://keycloak.prod"
-        self.APP_REDIRECT_OTP_URI: Final        = "https://sso.senec.com/realms/senec/login-actions/authenticate"
         #self.APP_SCOPE: Final           = "email roles profile web-origins meinsenec openid"
         # based on the feedback from @ledermann we can use reduced scope
         self.APP_SCOPE: Final           = "roles profile meinsenec"
@@ -3445,6 +3462,33 @@ class SenecOnline:
     #####################
     # fetch/refresh access_token
     #####################
+    def _parse_login_action_form_url(self, html_content):
+        # that's quite evil - parsing HTML via RegEx
+        form_match = re.search(r'<form[^>]*action="([^"]+)"[^>]*>(.*?)</form>', html_content, re.DOTALL | re.IGNORECASE)
+        if form_match:
+            form_content = form_match.group(2)
+            # Check if the form contains both username and password inputs
+            has_username = re.search(r'<input[^>]*(?:name|id)=["\']?(?:username|user|email)["\']?[^>]*>', form_content, re.IGNORECASE)
+            has_password = re.search(r'<input[^>]*(?:name|id)=["\']?password["\']?[^>]*>', form_content, re.IGNORECASE)
+            if has_username and has_password:
+                # This is the login form we're looking for
+                return form_match.group(1)
+
+        return None
+
+    def _parse_totp_action_form_url(self, html_content):
+        # that's quite evil - parsing HTML via RegEx
+        form_match = re.search(r'<form[^>]*action="([^"]+)"[^>]*>(.*?)</form>', html_content, re.DOTALL | re.IGNORECASE)
+        if form_match:
+            form_content = form_match.group(2)
+            # Check if the form contains the otp-code input field
+            has_otp = re.search(r'<input[^>]*(?:name|id)=["\']?(?:otp)["\']?[^>]*>', form_content, re.IGNORECASE)
+            if has_otp:
+                # This is the otp-code-input form we're looking for
+                return form_match.group(1)
+
+        return None
+
     async def _initial_token_request_01_start(self):
         # looks like that 'state' and 'nonce' does not really have a meaning in the OpenID impl from SENEC…
         # ok - state is anyhow an object for us - which we will get back in the redirect URL
@@ -3472,26 +3516,13 @@ class SenecOnline:
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     html_content = await res.text()
-                    # that's quite evil - parsing HTML via RegEx
-
-                    # the simple variant, just take ANY form..
-                    # match = re.search(r'<form[^>]*action="([^"]+)"', html_content)
-                    # the_form_action_url = match.group(1) if match else None
-
-                    # the complex one, search for username & password inputs
-                    form_match = re.search(r'<form[^>]*action="([^"]+)"[^>]*>(.*?)</form>', html_content, re.DOTALL | re.IGNORECASE)
-                    the_form_action_url = None
-                    if form_match:
-                        form_content = form_match.group(2)
-                        # Check if the form contains both username and password inputs
-                        has_username = re.search(r'<input[^>]*(?:name|id)=["\']?(?:username|user|email)["\']?[^>]*>', form_content, re.IGNORECASE)
-                        has_password = re.search(r'<input[^>]*(?:name|id)=["\']?password["\']?[^>]*>', form_content, re.IGNORECASE)
-                        if has_username and has_password:
-                            # This is the login form we're looking for
-                            the_form_action_url = form_match.group(1)
-
+                    the_form_action_url = self._parse_login_action_form_url(html_content)
                     if the_form_action_url:
-                        await self._initial_token_request_02_post_login(the_form_action_url)
+                        login_data = {
+                            "username": self._SENEC_USERNAME,
+                            "password": self._SENEC_PASSWORD
+                        }
+                        await self._initial_token_request_02_post_login(accept_http_200=True, form_action_url=the_form_action_url, post_data=login_data)
                     else:
                         _LOGGER.info(f"initial_token_request_01_start(): did not find the expected form action URL in the response HTML! {html_content}")
                 else:
@@ -3499,29 +3530,41 @@ class SenecOnline:
             except BaseException as ex:
                 _LOGGER.debug(f"initial_token_request_01_start(): {type(ex)} - {ex}")
 
-    async def _initial_token_request_02_post_login(self, form_action_url):
+
+    async def _initial_token_request_02_post_login(self, accept_http_200:bool, form_action_url, post_data:dict):
         req_headers = self._default_app_web_headers.copy()
         req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
         #req_headers["Host"]             = "sso.senec.com"
         req_headers["Content-Type"]     = "application/x-www-form-urlencoded"
         req_headers["Cache-Control"]    = "max-age=0"
-        login_data= {
-            "username": self._SENEC_USERNAME,
-            "password": self._SENEC_PASSWORD
-        }
 
-        async with self.web_session.post(form_action_url, data=login_data, allow_redirects=False, headers=req_headers) as res:
+        async with self.web_session.post(form_action_url, data=post_data, allow_redirects=False, headers=req_headers) as res:
             try:
-                _LOGGER.debug(f"_initial_token_request_02_post_login(): requesting: {form_action_url}")
+                if accept_http_200:
+                    _LOGGER.debug(f"_initial_token_request_02_post_login(): requesting: {form_action_url}")
+                else:
+                    _LOGGER.debug(f"_initial_token_request_02_post_login(): SEND OTP CODE requesting: {form_action_url}")
+
                 res.raise_for_status()
-                if res.status == 302:
+                # checking if OTP code must be submitted
+                if accept_http_200 and res.status in [200, 201, 202, 204, 205]:
+                    html_content = await res.text()
+                    the_form_action_url = self._parse_totp_action_form_url(html_content)
+                    if the_form_action_url:
+                        if self._SENEC_TOTP_SECRET is not None:
+                            import pyotp
+                            otp_data = {"otp": pyotp.TOTP(self._SENEC_TOTP_SECRET).now()}
+                            await self._initial_token_request_02_post_login(accept_http_200=False, form_action_url=the_form_action_url, post_data=otp_data)
+                        else:
+                            _LOGGER.error(f"_initial_token_request_02_post_login(): TOTP Code required, but not configured/provided - need RECONFIG!")
+                            raise ReConfigurationRequired("TOTP Code required, but not configured/provided - need RECONFIG")
+                    else:
+                        _LOGGER.info(f"_initial_token_request_02_post_login(): did not find the expected form action URL in the response HTML! {html_content}")
+
+                elif res.status == 302:
                     location = res.headers.get("Location")
                     if location:
-                        if location.startswith(self.APP_REDIRECT_KEYCLOAK_URI):
-                            _LOGGER.debug(f"_initial_token_request_02_post_login(): received an expected redirect to: {location}")
-                            await self._initial_token_request_03_get_token(location)
-                        else:
-                            _LOGGER.error(f"_initial_token_request_02_post_login(): received UNEXPECTED redirect to: {location}")
+                        await self._initial_token_request_03_get_token(location)
                     else:
                         _LOGGER.info(f"_initial_token_request_02_post_login(): no 'Location' in response Header")
                 else:
@@ -3530,35 +3573,6 @@ class SenecOnline:
             except BaseException as ex:
                 _LOGGER.info(f"_initial_token_request_02_post_login(): {type(ex)} - {ex}")
 
-    # async def _initial_token_request_02_post_otp(self, form_action_url):
-    #
-    #     totp = pyotp.TOTP("self._SENEC_USER_OTP_SECRET")
-    #
-    #     req_headers = self._default_app_web_headers.copy()
-    #     req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
-    #     #req_headers["Host"]             = "sso.senec.com"
-    #     req_headers["Content-Type"]     = "application/x-www-form-urlencoded"
-    #     req_headers["Cache-Control"]    = "max-age=0"
-    #     otp_data= {
-    #         "code": totp.now(),  # generate the current TOTP code
-    #     }
-    #
-    #     async with self.web_session.post(form_action_url, data=otp_data, allow_redirects=False, headers=req_headers) as res:
-    #         try:
-    #             _LOGGER.debug(f"_initial_token_request_02_post_otp(): requesting: {form_action_url}")
-    #             res.raise_for_status()
-    #             if res.status == 302:
-    #                 location = res.headers.get("Location")
-    #                 if location:
-    #                     _LOGGER.debug(f"_initial_token_request_02_post_otp(): received an expected redirect to: {location}")
-    #                     await self._initial_token_request_03_get_token(location)
-    #                 else:
-    #                     _LOGGER.info(f"_initial_token_request_02_post_otp(): no 'Location' in response Header")
-    #             else:
-    #                 _LOGGER.info(f"_initial_token_request_02_post_otp(): unexpected [302] response code: {res.status} - {res}")
-    #
-    #         except BaseException as ex:
-    #             _LOGGER.info(f"_initial_token_request_02_post_otp(): {type(ex)} - {ex}")
 
     async def _initial_token_request_03_get_token(self, redirect):
         if redirect.startswith(self.APP_REDIRECT_KEYCLOAK_URI):

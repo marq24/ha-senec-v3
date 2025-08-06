@@ -79,6 +79,10 @@
       "optional_websetup_required_info": {
         "title": "Bitte beachte!",
         "description": "Dein SENEC.Home V2/V3-System hat leider keine Langzeit-Statistik-Daten bereitgestellt (z.b. 'Gesamtmenge Selbst erzeugter Strom').\n\n\nDu hast die Möglichkeit mit dieser Integration einen zusätzlichen 'WEB.API: mein-senec.de Portal' Integrationseintrag hinzuzufügen, um diese fehlenden Daten vom Mein-SENEC.Webportal zu beziehen.\n\n\nDie Verwendung der WebAPI ist aber nur eine Option! Alternativ können diese Daten auch über die Home Assistent 'Riemann-Integral' oder 'PowerCalc' Platformen selbst errechnet werden. mehr hierzu findest Du unter https://github.com/marq24/ha-senec-v3/blob/master/docs/STATSENSORS.md"
+      },
+      "reauth_confirm": {
+        "title": "Re-Authentifizierung erforderlich",
+        "description": "Deinen Zugang zu mein-senec.de erfordert einen MFA-Token.\n\nDeswegen ist eine Re-Authentifizierung erforderlich, um die Verbindung zu Deinem mein-senec.de Konto aufrechtzuerhalten. Bitte gib deine Zugangsdaten erneut ein."
       }
     }
   },

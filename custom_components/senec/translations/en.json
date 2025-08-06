@@ -78,6 +78,10 @@
       "optional_websetup_required_info": {
         "title": "Important !",
         "description": "Your SENEC.Home V2/V3 System did not provide any long term statistic data (like total generated solar power).\n\n\nWith this integration you have the option to add an additional 'WEB.API: mein-senec.de Portal' integration entry in order to collect this data from the MySENEC.WebPortal.\n\n\nHowever, using the WebAPI is only one option! Alternatively, this data can also be calculated using the Home Assistant 'Riemann sum integral' or 'PowerCalc' platforms. You can find more about this at https://github.com/marq24/ha-senec-v3/blob/master/docsZSTATSENSORS.md"
+      },
+      "reauth_confirm": {
+        "title": "Re-Authentication required",
+        "description": "Your access to mein-senec.de requires an MFA token.\n\nTherefore, reauthentication is required to maintain the connection to your mein-senec.de account. Please enter your login credentials again."
       }
     }
   },

@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 from urllib.parse import urlparse, unquote, parse_qs
 
 import voluptuous as vol
@@ -463,6 +463,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 #validate, if the 'totp_entry' can be processed by the lib
                 if totp_entry is not None:
+
+                    # make sure that the provided secret will not contain any spaces...
+                    totp_entry = totp_entry.replace(' ', '')
                     try:
                         import pyotp
                         totp_test = pyotp.TOTP(totp_entry)
@@ -476,7 +479,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self._errors[CONF_TOTP] = "invalid_totp_secret"
 
             if CONF_TOTP not in self._errors:
-                # when the user has multiple masters, the auto-detect does
+                # when the user has multiple masters, the auto-detect-code does
                 # not work - so we allow the specification of the AnlagenNummer
                 master_plant_val = user_input[CONF_DEV_MASTER_NUM]
                 if master_plant_val == 'auto':
@@ -573,6 +576,25 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_optional_websetup_required_info(self, user_input=None):
         return self.async_create_entry(title=self._xname, data=self._xdata)
+
+    async def async_step_reauth(self, entry_data: Mapping[str, Any]):
+        """Handle re-authentication"""
+        self.reauth_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None):
+        """Dialog that informs the user that reauth is required."""
+        if user_input is None:
+            return self.async_show_form(step_id="reauth_confirm", data_schema=vol.Schema({}),)
+
+        if self.reauth_entry is not None and self.reauth_entry.data is not None:
+            self._default_name      = self.reauth_entry.data[CONF_NAME]
+            self._default_interval  = self.reauth_entry.data[CONF_SCAN_INTERVAL]
+            self._default_user      = self.reauth_entry.data[CONF_USERNAME]
+            self._default_pwd       = self.reauth_entry.data[CONF_PASSWORD]
+            self._default_totp      = self.reauth_entry.data.get(CONF_TOTP, "") # TOTP can be empty!!!
+            self._default_master_plant_number = self.reauth_entry.data[CONF_DEV_MASTER_NUM]
+        return await self.async_step_websetup()
 
 #     @staticmethod
 #     @callback
