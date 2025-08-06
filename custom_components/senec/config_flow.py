@@ -453,16 +453,22 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # check, if the user has pasted a TOTP-Secret URL
                     if totp_entry.startswith("otpauth://"):
                         parsed_uri = urlparse(unquote(totp_entry))
-                        totp_entry = parse_qs(parsed_uri.query).get('secret', [None])[0]
+                        pq = parse_qs(parsed_uri.query)
+                        issuer = pq.get('issuer', [""])[0]
+                        if issuer.lower() == "senec":
+                            totp_entry = pq.get('secret', [None])[0]
+                        else:
+                            totp_entry = None
+                            self._errors[CONF_TOTP] = "invalid_totp_secret"
 
                 #validate, if the 'totp_entry' can be processed by the lib
                 if totp_entry is not None:
                     try:
                         import pyotp
-                        totp002 = pyotp.TOTP(totp_entry)
-                        current_otp = totp002.now()
-                        if len(current_otp) == 6:
-                            _LOGGER.debug(f"async_step_websetup(): current TOTP code: {current_otp}")
+                        totp_test = pyotp.TOTP(totp_entry)
+                        check_otp = totp_test.now()
+                        if len(check_otp) == 6:
+                            _LOGGER.debug(f"async_step_websetup(): current TOTP code: {check_otp}")
                         else:
                             self._errors[CONF_TOTP] = "invalid_totp_secret"
                     except ValueError as e:
