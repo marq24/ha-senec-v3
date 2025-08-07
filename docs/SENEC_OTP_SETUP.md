@@ -39,3 +39,11 @@ Once you have completed this step - there is __no way back!__. From now on, you 
 __If you have completed the MFA authentication, via the mein-senec.de website, then you must provide the used secret__ (the copied plain text) __in the configuration of this HA integration__. The latest version of this integration will allow you to specify the OTA-auth-secret in the configuration.
 
 ![screenshot_tokens](../images/otp005.png)
+
+## How to get the required otp-auth-secret from a QR-Code
+
+When you have saved the QR-Code image, you can use a small tool I have created here in a separate GitHub project [QR-Code Reader, to decode the QR-Code and extract the `secret` you need for the integration](https://marq24.github.io/qr-code-decoder/).
+
+This tool works strictly in your browser and does not store any data. The current version also supports to decode a QR-Code that you can generate from your Google Authenticator App (Export Codes functionality). Currently, it's unknown if such a functionality is also available for Microsoft Authenticator or other apps.
+
+[The source code of this tool is of course also available here on GitHub](https://github.com/marq24/qr-code-decoder) - feel free to make a PR.

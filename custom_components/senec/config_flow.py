@@ -48,7 +48,8 @@ from .const import (
     SYSTYPE_NAME_WEBAPI,
 
     SETUP_SYS_TYPE,
-    CONF_TOTP,
+    CONF_TOTP_SECRET,
+    CONF_TOTP_URL,
     CONF_DEV_TYPE,
     CONF_DEV_TYPE_INT,
     CONF_USE_HTTPS,
@@ -163,7 +164,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_interval  = entry_data[CONF_SCAN_INTERVAL]
             self._default_user      = entry_data[CONF_USERNAME]
             self._default_pwd       = entry_data[CONF_PASSWORD]
-            self._default_totp      = entry_data.get(CONF_TOTP, "") # TOTP can be empty!!!
+            self._default_totp      = entry_data.get(CONF_TOTP_URL, entry_data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_master_plant_number = entry_data[CONF_DEV_MASTER_NUM]
             return await self.async_step_websetup()
 
@@ -445,13 +446,16 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             scan_entry = max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL_WEB)
             user_entry = user_input[CONF_USERNAME]
             pwd_entry = user_input[CONF_PASSWORD]
-            totp_entry = user_input[CONF_TOTP]
+            totp_entry = user_input[CONF_TOTP_SECRET]
+            totp_url_entry = None
+
             if totp_entry is not None:
                 if len(totp_entry) == 0:
                     totp_entry = None
                 else:
                     # check, if the user has pasted a TOTP-Secret URL
                     if totp_entry.startswith("otpauth://"):
+                        totp_url_entry = totp_entry
                         parsed_uri = urlparse(unquote(totp_entry))
                         pq = parse_qs(parsed_uri.query)
                         issuer = pq.get('issuer', [""])[0]
@@ -459,11 +463,11 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             totp_entry = pq.get('secret', [None])[0]
                         else:
                             totp_entry = None
-                            self._errors[CONF_TOTP] = "invalid_totp_secret"
+                            self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
+
 
                 #validate, if the 'totp_entry' can be processed by the lib
                 if totp_entry is not None:
-
                     # make sure that the provided secret will not contain any spaces...
                     totp_entry = totp_entry.replace(' ', '')
                     try:
@@ -473,12 +477,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         if len(check_otp) == 6:
                             _LOGGER.debug(f"async_step_websetup(): current TOTP code: {check_otp}")
                         else:
-                            self._errors[CONF_TOTP] = "invalid_totp_secret"
+                            self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
                     except ValueError as e:
                         _LOGGER.error(f"async_step_websetup(): Invalid TOTP secret: {type(e)} - {e}")
-                        self._errors[CONF_TOTP] = "invalid_totp_secret"
+                        self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
 
-            if CONF_TOTP not in self._errors:
+                    if user_entry is not None and totp_url_entry is None and CONF_TOTP_SECRET not in self._errors:
+                        totp_url_entry = f"otpauth://totp/SENEC:{user_entry.strip().replace.all('@', '%40')}?secret={totp_entry}&digits=6&algorithm=SHA1&issuer=SENEC&period=30"
+
+            if CONF_TOTP_SECRET not in self._errors:
                 # when the user has multiple masters, the auto-detect-code does
                 # not work - so we allow the specification of the AnlagenNummer
                 master_plant_val = user_input[CONF_DEV_MASTER_NUM]
@@ -503,7 +510,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_HOST: user_entry,
                         CONF_USERNAME: user_entry,
                         CONF_PASSWORD: pwd_entry,
-                        CONF_TOTP: totp_entry,
+                        CONF_TOTP_SECRET: totp_entry,
+                        CONF_TOTP_URL: totp_url_entry,
                         CONF_SCAN_INTERVAL: scan_entry,
                         CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
                         CONF_DEV_TYPE: self._device_type,
@@ -520,11 +528,11 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
                     self._errors[CONF_USERNAME]
                     self._errors[CONF_PASSWORD]
-                    if CONF_TOTP in self._errors:
-                        self._errors[CONF_TOTP]
+                    if CONF_TOTP_SECRET in self._errors:
+                        self._errors[CONF_TOTP_SECRET]
             else:
                 _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
-                self._errors[CONF_TOTP]
+                self._errors[CONF_TOTP_SECRET]
         else:
             user_input = {}
             if all(x is not None for x in
@@ -533,14 +541,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 user_input[CONF_NAME] = self._default_name
                 user_input[CONF_USERNAME] = self._default_user
                 user_input[CONF_PASSWORD] = self._default_pwd
-                user_input[CONF_TOTP] = self._default_totp
+                user_input[CONF_TOTP_SECRET] = self._default_totp
                 user_input[CONF_DEV_MASTER_NUM] = str(self._default_master_plant_number)
                 user_input[CONF_SCAN_INTERVAL] = self._default_interval
             else:
                 user_input[CONF_NAME] = DEFAULT_NAME_WEB
                 user_input[CONF_USERNAME] = DEFAULT_USERNAME
                 user_input[CONF_PASSWORD] = ""
-                user_input[CONF_TOTP] = ""
+                user_input[CONF_TOTP_SECRET] = ""
                 user_input[CONF_DEV_MASTER_NUM] = "auto"
                 if self._selected_system == SYSTYPE_SENECV4:
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
@@ -559,7 +567,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
                     vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
                     vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
-                    vol.Optional(CONF_TOTP, default=user_input[CONF_TOTP]): str,
+                    vol.Optional(CONF_TOTP_SECRET, default=user_input[CONF_TOTP_SECRET]): str,
                     vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
                         selector.SelectSelector(
                             selector.SelectSelectorConfig(
@@ -592,7 +600,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_interval  = self.reauth_entry.data[CONF_SCAN_INTERVAL]
             self._default_user      = self.reauth_entry.data[CONF_USERNAME]
             self._default_pwd       = self.reauth_entry.data[CONF_PASSWORD]
-            self._default_totp      = self.reauth_entry.data.get(CONF_TOTP, "") # TOTP can be empty!!!
+            self._default_totp      = self.reauth_entry.data.get(CONF_TOTP_URL, self.reauth_entry.data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_master_plant_number = self.reauth_entry.data[CONF_DEV_MASTER_NUM]
         return await self.async_step_websetup()
 

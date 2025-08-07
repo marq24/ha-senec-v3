@@ -41,7 +41,8 @@ from .const import (
     SYSTYPE_NAME_INVERTER,
     SYSTYPE_NAME_WEBAPI,
 
-    CONF_TOTP,
+    CONF_TOTP_SECRET,
+    CONF_TOTP_URL,
     CONF_USE_HTTPS,
     CONF_DEV_TYPE,
     CONF_DEV_MODEL,
@@ -244,7 +245,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # user & pwd can be changed via the options...
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
-            totp = config_entry.data[CONF_TOTP] if CONF_TOTP in config_entry.data else None
+            totp = config_entry.data[CONF_TOTP_SECRET] if CONF_TOTP_SECRET in config_entry.data else None
 
             # defining the default query options for APP & WEB...
             opt = {
