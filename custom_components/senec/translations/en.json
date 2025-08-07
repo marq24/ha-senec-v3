@@ -40,12 +40,14 @@
     "abort": {
       "already_configured": "Integration is already configured",
       "reconfigure_successful": "Re-configuration was successful",
-      "no_filesystem_access": "This integration requires access to the local file system of your HomeAssistant installation to store a key for your Senec account.\n\nTo do this, a subfolder will be created in the '.storage/' folder. However, this is currently not possible. An internal test failed. You can find details in the log of your Home Assistant instance.\n\nPlease ensure that you are running the Home Assistant installation with the correct user who has write access to the local file system.\n\nIf you are running Home Assistant in a Docker container, ensure that you are running the container with the correct user and that the container has access to the local file system.\n\nPlease check your installation and restart the setup of this integration once access to the local file system is possible."
+      "no_filesystem_access": "This integration requires access to the local file system of your HomeAssistant installation to store a key for your Senec account.\n\nTo do this, a subfolder will be created in the '.storage/' folder. However, this is currently not possible. An internal test failed. You can find details in the log of your Home Assistant instance.\n\nPlease ensure that you are running the Home Assistant installation with the correct user who has write access to the local file system.\n\nIf you are running Home Assistant in a Docker container, ensure that you are running the container with the correct user and that the container has access to the local file system.\n\nPlease check your installation and restart the setup of this integration once access to the local file system is possible.",
+      "invalid_totp_secret": "The provided OTP-auth-Secret could not be interpreted"
     },
     "error": {
       "login_failed": "Login failed - please check username and/or password",
       "cannot_connect": "Failed to connect",
-      "unknown": "Unknown error"
+      "unknown": "Unknown error",
+      "invalid_totp_secret": "OTP-auth-Secret invalid"
     },
     "step": {
       "user": {
@@ -64,17 +66,22 @@
         }
       },
       "websetup": {
-        "description": "Please provide your mein-senec.de login credentials in order to connect home assistant with your mein-senec.de account.\n\n\nPlease note, that currently this is the only option for SENEC.Home V4|P4 Users - Sorry!\n\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
+        "description": "### Your login credentials for mein-senec.de\n\nPlease provide your mein-senec.de login credentials (eMail and password) in order to connect home assistant with your mein-senec.de account. These are then saved __as plain text__ (unencrypted) in your Home Assistant configuration for this integration.\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3\n\n\n### Important information about MFA/OTP/TOTP @ SENEC\n\nIf you have not yet received a request to set up an additional factor (MFA) to access mein-senec.de, entering the OTP auth secret is currently not required.\n\n\nYou should familiarize yourself with the necessary steps now so that you can continue to use this integration in the future. You can find them at https://github.com/marq24/ha-senec-v3/blob/master/docs/SENEC_OTP_SETUP.md\n\n\nIf you have already set up MFA access, please ensure that you have your 'secret key' for access and enter it under 'OTP-auth-Secret' during setup. You can also find details on the SENEC_OTP_SETUP.md linked above",
         "data": {
           "name": "Display name",
           "username": "Your 'mein-senec.de' username",
           "password": "Your 'mein-senec.de' password",
+          "totp_secret": "Your 'mein-senec.de' OTP-auth-Secret (if you have been forced to configure MFA)",
           "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4|P4)]"
         }
       },
       "optional_websetup_required_info": {
         "title": "Important !",
         "description": "Your SENEC.Home V2/V3 System did not provide any long term statistic data (like total generated solar power).\n\n\nWith this integration you have the option to add an additional 'WEB.API: mein-senec.de Portal' integration entry in order to collect this data from the MySENEC.WebPortal.\n\n\nHowever, using the WebAPI is only one option! Alternatively, this data can also be calculated using the Home Assistant 'Riemann sum integral' or 'PowerCalc' platforms. You can find more about this at https://github.com/marq24/ha-senec-v3/blob/master/docsZSTATSENSORS.md"
+      },
+      "reauth_confirm": {
+        "title": "Re-Authentication required",
+        "description": "Your access to mein-senec.de requires an MFA token.\n\nTherefore, reauthentication is required to maintain the connection to your mein-senec.de account. Please enter your login credentials again."
       }
     }
   },
@@ -1162,7 +1169,7 @@
     },
     "button": {
       "system_reboot": {"name": "Reboot System"},
-      "delete_cache": {"name":  "Delete session data"}
+      "delete_cache": {"name": "Delete session data"}
     }
   }
 }

@@ -14,7 +14,7 @@ from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.loader import Integration, async_get_integration
 
-from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util
+from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
     SENEC_SECTION_BMS_CELLS,
@@ -41,6 +41,8 @@ from .const import (
     SYSTYPE_NAME_INVERTER,
     SYSTYPE_NAME_WEBAPI,
 
+    CONF_TOTP_SECRET,
+    CONF_TOTP_URL,
     CONF_USE_HTTPS,
     CONF_DEV_TYPE,
     CONF_DEV_MODEL,
@@ -100,7 +102,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             user = config_entry.data.get(CONF_USERNAME, None)
             pwd = config_entry.data.get(CONF_PASSWORD, None)
             if user is not None:
-                web_api = SenecOnline(user=user, pwd=pwd, web_session=None,
+                web_api = SenecOnline(user=user, pwd=pwd, totp=None, web_session=None,
                                       storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
                                       integ_version=f"MIGRATION_v{config_entry.version}.{config_entry.minor_version}_to_v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
 
@@ -134,8 +136,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         # we need to log in into the SenecApp and authenticate the user via the web-portal
-        await coordinator.senec.authenticate_all()
-        _LOGGER.info(f"authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
+        try:
+            await coordinator.senec.authenticate_all()
+            _LOGGER.info(f"authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
+        except ReConfigurationRequired:
+            _LOGGER.warning("ReConfigurationRequired - we need to re-authenticate the user")
+            # we will not do this here, but let the HomeAssistant handle this for us
+            # by calling the async_start_reauth() method on the config_entry
+            hass.add_job(config_entry.async_start_reauth, hass)
 
     # HA can check if we can make an initial data refresh and report the state
     # back to HA (we don't have to code this by ourselves, HA will do this for us)
@@ -238,6 +246,18 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
 
+            is_totp_already_used = config_entry.data.get("_TOTP_ALREADY_USED", False)
+            totp = config_entry.data[CONF_TOTP_SECRET] if CONF_TOTP_SECRET in config_entry.data else None
+
+            must_purge_access_token = False
+            if totp is not None and not is_totp_already_used:
+                # looks like that the TOTP secret is present in the config, but this is the first
+                # time that it was detected...
+                new_data = {**config_entry.data, '_TOTP_ALREADY_USED': True}
+                hass.async_create_task(hass.config_entries.async_update_entry(config_entry, data=new_data))
+                _LOGGER.info("TOTP secret configured for the first time - we must purge any existing auth-tokens")
+                must_purge_access_token = True
+
             # defining the default query options for APP & WEB...
             opt = {
                 # by default we do not query the Wallbox data for WEB/API -> the SenecLOCAL will turn this on/off
@@ -319,12 +339,21 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # SO to get out of this mess, we will store the master_plant_id in our config entry and use this as our
             # general key - then when we access the web-portal, we will use assigned serial_number to the master_plant_id
             # and then query the web-portal anlagenNummer 0,1,2 ... till we find the one with the matching serial_number
-            self.senec = SenecOnline(user=user, pwd=pwd, web_session=async_create_clientsession(hass),
-                                     app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
-                                     lang=hass.config.language.lower(),
-                                     options=opt,
-                                     storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
-                                     integ_version=self._integration_version)
+            try:
+                self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_create_clientsession(hass),
+                                         app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
+                                         lang=hass.config.language.lower(),
+                                         options=opt,
+                                         storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
+                                         integ_version=self._integration_version)
+            except ReConfigurationRequired as exc:
+                _LOGGER.warning(f"SenecOnline could not be created: {type(exc)} - {exc}")
+                hass.add_job(config_entry.async_start_reauth, hass)
+
+            if must_purge_access_token:
+                _LOGGER.info("init(): must_purge_access_token...")
+                hass.async_create_task(self.senec._write_token_to_storage(token_dict=None))
+
             self._warning_counter = 0
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
 
