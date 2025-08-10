@@ -219,16 +219,16 @@
         "name": "Spare Capacity"
       },
       "wallbox_1_set_icmax": {
-        "name": "Wallbox I ICMAX"
+        "name": "Wallbox I ICMIN"
       },
       "wallbox_2_set_icmax": {
-        "name": "Wallbox II ICMAX"
+        "name": "Wallbox II ICMIN"
       },
       "wallbox_3_set_icmax": {
-        "name": "Wallbox III ICMAX"
+        "name": "Wallbox III ICMIN"
       },
       "wallbox_4_set_icmax": {
-        "name": "Wallbox IV ICMAX"
+        "name": "Wallbox IV ICMIN"
       },
       "wallbox_1_set_idefault": {
         "name": "Wallbox I IDEFAULT"
@@ -339,6 +339,42 @@
       },
       "wallbox_4_prohibit_usage": {
         "name": "Wallbox IV locked"
+      },
+      "wallbox_1_ev_connected": {
+        "name": "Wallbox I EV Connected"
+      },
+      "wallbox_2_ev_connected": {
+        "name": "Wallbox II EV Connected"
+      },
+      "wallbox_3_ev_connected": {
+        "name": "Wallbox III EV Connected"
+      },
+      "wallbox_4_ev_connected": {
+        "name": "Wallbox IV EV Connected"
+      },
+      "wallbox_1_ev_charging": {
+        "name": "Wallbox I EV Charging"
+      },
+      "wallbox_2_ev_charging": {
+        "name": "Wallbox II EV Charging"
+      },
+      "wallbox_3_ev_charging": {
+        "name": "Wallbox III EV Charging"
+      },
+      "wallbox_4_ev_charging": {
+        "name": "Wallbox IV EV Charging"
+      },
+      "wallbox_1_ev_errors": {
+        "name": "Wallbox I Error"
+      },
+      "wallbox_2_ev_errors": {
+        "name": "Wallbox II Error"
+      },
+      "wallbox_3_ev_errors": {
+        "name": "Wallbox III Error"
+      },
+      "wallbox_4_ev_errors": {
+        "name": "Wallbox IV Error"
       },
       "fan_inv_lv": {
         "name": "Fan LV-Inverter"
@@ -1165,7 +1201,11 @@
       },
       "spare_capacity": {
         "name": "Spare Capacity"
-      }
+      },
+      "wallbox_1_temperature": {"name": "Wallbox I Temperature"},
+      "wallbox_2_temperature": {"name": "Wallbox II Temperature"},
+      "wallbox_3_temperature": {"name": "Wallbox III Temperature"},
+      "wallbox_4_temperature": {"name": "Wallbox IV Temperature"}
     },
     "button": {
       "system_reboot": {"name": "Reboot System"},

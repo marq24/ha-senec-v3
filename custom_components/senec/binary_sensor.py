@@ -8,9 +8,16 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_BIN_SENSOR_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
+from .const import (
+    DOMAIN,
+    MAIN_BIN_SENSOR_TYPES,
+    WEB_BIN_SENSOR_TYPES,
+    CONF_SYSTYPE_INVERTER,
+    CONF_SYSTYPE_WEB,
     ExtBinarySensorEntityDescription
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,7 +30,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No binary_sensors for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        _LOGGER.info("No binary_sensors for SENEC.WebAPI...")
+        for description in WEB_BIN_SENSOR_TYPES:
+            entity = SenecBinarySensor(coordinator, description)
+            entities.append(entity)
     else:
         for description in MAIN_BIN_SENSOR_TYPES:
             entity = SenecBinarySensor(coordinator, description)

@@ -50,6 +50,16 @@ from custom_components.senec.pysenec_ha.constants import (
 
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
+NAME: Final = "SENEC.Home V2.x/V3/V4|P4 Integration for Home Assistant"
+ISSUE_URL: Final = "https://github.com/marq24/ha-senec-v3/issues"
+STARTUP_MESSAGE: Final = f"""
+-------------------------------------------------------------------
+{NAME} - v%s
+This is a custom integration!
+If you have any issues with this you need to open an issue here:
+{ISSUE_URL}
+-------------------------------------------------------------------
+"""
 
 CONFIG_VERSION: Final = 2
 CONFIG_MINOR_VERSION: Final = 1
@@ -196,7 +206,7 @@ class ExtNumberEntityDescription(NumberEntityDescription):
     require_2408: bool = False
 
 
-WEB_NUMBER_SENSOR_TYPES = [
+WEB_NUMBER_TYPES = [
     ExtNumberEntityDescription(
         entity_registry_enabled_default=False,
         key="spare_capacity",
@@ -208,6 +218,55 @@ WEB_NUMBER_SENSOR_TYPES = [
         native_step=1,
         native_unit_of_measurement=PERCENTAGE,
         icon="mdi:battery-lock",
+    ),
+
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_set_icmax",
+        name="Wallbox I set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_set_icmax",
+        name="Wallbox II set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_set_icmax",
+        name="Wallbox III set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+    ),
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_set_icmax",
+        name="Wallbox IV set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=0.1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
     ),
 ]
 
@@ -723,6 +782,145 @@ WEB_SENSOR_TYPES = [
         name="SGReady State [CODE]",
         icon="mdi:state-machine",
     ),
+
+    # Wallbox stuff
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_state",
+        name="Wallbox I state",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_state",
+        name="Wallbox II state",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_state",
+        name="Wallbox III state",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_state",
+        name="Wallbox IV state",
+        icon="mdi:car-electric",
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_temperature",
+        name="Wallbox I temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=2,
+        icon="mdi:thermometer",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_temperature",
+        name="Wallbox II temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=2,
+        icon="mdi:thermometer",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_temperature",
+        name="Wallbox III temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=2,
+        icon="mdi:thermometer",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_temperature",
+        name="Wallbox IV temperature",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=2,
+        icon="mdi:thermometer",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+
+]
+
+WEB_BIN_SENSOR_TYPES =[
+    # Wallbox stuff
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_ev_connected",
+        name="Wallbox I EV Connected",
+        icon="mdi:connection",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_ev_connected",
+        name="Wallbox II EV Connected",
+        icon="mdi:connection",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_ev_connected",
+        name="Wallbox III EV Connected",
+        icon="mdi:connection",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_ev_connected",
+        name="Wallbox IV EV Connected",
+        icon="mdi:connection",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_ev_charging",
+        name="Wallbox I EV Connected",
+        icon="mdi:car-electric",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_ev_charging",
+        name="Wallbox II EV Charging",
+        icon="mdi:car-electric",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_ev_charging",
+        name="Wallbox III EV Charging",
+        icon="mdi:car-electric",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_ev_charging",
+        name="Wallbox IV EV Charging",
+        icon="mdi:car-electric",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_ev_errors",
+        name="Wallbox I EV Errors",
+        icon="mdi:alert-circle",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_ev_errors",
+        name="Wallbox II EV Errors",
+        icon="mdi:alert-circle",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_ev_errors",
+        name="Wallbox III EV Errors",
+        icon="mdi:alert-circle",
+    ),
+    ExtBinarySensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_ev_errors",
+        name="Wallbox IV EV Errors",
+        icon="mdi:alert-circle",
+    ),
 ]
 
 """Supported web switch types."""
@@ -732,6 +930,15 @@ WEB_SWITCH_TYPES = [
         key="sgready_enabled",
         name="SGReady",
         icon="mdi:toggle-switch",
+    ),
+
+    # WALLBOX
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_allow_intercharge",
+        name="Wallbox allow intercharge",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
     ),
 ]
 
@@ -755,7 +962,45 @@ WEB_SELECT_TYPES = [
         options=UPDATE_INTERVAL_OPTIONS,
         controls=["local_persistence", "restore_from_local_persistence"],
         entity_registry_enabled_default=True,
-    )
+    ),
+
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_mode",
+        name="Wallbox I charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_mode",
+        name="Wallbox II charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_mode",
+        name="Wallbox III charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_mode",
+        name="Wallbox IV charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+
 ]
 
 INVERTER_SENSOR_TYPES = [

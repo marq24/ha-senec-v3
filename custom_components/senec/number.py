@@ -7,11 +7,12 @@ from homeassistant.const import CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import (
     DOMAIN,
     MAIN_NUMBER_TYPES,
-    WEB_NUMBER_SENSOR_TYPES,
+    WEB_NUMBER_TYPES,
     CONF_SYSTYPE_WEB,
     CONF_SYSTYPE_INVERTER
 )
@@ -29,12 +30,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No numbers for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-        for description in WEB_NUMBER_SENSOR_TYPES:
-            entity = SenecNumber(coordinator, description)
+        for description in WEB_NUMBER_TYPES:
+            entity = SenecNumber(coordinator, description, False)
             entities.append(entity)
     else:
         for description in MAIN_NUMBER_TYPES:
-            entity = SenecNumber(coordinator, description)
+            entity = SenecNumber(coordinator, description, True)
             entities.append(entity)
 
     async_add_entities(entities)
@@ -45,9 +46,12 @@ class SenecNumber(SenecEntity, NumberEntity):
             self,
             coordinator: SenecDataUpdateCoordinator,
             description: NumberEntityDescription,
+            adjust_min_max: bool = False
     ):
         """Initialize"""
         super().__init__(coordinator=coordinator, description=description)
+        self._adjust_min_max = adjust_min_max
+
         if (hasattr(self.entity_description, 'entity_registry_enabled_default')):
             self._attr_entity_registry_enabled_default = self.entity_description.entity_registry_enabled_default
         else:
@@ -63,20 +67,21 @@ class SenecNumber(SenecEntity, NumberEntity):
         self._attr_has_entity_name = True
 
         self._internal_minmax_adjustment_needed = False
-        if key.endswith("set_icmax"):
+        if self._adjust_min_max and key.endswith("set_icmax"):
             self._internal_minmax_adjustment_needed = True
             self._internal_check_minmax_adjustment()
 
     def _internal_check_minmax_adjustment(self):
         # a_pos = int(key[8:9])-1
-        try:
-            min_max = getattr(self.coordinator.senec, self.entity_description.key + "_extrema")
-            if min_max is not None:
-                self._internal_minmax_adjustment_needed = False
-                self.entity_description.native_min_value = round(float(min_max[0]), 1)
-                self.entity_description.native_max_value = round(float(min_max[1]), 1)
-        except Exception as err:
-            _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
+        if self._adjust_min_max:
+            try:
+                min_max = getattr(self.coordinator.senec, self.entity_description.key + "_extrema")
+                if min_max is not None:
+                    self._internal_minmax_adjustment_needed = False
+                    self.entity_description.native_min_value = round(float(min_max[0]), 1)
+                    self.entity_description.native_max_value = round(float(min_max[1]), 1)
+            except Exception as err:
+                _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
 
     @property
     def native_value(self) -> float:
@@ -89,7 +94,7 @@ class SenecNumber(SenecEntity, NumberEntity):
         else:
             value = getattr(self.coordinator.senec, self.entity_description.key)
 
-        if self._internal_minmax_adjustment_needed:
+        if self._adjust_min_max and self._internal_minmax_adjustment_needed:
             self._internal_check_minmax_adjustment()
 
         if value is not None:

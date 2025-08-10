@@ -219,16 +219,16 @@
         "name": "Reservekapazität"
       },
       "wallbox_1_set_icmax": {
-        "name": "Wallbox I ICMAX"
+        "name": "Wallbox I ICMIN"
       },
       "wallbox_2_set_icmax": {
-        "name": "Wallbox II ICMAX"
+        "name": "Wallbox II ICMIN"
       },
       "wallbox_3_set_icmax": {
-        "name": "Wallbox III ICMAX"
+        "name": "Wallbox III ICMIN"
       },
       "wallbox_4_set_icmax": {
-        "name": "Wallbox IV ICMAX"
+        "name": "Wallbox IV ICMIN"
       },
       "wallbox_1_set_idefault": {
         "name": "Wallbox I IDEFAULT"
@@ -339,6 +339,42 @@
       },
       "wallbox_4_prohibit_usage": {
         "name": "Wallbox IV gesperrt"
+      },
+      "wallbox_1_ev_connected": {
+        "name": "Wallbox I EV angeschlossen"
+      },
+      "wallbox_2_ev_connected": {
+        "name": "Wallbox II EV angeschlossen"
+      },
+      "wallbox_3_ev_connected": {
+        "name": "Wallbox III EV angeschlossen"
+      },
+      "wallbox_4_ev_connected": {
+        "name": "Wallbox IV EV angeschlossen"
+      },
+      "wallbox_1_ev_charging": {
+        "name": "Wallbox I EV lädt"
+      },
+      "wallbox_2_ev_charging": {
+        "name": "Wallbox II EV lädt"
+      },
+      "wallbox_3_ev_charging": {
+        "name": "Wallbox III EV lädt"
+      },
+      "wallbox_4_ev_charging": {
+        "name": "Wallbox IV EV lädt"
+      },
+      "wallbox_1_ev_errors": {
+        "name": "Wallbox I Störung"
+      },
+      "wallbox_2_ev_errors": {
+        "name": "Wallbox II Störung"
+      },
+      "wallbox_3_ev_errors": {
+        "name": "Wallbox III Störung"
+      },
+      "wallbox_4_ev_errors": {
+        "name": "Wallbox IV Störung"
       },
       "fan_inv_lv": {
         "name": "Lüfter LV-Inverter"
@@ -1165,7 +1201,11 @@
       },
       "spare_capacity": {
         "name": "Reservekapazität"
-      }
+      },
+      "wallbox_1_temperature": {"name": "Wallbox I Temperatur"},
+      "wallbox_2_temperature": {"name": "Wallbox II Temperatur"},
+      "wallbox_3_temperature": {"name": "Wallbox III Temperatur"},
+      "wallbox_4_temperature": {"name": "Wallbox IV Temperatur"}
     },
     "button": {
       "system_reboot": {"name": "System Neustart"},

@@ -5,7 +5,7 @@ from struct import unpack, pack
 _LOGGER = logging.getLogger(__name__)
 
 _MASKED_VALUES = ["host", "username", "password", "street", "email", "phonenumber", "housenumber", "website",
-                  "app_token", "access_token", "refresh_token", "id_token",
+                  "app_token", "access_token", "refresh_token", "id_token", "totp_secret", "totp_url",
                   "maincontrollerserial", "serial", "serialnumber", "dserial",
                   "device_id", "controllerid", "systemid", "app_master_plant_id"]
 

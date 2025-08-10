@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import urlparse, unquote, parse_qs
 
+import pyotp
 import voluptuous as vol
 from aiohttp import ClientResponseError
 from homeassistant import config_entries, data_entry_flow
@@ -368,8 +369,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # SENEC.Home stuff
             else:
-                if (await self._test_connection_senec_local(host_entry, False) or
-                        await self._test_connection_senec_local(host_entry, True)):
+                if (await self._test_connection_senec_local(host_entry, True) or
+                        await self._test_connection_senec_local(host_entry, False)):
                     local_data = {
                         CONF_TYPE: CONF_SYSTYPE_SENEC,
                         CONF_NAME: name_entry,
@@ -471,7 +472,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # make sure that the provided secret will not contain any spaces...
                     totp_entry = totp_entry.replace(' ', '')
                     try:
-                        import pyotp
                         totp_test = pyotp.TOTP(totp_entry)
                         check_otp = totp_test.now()
                         if len(check_otp) == 6:

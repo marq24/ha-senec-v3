@@ -7,12 +7,13 @@ from typing import Final
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as config_val, entity_registry
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.loader import Integration, async_get_integration
+from homeassistant.loader import async_get_integration
 
 from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
 from custom_components.senec.pysenec_ha.constants import (
@@ -72,7 +73,7 @@ from .const import (
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
     SERVICE_SET_PEAKSHAVING,
-    CONFIG_VERSION, CONFIG_MINOR_VERSION, QUERY_TOTALS_KEY, QUERY_SYSTEM_DETAILS_KEY
+    CONFIG_VERSION, CONFIG_MINOR_VERSION, QUERY_TOTALS_KEY, QUERY_SYSTEM_DETAILS_KEY, STARTUP_MESSAGE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -122,16 +123,16 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
+    the_integration = await async_get_integration(hass, DOMAIN)
+    intg_version = the_integration.version if the_integration is not None else "UNKNOWN"
+    if DOMAIN not in hass.data:
+        _LOGGER.info(STARTUP_MESSAGE % intg_version)
+        hass.data.setdefault(DOMAIN, {"manifest_version": intg_version})
+
     log_scan_interval = timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
     _LOGGER.info(f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{log_scan_interval} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
 
-    if DOMAIN not in hass.data:
-        value = "UNKOWN"
-        hass.data.setdefault(DOMAIN, {"manifest_version": value})
-
     # check if we have a valid manifest_version
-    the_integration = await async_get_integration(hass, DOMAIN)
-    intg_version = the_integration.version if the_integration is not None else "UNKNOWN"
     coordinator = SenecDataUpdateCoordinator(hass, config_entry, intg_version)
 
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
@@ -145,9 +146,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             # by calling the async_start_reauth() method on the config_entry
             hass.add_job(config_entry.async_start_reauth, hass)
 
-    # HA can check if we can make an initial data refresh and report the state
-    # back to HA (we don't have to code this by ourselves, HA will do this for us)
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady
 
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
@@ -191,13 +192,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     config_entry.async_on_unload(config_entry.add_update_listener(entry_update_listener))
     return True
 
-
-async def get_integration_version(self, hass: HomeAssistant):
-    try:
-        integration: Integration = await hass.async_get_integration(DOMAIN)
-        return integration.version
-    except Exception:
-        return "UNKNOWN"
 
 # Map platforms to their corresponding search lists
 LOCAL_PLATFORM_MAPPING: Final = {
@@ -268,7 +262,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 QUERY_SYSTEM_DETAILS_KEY: False
             }
 
-            if hass is not None and config_entry.title is not None:
+            if hass is not None and config_entry.entry_id is not None and config_entry.title is not None:
                 # we do not need to listen to changed to the entity - since the integration will be automatically
                 # restarted when an Entity of the integration will be disabled/enabled via the GUI (cool!) - but for
                 # now I keep this for debugging why during initial setup of the integration the control 'spare_capacity'
@@ -279,9 +273,9 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 registry = entity_registry.async_get(hass)
 
                 if registry is not None:
-                    all_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
-                    _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_entities)}")
-                    for a_entity in all_entities:
+                    all_webapi_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
+                    _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_webapi_entities)}")
+                    for a_entity in all_webapi_entities:
                         if a_entity.disabled_by is None:
                             a_id = a_entity.entity_id
                             _LOGGER.debug(f"Entity '{a_id}' is enabled for {config_entry.title}")
@@ -319,12 +313,18 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                         _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
                                         opt[QUERY_SPARE_CAPACITY_KEY] = True
 
+                            # brute force for our wallbox stuff
+                            if not opt[QUERY_WALLBOX_KEY]:
+                                if "_wallbox_" in a_id:
+                                    _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
+                                    opt[QUERY_WALLBOX_KEY] = True
 
                             # when we have ALL, we can break the loop
                             if (opt[QUERY_PEAK_SHAVING_KEY] and
                                 opt[QUERY_SPARE_CAPACITY_KEY] and
                                 opt[QUERY_TOTALS_KEY] and
-                                opt[QUERY_SYSTEM_DETAILS_KEY]
+                                opt[QUERY_SYSTEM_DETAILS_KEY] and
+                                opt[QUERY_WALLBOX_KEY]
                             ):
                                 _LOGGER.debug(f"All required options are set: {opt} - can cancel the checking loop")
                                 break
@@ -380,29 +380,40 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             # check if any of the wallbox-sensors is enabled... and only THEN
             # we will include the 'WALLBOX' in our POST to the lala.cgi
-            if hass is not None and config_entry.entry_id is not None:
+            use_defaults = True
+            if hass is not None and config_entry.entry_id is not None and config_entry.title is not None:
                 registry = entity_registry.async_get(hass)
                 if registry is not None:
-                    all_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
-                    _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_entities)}")
-                    for a_entity in all_entities:
-                        if a_entity.disabled_by is None:
-                            _LOGGER.debug(f"Entity '{a_entity.entity_id}' is enabled for {config_entry.title}")
-                            # check if the entity is a sensor, binary_sensor, switch, number or select
-                            a_entity_platform = a_entity.entity_id.split(".")[0]
-                            if a_entity_platform in LOCAL_PLATFORM_MAPPING:
-                                for a_entity_desc in LOCAL_PLATFORM_MAPPING[a_entity_platform]:
-                                    if a_entity.entity_id.endswith(a_entity_desc.key):
-                                        if hasattr(a_entity_desc, "senec_lala_section"):
-                                            a_lala_section  = a_entity_desc.senec_lala_section
-                                            if a_lala_section in LOCAL_SECTION_MAPPING:
-                                                query_option_key, a_log_msg = LOCAL_SECTION_MAPPING[a_lala_section]
-                                                if not opt[query_option_key]:
-                                                    opt[query_option_key] = True
-                                                    _LOGGER.info(a_log_msg)
+                    all_local_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
+                    if len(all_local_entities) > 0:
+                        use_defaults = False
+                        _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_local_entities)}")
+                        for a_entity in all_local_entities:
+                            if a_entity.disabled_by is None:
+                                a_id = a_entity.entity_id
+                                _LOGGER.debug(f"Entity '{a_id}' is enabled for {config_entry.title}")
+                                # check if the entity is a sensor, binary_sensor, switch, number or select
+                                a_entity_platform = a_id.split(".")[0]
+                                if a_entity_platform in LOCAL_PLATFORM_MAPPING:
+                                    for a_entity_desc in LOCAL_PLATFORM_MAPPING[a_entity_platform]:
+                                        if a_id.endswith(a_entity_desc.key):
+                                            if hasattr(a_entity_desc, "senec_lala_section"):
+                                                a_lala_section  = a_entity_desc.senec_lala_section
+                                                if a_lala_section in LOCAL_SECTION_MAPPING:
+                                                    query_option_key, a_log_msg = LOCAL_SECTION_MAPPING[a_lala_section]
+                                                    if not opt[query_option_key]:
+                                                        opt[query_option_key] = True
+                                                        _LOGGER.info(a_log_msg)
+    
+                                            _LOGGER.debug(f"Found a EntityDescription for '{a_id}' key: {a_entity_desc.key}")
+                                            break
 
-                                        _LOGGER.debug(f"Found a EntityDescription for '{a_entity.entity_id}' key: {a_entity_desc.key}")
-                                        break
+            if use_defaults:
+                # if there are no entities yet... we slightly adjust our defaults!
+                _LOGGER.info(f"NO entities for config_entry fetched! Using default options")
+                opt[QUERY_PV1_KEY] = True
+                opt[QUERY_PM1OBJ1_KEY] = True
+                opt[QUERY_BMS_KEY] = True
 
             self.senec = SenecLocal(host=self._host, use_https=self._use_https, lala_session=async_create_clientsession(hass, verify_ssl=False),
                                     lang=hass.config.language.lower(), options=opt,
