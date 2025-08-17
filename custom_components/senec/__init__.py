@@ -4,17 +4,6 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Final
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, Event
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as config_val, entity_registry
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant.helpers.entity import EntityDescription, Entity
-from homeassistant.helpers.storage import STORAGE_DIR
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.loader import async_get_integration
-
 from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
@@ -30,6 +19,16 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as config_val, entity_registry
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.entity import EntityDescription, Entity
+from homeassistant.helpers.storage import STORAGE_DIR
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.loader import async_get_integration
 from . import service as SenecService
 from .const import (
     DOMAIN,
@@ -347,7 +346,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                          storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
                                          integ_version=self._integration_version)
             except ReConfigurationRequired as exc:
-                _LOGGER.warning(f"SenecOnline could not be created: {type(exc)} - {exc}")
+                _LOGGER.warning(f"SenecOnline could not be created: {type(exc).__name__} - {exc}")
                 hass.add_job(config_entry.async_start_reauth, hass)
 
             if must_purge_access_token:
@@ -449,7 +448,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
+            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_to_state(self, switch_key, state):
@@ -460,7 +459,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
+            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_array_to_state(self, switch_array_key, array_pos, state):
@@ -471,7 +470,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
+            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_set_string_value(self, set_str_key, value: str):
@@ -482,7 +481,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
+            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_trigger_button(self, trigger_key:str, payload: str):
@@ -493,7 +492,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.warning(f"UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal)} {fatal}")
+            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     def add_total_increasing_sensor(self, sensor):

@@ -9,7 +9,6 @@ from homeassistant.core import State
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
-
 from . import SenecDataUpdateCoordinator, SenecEntity, InverterLocal
 from .const import (
     DOMAIN,
@@ -124,7 +123,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
         else:
             value = getattr(self.coordinator.senec, self.entity_description.key)
 
-        # _LOGGER.debug( str(sensor)+' '+ str(type(value)) +' '+str(value))
+        # _LOGGER.debug( str(sensor)+' '+ str(type(value).__name__) +' '+str(value))
         if value is None:
             return None
         elif isinstance(value, bool):

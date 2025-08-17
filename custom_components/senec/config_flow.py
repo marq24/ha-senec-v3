@@ -8,6 +8,10 @@ from urllib.parse import urlparse, unquote, parse_qs
 import pyotp
 import voluptuous as vol
 from aiohttp import ClientResponseError
+from requests.exceptions import HTTPError, Timeout
+
+from custom_components.senec.pysenec_ha import InverterLocal
+from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.config_entries import ConfigFlowResult, SOURCE_RECONFIGURE
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
@@ -16,10 +20,6 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import slugify
-from requests.exceptions import HTTPError, Timeout
-
-from custom_components.senec.pysenec_ha import InverterLocal
-from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
@@ -479,7 +479,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         else:
                             self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
                     except ValueError as e:
-                        _LOGGER.error(f"async_step_websetup(): Invalid TOTP secret: {type(e)} - {e}")
+                        _LOGGER.error(f"async_step_websetup(): Invalid TOTP secret: {type(e).__name__} - {e}")
                         self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
 
                     if user_entry is not None and totp_url_entry is None and CONF_TOTP_SECRET not in self._errors:

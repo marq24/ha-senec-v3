@@ -3040,7 +3040,7 @@ class SenecOnline:
                 if len(pyotp.TOTP(totp).now()) != 6:
                     raise ValueError("Invalid TOTP secret length")
             except BaseException as exc:
-                _LOGGER.error(f"Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc)} - {exc}")
+                _LOGGER.error(f"Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc).__name__} - {exc}")
                 totp = None
                 raise ReConfigurationRequired(exc)
         
@@ -3394,7 +3394,7 @@ class SenecOnline:
         except BaseException as exc:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
-            _LOGGER.warning(f"app_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
+            _LOGGER.warning(f"app_update() - Exception: {type(exc).__name__} - {exc} -> stack trace:\n{stack_trace_str}")
         return False
 
     async def web_update(self):
@@ -3434,7 +3434,7 @@ class SenecOnline:
         except BaseException as exc:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
-            _LOGGER.warning(f"web_update() - Exception: {type(exc)} - {exc} -> stack trace:\n{stack_trace_str}")
+            _LOGGER.warning(f"web_update() - Exception: {type(exc).__name__} - {exc} -> stack trace:\n{stack_trace_str}")
 
 
     """SENEC-APP from here"""
@@ -3497,14 +3497,14 @@ class SenecOnline:
             try:
                 os.makedirs(directory, exist_ok=True)
             except OSError as exc:
-                _LOGGER.warning(f"check_general_fs_access(): could not create directory '{directory}': {type(exc)} - {exc}")
+                _LOGGER.warning(f"check_general_fs_access(): could not create directory '{directory}': {type(exc).__name__} - {exc}")
 
         if os.path.exists(directory):
             try:
                 with open(testfile, "w", encoding="utf-8") as outfile:
                     json.dump({"test": "file"}, outfile)
             except OSError as exc:
-                _LOGGER.warning(f"check_general_fs_access(): could not create test file '{testfile}': {type(exc)} - {exc}")
+                _LOGGER.warning(f"check_general_fs_access(): could not create test file '{testfile}': {type(exc).__name__} - {exc}")
 
             if os.path.exists(testfile):
                 can_create_file = True
@@ -3582,7 +3582,7 @@ class SenecOnline:
                 else:
                     _LOGGER.info(f"initial_token_request_01_start(): unexpected [200] response code: {res.status} - {res}")
             except BaseException as ex:
-                _LOGGER.debug(f"initial_token_request_01_start(): {type(ex)} - {ex}")
+                _LOGGER.debug(f"initial_token_request_01_start(): {type(ex).__name__} - {ex}")
 
 
     async def _initial_token_request_02_post_login(self, accept_http_200:bool, form_action_url, post_data:dict):
@@ -3624,7 +3624,7 @@ class SenecOnline:
                     _LOGGER.info(f"_initial_token_request_02_post_login(): unexpected [302] response code: {res.status} - {res}")
 
             except BaseException as ex:
-                _LOGGER.info(f"_initial_token_request_02_post_login(): {type(ex)} - {ex}")
+                _LOGGER.info(f"_initial_token_request_02_post_login(): {type(ex).__name__} - {ex}")
 
 
     async def _initial_token_request_03_get_token(self, redirect):
@@ -3669,7 +3669,7 @@ class SenecOnline:
                         _LOGGER.info(f"_initial_token_request_03_get_token(): unexpected [200] response code: {res.status} - {res}")
 
                 except BaseException as ex:
-                    _LOGGER.info(f"_initial_token_request_03_get_token(): {type(ex)} - {ex}")
+                    _LOGGER.info(f"_initial_token_request_03_get_token(): {type(ex).__name__} - {ex}")
         else:
             _LOGGER.info(f"_initial_token_request_03_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
 
@@ -3701,7 +3701,7 @@ class SenecOnline:
                     _LOGGER.info(f"_refresh_token_request(): unexpected [200] response code: {res.status} - {res}")
 
             except BaseException as ex:
-                _LOGGER.info(f"_refresh_token_request(): {type(ex)} - {ex}")
+                _LOGGER.info(f"_refresh_token_request(): {type(ex).__name__} - {ex}")
 
 
     #####################
@@ -3720,7 +3720,7 @@ class SenecOnline:
             try:
                 await asyncio.get_running_loop().run_in_executor(None, lambda: os.makedirs(directory, exist_ok=True))
             except OSError as exc:
-                _LOGGER.warning(f"_write_token_to_storage(): could not create directory '{directory}': {type(exc)} - {exc}")
+                _LOGGER.warning(f"_write_token_to_storage(): could not create directory '{directory}': {type(exc).__name__} - {exc}")
 
         # Write the file in executor
         if os.path.exists(directory):
@@ -3735,13 +3735,13 @@ class SenecOnline:
             except FileNotFoundError:
                 _LOGGER.debug(f"__write_token_int(): Token file not found, nothing to delete: {self._app_stored_tokens_location}")
             except OSError as exc:
-                _LOGGER.info(f"__write_token_int(): Error deleting token file: {type(exc)} - {exc}")
+                _LOGGER.info(f"__write_token_int(): Error deleting token file: {type(exc).__name__} - {exc}")
         else:
             try:
                 with open(self._app_stored_tokens_location, "w", encoding="utf-8") as outfile:
                     json.dump(token_dict, outfile)
             except OSError as exc:
-                _LOGGER.info(f"__write_token_int(): could not write token file: {type(exc)} - {exc}")
+                _LOGGER.info(f"__write_token_int(): could not write token file: {type(exc).__name__} - {exc}")
 
     async def _read_token_from_storage(self):
         """Read saved token from a file"""
@@ -5188,7 +5188,7 @@ class SenecOnline:
                 if throw401:
                     raise exc
                 else:
-                    _LOGGER.info(f"_web_authenticate_part_02(): status code: {res.status} [{type(exc)} - {exc}]")
+                    _LOGGER.info(f"_web_authenticate_part_02(): status code: {res.status} [{type(exc).__name__} - {exc}]")
                     if exc.status == 401:
                         self.purge_senec_cookies()
                         self._web_is_authenticated = False
@@ -5405,7 +5405,7 @@ class SenecOnline:
                             self._web_is_authenticated = False
 
                     except ClientResponseError as exc:
-                        _LOGGER.info(f"web_update_total(): while requesting data from {a_url}: {type(exc)} - {exc}")
+                        _LOGGER.info(f"web_update_total(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                         if exc.status == 401:
                             self.purge_senec_cookies()
                         if exc.status != 408:
@@ -5442,7 +5442,7 @@ class SenecOnline:
                     self._web_is_authenticated = False
 
             except ClientResponseError as exc:
-                _LOGGER.info(f"web_update_peak_shaving(): while requesting data from {a_url}: {type(exc)} - {exc}")
+                _LOGGER.info(f"web_update_peak_shaving(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                 if exc.status == 401:
                     self.purge_senec_cookies()
                 if exc.status != 408:
@@ -5495,7 +5495,7 @@ class SenecOnline:
                             self._web_spare_capacity = int(content)
                             self._QUERY_SPARE_CAPACITY_TS = time()
                         except ValueError as vexc:
-                            _LOGGER.info(f"spare_capacity can't be converted to a number - request to '{a_url}' returned: '{content}' caused {type(vexc)} - {vexc}")
+                            _LOGGER.info(f"spare_capacity can't be converted to a number - request to '{a_url}' returned: '{content}' caused {type(vexc).__name__} - {vexc}")
                             self._web_spare_capacity = 0
                     else:
                         _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
@@ -5505,7 +5505,7 @@ class SenecOnline:
                     self._web_is_authenticated = False
 
             except ClientResponseError as exc:
-                _LOGGER.info(f"web_update_spare_capacity(): while requesting data from {a_url}: {type(exc)} - {exc}")
+                _LOGGER.info(f"web_update_spare_capacity(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                 if exc.status == 401:
                     self.purge_senec_cookies()
                 if exc.status != 408:
@@ -5570,7 +5570,7 @@ class SenecOnline:
                         self._web_is_authenticated = False
 
                 except ClientResponseError as exc:
-                    _LOGGER.info(f"web_update_sgready_state(): while requesting data from {a_url}: {type(exc)} - {exc}")
+                    _LOGGER.info(f"web_update_sgready_state(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                     if exc.status == 401:
                         self.purge_senec_cookies()
                     if exc.status != 408:
@@ -5600,7 +5600,7 @@ class SenecOnline:
                         self._web_is_authenticated = False
 
                 except ClientResponseError as exc:
-                    _LOGGER.info(f"web_update_sgready_conf(): while requesting data from {a_url}: {type(exc)} - {exc}")
+                    _LOGGER.info(f"web_update_sgready_conf(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                     if exc.status == 401:
                         self.purge_senec_cookies()
                     if exc.status != 408:
