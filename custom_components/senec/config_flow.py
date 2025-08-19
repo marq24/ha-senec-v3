@@ -35,7 +35,6 @@ from .const import (
     DEFAULT_SCAN_INTERVAL_WEB_SENECV4,
     DEFAULT_MIN_SCAN_INTERVAL,
     DEFAULT_MIN_SCAN_INTERVAL_WEB,
-    DEFAULT_INCLUDE_WALLBOX,
 
     SYSTEM_TYPES,
     SYSTYPE_SENECV2,
@@ -66,7 +65,7 @@ from .const import (
     CONF_IGNORE_SYSTEM_STATE,
     CONFIG_VERSION,
     CONFIG_MINOR_VERSION,
-    CONF_INCLUDE_WALLBOX
+    CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -127,8 +126,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._default_user = None
         self._default_pwd = None
         self._default_totp = None
+        self._default_include_wallbox_in_house_consumption = True
         self._default_master_plant_number = None
-        self._default_include_wallbox = True
 
         """Initialize."""
         self._errors = {}
@@ -169,10 +168,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_user      = entry_data[CONF_USERNAME]
             self._default_pwd       = entry_data[CONF_PASSWORD]
             self._default_totp      = entry_data.get(CONF_TOTP_URL, entry_data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
+            self._default_include_wallbox_in_house_consumption = entry_data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
             self._default_master_plant_number = entry_data[CONF_DEV_MASTER_NUM]
-            self._default_include_wallbox = True
-            if CONF_INCLUDE_WALLBOX in entry_data:
-               self._default_include_wallbox = entry_data[CONF_INCLUDE_WALLBOX]
+
+            # fallback init, if 'CONF_TOTP_URL' or 'CONF_TOTP_SECRET' might be contained in 'entry_data'
+            # but have assigned 'None'
+            if self._default_totp is None:
+                self._default_totp = ""
+
             return await self.async_step_websetup()
 
         return self.async_abort(reason="reconfigure_error")
@@ -455,7 +458,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             pwd_entry = user_input[CONF_PASSWORD]
             totp_entry = user_input[CONF_TOTP_SECRET]
             totp_url_entry = None
-            include_wallbox = user_input[CONF_INCLUDE_WALLBOX]
+            include_wallbox_in_house_consumption = user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
 
             if totp_entry is not None:
                 if len(totp_entry) == 0:
@@ -520,7 +523,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_TOTP_SECRET: totp_entry,
                         CONF_TOTP_URL: totp_url_entry,
                         CONF_SCAN_INTERVAL: scan_entry,
-                        CONF_INCLUDE_WALLBOX: include_wallbox,
+                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption,
                         CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
                         CONF_DEV_TYPE: self._device_type,
                         CONF_DEV_MODEL: self._device_model,
@@ -544,28 +547,26 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             user_input = {}
             if all(x is not None for x in
-                   [self._default_name, self._default_user, self._default_pwd, 
-                    self._default_master_plant_number, self._default_interval, self._default_include_wallbox]):
+                   [self._default_name, self._default_user, self._default_pwd, self._default_totp,
+                    self._default_master_plant_number, self._default_interval, self._default_include_wallbox_in_house_consumption]):
                 user_input[CONF_NAME] = self._default_name
                 user_input[CONF_USERNAME] = self._default_user
                 user_input[CONF_PASSWORD] = self._default_pwd
-                user_input[CONF_TOTP_SECRET] = ""
-                if self._default_totp is not None:
-                   user_input[CONF_TOTP_SECRET] = self._default_totp
+                user_input[CONF_TOTP_SECRET] = self._default_totp
+                user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION] = self._default_include_wallbox_in_house_consumption
                 user_input[CONF_DEV_MASTER_NUM] = str(self._default_master_plant_number)
                 user_input[CONF_SCAN_INTERVAL] = self._default_interval
-                user_input[CONF_INCLUDE_WALLBOX] = self._default_include_wallbox
             else:
                 user_input[CONF_NAME] = DEFAULT_NAME_WEB
                 user_input[CONF_USERNAME] = DEFAULT_USERNAME
                 user_input[CONF_PASSWORD] = ""
                 user_input[CONF_TOTP_SECRET] = ""
+                user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION] = True
                 user_input[CONF_DEV_MASTER_NUM] = "auto"
                 if self._selected_system == SYSTYPE_SENECV4:
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
                 else:
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB
-                user_input[CONF_INCLUDE_WALLBOX] = DEFAULT_INCLUDE_WALLBOX            
 
         has_fs_write_access = await asyncio.get_running_loop().run_in_executor(None,
                                                                                SenecOnline.check_general_fs_access,
@@ -580,6 +581,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
                     vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
                     vol.Optional(CONF_TOTP_SECRET, default=user_input[CONF_TOTP_SECRET]): str,
+                    vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
                     vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
                         selector.SelectSelector(
                             selector.SelectSelectorConfig(
@@ -588,8 +590,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                 translation_key=CONF_DEV_MASTER_NUM,
                             )
                         ),
-                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
-                    vol.Required(CONF_INCLUDE_WALLBOX, default=user_input[CONF_INCLUDE_WALLBOX]): bool
+                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
                 }),
                 last_step=True,
                 errors=self._errors,
@@ -614,8 +615,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_user      = self.reauth_entry.data[CONF_USERNAME]
             self._default_pwd       = self.reauth_entry.data[CONF_PASSWORD]
             self._default_totp      = self.reauth_entry.data.get(CONF_TOTP_URL, self.reauth_entry.data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
+            self._default_include_wallbox_in_house_consumption = self.reauth_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
             self._default_master_plant_number = self.reauth_entry.data[CONF_DEV_MASTER_NUM]
-            self._default_include_wallbox = self.reauth_entry.data[CONF_INCLUDE_WALLBOX]
+
+            # fallback init, if 'CONF_TOTP_URL' or 'CONF_TOTP_SECRET' might be contained in 'entry_data'
+            # but have assigned 'None'
+            if self._default_totp is None:
+                self._default_totp = ""
+
         return await self.async_step_websetup()
 
 #     @staticmethod
