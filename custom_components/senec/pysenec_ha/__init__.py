@@ -2957,16 +2957,12 @@ def app_get_utc_date_start(year, month:int = 1, day:int = -1):
     # January 1st at 00:00:00 UTC+1 of the year
     if day < 1:
         day = 1
-    #return int(datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).timestamp())
-    #return datetime(year, month, day, 0, 0, 0, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
     return datetime(year, month, day, 0, 0, 0).astimezone(timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
 def app_get_utc_date_end(year, month:int = 12, day:int = -1):
     # December 31st at 23:59:59 UTC+1 of the year
     if day < 1:
         day = calendar.monthrange(year, month)[1]
-    #return int(datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).timestamp())
-    #return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc).strftime(STRFTIME_DATE_FORMAT)
     return (datetime(year, month, day, 0, 0, 0) + timedelta(days=1)).astimezone(timezone.utc).strftime(STRFTIME_DATE_FORMAT)
 
 class ReConfigurationRequired(Exception):
@@ -4394,9 +4390,10 @@ class SenecOnline:
 
         _LOGGER.debug("***** APP-API: app_update_total(self) ********")
         now_utc = datetime.now(timezone.utc)
-        current_year = now_utc.year
-        current_month = now_utc.month
-        current_day = now_utc.day
+        now_local =  datetime.now()
+        current_year_local = now_local.year
+        current_month_local = now_local.month
+        current_day_local = now_local.day
         do_persist = False
 
         # restore the data from our persistent storage
@@ -4410,7 +4407,7 @@ class SenecOnline:
             self._static_TOTAL_SUMS_PREV_DAYS                   = storage.get("days_data",  self._static_TOTAL_SUMS_PREV_DAYS)
 
         # getting PREVIOUS_YEARS - only ONCE
-        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year:
+        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year_local:
             do_persist = True
             # Loop from the data-available-start to current year [there are no older systems than 2018]
             # we might like to store the first year, that actually has data?!
@@ -4419,7 +4416,7 @@ class SenecOnline:
                 start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
                 _LOGGER.debug(f"app_update_total(): - data start year is set to {start_year}")
 
-            for a_year in range(start_year, current_year):
+            for a_year in range(start_year, current_year_local):
                 _LOGGER.debug(f"app_update_total(): - fetching data for year {a_year}")
                 if wb_ids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
@@ -4443,60 +4440,60 @@ class SenecOnline:
                     else:
                         self._static_TOTAL_SUMS_PREV_YEARS = app_summ_total_dict_values(data, self._static_TOTAL_SUMS_PREV_YEARS)
 
-            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year_local
 
         # getting PREVIOUS_MONTH - only ONCE
-        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month:
+        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month_local:
             do_persist = True
-            if current_month == 1:
+            if current_month_local == 1:
                 self._static_TOTAL_SUMS_PREV_MONTHS = None
             else:
-                _LOGGER.debug(f"app_update_total(): - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
+                _LOGGER.debug(f"app_update_total(): - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
                 if wb_ids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
                                                                   wb_ids    =wb_ids,
                                                                   res_type  ="MONTH",
-                                                                  from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
-                                                                  to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
+                                                                  from_val  =quote(app_get_utc_date_start(current_year_local, 1), safe=''),
+                                                                  to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local - 1), safe=''))
 
                 else:
                     a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                           res_type  ="MONTH",
-                                                          from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
-                                                          to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
+                                                          from_val  =quote(app_get_utc_date_start(current_year_local, 1), safe=''),
+                                                          to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local - 1), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
                     self._static_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data)
-                    _LOGGER.debug(f"app_update_total(): aggregated data for year {current_year} month 01 - {(current_month-1):02d} -> {self._static_TOTAL_SUMS_PREV_MONTHS}")
+                    _LOGGER.debug(f"app_update_total(): aggregated data for year {current_year_local} month 01 - {(current_month_local-1):02d} -> {self._static_TOTAL_SUMS_PREV_MONTHS}")
 
-            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month_local
 
         # getting CURRENT_MONTH - only ONCE
-        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day:
+        if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day_local:
             do_persist = True
-            if current_day == 1:
+            if current_day_local == 1:
                 self._static_TOTAL_SUMS_PREV_DAYS = None
             else:
-                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
+                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
                 if wb_ids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
                                                                   wb_ids    =wb_ids,
                                                                   res_type  ="MONTH",
-                                                                  from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
-                                                                  to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
+                                                                  from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, 1), safe=''),
+                                                                  to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local, current_day_local - 1), safe=''))
 
                 else:
                     a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                           res_type  ="MONTH",
-                                                          from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
-                                                          to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
+                                                          from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, 1), safe=''),
+                                                          to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local, current_day_local - 1), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
                     self._static_TOTAL_SUMS_PREV_DAYS = app_aggregate_timeseries_data_if_needed(data)
 
-            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day
+            self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day_local
 
         if do_persist:
             # persist the historic-data - so we just must fetch it once
@@ -4515,13 +4512,13 @@ class SenecOnline:
             a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
                                                           wb_ids    =wb_ids,
                                                           res_type  ="DAY",
-                                                          from_val  =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
-                                                          to_val    =quote((now_utc + timedelta(hours=12)).strftime(STRFTIME_DATE_FORMAT), safe=''))
+                                                          from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, current_day_local), safe=''),
+                                                          to_val    =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
 
         else:
             a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                   res_type  ="DAY",
-                                                  from_val  =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
+                                                  from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, current_day_local), safe=''),
                                                   to_val    =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
 
         data = await self._app_do_get_request(a_url=a_url)
@@ -4568,9 +4565,10 @@ class SenecOnline:
 
         _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total(self) index: {idx} ********")
         now_utc = datetime.now(timezone.utc)
-        current_year = now_utc.year
-        current_month = now_utc.month
-        current_day = now_utc.day
+        now_local = datetime.now()
+        current_year_local = now_local.year
+        current_month_local = now_local.month
+        current_day_local = now_local.day
         do_persist = False
 
         # restore the data from our persistent storage
@@ -4587,7 +4585,7 @@ class SenecOnline:
         local_TOTAL_SUMS_PREV_DAYS                   = storage.get("days_data",  self._static_TOTAL_WALLBOX_DATA[idx].get("days_data"))
 
         # getting PREVIOUS_YEARS - only ONCE
-        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year:
+        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year_local:
             do_persist = True
             # Loop from the data-available-start to current year [there are no older systems than 2018]
             # we might like to store the first year, that actually has data?!
@@ -4596,7 +4594,7 @@ class SenecOnline:
                 start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
                 _LOGGER.debug(f"_app_update_single_wallbox_total() - data start year is set to {start_year}")
 
-            for a_year in range(start_year, current_year):
+            for a_year in range(start_year, current_year_local):
                 _LOGGER.debug(f"_app_update_single_wallbox_total() - fetching data for year {a_year}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                          wb_id=str((idx + 1)),
@@ -4613,46 +4611,46 @@ class SenecOnline:
                     else:
                         local_TOTAL_SUMS_PREV_YEARS = app_summ_total_dict_values(data, local_TOTAL_SUMS_PREV_YEARS, ts_key_name="timeseries")
 
-            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year
+            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = current_year_local
 
         # getting PREVIOUS_MONTH - only ONCE
-        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month:
+        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS != current_month_local:
             do_persist = True
-            if current_month == 1:
+            if current_month_local == 1:
                 local_TOTAL_SUMS_PREV_MONTHS = None
             else:
-                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year} month 01 - {(current_month-1):02d}")
+                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                       wb_id=str((idx + 1)),
                                                       res_type  ="MONTH",
-                                                      from_val  =quote(app_get_utc_date_start(current_year, 1), safe=''),
-                                                      to_val    =quote(app_get_utc_date_end(current_year, current_month - 1), safe=''))
+                                                      from_val  =quote(app_get_utc_date_start(current_year_local, 1), safe=''),
+                                                      to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local - 1), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
                     local_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
-                    _LOGGER.debug(f"_app_update_single_wallbox_total(): aggregated data for year {current_year} month 01 - {(current_month-1):02d} -> {local_TOTAL_SUMS_PREV_MONTHS}")
+                    _LOGGER.debug(f"_app_update_single_wallbox_total(): aggregated data for year {current_year_local} month 01 - {(current_month_local-1):02d} -> {local_TOTAL_SUMS_PREV_MONTHS}")
 
-            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month
+            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month_local
 
         # getting CURRENT_MONTH - only ONCE
-        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day:
+        if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS != current_day_local:
             do_persist = True
-            if current_day == 1:
+            if current_day_local == 1:
                 local_TOTAL_SUMS_PREV_DAYS = None
             else:
-                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year} month {current_month} - till day: {(current_day-1):02d}")
+                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                          wb_id     =str((idx + 1)),
                                                          res_type  ="MONTH",
-                                                         from_val  =quote(app_get_utc_date_start(current_year, current_month, 1), safe=''),
-                                                         to_val    =quote(app_get_utc_date_end(current_year, current_month, current_day - 1), safe=''))
+                                                         from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, 1), safe=''),
+                                                         to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local, current_day_local - 1), safe=''))
 
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
                     local_TOTAL_SUMS_PREV_DAYS = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
 
-            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day
+            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS = current_day_local
 
         if do_persist:
             # persist the historic-data - so we just must fetch it once
@@ -4673,7 +4671,7 @@ class SenecOnline:
         a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                  wb_id      =str((idx + 1)),
                                                  res_type   ="DAY",
-                                                 from_val   =quote(app_get_utc_date_start(current_year, current_month, current_day), safe=''),
+                                                 from_val   =quote(app_get_utc_date_start(current_year_local, current_month_local, current_day_local), safe=''),
                                                  to_val     =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
 
         data = await self._app_do_get_request(a_url=a_url)
@@ -5476,7 +5474,7 @@ class SenecOnline:
                 else:
                     self._web_is_authenticated = False
                     await self.web_authenticate(do_update=False, throw401=False)
-                    await self.set_peak_shaving(new_peak_shaving)
+                    await self.set_peak_shaving(new_peak_shaving, False)
 
             except ClientResponseError as exc:
                 if exc.status == 401:
@@ -5536,7 +5534,7 @@ class SenecOnline:
                 else:
                     self._web_is_authenticated = False
                     await self.web_authenticate(do_update=False, throw401=False)
-                    await self.set_spare_capacity(new_spare_capacity)
+                    await self.set_spare_capacity(new_spare_capacity, False)
 
             except ClientResponseError as exc:
                 if exc.status == 401:
@@ -5646,7 +5644,7 @@ class SenecOnline:
                         else:
                             self._web_is_authenticated = False
                             await self.web_authenticate(do_update=False, throw401=False)
-                            await self.set_sgready_conf(new_sgready_data)
+                            await self.set_sgready_conf(new_sgready_data, False)
 
                     except ClientResponseError as exc:
                         if exc.status == 401:
@@ -5655,7 +5653,7 @@ class SenecOnline:
                             self._web_is_authenticated = False
                             await self.web_authenticate(do_update=False, throw401=True)
                         if retry:
-                            await self.set_sgready_conf(new_sgready_data)
+                            await self.set_sgready_conf(new_sgready_data, False)
             else:
                 _LOGGER.debug(
                     f"no valid or new SGReady post data found in {new_sgready_data} current config: {self._web_sgready_conf_data}")
