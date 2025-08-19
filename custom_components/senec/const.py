@@ -93,6 +93,7 @@ CONF_USE_HTTPS: Final = "use_https"
 CONF_SUPPORT_BDC: Final = "has_bdc_support"
 CONF_DEV_MASTER_NUM: Final = "master_plant_number"
 CONF_IGNORE_SYSTEM_STATE: Final = "ignore_system_state"
+CONF_INCLUDE_WALLBOX: Final = "include_wallbox"
 
 CONF_DEV_TYPE: Final = "dtype"
 CONF_DEV_MODEL: Final = "dname"
@@ -128,6 +129,7 @@ DEFAULT_SCAN_INTERVAL_SENECV2: Final = 60
 DEFAULT_SCAN_INTERVAL_WEB: Final = 300
 DEFAULT_SCAN_INTERVAL_WEB_SENECV4: Final = 60
 DEFAULT_MIN_SCAN_INTERVAL_WEB: Final = 20
+DEFAULT_INCLUDE_WALLBOX: Final = True
 
 QUERY_BMS_KEY: Final = "query_bms_data"
 QUERY_BMS_CELLS_KEY: Final = "query_bms_cells_data"

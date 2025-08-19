@@ -45,6 +45,7 @@ from custom_components.senec.const import (
     CONF_APP_DATA_START,
     CONF_APP_DATA_END,
     CONF_APP_TOTAL_DATA,
+    CONF_INCLUDE_WALLBOX,
     DOMAIN
 )
 from custom_components.senec.pysenec_ha.constants import (
@@ -3017,6 +3018,12 @@ class SenecOnline:
             self._QUERY_SYSTEM_DETAILS = options[QUERY_SYSTEM_DETAILS_KEY]
         else:
             self._QUERY_SYSTEM_DETAILS = False
+
+        if options is not None and CONF_INCLUDE_WALLBOX in options:
+            self._INCLUDE_WALLBOX = options[CONF_INCLUDE_WALLBOX]
+        else:
+            self._INCLUDE_WALLBOX = True            
+
         # Variable to save the latest update time for system-details/system_state data…
         self._QUERY_SYSTEM_DETAILS_TS = 0
         self._QUERY_SYSTEM_STATE_TS = 0
@@ -3155,7 +3162,10 @@ class SenecOnline:
         self.APP_MEASURE_DATA_AVAIL     = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
         self.APP_MEASURE_DASHBOARD      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
         self.APP_MEASURE_TOTAL          = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
-        self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}&wallboxIds={wb_ids}"
+        if self._INCLUDE_WALLBOX:
+           self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}&wallboxIds={wb_ids}"
+        else:
+           self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_TOTAL
         self.APP_MEASURE_WB_TOTAL       = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/measurements?wallboxIds={wb_id}&resolution={res_type}&from={from_val}&to={to_val}"
 
         # https://senec-app-systems-proxy.prod.senec.dev/systems/settings/user-energy-settings?systemId={master_plant_id}

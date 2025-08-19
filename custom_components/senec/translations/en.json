@@ -72,7 +72,8 @@
           "username": "Your 'mein-senec.de' username",
           "password": "Your 'mein-senec.de' password",
           "totp_secret": "Your 'mein-senec.de' OTP-auth-Secret (if you have been forced to configure MFA)",
-          "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4|P4)]"
+          "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4|P4)]",
+          "include_wallbox": "Add wallbox consumption to own consumption"
         }
       },
       "optional_websetup_required_info": {
