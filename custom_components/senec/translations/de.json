@@ -73,7 +73,8 @@
           "password": "Dein 'mein-senec.de' Passwort",
           "totp_secret": "Dein 'mein-senec.de' OTP-auth-Secret (wenn Du MFA einrichten musstest)",
           "scan_interval": "Aktualisierungsintervall in Sekunden [> 60 Sekunden (20 Sekunden für SENEC.Home V4|P4)]",
-          "master_plant_number": "Anlagennummer (Experten Einstellung: Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden)"
+          "master_plant_number": "Anlagennummer (Experten Einstellung: Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden)",
+          "include_wallbox": "Wallbox zu Eigenverbrauch hinzuzählen"
         }
       },
       "optional_websetup_required_info": {

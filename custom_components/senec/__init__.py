@@ -54,6 +54,7 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_DEV_MASTER_NUM,
     CONF_IGNORE_SYSTEM_STATE,
+    CONF_INCLUDE_WALLBOX,
 
     MAIN_SENSOR_TYPES,
     MAIN_BIN_SENSOR_TYPES,
@@ -235,6 +236,10 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             if CONF_DEV_MASTER_NUM in config_entry.data:
                 app_master_plant_number = int(config_entry.data[CONF_DEV_MASTER_NUM])
 
+            include_wallbox = True
+            if CONF_INCLUDE_WALLBOX in config_entry.data:
+               include_wallbox = config_entry.data[CONF_INCLUDE_WALLBOX]
+
             # user & pwd can be changed via the options...
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
@@ -258,7 +263,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 QUERY_SPARE_CAPACITY_KEY: False,
                 QUERY_PEAK_SHAVING_KEY: False,
                 QUERY_TOTALS_KEY: False,
-                QUERY_SYSTEM_DETAILS_KEY: False
+                QUERY_SYSTEM_DETAILS_KEY: False,
+                CONF_INCLUDE_WALLBOX: include_wallbox
             }
 
             if hass is not None and config_entry.entry_id is not None and config_entry.title is not None:
