@@ -66,15 +66,39 @@
         }
       },
       "websetup": {
-        "description": "### Deine Zugangsdaten zu mein-senec.de\n\nBitte gib Deine mein-senec.de-Zugangsdaten (eMail und Dein Passwort) ein, um Home Assistant mit Deinem mein-senec.de-Konto zu verbinden. Diese werden dann __unverschlüsselt__ in Deiner Home Assistant Konfiguration für diese Integration gespeichert.\n\nWenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3\n\n\n### Wichtige Informationen zu MFA/OTP/TOTP @ SENEC\n\nSolltest Du für den Zugang zu mein-senec.de noch keine Aufforderung zur Einrichtung eines zusätzlichen Faktors (MFA) erhalten haben, ist die Eingabe des OTP-auth-Secret derzeit nicht erforderlich.\n\nDu solltest Dich aber schon jetzt über die notwendigen Schritte informieren, damit Du auch zukünftig diese Integration verwenden kannst - diese findest Du unter https://github.com/marq24/ha-senec-v3/blob/master/docs/SENEC_OTP_SETUP.md\n\nWenn Du bereits einen MFA Zugang eingerichtet hast, stelle bitte sicher, dass Du deinen 'geheimen Schlüssel' im Zugriff hast und diesen unter 'OTP-auth-Secret' bei der Einrichtung angibst - Details hierzu findet Du ebenfalls unter dem o.g. Link zu SENEC_OTP_SETUP.md",
+        "description": "### Deine Zugangsdaten zu SENEC.App & mein-senec.de\n\nBitte gib Deine mein-senec.de-Zugangsdaten (eMail und Dein Passwort) ein, um Home Assistant mit Deinem mein-senec.de-Konto zu verbinden. Diese werden dann __unverschlüsselt__ in Deiner Home Assistant Konfiguration für diese Integration gespeichert.\n\nWenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3\n\n\n### Wichtige Informationen zu MFA/OTP/TOTP @ SENEC\n\nSolltest Du für den Zugang zu mein-senec.de noch keine Aufforderung zur Einrichtung eines zusätzlichen Faktors (MFA) erhalten haben, ist die Eingabe des OTP-auth-Secret derzeit nicht erforderlich.\n\nDu solltest Dich aber schon jetzt über die notwendigen Schritte informieren, damit Du auch zukünftig diese Integration verwenden kannst - diese findest Du unter https://github.com/marq24/ha-senec-v3/blob/master/docs/SENEC_OTP_SETUP.md\n\nWenn Du bereits einen MFA Zugang eingerichtet hast, stelle bitte sicher, dass Du deinen 'geheimen Schlüssel' im Zugriff hast und diesen unter 'OTP-auth-Secret' bei der Einrichtung angibst - Details hierzu findet Du ebenfalls unter dem o.g. Link zu SENEC_OTP_SETUP.md",
         "data" : {
           "name": "Anzeige Name",
-          "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
-          "password": "Dein 'mein-senec.de' Passwort",
-          "totp_secret": "Dein 'mein-senec.de' OTP-auth-Secret (wenn Du MFA einrichten musstest)",
-          "scan_interval": "Aktualisierungsintervall in Sekunden [> 60 Sekunden (20 Sekunden für SENEC.Home V4|P4)]",
-          "master_plant_number": "Anlagennummer (Experten Einstellung: Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden)",
-          "include_wallbox_in_house_consumption": "Eigenverbrauch beinhaltet Wallboxverbrauch"
+          "scan_interval": "Aktualisierungsintervall in Sekunden"
+        },
+        "data_description": {
+          "scan_interval": "Der Wert muss > 60 Sekunden (20 Sekunden für SENEC.Home V4|P4) sein"
+        },
+        "sections": {
+          "credentials": {
+            "name": "Deine SENEC Anmeldeinformationen",
+            "description": "Die hier eingegebenen Daten werden im Klartext in Deiner HA Konfiguration gespeichert - sichere den Zugang zur Deiner Konfiguration bitte entsprechend ab.",
+            "data" : {
+              "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
+              "password": "Dein 'mein-senec.de' Passwort",
+              "totp_secret": "Dein 'mein-senec.de' OTP-auth-Secret"
+            },
+            "data_description": {
+              "totp_secret": "Wenn Du bereits von SENEC dazu aufgefordert wurdest, MFA einrichten"
+            }
+          },
+          "expert": {
+            "name": "Experten Einstellung",
+            "description": "Ändere diese Werte nur, wenn Du die Bedeutung dieser Einstellungen verstehst",
+            "data" : {
+              "master_plant_number": "Anlagennummer",
+              "include_wallbox_in_house_consumption": "Eigenverbrauch beinhaltet Wallboxverbrauch"
+            },
+            "data_description": {
+              "master_plant_number": "Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden",
+              "include_wallbox_in_house_consumption": "SENEC misst der Verbrauch der Wallbox getrennt vom Hausverbrauch - wähle diese Option, wenn die Integration beide Werte zusammen führen soll."
+            }
+          }
         }
       },
       "optional_websetup_required_info": {
@@ -84,28 +108,6 @@
       "reauth_confirm": {
         "title": "Re-Authentifizierung erforderlich",
         "description": "Deinen Zugang zu mein-senec.de erfordert einen MFA-Token.\n\nDeswegen ist eine Re-Authentifizierung erforderlich, um die Verbindung zu Deinem mein-senec.de Konto aufrechtzuerhalten. Bitte gib deine Zugangsdaten erneut ein."
-      }
-    }
-  },
-  "options": {
-    "step": {
-      "system": {
-        "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
-        "data": {
-          "name": "Anzeige Name",
-          "host": "IP oder Hostname des SENEC.Home V3 Systems bzw des Inverters",
-          "scan_interval": "Aktualisierungsintervall in Sekunden",
-          "ignore_system_state": "Die Werte für die Batterie-LADE/ENTLADE Sensoren sollen den System Status nicht berücksichtigen"
-        }
-      },
-      "websetup": {
-        "description": "MEIN-SENEC.DE Webzugang\n\n\nWenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
-        "data": {
-          "name": "Anzeige Name",
-          "username": "Dein 'mein-senec.de' Benutzername (E-Mail)",
-          "password": "Dein 'mein-senec.de' Passwort",
-          "scan_interval": "Aktualisierungsintervall in Sekunden [Minimum 60 Sekunden (20 Sekunden für SENEC.Home V4|P4)]"
-        }
       }
     }
   },

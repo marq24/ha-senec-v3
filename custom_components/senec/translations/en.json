@@ -67,13 +67,38 @@
       },
       "websetup": {
         "description": "### Your login credentials for mein-senec.de\n\nPlease provide your mein-senec.de login credentials (eMail and password) in order to connect home assistant with your mein-senec.de account. These are then saved __as plain text__ (unencrypted) in your Home Assistant configuration for this integration.\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3\n\n\n### Important information about MFA/OTP/TOTP @ SENEC\n\nIf you have not yet received a request to set up an additional factor (MFA) to access mein-senec.de, entering the OTP auth secret is currently not required.\n\n\nYou should familiarize yourself with the necessary steps now so that you can continue to use this integration in the future. You can find them at https://github.com/marq24/ha-senec-v3/blob/master/docs/SENEC_OTP_SETUP.md\n\n\nIf you have already set up MFA access, please ensure that you have your 'secret key' for access and enter it under 'OTP-auth-Secret' during setup. You can also find details on the SENEC_OTP_SETUP.md linked above",
-        "data": {
+        "data" : {
           "name": "Display name",
-          "username": "Your 'mein-senec.de' username",
-          "password": "Your 'mein-senec.de' password",
-          "totp_secret": "Your 'mein-senec.de' OTP-auth-Secret (if you have been forced to configure MFA)",
-          "scan_interval": "Polling Interval in seconds [> 60 seconds (20 seconds for SENEC.Home V4|P4)]",
-          "include_wallbox_in_house_consumption": "House consumed include Wallbox consumed"
+          "scan_interval": "Polling Interval in seconds"
+        },
+        "data_description": {
+          "scan_interval": "[> 60 seconds (20 seconds for SENEC.Home V4|P4)]"
+        },
+        "sections": {
+          "credentials": {
+            "name": "Your SENEC credentials",
+            "description": "The data entered here will be saved in plain text in your HA configuration - please secure access to your configuration accordingly.",
+            "data" : {
+              "username": "Your 'mein-senec.de' username",
+              "password": "Your 'mein-senec.de' password",
+              "totp_secret": "Your 'mein-senec.de' OTP-auth-Secret"
+            },
+            "data_description": {
+              "totp_secret": "If you have already been asked/forced by SENEC to set up MFA"
+            }
+          },
+          "expert": {
+            "name": "Expert settings",
+            "description": "Only change these values if you understand the meaning of these settings",
+            "data" : {
+              "master_plant_number": "System number",
+              "include_wallbox_in_house_consumption": "House consumed include Wallbox consumed"
+            },
+            "data_description": {
+              "master_plant_number": "Only when using multiple master instances - otherwise use 'Autodetect'",
+              "include_wallbox_in_house_consumption": "SENEC measures the wallbox consumption separately from the household consumption - select this option if the integration should combine both values."
+            }
+          }
         }
       },
       "optional_websetup_required_info": {
@@ -83,29 +108,6 @@
       "reauth_confirm": {
         "title": "Re-Authentication required",
         "description": "Your access to mein-senec.de requires an MFA token.\n\nTherefore, reauthentication is required to maintain the connection to your mein-senec.de account. Please enter your login credentials again."
-      }
-    }
-  },
-  "options": {
-    "step": {
-      "system": {
-        "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
-        "data": {
-          "name": "Display name",
-          "host": "IP or hostname of the SENEC.Home V3 System OR the Inverter",
-          "scan_interval": "Polling Interval in seconds",
-          "ignore_system_state": "The values for the battery charge/discharge sensors should not take the system status into account"
-        }
-      },
-      "websetup": {
-        "description": "MEIN-SENEC.DE WebAccess\n\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
-        "data": {
-          "name": "Display name",
-          "username": "Your 'mein-senec.de' username",
-          "password": "Your 'mein-senec.de' password",
-          "scan_interval": "Polling Interval in seconds [minimum 60 seconds (20 seconds for SENEC.Home V4|P4)]",
-          "master_plant_number": "System number (expert setting: only when using multiple master instances - otherwise use 'Autodetect')"
-        }
       }
     }
   },

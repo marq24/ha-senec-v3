@@ -8,6 +8,7 @@ from urllib.parse import urlparse, unquote, parse_qs
 import pyotp
 import voluptuous as vol
 from aiohttp import ClientResponseError
+from homeassistant.data_entry_flow import section
 from requests.exceptions import HTTPError, Timeout
 
 from custom_components.senec.pysenec_ha import InverterLocal
@@ -578,19 +579,27 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="websetup",
                 data_schema=vol.Schema({
                     vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                    vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
-                    vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
-                    vol.Optional(CONF_TOTP_SECRET, default=user_input[CONF_TOTP_SECRET]): str,
-                    vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
-                    vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
-                        selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=MASTER_PLANT_NUMBERS,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                translation_key=CONF_DEV_MASTER_NUM,
-                            )
-                        ),
-                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
+                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
+                    vol.Optional("credentials"): section(
+                        vol.Schema({
+                            vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
+                            vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
+                            vol.Optional(CONF_TOTP_SECRET, default=user_input[CONF_TOTP_SECRET]): str,
+                        }),
+                        {"collapsed": False},
+                    ),
+                    vol.Optional("expert"): section(
+                        vol.Schema({
+                            vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
+                            vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
+                                selector.SelectSelector(
+                                    selector.SelectSelectorConfig(
+                                        options=MASTER_PLANT_NUMBERS,
+                                        mode=selector.SelectSelectorMode.DROPDOWN,
+                                        translation_key=CONF_DEV_MASTER_NUM))
+                        }),
+                        {"collapsed": True},
+                    )
                 }),
                 last_step=True,
                 errors=self._errors,
@@ -755,3 +764,130 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 #     def _update_options(self):
 #         """Update config entry options."""
 #         return self.async_create_entry(data=self.options)
+
+
+# # Code:
+#     async def async_step_localai(self, user_input=None):
+#         data_schema = vol.Schema({
+#             vol.Optional("connection_section"): section(
+#                 vol.Schema({
+#                     vol.Required(CONF_IP_ADDRESS): str,
+#                     vol.Required(CONF_PORT, default=8080): int,
+#                     vol.Required(CONF_HTTPS, default=False): bool,
+#                 }),
+#                 {"collapsed": False},
+#             ),
+#             vol.Optional("model_section"): section(
+#                 vol.Schema({
+#                     vol.Optional(CONF_DEFAULT_MODEL, default=DEFAULT_LOCALAI_MODEL): str,
+#                     vol.Optional(CONF_TEMPERATURE, default=0.5): selector({
+#                         "number": {
+#                             "min": 0,
+#                             "max": 1,
+#                             "step": 0.1,
+#                             "mode": "slider"
+#                         }
+#                     }),
+#                     vol.Optional(CONF_TOP_P, default=0.9): selector({
+#                         "number": {
+#                             "min": 0,
+#                             "max": 1,
+#                             "step": 0.1,
+#                             "mode": "slider"
+#                         }
+#                     }),
+#                 }),
+#                 {"collapsed": False},
+#             ),
+#         })
+#
+#         if self.source == config_entries.SOURCE_RECONFIGURE:
+#             # load existing configuration and add it to the dialog
+#             self.init_info = self._get_reconfigure_entry().data
+#             # Re-nest the flat config entry data into sections
+#             suggested = {
+#                 "connection_section": {
+#                     CONF_IP_ADDRESS: self.init_info.get(CONF_IP_ADDRESS),
+#                     CONF_PORT: self.init_info.get(CONF_PORT, 11434),
+#                     CONF_HTTPS: self.init_info.get(CONF_HTTPS, False),
+#                 },
+#                 "model_section": {
+#                     CONF_DEFAULT_MODEL: self.init_info.get(CONF_DEFAULT_MODEL, DEFAULT_LOCALAI_MODEL),
+#                     CONF_TEMPERATURE: self.init_info.get(CONF_TEMPERATURE, 0.5),
+#                     CONF_TOP_P: self.init_info.get(CONF_TOP_P, 0.9),
+#                 },
+#             }
+#             data_schema = self.add_suggested_values_to_schema(
+#                 data_schema, suggested
+#             )
+#
+#         if user_input is not None:
+#             # save provider to user_input
+#             user_input[CONF_PROVIDER] = self.init_info[CONF_PROVIDER]
+#             # flatten dict to remove nested keys
+#             user_input = flatten_dict(user_input)
+#             try:
+#                 localai = LocalAI(self.hass,
+#                                   api_key="",
+#                                   model=user_input[CONF_DEFAULT_MODEL],
+#                                   endpoint={
+#                                       'ip_address': user_input[CONF_IP_ADDRESS],
+#                                       'port': user_input[CONF_PORT],
+#                                       'https': user_input[CONF_HTTPS]
+#                                   })
+#                 await localai.validate()
+#                 # add the mode to user_input
+#                 if self.source == config_entries.SOURCE_RECONFIGURE:
+#                     # we're reconfiguring an existing config
+#                     return self.async_update_reload_and_abort(
+#                         self._get_reconfigure_entry(),
+#                         data_updates=user_input,
+#                     )
+#                 else:
+#                     # New config entry
+#                     return self.async_create_entry(title=f"LocalAI ({user_input[CONF_IP_ADDRESS]})", data=user_input)
+#             except ServiceValidationError as e:
+#                 _LOGGER.error(f"Validation failed: {e}")
+#                 return self.async_show_form(
+#                     step_id="localai",
+#                     data_schema=data_schema,
+#                     errors={"base": "handshake_failed"}
+#                 )
+#
+#         return self.async_show_form(
+#             step_id="localai",
+#             data_schema=data_schema
+#         )
+# translate....
+#         "localai": {
+#             "title": "LocalAI konfigurieren",
+#             "description": "Gib die IP-Adresse und den Port deines LocalAI Servers an.",
+#             "sections": {
+#                 "connection_section": {
+#                     "name": "Verbindung",
+#                     "description": "LocalAI Server Verbindung",
+#                     "data": {
+#                         "ip_address": "IP-Adresse",
+#                         "port": "Port",
+#                         "https": "HTTPS verwenden"
+#                     },
+#                     "data_description": {
+#                         "https": "Aktiviere diese Option, wenn dein Server HTTPS verwendet."
+#                     }
+#                 },
+#                 "model_section": {
+#                     "name": "Modell",
+#                     "description": "Standardmodell-Parameter festlegen",
+#                     "data": {
+#                         "default_model": "Standardmodell",
+#                         "temperature": "Temperature",
+#                         "top_p": "Top P"
+#                     },
+#                     "data_description": {
+#                         "default_model": "Das Standardmodell, das verwendet wird, wenn kein anderes Modell angegeben ist.",
+#                         "temperature": "Bestimmt die Zufälligkeit der Ausgabe. Niedrigere Werte machen die Ausgabe deterministischer.",
+#                         "top_p": "Bestimmt die Vielfalt der Ausgabe. Niedrigere Werte machen die Ausgabe fokussierter."
+#                     }
+#                 }
+#             }
+#         },
