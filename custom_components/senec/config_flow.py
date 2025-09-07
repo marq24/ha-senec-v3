@@ -452,14 +452,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_websetup(self, user_input=None):
         self._errors = {}
-        if user_input is not None:
+        if user_input is not None:            
             name_entry = user_input[CONF_NAME]
             scan_entry = max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL_WEB)
-            user_entry = user_input[CONF_USERNAME]
-            pwd_entry = user_input[CONF_PASSWORD]
-            totp_entry = user_input[CONF_TOTP_SECRET]
+            user_entry = user_input["credentials"][CONF_USERNAME]
+            pwd_entry = user_input["credentials"][CONF_PASSWORD]
+            totp_entry = user_input["credentials"][CONF_TOTP_SECRET]
             totp_url_entry = None
-            include_wallbox_in_house_consumption = user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
+            include_wallbox_in_house_consumption = user_input["expert"][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
 
             if totp_entry is not None:
                 if len(totp_entry) == 0:
@@ -499,7 +499,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if CONF_TOTP_SECRET not in self._errors:
                 # when the user has multiple masters, the auto-detect-code does
                 # not work - so we allow the specification of the AnlagenNummer
-                master_plant_val = user_input[CONF_DEV_MASTER_NUM]
+                master_plant_val = user_input["expert"][CONF_DEV_MASTER_NUM]
                 if master_plant_val == 'auto':
                     already_exist_ident = user_entry
                     master_plant_num = -1
