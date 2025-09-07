@@ -8,19 +8,19 @@ from urllib.parse import urlparse, unquote, parse_qs
 import pyotp
 import voluptuous as vol
 from aiohttp import ClientResponseError
-from homeassistant.data_entry_flow import section
-from requests.exceptions import HTTPError, Timeout
-
-from custom_components.senec.pysenec_ha import InverterLocal
-from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.config_entries import ConfigFlowResult, SOURCE_RECONFIGURE
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import slugify
+from requests.exceptions import HTTPError, Timeout
+
+from custom_components.senec.pysenec_ha import InverterLocal
+from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
@@ -451,15 +451,18 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="localsystem", data_schema=a_schema, last_step=True, errors=self._errors)
 
     async def async_step_websetup(self, user_input=None):
+        key_creden = "credentials"
+        key_expert = "expert"
+
         self._errors = {}
         if user_input is not None:            
             name_entry = user_input[CONF_NAME]
             scan_entry = max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL_WEB)
-            user_entry = user_input["credentials"][CONF_USERNAME]
-            pwd_entry = user_input["credentials"][CONF_PASSWORD]
-            totp_entry = user_input["credentials"][CONF_TOTP_SECRET]
+            user_entry = user_input[key_creden][CONF_USERNAME]
+            pwd_entry = user_input[key_creden][CONF_PASSWORD]
+            totp_entry = user_input[key_creden][CONF_TOTP_SECRET]
             totp_url_entry = None
-            include_wallbox_in_house_consumption = user_input["expert"][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
+            include_wallbox_in_house_consumption = user_input[key_expert][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
 
             if totp_entry is not None:
                 if len(totp_entry) == 0:
@@ -499,7 +502,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if CONF_TOTP_SECRET not in self._errors:
                 # when the user has multiple masters, the auto-detect-code does
                 # not work - so we allow the specification of the AnlagenNummer
-                master_plant_val = user_input["expert"][CONF_DEV_MASTER_NUM]
+                master_plant_val = user_input[key_expert][CONF_DEV_MASTER_NUM]
                 if master_plant_val == 'auto':
                     already_exist_ident = user_entry
                     master_plant_num = -1
@@ -550,24 +553,33 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if all(x is not None for x in
                    [self._default_name, self._default_user, self._default_pwd, self._default_totp,
                     self._default_master_plant_number, self._default_interval, self._default_include_wallbox_in_house_consumption]):
-                user_input[CONF_NAME] = self._default_name
-                user_input[CONF_USERNAME] = self._default_user
-                user_input[CONF_PASSWORD] = self._default_pwd
-                user_input[CONF_TOTP_SECRET] = self._default_totp
-                user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION] = self._default_include_wallbox_in_house_consumption
-                user_input[CONF_DEV_MASTER_NUM] = str(self._default_master_plant_number)
-                user_input[CONF_SCAN_INTERVAL] = self._default_interval
+                user_input = {
+                    CONF_NAME: self._default_name,
+                    CONF_SCAN_INTERVAL: self._default_interval,
+                    key_creden: {
+                        CONF_USERNAME: self._default_user,
+                        CONF_PASSWORD: self._default_pwd,
+                        CONF_TOTP_SECRET: self._default_totp
+                    },
+                    key_expert: {
+                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: self._default_include_wallbox_in_house_consumption,
+                        CONF_DEV_MASTER_NUM: str(self._default_master_plant_number)
+                    }
+                }
             else:
-                user_input[CONF_NAME] = DEFAULT_NAME_WEB
-                user_input[CONF_USERNAME] = DEFAULT_USERNAME
-                user_input[CONF_PASSWORD] = ""
-                user_input[CONF_TOTP_SECRET] = ""
-                user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION] = True
-                user_input[CONF_DEV_MASTER_NUM] = "auto"
-                if self._selected_system == SYSTYPE_SENECV4:
-                    user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
-                else:
-                    user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB
+                user_input = {
+                    CONF_NAME: DEFAULT_NAME_WEB,
+                    CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL_WEB_SENECV4 if self._selected_system == SYSTYPE_SENECV4 else DEFAULT_SCAN_INTERVAL_WEB,
+                    key_creden: {
+                        CONF_USERNAME: DEFAULT_USERNAME,
+                        CONF_PASSWORD: "",
+                        CONF_TOTP_SECRET: ""
+                    },
+                    key_expert: {
+                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: True,
+                        CONF_DEV_MASTER_NUM: "auto"
+                    }
+                }
 
         has_fs_write_access = await asyncio.get_running_loop().run_in_executor(None,
                                                                                SenecOnline.check_general_fs_access,
@@ -580,18 +592,18 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=vol.Schema({
                     vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
                     vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
-                    vol.Optional("credentials"): section(
+                    vol.Optional(key_creden): section(
                         vol.Schema({
-                            vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
-                            vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
-                            vol.Optional(CONF_TOTP_SECRET, default=user_input[CONF_TOTP_SECRET]): str,
+                            vol.Required(CONF_USERNAME, default=user_input[key_creden][CONF_USERNAME]): str,
+                            vol.Required(CONF_PASSWORD, default=user_input[key_creden][CONF_PASSWORD]): str,
+                            vol.Optional(CONF_TOTP_SECRET, default=user_input[key_creden][CONF_TOTP_SECRET]): str,
                         }),
                         {"collapsed": False},
                     ),
-                    vol.Optional("expert"): section(
+                    vol.Optional(key_expert): section(
                         vol.Schema({
-                            vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
-                            vol.Required(CONF_DEV_MASTER_NUM, default=user_input[CONF_DEV_MASTER_NUM]):
+                            vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[key_expert][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
+                            vol.Required(CONF_DEV_MASTER_NUM, default=user_input[key_expert][CONF_DEV_MASTER_NUM]):
                                 selector.SelectSelector(
                                     selector.SelectSelectorConfig(
                                         options=MASTER_PLANT_NUMBERS,

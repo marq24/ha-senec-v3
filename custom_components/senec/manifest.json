@@ -3,9 +3,10 @@
   "name": "SENEC.Home",
   "codeowners": [
     "@marq24",
-    "@mchwalisz",
+    "@io-debug",
+    "@WernerSlabon",
     "@mstuettgen",
-    "@io-debug"
+    "@mchwalisz"
   ],
   "config_flow": true,
   "dependencies": [],
@@ -13,5 +14,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
   "requirements": ["pyotp>=2.8.0", "xmltodict>=0.13.0", "packaging>=21.0", "python-dateutil>=2.8.0"],
-  "version": "2025.8.5"
+  "version": "2025.9.0"
 }
