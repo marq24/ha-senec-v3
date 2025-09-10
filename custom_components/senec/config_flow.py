@@ -497,7 +497,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
 
                     if user_entry is not None and totp_url_entry is None and CONF_TOTP_SECRET not in self._errors:
-                        totp_url_entry = f"otpauth://totp/SENEC:{user_entry.strip().replace.all('@', '%40')}?secret={totp_entry}&digits=6&algorithm=SHA1&issuer=SENEC&period=30"
+                        totp_url_entry = f"otpauth://totp/SENEC:{user_entry.strip().replace('@', '%40')}?secret={totp_entry}&digits=6&algorithm=SHA1&issuer=SENEC&period=30"
 
             if CONF_TOTP_SECRET not in self._errors:
                 # when the user has multiple masters, the auto-detect-code does
