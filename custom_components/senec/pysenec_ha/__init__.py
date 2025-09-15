@@ -3048,7 +3048,7 @@ class SenecOnline:
                 _LOGGER.error(f"Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc).__name__} - {exc}")
                 totp = None
                 raise ReConfigurationRequired(exc)
-        
+
         # if we passed all tests, we can set the propperty
         self._SENEC_TOTP_SECRET = totp
 
@@ -3166,16 +3166,18 @@ class SenecOnline:
         # https://senec-app-systems-proxy.prod.senec.dev/systems/settings/user-energy-settings?systemId={master_plant_id}
         # -> http 204 NO-CONTENT
 
-        self._app_master_plant_number = app_master_plant_number
         # app-token related stuff…
-        fileInstance = "";
-        if self._app_master_plant_number > 0:
-          fileInstance = f"_{self._app_master_plant_number}";
+        self._storage_path = storage_path
         if tokens_location is None:
-            if storage_path is not None:
-                self._app_stored_tokens_location = str(storage_path.joinpath(DOMAIN, f"{user}{fileInstance}_access_token.txt"))
+            file_instance = ""
+            if self._app_master_plant_number > 0:
+                file_instance = f"_{self._app_master_plant_number}"
+
+            if self._storage_path is not None:
+                self._app_stored_tokens_location = str(self._storage_path.joinpath(DOMAIN, f"{user}@@@{file_instance}_access_token.txt"))
             else:
-                self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}{fileInstance}_access_token.txt"
+                self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}@@@{file_instance}_access_token.txt"
+
         else:
             self._app_stored_tokens_location = tokens_location
 
@@ -3183,7 +3185,7 @@ class SenecOnline:
         self._app_is_authenticated = False
         self._app_token = None
         # the '_app_master_plant_id' will be used in any further request to
-        # the senec endpoints as part of the URL..
+        # the senec endpoints as part of the URL...
         self._app_master_plant_id = None
         self._app_serial_number = None
         self._app_wallbox_num_max = 4
@@ -3228,6 +3230,31 @@ class SenecOnline:
                     _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
         else:
             _LOGGER.debug(f"SenecOnline initialized [RAW - no websession]")
+
+    async def _rename_token_file_if_needed(self, user:str):
+        """Move a legacy token file to new _app_master_plant_number dependant if it exists"""
+        if self._app_master_plant_number > 0:
+            file_instance = f"_{self._app_master_plant_number}"
+
+            # only if the _app_master_plant_number is > 0 ...
+            if self._storage_path is not None:
+                stored_tokens_location_legacy = str(self._storage_path.joinpath(DOMAIN, f"{user}_access_token.txt"))
+            else:
+                stored_tokens_location_legacy = f".storage/{DOMAIN}/{user}_access_token.txt"
+
+            try:
+                # Check if the legacy file exists
+                if os.path.isfile(stored_tokens_location_legacy):
+                    _LOGGER.debug(f"Found legacy token at {stored_tokens_location_legacy}, moving to {self._app_stored_tokens_location}")
+
+                    # Move the file (in executor to avoid blocking)
+                    await asyncio.get_running_loop().run_in_executor(None, lambda: os.rename(stored_tokens_location_legacy, self._app_stored_tokens_location))
+                    _LOGGER.debug(f"Successfully moved token file to new location")
+                else:
+                    _LOGGER.debug(f"No legacy token file found at {stored_tokens_location_legacy}, nothing to move")
+
+            except Exception as e:
+                _LOGGER.warning(f"Failed to move token file: {type(e).__name__} - {e}")
 
     def _init_user_agents(self):
         self.DEFAULT_USER_AGENT= f"SENEC.Home V2.x/V3/V4 Integration/{self._integration_version} (+https://github.com/marq24/ha-senec-v3)"

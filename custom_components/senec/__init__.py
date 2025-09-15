@@ -136,6 +136,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     coordinator = SenecDataUpdateCoordinator(hass, config_entry, intg_version)
 
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+        # we must check, if there is a legacy-token file (that does not contain the _app_master_plant_number in the filename)
+        await coordinator.senec._rename_token_file_if_needed(user=config_entry.data[CONF_USERNAME])
+
         # we need to log in into the SenecApp and authenticate the user via the web-portal
         try:
             await coordinator.senec.authenticate_all()
@@ -409,7 +412,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                                     if not opt[query_option_key]:
                                                         opt[query_option_key] = True
                                                         _LOGGER.info(a_log_msg)
-    
+
                                             _LOGGER.debug(f"Found a EntityDescription for '{a_id}' key: {a_entity_desc.key}")
                                             break
 
