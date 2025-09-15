@@ -3168,12 +3168,14 @@ class SenecOnline:
 
         self._app_master_plant_number = app_master_plant_number
         # app-token related stuff…
-        self._app_stored_tokens_location = None
+        fileInstance = "";
+        if self._app_master_plant_number > 0:
+          fileInstance = f"_{self._app_master_plant_number}";
         if tokens_location is None:
             if storage_path is not None:
-                self._app_stored_tokens_location = str(storage_path.joinpath(DOMAIN, f"{user}_access_token.txt"))
+                self._app_stored_tokens_location = str(storage_path.joinpath(DOMAIN, f"{user}{fileInstance}_access_token.txt"))
             else:
-                self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}_access_token.txt"
+                self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}{fileInstance}_access_token.txt"
         else:
             self._app_stored_tokens_location = tokens_location
 
