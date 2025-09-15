@@ -3177,12 +3177,12 @@ class SenecOnline:
         if tokens_location is None:
             file_instance = ""
             if self._app_master_plant_number > 0:
-                file_instance = f"_{self._app_master_plant_number}"
+                file_instance = f"_@@@{self._app_master_plant_number}"
 
             if self._storage_path is not None:
-                self._app_stored_tokens_location = str(self._storage_path.joinpath(DOMAIN, f"{user}@@@{file_instance}_access_token.txt"))
+                self._app_stored_tokens_location = str(self._storage_path.joinpath(DOMAIN, f"{user}{file_instance}_access_token.txt"))
             else:
-                self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}@@@{file_instance}_access_token.txt"
+                self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}{file_instance}_access_token.txt"
 
         else:
             self._app_stored_tokens_location = tokens_location
@@ -3246,8 +3246,6 @@ class SenecOnline:
     async def _rename_token_file_if_needed(self, user:str):
         """Move a legacy token file to new _app_master_plant_number dependant if it exists"""
         if self._app_master_plant_number > 0:
-            file_instance = f"_{self._app_master_plant_number}"
-
             # only if the _app_master_plant_number is > 0 ...
             if self._storage_path is not None:
                 stored_tokens_location_legacy = str(self._storage_path.joinpath(DOMAIN, f"{user}_access_token.txt"))
