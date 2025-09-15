@@ -137,6 +137,9 @@ class SenecLocal:
         "Keep-Alive": "timeout=60, max=0",
     }
 
+    def __str__(self) -> str:
+        return f"SenecLocal [{util.mask_string(self._host_and_schema)}, Serial: S{util.mask_string(self.device_id)}]"
+
     def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None, integ_version: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         _LOGGER.info(f"__init__() -> (re)starting SenecLocal (lala.cgi) integration v{self._integration_version} for host: '{host}' with options: {options}")
@@ -146,7 +149,7 @@ class SenecLocal:
         self._QUERY_STATS = True
         self._QUERY_USER_LEVEL = False
 
-        # all other query fields depends from the config
+        # all other query fields depends on the config
         self._QUERY_PV1 = False
         self._QUERY_PM1OBJ1 = False
         self._QUERY_PM1OBJ2 = False
@@ -189,8 +192,6 @@ class SenecLocal:
 
             if IGNORE_SYSTEM_STATE_KEY in options:
                 self._IGNORE_SYSTEM_STATUS = options[IGNORE_SYSTEM_STATE_KEY]
-
-
 
         self._host = host
         if use_https:
@@ -241,24 +242,28 @@ class SenecLocal:
         self._last_system_reset = 0
         self._timeout = aiohttp.ClientTimeout(total=10, connect=None, sock_connect=None, sock_read=None,
                                               ceil_threshold=5)
-        self._SenecOnline = None
+        self._bridge_to_senec_online = None
 
         #try:
         #    asyncio.create_task(self.update_version())
         #except Exception as exc:
         #    _LOGGER.debug(f"Exception while try to call 'self.update_version()': {exc}")
 
-    def setSenecOnline(self, senecOnline):
-        self._SenecOnline = senecOnline
-        _LOGGER.debug(f"SenecOnline initialized, establish bridge between SenecLocal and SenecOnline")
-        if self._QUERY_WALLBOX_APPAPI:
-            self._SenecOnline._QUERY_WALLBOX = True
-            # ok let's force an UPDATE of the WEB-API
-            _LOGGER.debug("force refresh of wallbox-data via app-api…")
-            try:
-                asyncio.create_task(self._SenecOnline.update())
-            except Exception as exc:
-                _LOGGER.debug(f"Exception while try to call 'self._SenecOnline.update': {exc}")        
+    def set_senec_online_instance(self, a_senec_online):
+        if a_senec_online is not None:
+            _LOGGER.debug(f"SIBLING: SenecLocal: bound a instance of SenecOnline - BRIDGE from LOCAL to ONLINE is establish!")
+            self._bridge_to_senec_online = a_senec_online
+            if self._QUERY_WALLBOX_APPAPI:
+                self._bridge_to_senec_online._QUERY_WALLBOX = True
+                # ok let's force an UPDATE of the WEB-API
+                _LOGGER.debug("force refresh of wallbox-data via app-api…")
+                try:
+                    asyncio.create_task(self._bridge_to_senec_online.update())
+                except Exception as exc:
+                    _LOGGER.debug(f"Exception while try to call 'self._bridge_to_senec_online.update': {exc}")
+        else:
+            _LOGGER.debug(f"SIBLING: SenecLocal: remove reference to SenecOnline - BRIDGE from LOCAL to ONLINE is destroyed!")
+            self._bridge_to_senec_online = None
 
     async def update(self):
         if self._raw_version is None or len(self._raw_version) == 0:
@@ -2233,10 +2238,10 @@ class SenecLocal:
 
         await self._write(post_data)
 
-        if sync and self._SenecOnline is not None:
+        if sync and self._bridge_to_senec_online is not None:
             # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting… so we need to push
             # this to all 4 possible wallboxes…
-            await self._SenecOnline.app_set_allow_intercharge_all(value_to_set=value, sync=False)
+            await self._bridge_to_senec_online.app_set_allow_intercharge_all(value_to_set=value, sync=False)
 
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
@@ -2354,29 +2359,29 @@ class SenecLocal:
 
     @property
     def wallbox_1_set_icmax_extrema(self) -> [float]:
-        if self._SenecOnline is not None:
-            wb_data = self._SenecOnline._app_get_wallbox_object_at_index(0)
+        if self._bridge_to_senec_online is not None:
+            wb_data = self._bridge_to_senec_online._app_get_wallbox_object_at_index(0)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
     @property
     def wallbox_2_set_icmax_extrema(self) -> [float]:
-        if self._SenecOnline is not None:
-            wb_data = self._SenecOnline._app_get_wallbox_object_at_index(1)
+        if self._bridge_to_senec_online is not None:
+            wb_data = self._bridge_to_senec_online._app_get_wallbox_object_at_index(1)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
     @property
     def wallbox_3_set_icmax_extrema(self) -> [float]:
-        if self._SenecOnline is not None:
-            wb_data = self._SenecOnline._app_get_wallbox_object_at_index(2)
+        if self._bridge_to_senec_online is not None:
+            wb_data = self._bridge_to_senec_online._app_get_wallbox_object_at_index(2)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
     @property
     def wallbox_4_set_icmax_extrema(self) -> [float]:
-        if self._SenecOnline is not None:
-            wb_data = self._SenecOnline._app_get_wallbox_object_at_index(3)
+        if self._bridge_to_senec_online is not None:
+            wb_data = self._bridge_to_senec_online._app_get_wallbox_object_at_index(3)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
@@ -2403,8 +2408,8 @@ class SenecLocal:
 
     async def set_nva_wallbox_set_icmax(self, pos: int, value: float, sync: bool = True, verify_state: bool = True):
         if verify_state:
-            if self._SenecOnline is not None:
-                local_mode = self._SenecOnline._app_get_local_wallbox_mode_from_api_values(pos)
+            if self._bridge_to_senec_online is not None:
+                local_mode = self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(pos)
             else:
                 local_mode = "no-bridge-avail"
         else:
@@ -2415,8 +2420,8 @@ class SenecLocal:
                                       SENEC_SECTION_WALLBOX, "SET_ICMAX", "fl", value,
                                       SENEC_SECTION_WALLBOX, "MIN_CHARGING_CURRENT", "fl", value)
 
-            if sync and self._SenecOnline is not None:
-                await self._SenecOnline.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
+            if sync and self._bridge_to_senec_online is not None:
+                await self._bridge_to_senec_online.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
         else:
             _LOGGER.debug(
                 f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
@@ -2433,47 +2438,47 @@ class SenecLocal:
 
     @property
     def wallbox_1_mode(self) -> str:
-        if self._SenecOnline is not None:
-            return self._SenecOnline._app_get_local_wallbox_mode_from_api_values(0)
+        if self._bridge_to_senec_online is not None:
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(0)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_1_mode(self, value: str):
         await self.set_wallbox_mode_post_int(0, value)
-        if self._SenecOnline is not None:
-            await self._SenecOnline.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
+        if self._bridge_to_senec_online is not None:
+            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
 
     @property
     def wallbox_2_mode(self) -> str:
-        if self._SenecOnline is not None:
-            return self._SenecOnline._app_get_local_wallbox_mode_from_api_values(1)
+        if self._bridge_to_senec_online is not None:
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(1)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_2_mode(self, value: str):
         await self.set_wallbox_mode_post_int(1, value)
-        if self._SenecOnline is not None:
-            await self._SenecOnline.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=False)
+        if self._bridge_to_senec_online is not None:
+            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=False)
 
     @property
     def wallbox_3_mode(self) -> str:
-        if self._SenecOnline is not None:
-            return self._SenecOnline._app_get_local_wallbox_mode_from_api_values(2)
+        if self._bridge_to_senec_online is not None:
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(2)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_3_mode(self, value: str):
         await self.set_wallbox_mode_post_int(2, value)
-        if self._SenecOnline is not None:
-            await self._SenecOnline.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=False)
+        if self._bridge_to_senec_online is not None:
+            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=False)
 
     @property
     def wallbox_4_mode(self) -> str:
-        if self._SenecOnline is not None:
-            return self._SenecOnline._app_get_local_wallbox_mode_from_api_values(3)
+        if self._bridge_to_senec_online is not None:
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(3)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_4_mode(self, value: str):
         await self.set_wallbox_mode_post_int(3, value)
-        if self._SenecOnline is not None:
-            await self._SenecOnline.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=False)
+        if self._bridge_to_senec_online is not None:
+            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=False)
 
     async def set_wallbox_mode_post_int(self, pos: int, local_value: str):
         if local_value == LOCAL_WB_MODE_LOCKED:
@@ -2970,6 +2975,8 @@ class ReConfigurationRequired(Exception):
 class SenecOnline:
 
     USE_DEFAULT_USER_AGENT:Final = True
+    def __str__(self) -> str:
+        return f"SenecOnline [{util.mask_string(self._SENEC_USERNAME)}, AppIsAuth? {self._app_is_authenticated} MasterPlant: {self._app_master_plant_number}, Serial: {util.mask_string(self._app_serial_number)}]"
 
     def __init__(self, user, pwd, totp, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None,
                  storage_path: Path = None, tokens_location: str = None, integ_version: str = None):
@@ -3217,18 +3224,24 @@ class SenecOnline:
             "days":         self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS,
             "days_data":    self._static_TOTAL_SUMS_PREV_DAYS}
         self._static_TOTAL_WALLBOX_DATA = [copy.deepcopy(self._static_A_WALLBOX_STORAGE) for _ in range(4)]
-        self._SenecLocal = None
 
-    def setSenecLocal(self, senecLocal):                
+        self._bridge_to_senec_local = None
         if self.web_session is not None:
-            _LOGGER.debug(f"SenecOnline initialized, establish bridge between SenecLocal and SenecOnline")
-            self._SenecLocal = senecLocal
+            _LOGGER.debug(f"SenecOnline initialized SUCCESSFULLY")
+        else:
+            _LOGGER.debug(f"SenecOnline initialized [RAW - no websession]")
+
+    def set_senec_local_instance(self, a_senec_local):
+        if a_senec_local is not None:
+            _LOGGER.debug(f"SIBLING: SenecOnline: bound a instance of SenecLocal - BRIDGE from ONLINE to LOCAL is establish!")
+            self._bridge_to_senec_local = a_senec_local
             # ok local-polling (lala.cgi) is already existing…
-            if self._SenecLocal._QUERY_WALLBOX_APPAPI:
+            if self._bridge_to_senec_local._QUERY_WALLBOX_APPAPI:
                 self._QUERY_WALLBOX = True
                 _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
         else:
-            _LOGGER.debug(f"SenecOnline initialized [RAW - no websession]")
+            _LOGGER.debug(f"SIBLING: SenecOnline: remove reference to SenecLocal - BRIDGE from ONLINE to LOCAL is destroyed!")
+            self._bridge_to_senec_local = None
 
     async def _rename_token_file_if_needed(self, user:str):
         """Move a legacy token file to new _app_master_plant_number dependant if it exists"""
@@ -4928,8 +4941,8 @@ class SenecOnline:
 
                         # I just can guess, that 'allowIntercharge' means to use battery…
                         allow_intercharge = True  # default value
-                        if self._SenecLocal is not None:
-                            allow_intercharge = self._SenecLocal.wallbox_allow_intercharge
+                        if self._bridge_to_senec_local is not None:
+                            allow_intercharge = self._bridge_to_senec_local.wallbox_allow_intercharge
 
                         data = await self._app_do_post_request(wb_url, post_data={"allowIntercharge": allow_intercharge}, read_response=True)
                         if data is not None:
@@ -4972,10 +4985,10 @@ class SenecOnline:
 
                 if success:
                     # do we need to sync the value back to the 'lala_cgi' integration?
-                    if sync and self._SenecLocal is not None:
+                    if sync and self._bridge_to_senec_local is not None:
                         # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
                         # is no sync=False parameter here…
-                        await self._SenecLocal.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
+                        await self._bridge_to_senec_local.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
 
                     # when we changed the mode, the backend might have automatically adjusted the
                     # 'chargingMode:solarOptimizeSettings:minChargingCurrentInA' so we need to sync
@@ -4993,13 +5006,13 @@ class SenecOnline:
                             min_charging_current_in_a_value = a_solar_settings_obj.get("minChargingCurrentInA", None)
                             if min_charging_current_in_a_value is not None:
                                 new_min_current = str(round(float(min_charging_current_in_a_value), 2))
-                                cur_min_current = str(round(self._SenecLocal.wallbox_set_icmax[idx], 2))
+                                cur_min_current = str(round(self._bridge_to_senec_local.wallbox_set_icmax[idx], 2))
 
                                 if cur_min_current != new_min_current:
                                     _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                                    await self._SenecLocal.set_nva_wallbox_set_icmax(pos=idx,
-                                                                                       value=float(new_min_current),
-                                                                                       sync=False, verify_state=False)
+                                    await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx,
+                                                                                                value=float(new_min_current),
+                                                                                                sync=False, verify_state=False)
                                 else:
                                     _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
 
@@ -5070,8 +5083,8 @@ class SenecOnline:
 
             if success:
                 # do we need to sync the value back to the 'lala_cgi' integration?
-                if sync and self._SenecLocal is not None:
-                    await self._SenecLocal.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
+                if sync and self._bridge_to_senec_local is not None:
+                    await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
 
     async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
         _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
@@ -5101,8 +5114,8 @@ class SenecOnline:
                     self._app_set_wallbox_object_at_index(idx, data)
 
                     # do we need to sync the value back to the 'lala_cgi' integration?
-                    if sync and self._SenecLocal is not None:
-                        await self._SenecLocal.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
+                    if sync and self._bridge_to_senec_local is not None:
+                        await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
 
                     return True
                 else:

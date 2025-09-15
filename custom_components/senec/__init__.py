@@ -1,8 +1,20 @@
 """The senec integration."""
+import asyncio
 import logging
 from datetime import timedelta
 from pathlib import Path
 from typing import Final
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as config_val, entity_registry
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.entity import EntityDescription, Entity
+from homeassistant.helpers.storage import STORAGE_DIR
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.loader import async_get_integration
 
 from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
 from custom_components.senec.pysenec_ha.constants import (
@@ -19,16 +31,6 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, Event
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as config_val, entity_registry
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant.helpers.entity import EntityDescription, Entity
-from homeassistant.helpers.storage import STORAGE_DIR
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.loader import async_get_integration
 from . import service as SenecService
 from .const import (
     DOMAIN,
@@ -170,11 +172,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.versions
 
         # Search the (optional) sibling SenecOnline for this SenecLocal via serialnumber and connect them
-        for c in hass.data[DOMAIN].values():
-          if isinstance(c, SenecDataUpdateCoordinator) and isinstance(c.senec, SenecOnline) and coordinator._device_serial == c._device_serial:
-            _LOGGER.debug(f"SIBLING: Sibling found for SenecLocal {coordinator._device_serial}  : {type(c.senec)} {c.senec}")
-            coordinator.senec.setSenecOnline  (c.senec)
-            c.senec.setSenecLocal(coordinator.senec)
+        for a_other_coord in hass.data[DOMAIN].values():
+          if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecOnline):
+            # we must ensure, that the 'a_other_coord' have already passed it's initialization-phase...
+            max_wait_count = 0
+            while max_wait_count < 5 and a_other_coord._device_serial is None:
+                await asyncio.sleep(5)
+                max_wait_count += 1
+
+            if coordinator._device_serial == a_other_coord._device_serial:
+                _LOGGER.info(f"SIBLING: ONLINE Sibling found for this SenecLocal[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
+                coordinator.senec.set_senec_online_instance(a_other_coord.senec)
+                a_other_coord.senec.set_senec_local_instance(coordinator.senec)
+
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         await coordinator.senec.update_version()
@@ -194,11 +204,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.versions
 
         # Search the (optional) sibling SenecLocal for this SenecOnline via serialnumber and connect them
-        for c in hass.data[DOMAIN].values():
-          if isinstance(c, SenecDataUpdateCoordinator) and isinstance(c.senec, SenecLocal) and coordinator._device_serial == c._device_serial:
-            _LOGGER.debug(f"SIBLING: Sibling found for SenecOnline {coordinator._device_serial} : {type(c.senec)} {c.senec}")
-            coordinator.senec.setSenecLocal  (c.senec)
-            c.senec.setSenecOnline (coordinator.senec)
+        for a_other_coord in hass.data[DOMAIN].values():
+          if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecLocal):
+            # we must ensure, that the 'a_other_coord' have already passed it's initialization-phase...
+            max_wait_count = 0
+            while max_wait_count < 5 and a_other_coord._device_serial is None:
+                await asyncio.sleep(5)
+                max_wait_count += 1
+
+            if coordinator._device_serial == a_other_coord._device_serial:
+                _LOGGER.info(f"SIBLING: LOCAL Sibling found for this SenecOnline[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
+                coordinator.senec.set_senec_local_instance(a_other_coord.senec)
+                a_other_coord.senec.set_senec_online_instance(coordinator.senec)
 
         # Register Services
         senec_services = SenecService.SenecService(hass, config_entry, coordinator)
@@ -538,6 +555,27 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     if unload_ok:
         if DOMAIN in hass.data and config_entry.entry_id in hass.data[DOMAIN]:
+            try:
+                the_unload_coordinator = hass.data[DOMAIN][config_entry.entry_id]
+
+                # we must find all other (still present) coordinator's where this
+                # SenecLocal (or SenecOnline) is referred as 'self._bridge_to_senec_...'
+                is_local = isinstance(the_unload_coordinator.senec, SenecLocal)
+                is_online  = isinstance(the_unload_coordinator.senec, SenecOnline)
+                if is_local or is_online:
+                    for a_other_coord in hass.data[DOMAIN].values():
+                        if isinstance(a_other_coord, SenecDataUpdateCoordinator):
+                            if is_local and isinstance(a_other_coord.senec, SenecOnline):
+                                if the_unload_coordinator._device_serial == a_other_coord._device_serial:
+                                    a_other_coord.senec.set_senec_local_instance(None)
+
+                            elif is_online and isinstance(a_other_coord.senec, SenecLocal):
+                                if the_unload_coordinator._device_serial == a_other_coord._device_serial:
+                                    a_other_coord.senec.set_senec_online_instance(None)
+
+            except BaseException as exception:
+                _LOGGER.warning(f"async_unload_entry() Exception (fatal): {exception}")
+
             hass.data[DOMAIN].pop(config_entry.entry_id)
 
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
