@@ -220,6 +220,10 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry, intg_version: str):
         UPDATE_INTERVAL_IN_SECONDS = config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2)
+        # we need a 'unique' key per config_entry - that allow us up map LOCAL and WEB instances...
+        _device_key = config_entry.data.get(CONF_DEV_SERIAL, "SERIAL_DEVICE_KEY_UNKNOWN")
+        if _device_key[0] != "S":
+            _device_key = f"S{self._device_key}"
 
         self._integration_version = intg_version
         self._total_increasing_sensors = []
@@ -229,7 +233,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
             # host can be changed in the options...
             self._host = config_entry.data[CONF_HOST]
-            self.senec = InverterLocal(host=self._host, inv_session=async_create_clientsession(hass), integ_version=self._integration_version)
+            self.senec = InverterLocal(host=self._host, inv_session=async_create_clientsession(hass), integ_version=self._integration_version, device_key=_device_key)
 
         # WEB-API Version...
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
@@ -353,7 +357,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                          lang=hass.config.language.lower(),
                                          options=opt,
                                          storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
-                                         integ_version=self._integration_version)
+                                         integ_version=self._integration_version,
+                                         device_key=_device_key)
             except ReConfigurationRequired as exc:
                 _LOGGER.warning(f"SenecOnline could not be created: {type(exc).__name__} - {exc}")
                 hass.add_job(config_entry.async_start_reauth, hass)
@@ -425,7 +430,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             self.senec = SenecLocal(host=self._host, use_https=self._use_https, lala_session=async_create_clientsession(hass, verify_ssl=False),
                                     lang=hass.config.language.lower(), options=opt,
-                                    integ_version=self._integration_version)
+                                    integ_version=self._integration_version,
+                                    device_key=_device_key)
 
         self.name = config_entry.title
         self._config_entry = config_entry

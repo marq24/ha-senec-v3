@@ -137,16 +137,17 @@ class SenecLocal:
         "Keep-Alive": "timeout=60, max=0",
     }
 
-    def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None, integ_version: str = None):
+    def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None, integ_version: str = None, device_key: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         _LOGGER.info(f"__init__() -> (re)starting SenecLocal (lala.cgi) integration v{self._integration_version} for host: '{host}' with options: {options}")
         self._lang = lang
+        self._device_key = device_key
 
         # this property will be finally set on config_read
         self._QUERY_STATS = True
         self._QUERY_USER_LEVEL = False
 
-        # all other query fields depends from the config
+        # all other query fields depends on the config
         self._QUERY_PV1 = False
         self._QUERY_PM1OBJ1 = False
         self._QUERY_PM1OBJ2 = False
@@ -247,19 +248,19 @@ class SenecLocal:
         #except Exception as exc:
         #    _LOGGER.debug(f"Exception while try to call 'self.update_version()': {exc}")
 
-        IntBridge.lala_cgi = self
-        _LOGGER.debug(f"LocalSenec initialized and IntBridge.lala_cgi set to {self}")
+        IntBridge(self._device_key).lala_cgi = self
+        _LOGGER.debug(f"LocalSenec initialized and IntBridge({self._device_key}).lala_cgi set to {self}")
 
-        if IntBridge.avail():
+        if IntBridge(self._device_key).avail():
             # ok mein-senec-web is already existing…
             if self._QUERY_WALLBOX_APPAPI:
-                IntBridge.app_api._QUERY_WALLBOX = True
+                IntBridge(self._device_key).app_api._QUERY_WALLBOX = True
                 # ok let's force an UPDATE of the WEB-API
                 _LOGGER.debug("force refresh of wallbox-data via app-api…")
                 try:
-                    asyncio.create_task(IntBridge.app_api.update())
+                    asyncio.create_task(IntBridge(self._device_key).app_api.update())
                 except Exception as exc:
-                    _LOGGER.debug(f"Exception while try to call 'IntBridge.app_api.update': {exc}")
+                    _LOGGER.debug(f"Exception while try to call 'IntBridge({self._device_key}).app_api.update': {exc}")
 
     async def update(self):
         if self._raw_version is None or len(self._raw_version) == 0:
@@ -2234,10 +2235,10 @@ class SenecLocal:
 
         await self._write(post_data)
 
-        if sync and IntBridge.avail():
+        if sync and IntBridge(self._device_key).avail():
             # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting… so we need to push
             # this to all 4 possible wallboxes…
-            await IntBridge.app_api.app_set_allow_intercharge_all(value_to_set=value, sync=False)
+            await IntBridge(self._device_key).app_api.app_set_allow_intercharge_all(value_to_set=value, sync=False)
 
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
@@ -2290,14 +2291,14 @@ class SenecLocal:
     #     else:
     #         # no clue what should be the starte to be restored?!
     #         mode = APP_API_WEB_MODE_SSGCM
-    #         if IntBridge.app_api._app_last_wallbox_modes_lc[pos] is not None:
-    #             mode = IntBridge.app_api._app_last_wallbox_modes_lc[pos]
-    #         elif IntBridge.app_api._app_raw_wallbox[pos] is not None:
+    #         if IntBridge(self._device_key).app_api._app_last_wallbox_modes_lc[pos] is not None:
+    #             mode = IntBridge(self._device_key).app_api._app_last_wallbox_modes_lc[pos]
+    #         elif IntBridge(self._device_key).app_api._app_raw_wallbox[pos] is not None:
     #             pass
     #
     #     await self.set_wallbox_mode_post_int(pos=pos, local_value=mode)
-    #     if sync and IntBridge.avail():
-    #         await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=mode, wallbox_num=(pos + 1), sync=False)
+    #     if sync and IntBridge(self._device_key).avail():
+    #         await IntBridge(self._device_key).app_api.app_set_wallbox_mode(local_mode_to_set=mode, wallbox_num=(pos + 1), sync=False)
 
     def read_array_data(self, section_key: str, array_values_key) -> []:
         if self._raw is not None and section_key in self._raw and array_values_key in self._raw[section_key]:
@@ -2355,29 +2356,29 @@ class SenecLocal:
 
     @property
     def wallbox_1_set_icmax_extrema(self) -> [float]:
-        if IntBridge.avail():
-            wb_data = IntBridge.app_api._app_get_wallbox_object_at_index(0)
+        if IntBridge(self._device_key).avail():
+            wb_data = IntBridge(self._device_key).app_api._app_get_wallbox_object_at_index(0)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
     @property
     def wallbox_2_set_icmax_extrema(self) -> [float]:
-        if IntBridge.avail():
-            wb_data = IntBridge.app_api._app_get_wallbox_object_at_index(1)
+        if IntBridge(self._device_key).avail():
+            wb_data = IntBridge(self._device_key).app_api._app_get_wallbox_object_at_index(1)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
     @property
     def wallbox_3_set_icmax_extrema(self) -> [float]:
-        if IntBridge.avail():
-            wb_data = IntBridge.app_api._app_get_wallbox_object_at_index(2)
+        if IntBridge(self._device_key).avail():
+            wb_data = IntBridge(self._device_key).app_api._app_get_wallbox_object_at_index(2)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
     @property
     def wallbox_4_set_icmax_extrema(self) -> [float]:
-        if IntBridge.avail():
-            wb_data = IntBridge.app_api._app_get_wallbox_object_at_index(3)
+        if IntBridge(self._device_key).avail():
+            wb_data = IntBridge(self._device_key).app_api._app_get_wallbox_object_at_index(3)
             return self._wallbox_set_icmax_extrema(wb_data)
         return None
 
@@ -2404,8 +2405,8 @@ class SenecLocal:
 
     async def set_nva_wallbox_set_icmax(self, pos: int, value: float, sync: bool = True, verify_state: bool = True):
         if verify_state:
-            if IntBridge.avail():
-                local_mode = IntBridge.app_api._app_get_local_wallbox_mode_from_api_values(pos)
+            if IntBridge(self._device_key).avail():
+                local_mode = IntBridge(self._device_key).app_api._app_get_local_wallbox_mode_from_api_values(pos)
             else:
                 local_mode = "no-bridge-avail"
         else:
@@ -2416,8 +2417,8 @@ class SenecLocal:
                                       SENEC_SECTION_WALLBOX, "SET_ICMAX", "fl", value,
                                       SENEC_SECTION_WALLBOX, "MIN_CHARGING_CURRENT", "fl", value)
 
-            if sync and IntBridge.avail():
-                await IntBridge.app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
+            if sync and IntBridge(self._device_key).avail():
+                await IntBridge(self._device_key).app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
         else:
             _LOGGER.debug(
                 f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
@@ -2434,47 +2435,47 @@ class SenecLocal:
 
     @property
     def wallbox_1_mode(self) -> str:
-        if IntBridge.avail():
-            return IntBridge.app_api._app_get_local_wallbox_mode_from_api_values(0)
+        if IntBridge(self._device_key).avail():
+            return IntBridge(self._device_key).app_api._app_get_local_wallbox_mode_from_api_values(0)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_1_mode(self, value: str):
         await self.set_wallbox_mode_post_int(0, value)
-        if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
+        if IntBridge(self._device_key).avail():
+            await IntBridge(self._device_key).app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
 
     @property
     def wallbox_2_mode(self) -> str:
-        if IntBridge.avail():
-            return IntBridge.app_api._app_get_local_wallbox_mode_from_api_values(1)
+        if IntBridge(self._device_key).avail():
+            return IntBridge(self._device_key).app_api._app_get_local_wallbox_mode_from_api_values(1)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_2_mode(self, value: str):
         await self.set_wallbox_mode_post_int(1, value)
-        if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=False)
+        if IntBridge(self._device_key).avail():
+            await IntBridge(self._device_key).app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=False)
 
     @property
     def wallbox_3_mode(self) -> str:
-        if IntBridge.avail():
-            return IntBridge.app_api._app_get_local_wallbox_mode_from_api_values(2)
+        if IntBridge(self._device_key).avail():
+            return IntBridge(self._device_key).app_api._app_get_local_wallbox_mode_from_api_values(2)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_3_mode(self, value: str):
         await self.set_wallbox_mode_post_int(2, value)
-        if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=False)
+        if IntBridge(self._device_key).avail():
+            await IntBridge(self._device_key).app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=False)
 
     @property
     def wallbox_4_mode(self) -> str:
-        if IntBridge.avail():
-            return IntBridge.app_api._app_get_local_wallbox_mode_from_api_values(3)
+        if IntBridge(self._device_key).avail():
+            return IntBridge(self._device_key).app_api._app_get_local_wallbox_mode_from_api_values(3)
         return LOCAL_WB_MODE_UNKNOWN
 
     async def set_string_value_wallbox_4_mode(self, value: str):
         await self.set_wallbox_mode_post_int(3, value)
-        if IntBridge.avail():
-            await IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=False)
+        if IntBridge(self._device_key).avail():
+            await IntBridge(self._device_key).app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=False)
 
     async def set_wallbox_mode_post_int(self, pos: int, local_value: str):
         if local_value == LOCAL_WB_MODE_LOCKED:
@@ -2551,9 +2552,11 @@ class InverterLocal:
         "Keep-Alive": "timeout=60, max=0",
     }
 
-    def __init__(self, host, inv_session, integ_version: str = None):
+    def __init__(self, host, inv_session, integ_version: str = None, device_key: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         _LOGGER.info(f"__init__() -> (re)starting Inverter integration v{self._integration_version} for host: '{host}'")
+        self._device_key = device_key
+
         self.host = host
         self.inv_session: aiohttp.websession = inv_session
         self.url1 = f"http://{host}/all.xml"
@@ -2973,10 +2976,11 @@ class SenecOnline:
     USE_DEFAULT_USER_AGENT:Final = True
 
     def __init__(self, user, pwd, totp, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None,
-                 storage_path: Path = None, tokens_location: str = None, integ_version: str = None):
+                 storage_path: Path = None, tokens_location: str = None, integ_version: str = None, device_key: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         self._init_user_agents()
         self._lang = lang
+        self._device_key = device_key
         if options is not None:
             _LOGGER.info(f"__init__() -> (re)starting SenecOnline v{self._integration_version} for user: '{util.mask_string(user)}' with options: {options}")
         else:
@@ -3221,11 +3225,11 @@ class SenecOnline:
 
         # only init the bridge, if we have a 'web_session'
         if self.web_session is not None:
-            IntBridge.app_api = self
-            _LOGGER.debug(f"SenecOnline initialized and IntBridge.app_api set to {self}")
-            if IntBridge.avail():
+            IntBridge(self._device_key).app_api = self
+            _LOGGER.debug(f"SenecOnline initialized and IntBridge({self._device_key}).app_api set to {self}")
+            if IntBridge(self._device_key).avail():
                 # ok local-polling (lala.cgi) is already existing…
-                if IntBridge.lala_cgi._QUERY_WALLBOX_APPAPI:
+                if IntBridge(self._device_key).lala_cgi._QUERY_WALLBOX_APPAPI:
                     self._QUERY_WALLBOX = True
                     _LOGGER.debug("APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
         else:
@@ -4929,8 +4933,8 @@ class SenecOnline:
 
                         # I just can guess, that 'allowIntercharge' means to use battery…
                         allow_intercharge = True  # default value
-                        if IntBridge.avail() and IntBridge.lala_cgi is not None:
-                            allow_intercharge = IntBridge.lala_cgi.wallbox_allow_intercharge
+                        if IntBridge(self._device_key).avail() and IntBridge(self._device_key).lala_cgi is not None:
+                            allow_intercharge = IntBridge(self._device_key).lala_cgi.wallbox_allow_intercharge
 
                         data = await self._app_do_post_request(wb_url, post_data={"allowIntercharge": allow_intercharge}, read_response=True)
                         if data is not None:
@@ -4973,10 +4977,10 @@ class SenecOnline:
 
                 if success:
                     # do we need to sync the value back to the 'lala_cgi' integration?
-                    if sync and IntBridge.avail():
+                    if sync and IntBridge(self._device_key).avail():
                         # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
                         # is no sync=False parameter here…
-                        await IntBridge.lala_cgi.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
+                        await IntBridge(self._device_key).lala_cgi.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
 
                     # when we changed the mode, the backend might have automatically adjusted the
                     # 'chargingMode:solarOptimizeSettings:minChargingCurrentInA' so we need to sync
@@ -4994,11 +4998,11 @@ class SenecOnline:
                             min_charging_current_in_a_value = a_solar_settings_obj.get("minChargingCurrentInA", None)
                             if min_charging_current_in_a_value is not None:
                                 new_min_current = str(round(float(min_charging_current_in_a_value), 2))
-                                cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+                                cur_min_current = str(round(IntBridge(self._device_key).lala_cgi.wallbox_set_icmax[idx], 2))
 
                                 if cur_min_current != new_min_current:
                                     _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                                    await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
+                                    await IntBridge(self._device_key).lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
                                                                                        value=float(new_min_current),
                                                                                        sync=False, verify_state=False)
                                 else:
@@ -5017,11 +5021,11 @@ class SenecOnline:
                     #         new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
                     #
                     #     new_min_current = str(round(float(new_min_current_tmp), 2))
-                    #     cur_min_current = str(round(IntBridge.lala_cgi.wallbox_set_icmax[idx], 2))
+                    #     cur_min_current = str(round(IntBridge(self._device_key).lala_cgi.wallbox_set_icmax[idx], 2))
                     #
                     #     if cur_min_current != new_min_current:
                     #         _LOGGER.debug(f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                    #         await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
+                    #         await IntBridge(self._device_key).lala_cgi.set_nva_wallbox_set_icmax(pos=idx,
                     #                                                            value=float(new_min_current),
                     #                                                            sync=False, verify_state=False)
                     #     else:
@@ -5071,8 +5075,8 @@ class SenecOnline:
 
             if success:
                 # do we need to sync the value back to the 'lala_cgi' integration?
-                if sync and IntBridge.avail():
-                    await IntBridge.lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
+                if sync and IntBridge(self._device_key).avail():
+                    await IntBridge(self._device_key).lala_cgi.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
 
     async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
         _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
@@ -5102,8 +5106,8 @@ class SenecOnline:
                     self._app_set_wallbox_object_at_index(idx, data)
 
                     # do we need to sync the value back to the 'lala_cgi' integration?
-                    if sync and IntBridge.avail():
-                        await IntBridge.lala_cgi.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
+                    if sync and IntBridge(self._device_key).avail():
+                        await IntBridge(self._device_key).lala_cgi.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
 
                     return True
                 else:
@@ -6464,18 +6468,39 @@ class SenecOnline:
         await self.app_authenticate()
         return True
 
-class IntBridge:
+_INTBRIDGE_PAIRS = {}
+
+def IntBridge(identifier=None):
+
+    global _INTBRIDGE_PAIRS
+    """
+    Returns the IntBridge instance for the given identifier.
+    If identifier is None, returns the default instance.
+    """
+    if identifier is None:
+        identifier = "default"
+
+    if identifier not in _INTBRIDGE_PAIRS:
+        # Create and store a new instance or pair as needed
+        _INTBRIDGE_PAIRS[identifier] = IntBridgePair(device_key=identifier)
+
+    return _INTBRIDGE_PAIRS[identifier]
+
+class IntBridgePair:
     app_api: SenecOnline = None
     lala_cgi: SenecLocal = None
+    device_key: str = None
 
-    # IntBridge.app_api.app_set_allow_intercharge_all(value_to_set=value, sync=False)
-    # IntBridge.app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
-    # IntBridge.app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
+    def __init__(self, device_key: str = None):
+        self.device_key = device_key
+
+    # IntBridge(self._device_key).app_api.app_set_allow_intercharge_all(value_to_set=value, sync=False)
+    # IntBridge(self._device_key).app_api.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
+    # IntBridge(self._device_key).app_api.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
 
     # READ
-    # IntBridge.app_api.app_get_local_wallbox_mode_from_api_values(pos)
-    @staticmethod
-    def avail() -> bool:
-        _LOGGER.debug(f"IntBridge.avail() -> IntBridge.app_api: {IntBridge.app_api is not None} IntBridge.lala_cgi: {IntBridge.lala_cgi is not None}")
-        return IntBridge.app_api is not None and IntBridge.lala_cgi is not None
-
+    # IntBridge(self._device_key).app_api.app_get_local_wallbox_mode_from_api_values(pos)
+    # @staticmethod
+    def avail(self) -> bool:
+        _LOGGER.debug(f"IntBridgePair({self.device_key}).avail() -> IntBridgePair.app_api: {self.app_api is not None} IntBridgePair.lala_cgi: {self.lala_cgi is not None}")
+        return self.app_api is not None and self.lala_cgi is not None
