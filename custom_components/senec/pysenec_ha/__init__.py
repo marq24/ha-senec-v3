@@ -3175,9 +3175,9 @@ class SenecOnline:
         # app-token related stuff…
         self._storage_path = storage_path
         if tokens_location is None:
-            file_instance = ""
+            file_instance = "_µµµ0"
             if self._app_master_plant_number > 0:
-                file_instance = f"_@@@{self._app_master_plant_number}"
+                file_instance = f"_µµµ{self._app_master_plant_number}"
 
             if self._storage_path is not None:
                 self._app_stored_tokens_location = str(self._storage_path.joinpath(DOMAIN, f"{user}{file_instance}_access_token.txt"))
@@ -3243,28 +3243,54 @@ class SenecOnline:
             _LOGGER.debug(f"SIBLING: SenecOnline: remove reference to SenecLocal - BRIDGE from ONLINE to LOCAL is destroyed!")
             self._bridge_to_senec_local = None
 
-    async def _rename_token_file_if_needed(self, user:str):
+    # async def _rename_token_file_if_needed(self, user:str):
+    #     """Move a legacy token file to new _app_master_plant_number dependant if it exists"""
+    #     if self._storage_path is not None:
+    #         stored_tokens_location_legacy = str(self._storage_path.joinpath(DOMAIN, f"{user}_access_token.txt"))
+    #     else:
+    #         stored_tokens_location_legacy = f".storage/{DOMAIN}/{user}_access_token.txt"
+    #
+    #     try:
+    #         # Check if the legacy file exists
+    #         if os.path.isfile(stored_tokens_location_legacy):
+    #             _LOGGER.debug(f"Found legacy token at {stored_tokens_location_legacy}, moving to {self._app_stored_tokens_location}")
+    #
+    #             # Move the file (in executor to avoid blocking)
+    #             await asyncio.get_running_loop().run_in_executor(None, lambda: os.rename(stored_tokens_location_legacy, self._app_stored_tokens_location))
+    #             _LOGGER.debug(f"Successfully moved token file to new location")
+    #         else:
+    #             _LOGGER.debug(f"No legacy token file found at {stored_tokens_location_legacy}, nothing to move")
+    #
+    #     except Exception as e:
+    #         _LOGGER.warning(f"Failed to move token file: {type(e).__name__} - {e}")
+
+    async def _purge_old_token_files(self):
         """Move a legacy token file to new _app_master_plant_number dependant if it exists"""
-        if self._app_master_plant_number > 0:
-            # only if the _app_master_plant_number is > 0 ...
-            if self._storage_path is not None:
-                stored_tokens_location_legacy = str(self._storage_path.joinpath(DOMAIN, f"{user}_access_token.txt"))
-            else:
-                stored_tokens_location_legacy = f".storage/{DOMAIN}/{user}_access_token.txt"
+        if self._storage_path is not None:
+            stored_tokens_location = str(self._storage_path.joinpath(DOMAIN))
+        else:
+            stored_tokens_location = f".storage/{DOMAIN}/"
 
-            try:
-                # Check if the legacy file exists
-                if os.path.isfile(stored_tokens_location_legacy):
-                    _LOGGER.debug(f"Found legacy token at {stored_tokens_location_legacy}, moving to {self._app_stored_tokens_location}")
+        try:
+            if os.path.isdir(stored_tokens_location):
+                await asyncio.get_running_loop().run_in_executor(None, self._purge_old_token_files_int, stored_tokens_location)
 
-                    # Move the file (in executor to avoid blocking)
-                    await asyncio.get_running_loop().run_in_executor(None, lambda: os.rename(stored_tokens_location_legacy, self._app_stored_tokens_location))
-                    _LOGGER.debug(f"Successfully moved token file to new location")
-                else:
-                    _LOGGER.debug(f"No legacy token file found at {stored_tokens_location_legacy}, nothing to move")
+        except Exception as e:
+            _LOGGER.warning(f"Failed to delete orphan token files: {type(e).__name__} - {e}")
 
-            except Exception as e:
-                _LOGGER.warning(f"Failed to move token file: {type(e).__name__} - {e}")
+    def _purge_old_token_files_int(self, stored_tokens_location):
+        try:
+            files_to_delete = [
+                os.path.join(stored_tokens_location, a_file)
+                for a_file in os.listdir(stored_tokens_location)
+                if "_µµµ" not in str(a_file) and os.path.isfile(os.path.join(stored_tokens_location, a_file))
+            ]
+            for b_file in files_to_delete:
+                _LOGGER.info(f"Found legacy token '{os.path.basename(b_file)}' at {stored_tokens_location}")
+                os.remove(b_file)
+
+        except Exception as e:
+            _LOGGER.warning(f"Failed to delete orphan token files (_int): {type(e).__name__} - {e}")
 
     def _init_user_agents(self):
         self.DEFAULT_USER_AGENT= f"SENEC.Home V2.x/V3/V4 Integration/{self._integration_version} (+https://github.com/marq24/ha-senec-v3)"
