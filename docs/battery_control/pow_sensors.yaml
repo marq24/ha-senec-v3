@@ -5,15 +5,15 @@ template:
   - trigger:
       - trigger: state
         entity_id:
-          - sensor.tibber_prices
+          - sensor.tibber_stock_prices
           - sensor.electricity_price_mmphome
           - sensor.senec_battery_charge_percent
           - sensor.energy_production_today_remaining_sum
 
       - trigger: time_pattern
-        hours: "/1"
-        minutes: "0"
-        seconds: "36"
+        hours: "*"
+        minutes: "/15"
+        seconds: "01"
 
     sensor:
       - name: "POW last updated"
@@ -22,6 +22,21 @@ template:
         state: >
           {% import 'pow_vars.jinja' as i %}
           {{i.update_data()|trim|as_datetime}}
+
+      - name: "POW price now"
+        unique_id: pow_price_now
+        state_class: measurement
+        unit_of_measurement: "€/kWh"
+        state: >
+          {% import 'pow_vars.jinja' as i %}
+          {{i.now_price()|float|round(4)}}
+        attributes:
+          today: >
+            {% import 'pow_vars.jinja' as i %}
+            {{(state_attr(i.tibb_prices_rest_sensor, 'today'))}}
+          tomorrow: >
+            {% import 'pow_vars.jinja' as i %}
+            {{(state_attr(i.tibb_prices_rest_sensor, 'tomorrow'))}}
 
       - name: "POW average price all"
         unique_id: pow_avg_price_all
@@ -51,11 +66,12 @@ template:
         unique_id: pow_low_price_duration
         device_class: duration
         unit_of_measurement: "h"
+        #suggested_display_precision: 2
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set a_price_duration = i.low_price_duration() %}
           {%- if a_price_duration|trim != 'None' -%}
-          {{a_price_duration|int}}
+          {{a_price_duration|float|round(2)}}
           {%- else -%}
           {{0}}
           {%- endif -%}
@@ -78,11 +94,12 @@ template:
         unique_id: pow_cheapest_duration
         device_class: duration
         unit_of_measurement: "h"
+        #suggested_display_precision: 2
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set a_price_duration = i.min_price_duration() %}
           {%- if a_price_duration|trim != 'None' -%}
-          {{a_price_duration|int}}
+          {{a_price_duration|float|round(2)}}
           {%- else -%}
           {{0}}
           {%- endif -%}
@@ -105,11 +122,12 @@ template:
         unique_id: pow_high_price_duration
         device_class: duration
         unit_of_measurement: "h"
+        #suggested_display_precision: 2
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set a_price_duration = i.max_price_duration() %}
           {%- if a_price_duration|trim != 'None' -%}
-          {{a_price_duration|int}}
+          {{a_price_duration|float|round(2)}}
           {%- else -%}
           {{0}}
           {%- endif -%}
@@ -132,11 +150,12 @@ template:
         unique_id: pow_high_price_storage_independent_duration
         device_class: duration
         unit_of_measurement: "h"
+        #suggested_display_precision: 2
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set a_price_duration = i.max_price_energy_independent_duration() %}
           {%- if a_price_duration|trim != 'None' -%}
-          {{a_price_duration|int}}
+          {{a_price_duration|float|round(2)}}
           {%- else -%}
           {{0}}
           {%- endif -%}
@@ -270,6 +289,7 @@ template:
           {%- else -%}
           {{0}}
           {%- endif -%}
+
 
     binary_sensor:
       - name: "POW PV power can fully load storage"

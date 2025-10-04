@@ -1,4 +1,4 @@
-{% set tibb_prices_rest_sensor = 'sensor.tibber_prices' %}
+{% set tibb_prices_rest_sensor = 'sensor.tibber_stock_prices' %}
 {% set your_tibber_home_sensor = 'sensor.electricity_price_mmphome' %}
 {% set your_pv_prognose_sensor = 'sensor.energy_production_today_remaining_sum' %}
 {% set your_storage_soc_sensor = 'sensor.senec_battery_charge_percent' %}
@@ -21,7 +21,7 @@
 {% set storage_min_full_soc = "95"|int %}
 
 {# the increment in one hour of 'storage charging' (from the network) in kW/h #}
-{% set storage_charge_rate = "2.04"|float %}
+{% set storage_charge_rate_per_hour = "2.04"|float %}
 
 {# loss while charging the storage in kWh (SOC increment vs energy used to charge) #}
 {# In one hour the storage is charged with 2.04kWh, but during charging the storage #}
@@ -47,6 +47,13 @@
 {# ############################ #}
 {# DO NOT EDIT BELOW THIS LINE  #}
 {# ############################ #}
+{# with the UPDATE to QUARTERY HOUR prices we need to use a multiply/devisor of 4 #}
+{% set chk_ticks = chk_hours * 4 %}
+{% set max_ticks = max_hours * 4 %}
+{% set storage_charge_rate_per_tick = storage_charge_rate_per_hour / 4 %}
+{% set storage_charging_loss_per_tick = storage_charging_loss_per_hour / 4 %}
+{% set kw_per_tick_average = kw_per_hour_average / 4 %}
+
 {% set storage_capacity_soc_factor = (storage_capacity/100)|float|round(4) %}
 
 {% macro get_time_for_idx(idx_val_trimmed, add_one_hour) -%}
@@ -113,7 +120,7 @@
 
 {% macro storage_full_charge_duration_in_h() -%}
     {%- if storage_soc()|int < storage_min_full_soc  -%}
-{{max(1, (storage_need()|float / storage_charge_rate))}}
+{{max(1, (storage_need()|float / storage_charge_rate_per_hour))}}
     {%- else -%}
 {{None}}
     {%- endif -%}
@@ -218,8 +225,18 @@
 {{ns.idx}}
 {%- endmacro %}
 
-{% macro now_max(a_nowidx, prices_data_length) -%}
-{{min(a_nowidx|int + chk_hours, prices_data_length)}}
+{% macro now_max_idx(a_nowidx, prices_data_length) -%}
+{{min(a_nowidx|int + chk_ticks, prices_data_length)}}
+{%- endmacro %}
+
+{% macro now_price() -%}
+    {% set now_idx = now_idx()|int %}
+    {% if now_idx > -1 -%}
+        {% set prices_data = (state_attr(tibb_prices_rest_sensor, 'today')) | map(attribute='total') | list + (state_attr(tibb_prices_rest_sensor, 'tomorrow')) | map(attribute='total') | list %}
+{{prices_data[now_idx]}}
+    {%- else -%}
+{{0|float}}
+    {%- endif %}
 {%- endmacro %}
 
 {% macro average_price() -%}
@@ -244,9 +261,9 @@
 
 {% macro avgprice_ahead_internal(a_nowidx, prices_data) -%}
     {% if tibb_avg_price()|trim != 'None' -%}
-{{average(prices_data[a_nowidx|int:now_max(a_nowidx|int, prices_data|length)|int], tibb_avg_price()|float)|round(4)}}
+{{average(prices_data[a_nowidx|int:now_max_idx(a_nowidx|int, prices_data|length)|int], tibb_avg_price()|float)|round(4)}}
     {%- else -%}
-{{average(prices_data[a_nowidx|int:now_max(a_nowidx|int, prices_data|length)|int])|round(4)}}
+{{average(prices_data[a_nowidx|int:now_max_idx(a_nowidx|int, prices_data|length)|int])|round(4)}}
     {%- endif %}
 {%- endmacro %}
 
@@ -331,18 +348,18 @@
 
 {% macro low_price_startidx_internal(prices_data) -%}
     {% set nowidx = now_idx()|int %}
-    {% set maxidx = now_max(nowidx, prices_data|length)|int %}
+    {% set maxidx = now_max_idx(nowidx, prices_data|length)|int %}
     {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
-    {% set ns_low = namespace(startidx=99) %}
+    {% set ns_low = namespace(startidx=999) %}
     {%- for i in range(nowidx, maxidx) -%}
         {%- if avgprice_min > prices_data[i] -%}
             {% set ns_low.startidx = min(i, ns_low.startidx) %}
-        {%- elif ns_low.startidx == 99 -%}
+        {%- elif ns_low.startidx == 999 -%}
         {%- else -%}
             {% break %}
         {%- endif -%}
     {%- endfor -%}
-    {%- if ns_low.startidx < 99 -%}
+    {%- if ns_low.startidx < 999 -%}
 {{ns_low.startidx}}
     {%- else -%}
 {{None}}
@@ -360,15 +377,15 @@
 {%- endmacro %}
 
 {# the 'correct' implementation for the end index would be, that the 'range' will go from the #}
-{# now_idx()|int to now_max()|int -> but for the low price period we can ignore the 'chk_hours' #}
+{# now_idx()|int to now_max_idx()|int -> but for the low price period we can ignore the 'chk_ticks' #}
 {# and just run through the complete prices_data array... #}
 {# so instead of: #}
-{# {%- for i in range(now_idx()|int, now_max()|int) -%} #}
+{# {%- for i in range(now_idx()|int, now_max_idx()|int) -%} #}
 {# we use: #}
 {# {%- for i in range(now_idx()|int, prices_data|length) -%} #}
 {% macro low_price_endidx_internal(prices_data) -%}
     {% set nowidx = now_idx()|int %}
-    {% set maxidx = now_max(nowidx, prices_data|length)|int %}
+    {% set maxidx = now_max_idx(nowidx, prices_data|length)|int %}
     {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
     {% set ns_low = namespace(endidx=-1) %}
     {%- for i in range(nowidx, prices_data|length) -%}
@@ -410,7 +427,7 @@
     {% set price_startidx = low_price_startidx_internal(prices_data)|trim %}
     {% set price_endidx = low_price_endidx_internal(prices_data)|trim %}
     {%- if price_startidx != 'None' and price_endidx  != 'None' -%}
-        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+        {% set hval = (price_endidx|int - price_startidx|int)/4 + 1|round(2) %}
 {{hval}}
     {%- else -%}
 {{None}}
@@ -421,7 +438,7 @@
     {% set price_startidx = low_price_startidx_internal(prices_data)|trim %}
     {% set price_endidx = low_price_endidx_internal(prices_data)|trim %}
     {%- if price_startidx != 'None' and price_endidx  != 'None' -%}
-{{(price_endidx|int - price_startidx|int + 1)|round(1)}}
+{{(price_endidx|int - price_startidx|int)/4 + 1|round(2)}}
     {%- else -%}
 {{None}}
     {%- endif -%}
@@ -471,14 +488,14 @@
     {# ...and storage_full_charge_duration_in_h_intern < (low_price_duration-1) #}
     {# skip the check, if the possible window is large enough that the storage can be fully loaded #}
     {%- if low_price_duration_intern != 'None' and low_price_duration_intern|float > 0 and storage_full_charge_duration_in_h_intern > 0 -%}
-        {% set ns_pmin = namespace(startidx=99, endidx=-1) %}
+        {% set ns_pmin = namespace(startidx=999, endidx=-1) %}
         {% set si = now_idx()|int %}
-        {% set ei = now_max(si, prices_data|length)|int %}
+        {% set ei = now_max_idx(si, prices_data|length)|int %}
         {% set min_price = min(prices_data[si:ei]) %}
         {% set min_price_idx = si + prices_data[si:ei].index(min_price) %}
         {% set ns_pmin.startidx = min_price_idx %}
         {% set ns_pmin.endidx = min_price_idx %}
-        {%- for i in range(1, chk_hours) -%}
+        {%- for i in range(1, chk_ticks) -%}
             {% set lowidx = max(0, ns_pmin.startidx - 1) %}
             {% set highidx = min(ns_pmin.endidx + 1, (prices_data|length) - 1) %}
             {# 'before price' and 'after price' are the same... we can step in both directions #}
@@ -493,7 +510,8 @@
             {%- endif -%}
             {# have in mind if a index is selected (in range) then it will run for 1 hour... so if we have #}
             {# a index delta of 2, then the time difference will be 3 hours! #}
-            {%- if (ns_pmin.endidx - ns_pmin.startidx) + 1 >= storage_full_charge_duration_in_h_intern -%}
+            {#  TOCHECK '(storage_full_charge_duration_in_h_intern * 4)' #}
+            {%- if (ns_pmin.endidx - ns_pmin.startidx) + 1 >= (storage_full_charge_duration_in_h_intern * 4) -%}
                 {% break %}
             {%- endif -%}
         {%- endfor -%}
@@ -541,7 +559,7 @@
         {% set x_prices = x_prices_data.split('@') %}
         {% set price_startidx = x_prices[0]|int %}
         {% set price_endidx = x_prices[1]|int %}
-        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+        {% set hval = (price_endidx|int - price_startidx|int)/4 + 1|round(2) %}
 {{hval}}
     {%- else -%}
 {{None}}
@@ -589,18 +607,19 @@
         {% set ei = prices_data|length %}
     {%- else -%}
         {% set si = now_idx()|int %}
-        {% set ei = now_max(si, prices_data|length)|int %}
+        {% set ei = now_max_idx(si, prices_data|length)|int %}
     {%- endif %}
 
     {% set max_energy_duration_h = final_max_energy_duration|round(0) %}
     {% if max_energy_duration_h > 0 -%}
         {% set max_price = max(prices_data[si:ei]) %}
         {% set max_price_idx = si + prices_data[si:ei].index(max_price) %}
-        {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
+        {% set ns_pmax = namespace(startidx=999, endidx=-1) %}
         {% set ns_pmax.startidx = max_price_idx %}
         {% set ns_pmax.endidx = max_price_idx %}
         {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
-        {%- for i in range(1, max(max_energy_duration_h, chk_hours)) -%}
+        {# TOCHECK 'max_energy_duration_h * 4' #}
+        {%- for i in range(1, max((max_energy_duration_h * 4), chk_ticks)) -%}
             {% set lowidx = max(0, ns_pmax.startidx - 1) %}
             {% set highidx = min(ns_pmax.endidx + 1, (prices_data|length) - 1) %}
             {% set isLowCheaper = prices_data[lowidx] < avgprice_min %}
@@ -625,7 +644,7 @@
                 {%- endif -%}
             {%- endif -%}
         {%- endfor -%}
-        {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
+        {%- if ns_pmax.startidx < 999 and ns_pmax.startidx > -1 -%}
 {{ns_pmax.startidx}}{{'@'}}{{ns_pmax.endidx}}
         {%- else -%}
 {{None}}
@@ -669,7 +688,7 @@
         {% set x_prices = x_prices_data.split('@') %}
         {% set price_startidx = x_prices[0]|int %}
         {% set price_endidx = x_prices[1]|int %}
-        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+        {% set hval = (price_endidx|int - price_startidx|int)/4 + 1|round(2) %}
 {{hval}}
     {%- else -%}
 {{None}}
@@ -703,10 +722,10 @@
     {%- endif %}
     {%- if prices_data|length > 0 -%}
         {% set si = now_idx()|int %}
-        {% set ei = min(si + max_hours, prices_data|length) %}
+        {% set ei = min(si + max_ticks, prices_data|length) %}
         {% set max_price = max(prices_data[si:ei]) %}
         {% set max_price_idx = si + prices_data[si:ei].index(max_price) %}
-        {% set ns_pmax = namespace(startidx=99, endidx=-1) %}
+        {% set ns_pmax = namespace(startidx=999, endidx=-1) %}
         {% set ns_pmax.startidx = max_price_idx %}
         {% set ns_pmax.endidx = max_price_idx %}
         {% set avgprice_min = avgprice_min_internal(prices_data)|float %}
@@ -732,7 +751,7 @@
                 {%- endif -%}
             {%- endif -%}
         {%- endfor -%}
-        {%- if ns_pmax.startidx < 99 and ns_pmax.startidx > -1 -%}
+        {%- if ns_pmax.startidx < 999 and ns_pmax.startidx > -1 -%}
 {{ns_pmax.startidx}}{{'@'}}{{ns_pmax.endidx}}
         {%- else -%}
 {{None}}
@@ -776,7 +795,7 @@
         {% set x_prices = x_prices_data.split('@') %}
         {% set price_startidx = x_prices[0]|int %}
         {% set price_endidx = x_prices[1]|int %}
-        {% set hval = (price_endidx|int - price_startidx|int + 1)|round(0) %}
+        {% set hval = (price_endidx|int - price_startidx|int)/4 + 1|round(2) %}
 {{hval}}
     {%- else -%}
 {{None}}
@@ -817,7 +836,7 @@
             {% set min_price_endidx_ = min_prices[1]|int %}
             {% set cost = namespace(sum = 0) %}
             {% for pindex in range(min_price_startidx_, min_price_endidx_) -%}
-                {% set cost.sum = cost.sum + (prices_data[pindex] * storage_charging_loss_per_hour) %}
+                {% set cost.sum = cost.sum + (prices_data[pindex] * storage_charging_loss_per_tick) %}
             {%- endfor  %}
 {{cost.sum}}
         {%- else -%}
@@ -859,7 +878,7 @@
 {% macro storage_charging_cost_internal(prices_data, min_startidx, min_endidx) -%}
     {% set cost = namespace(sum = 0) %}
     {% for pindex in range(min_startidx, min_endidx) -%}
-        {% set cost.sum = cost.sum + ((prices_data[pindex] + kwh_additional_fees) * (storage_charge_rate + storage_charging_loss_per_hour)) %}
+        {% set cost.sum = cost.sum + ((prices_data[pindex] + kwh_additional_fees) * (storage_charge_rate_per_tick + storage_charging_loss_per_tick)) %}
     {%- endfor  %}
 {{cost.sum}}
 {%- endmacro %}
@@ -896,30 +915,33 @@
         {%- endif %}
 
         {# finally the total amount of time we can use the storage (once it's loaded)... #}
-        {% set loaded_storage_usage_duration = min(storage_capacity, storage_charging_duration * storage_charge_rate) / kw_per_hour_average %}
+        {% set loaded_storage_usage_duration_in_h = min(storage_capacity, storage_charging_duration * storage_charge_rate_per_hour) / kw_per_hour_average %}
 
-        {% set max_prices_data = max_price_minmax_index_internal2(prices_data, max_price_start_index, loaded_storage_usage_duration)|trim %}
+        {% set max_prices_data = max_price_minmax_index_internal2(prices_data, max_price_start_index, loaded_storage_usage_duration_in_h)|trim %}
         {% if max_prices_data != 'None' -%}
 
             {% set max_prices = max_prices_data.split('@') %}
             {% set mx_price_startidx = max_prices[0]|int %}
             {% set mx_price_endidx = max_prices[1]|int %}
 
-            {% set final_max_energy_duration = min((storage_capacity/kw_per_hour_average)|float, max_energy_duration_in_h()|trim|float + loaded_storage_usage_duration|float) %}
+            {% set final_max_energy_duration_in_h = min((storage_capacity/kw_per_hour_average)|float, max_energy_duration_in_h()|trim|float + loaded_storage_usage_duration_in_h|float) %}
 
             {% set high_period_cost = namespace(sum = 0, count = 0) %}
             {% for pindex in range(mx_price_startidx, mx_price_endidx) -%}
-                {% if high_period_cost.count > final_max_energy_duration -%}
+                {# TOCHECK 'final_max_energy_duration_in_h * 4'#}
+                {% if high_period_cost.count > (final_max_energy_duration_in_h * 4) -%}
                     {% break %}
                 {%- endif %}
-                {% set high_period_cost.sum = high_period_cost.sum + ((prices_data[pindex]|float + kwh_additional_fees) * kw_per_hour_average) %}
+                {% set high_period_cost.sum = high_period_cost.sum + ((prices_data[pindex]|float + kwh_additional_fees) * kw_per_tick_average) %}
                 {% set high_period_cost.count = high_period_cost.count + 1 %}
             {%- endfor  %}
 
             {# if the energy was not fully used in the max-price phase, then we must add the remaining number of #}
             {# hours (as potential savings...) - not so sure what price should be used for the calc?! #}
-            {% if high_period_cost.count < final_max_energy_duration|float -%}
-                {% set additional_hours = final_max_energy_duration|float - high_period_cost.count|float %}
+            {# TOCHECK 'final_max_energy_duration_in_h * 4'#}
+            {% if high_period_cost.count < (final_max_energy_duration_in_h * 4)|float -%}
+                {# TOCHECK 'high_period_cost.count|float / 4'#}
+                {% set additional_hours = ((final_max_energy_duration_in_h * 4)|float - high_period_cost.count|float) / 4 %}
                 {% set the_avg_price = avgprice_min_internal(max_prices_data)|float + kwh_additional_fees %}
                 {% set high_period_cost.sum = high_period_cost.sum + the_avg_price * additional_hours %}
             {%- endif %}
