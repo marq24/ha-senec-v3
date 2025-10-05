@@ -3983,22 +3983,22 @@ class SenecOnline:
                                 _LOGGER.warning(f"_app_do_get_request(): JSONDecodeError while 'await res.json()' {jexc}")
                             except Exception as exc:
                                 if data is not None:
-                                    _LOGGER.error(f"_app_do_get_request(): Error when handling response '{res}' - Data: '{util.mask_map(data)}' - Exception:' {exc}'")
+                                    _LOGGER.error(f"_app_do_get_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
                                 else:
-                                    _LOGGER.error(f"_app_do_get_request(): Error when handling response '{res}' - Exception:' {exc}'")
+                                    _LOGGER.error(f"_app_do_get_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
                         else:
-                            _LOGGER.error(f"_app_do_get_request(): unexpected status code [200-205] {res.status} - {res}'")
+                            _LOGGER.error(f"_app_do_get_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
 
                     except Exception as exc:
                         if res is not None:
                             if res.status == 408:
                                 _LOGGER.info(f"_app_do_get_request(): http status 408 while access {a_url}")
                             else:
-                                _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: '{exc}' - Response is: '{res}'")
+                                _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
-                            _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: '{exc}'")
+                            _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}]")
             except Exception as exc:
-                _LOGGER.error(f"_app_do_get_request(): Error when try to call {a_url}: '{exc}'")
+                _LOGGER.error(f"_app_do_get_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
             _LOGGER.error(f"_app_do_get_request(): 'self._app_is_authenticated' is False")
 
@@ -4023,25 +4023,25 @@ class SenecOnline:
                                     _LOGGER.warning(f"_app_do_post_request(): JSONDecodeError while 'await res.json()' {jexc}")
                                 except Exception as exc:
                                     if data is not None:
-                                        _LOGGER.error(f"_app_do_post_request(): Error when handling response '{res}' - Data: '{util.mask_map(data)}' - Exception:' {exc}'")
+                                        _LOGGER.error(f"_app_do_post_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
                                     else:
-                                        _LOGGER.error(f"_app_do_post_request(): Error when handling response '{res}' - Exception:' {exc}'")
+                                        _LOGGER.error(f"_app_do_post_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
                             else:
                                 _LOGGER.debug(f"APP-API HTTP:200 for post {util.mask_map(post_data)} to {a_url}")
                                 return True
                         else:
-                            _LOGGER.error(f"_app_do_post_request(): unexpected status code [200-205] {res.status} - {res}'")
+                            _LOGGER.error(f"_app_do_post_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
 
                     except Exception as exc:
                         if res is not None:
                             if res.status == 408:
                                 _LOGGER.info(f"_app_do_post_request(): http status 408 while access {a_url}")
                             else:
-                                _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: '{exc}' - Response is: '{res}'")
+                                _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
-                            _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: '{exc}'")
+                            _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}]")
             except Exception as exc:
-                _LOGGER.error(f"_app_do_post_request(): Error when try to call {a_url}: '{exc}'")
+                _LOGGER.error(f"_app_do_post_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
             _LOGGER.error(f"_app_do_post_request(): 'self._app_is_authenticated' is False")
         return False
@@ -5202,7 +5202,7 @@ class SenecOnline:
                 if throw401:
                     raise exc
                 else:
-                    _LOGGER.error(f"web_authenticate(): Error when try to call {self._WEB_BASE_URL}: '{exc}'")
+                    _LOGGER.error(f"web_authenticate(): Error when try to call {self._WEB_BASE_URL}: [Exception: {exc}]")
 
     def _web_validate_html_structure(self, html_content: str) -> bool:
         """Quick check for main Angular components in the HTML content"""
@@ -6198,7 +6198,8 @@ class SenecOnline:
             data = ["UNKNOWN"] * self._battery_module_count
             bat_obj = self._app_raw_system_details["batteryModules"]
             for idx in range(self._battery_module_count):
-                data[idx] = bat_obj[idx]["state"]["state"].replace('_', ' ')
+                if "state" in bat_obj[idx] and "state" in bat_obj[idx]["state"] and bat_obj[idx]["state"]["state"] is not None:
+                    data[idx] = bat_obj[idx]["state"]["state"].replace('_', ' ')
             return data
 
     @property
