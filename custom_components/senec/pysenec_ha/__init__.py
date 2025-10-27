@@ -38,6 +38,7 @@ from custom_components.senec.const import (
     QUERY_PEAK_SHAVING_KEY,
     QUERY_TOTALS_KEY,
     QUERY_SYSTEM_DETAILS_KEY,
+    QUERY_SGREADY_KEY,
     IGNORE_SYSTEM_STATE_KEY,
     CONF_APP_SYSTEMID,
     CONF_APP_SERIALNUM,
@@ -3033,6 +3034,11 @@ class SenecOnline:
         self._QUERY_SYSTEM_STATE_TS = 0
 
         # Variable to save the latest update time for SG-Ready state
+        if options is not None and QUERY_SGREADY_KEY in options:
+            self._QUERY_SGREADY_DATA = options[QUERY_SGREADY_KEY]
+        else:
+            self._QUERY_SGREADY_DATA = False
+
         self._QUERY_SGREADY_STATE_TS = 0
         # Variable to save the latest update time for SG-Ready configuration
         self._QUERY_SGREADY_CONF_TS = 0
@@ -3361,12 +3367,12 @@ class SenecOnline:
         # then we MUST first login via SSO to the API, then we can use also mein-senec.de without
         # any additional login (since the web session is already authenticated)
         # Since 2025/08/06 the mein-senec.de portal now force the user to configure/setup TOTP...
-        if self._QUERY_SPARE_CAPACITY or self._QUERY_PEAK_SHAVING or self.SGREADY_SUPPORTED:
+        if self._QUERY_SPARE_CAPACITY or self._QUERY_PEAK_SHAVING or self._QUERY_SGREADY_DATA:
             web_login_required = True
 
         # SenecApp stuff…
         if not self._app_is_authenticated:
-            # if the web_login is requeired, we ignore any existing tokens
+            # if the web_login is required, we ignore any existing tokens
             # and directly login into the API...
             await self.app_authenticate(check_for_existing_tokens = not web_login_required)
 
@@ -5377,6 +5383,8 @@ class SenecOnline:
                     if "sgReadyVisible" in r_json and r_json["sgReadyVisible"]:
                         _LOGGER.debug("System is SGReady")
                         self.SGREADY_SUPPORTED = True
+                    elif self._QUERY_SGREADY_DATA:
+                        _LOGGER.info(f"SGReady data is configured, but not available (for plant_number: {a_plant_number}) via mein-senec.de")
 
                 except JSONDecodeError as exc:
                     _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")

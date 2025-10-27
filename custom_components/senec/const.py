@@ -141,6 +141,7 @@ QUERY_SPARE_CAPACITY_KEY: Final = "query_spare_capacity"
 QUERY_PEAK_SHAVING_KEY: Final = "query_peak_shaving"
 QUERY_TOTALS_KEY: Final = "query_totals"
 QUERY_SYSTEM_DETAILS_KEY: Final = "query_system_details"
+QUERY_SGREADY_KEY: Final = "query_sgready"
 
 IGNORE_SYSTEM_STATE_KEY: Final = CONF_IGNORE_SYSTEM_STATE
 

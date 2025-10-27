@@ -75,7 +75,7 @@ from .const import (
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
     SERVICE_SET_PEAKSHAVING,
-    CONFIG_VERSION, CONFIG_MINOR_VERSION, QUERY_TOTALS_KEY, QUERY_SYSTEM_DETAILS_KEY, STARTUP_MESSAGE
+    CONFIG_VERSION, CONFIG_MINOR_VERSION, QUERY_TOTALS_KEY, QUERY_SYSTEM_DETAILS_KEY, QUERY_SGREADY_KEY, STARTUP_MESSAGE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -299,6 +299,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 QUERY_PEAK_SHAVING_KEY: False,
                 QUERY_TOTALS_KEY: False,
                 QUERY_SYSTEM_DETAILS_KEY: False,
+                QUERY_SGREADY_KEY: False,
                 CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption
             }
 
@@ -359,12 +360,19 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                     _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
                                     opt[QUERY_WALLBOX_KEY] = True
 
+                            # brute force for our sgready stuff
+                            if not opt[QUERY_SGREADY_KEY]:
+                                if "sgready" in a_id:
+                                    _LOGGER.info("***** QUERY_SGREADY_DATA! ********")
+                                    opt[QUERY_SGREADY_KEY] = True
+
                             # when we have ALL, we can break the loop
                             if (opt[QUERY_PEAK_SHAVING_KEY] and
                                 opt[QUERY_SPARE_CAPACITY_KEY] and
                                 opt[QUERY_TOTALS_KEY] and
                                 opt[QUERY_SYSTEM_DETAILS_KEY] and
-                                opt[QUERY_WALLBOX_KEY]
+                                opt[QUERY_WALLBOX_KEY] and
+                                opt[QUERY_SGREADY_KEY]
                             ):
                                 _LOGGER.debug(f"All required options are set: {opt} - can cancel the checking loop")
                                 break
