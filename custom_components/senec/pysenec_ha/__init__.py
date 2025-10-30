@@ -3124,6 +3124,7 @@ class SenecOnline:
         self.SGREADY_SUPPORTED = False
 
         # genius - _app_master_plant_number does not have to be the same then _web_master_plant_number…
+        self._app_master_plant_number_must_be_verified_after_init = True
         self._app_master_plant_number = app_master_plant_number
         self._web_master_plant_number = None
 
@@ -3416,7 +3417,7 @@ class SenecOnline:
         try:
             if self._app_is_authenticated:
                 _LOGGER.info("***** app_update(self) ********")
-                if self._QUERY_SYSTEM_DETAILS:
+                if self._QUERY_SYSTEM_DETAILS or self._app_master_plant_number_must_be_verified_after_init:
                     # 60min * 60 sec = 3600 sec
                     if self._QUERY_SYSTEM_DETAILS_TS + 3595 < time():
                         # since we also get the case-temp & system-state from the system_details
@@ -4227,6 +4228,17 @@ class SenecOnline:
         #     "website": "XXX"
         #   }
         # }
+
+        # we need to call AT LEAT OME TIME after the SenecOnline object has been created
+        # the 'self.app_get_master_plant_id()'
+        # -> see also https://github.com/marq24/ha-senec-v3/issues/180
+        if self._app_master_plant_number_must_be_verified_after_init:
+            _LOGGER.debug(f"***** APP-API: _app_master_plant_number_must_be_verified ********")
+            self._app_master_plant_number_must_be_verified_after_init = False
+            await self.app_get_master_plant_id()
+
+        # old/lazy 'app_get_master_plant_id()' init (should IMHO never be called, since we have now
+        # the '_app_master_plant_number_must_be_verified_after_init' boolean)
         if self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
@@ -5600,7 +5612,8 @@ class SenecOnline:
             try:
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
-                    _LOGGER.debug("***** Set Spare Capacity successfully ********")
+                    data = await res.text()
+                    _LOGGER.debug(f"***** Set Spare Capacity successfully {data} ********")
                     # Reset the timer in order that the Spare Capacity is updated immediately after the change
                     self._QUERY_SPARE_CAPACITY_TS = 0
                 else:
