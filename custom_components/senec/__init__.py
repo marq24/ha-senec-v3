@@ -267,20 +267,16 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
             self._host = "mein-senec.de"
 
-            app_master_plant_number = -1
-            if CONF_DEV_MASTER_NUM in config_entry.data:
-                app_master_plant_number = int(config_entry.data[CONF_DEV_MASTER_NUM])
-
-            include_wallbox_in_house_consumption = True
-            if CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION in config_entry.data:
-               include_wallbox_in_house_consumption = config_entry.data[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
+            config_entry_serial_number = config_entry.get(CONF_DEV_SERIAL, None)
+            config_entry_master_plant_number = int(config_entry.get(CONF_DEV_MASTER_NUM, -1))
+            include_wallbox_in_house_consumption = config_entry.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
 
             # user & pwd can be changed via the options...
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
 
+            totp = config_entry.get(CONF_TOTP_SECRET, None)
             is_totp_already_used = config_entry.data.get("_TOTP_ALREADY_USED", False)
-            totp = config_entry.data[CONF_TOTP_SECRET] if CONF_TOTP_SECRET in config_entry.data else None
 
             must_purge_access_token = False
             if totp is not None and not is_totp_already_used:
@@ -293,7 +289,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             # defining the default query options for APP & WEB...
             opt = {
-                # by default we do not query the Wallbox data for WEB/API -> the SenecLOCAL will turn this on/off
+                # by default, we do not query the Wallbox data for WEB/API -> the SenecLOCAL will turn this on/off
                 QUERY_WALLBOX_KEY: False,
                 QUERY_SPARE_CAPACITY_KEY: False,
                 QUERY_PEAK_SHAVING_KEY: False,
@@ -389,7 +385,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # and then query the web-portal anlagenNummer 0,1,2 ... till we find the one with the matching serial_number
             try:
                 self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_create_clientsession(hass),
-                                         app_master_plant_number=app_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
+                                         config_entry_serial_number=config_entry_serial_number,
+                                         config_entry_master_plant_number=config_entry_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
                                          lang=hass.config.language.lower(),
                                          options=opt,
                                          storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),

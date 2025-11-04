@@ -24,6 +24,7 @@ import aiohttp
 import pyotp
 import xmltodict
 from aiohttp import ClientResponseError, ClientConnectorError
+from homeassistant.util import slugify
 
 from custom_components.senec.const import (
     QUERY_PV1_KEY,
@@ -2979,11 +2980,13 @@ class SenecOnline:
     def __str__(self) -> str:
         return f"SenecOnline [{util.mask_string(self._SENEC_USERNAME)}, AppIsAuth? {self._app_is_authenticated} MasterPlant: {self._app_master_plant_number}, Serial: {util.mask_string(self._app_serial_number)}]"
 
-    def __init__(self, user, pwd, totp, web_session, app_master_plant_number: int = 0, lang: str = "en", options: dict = None,
+    def __init__(self, user, pwd, totp, web_session, config_entry_serial_number: str = None, config_entry_master_plant_number: int = 0, lang: str = "en", options: dict = None,
                  storage_path: Path = None, tokens_location: str = None, integ_version: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         self._init_user_agents()
         self._lang = lang
+        self._config_entry_serial_number = config_entry_serial_number
+
         if options is not None:
             _LOGGER.info(f"__init__() -> (re)starting SenecOnline v{self._integration_version} for user: '{util.mask_string(user)}' with options: {options}")
         else:
@@ -3022,7 +3025,7 @@ class SenecOnline:
         else:
             self._QUERY_SYSTEM_DETAILS = False
 
-        # be default Senec's API does not inlcude the energy consumed by the wallbox in the
+        # be default Senec's API does not include the energy consumed by the wallbox in the
         # house consumption data...
         if options is not None and CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION in options:
             self._INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION = options[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
@@ -3125,7 +3128,7 @@ class SenecOnline:
 
         # genius - _app_master_plant_number does not have to be the same then _web_master_plant_number…
         self._app_master_plant_number_must_be_verified_after_init = True
-        self._app_master_plant_number = app_master_plant_number
+        self._app_master_plant_number = config_entry_master_plant_number
         self._web_master_plant_number = None
 
         ###################################
@@ -3182,10 +3185,11 @@ class SenecOnline:
         # app-token related stuff…
         self._storage_path = storage_path
         if tokens_location is None:
-            file_instance = "_µµµ0"
-            if self._app_master_plant_number > 0:
-                file_instance = f"_µµµ{self._app_master_plant_number}"
+            #file_instance = "_µµµ0"
+            #if self._app_master_plant_number > 0:
+            #    file_instance = f"_µµµ{self._app_master_plant_number}"
 
+            file_instance = f"_µ@µ{slugify(config_entry_serial_number).lower()}"
             if self._storage_path is not None:
                 self._app_stored_tokens_location = str(self._storage_path.joinpath(DOMAIN, f"{user}{file_instance}_access_token.txt"))
             else:
@@ -3290,7 +3294,7 @@ class SenecOnline:
             files_to_delete = [
                 os.path.join(stored_tokens_location, a_file)
                 for a_file in os.listdir(stored_tokens_location)
-                if "_µµµ" not in str(a_file) and os.path.isfile(os.path.join(stored_tokens_location, a_file))
+                if "_µ@µ" not in str(a_file) and os.path.isfile(os.path.join(stored_tokens_location, a_file))
             ]
             for b_file in files_to_delete:
                 _LOGGER.info(f"Found legacy token '{os.path.basename(b_file)}' at {stored_tokens_location}")
@@ -3520,7 +3524,7 @@ class SenecOnline:
         if check_for_existing_tokens:
             await self.app_verify_token()
         else:
-            # even if we skip the check for existing tokens... we MUSt resore all existing
+            # even if we skip the check for existing tokens... we MUST restore all existing
             # 'other' data from a possible existing token file...
             await self.app_has_token()
 

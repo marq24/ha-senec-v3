@@ -233,7 +233,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         web_session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             senec_online = SenecOnline(user=user, pwd=pwd, totp=totp_secret, web_session=web_session,
-                                       app_master_plant_number=user_master_plant,
+                                       config_entry_serial_number=None,
+                                       config_entry_master_plant_number=user_master_plant,
                                        storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR))
 
             # we check, if we can authenticate with the APP-API
