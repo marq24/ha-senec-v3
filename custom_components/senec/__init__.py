@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as config_val, entity_registry
+from homeassistant.helpers import entity_registry, config_validation as config_val, device_registry as device_reg
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.entity import EntityDescription, Entity
 from homeassistant.helpers.storage import STORAGE_DIR
@@ -82,7 +82,7 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["binary_sensor", "button", "number", "select", "sensor", "switch"]
 CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
-
+DEVICE_REG_CLEANUP_RUNNING = False
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if config_entry.version < CONFIG_VERSION:
@@ -105,6 +105,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             user = config_entry.data.get(CONF_USERNAME, None)
             pwd = config_entry.data.get(CONF_PASSWORD, None)
             if user is not None:
+                # we just need the SenecOnline object to DELETE the access_token file...
                 web_api = SenecOnline(user=user, pwd=pwd, totp=None, web_session=None,
                                       storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
                                       integ_version=f"MIGRATION_v{config_entry.version}.{config_entry.minor_version}_to_v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
@@ -130,6 +131,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if DOMAIN not in hass.data:
         _LOGGER.info(STARTUP_MESSAGE % intg_version)
         hass.data.setdefault(DOMAIN, {"manifest_version": intg_version})
+
+    # purge possible devices-check
+    asyncio.create_task(check_device_registry(hass, config_entry.entry_id))
 
     log_scan_interval = timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
     _LOGGER.info(f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{log_scan_interval} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
@@ -228,6 +232,36 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return True
 
 
+@staticmethod
+async def check_device_registry(hass: HomeAssistant, config_entry_id:str = None) -> None:
+    global DEVICE_REG_CLEANUP_RUNNING
+    if not DEVICE_REG_CLEANUP_RUNNING:
+        DEVICE_REG_CLEANUP_RUNNING = True
+        _LOGGER.debug(f"check device registry for outdated {DOMAIN} devices...")
+        if hass is not None:
+            a_device_reg = device_reg.async_get(hass)
+            if a_device_reg is not None:
+                key_list_to_be_deleted = []
+                for a_device_entry in list(a_device_reg.devices.values()):
+                    if hasattr(a_device_entry, "identifiers"):
+                        ident_value = a_device_entry.identifiers
+                        if f"{ident_value}".__contains__(DOMAIN):
+                            #if a_device_entry.config_entries is not None and config_entry_id in a_device_entry.config_entries:
+                            #_LOGGER.warning(f"{a_device_entry}")
+                            # ok this is an old 'device' entry (that does not include the
+                            # serial_number)... This will be deleted in
+                            # any case...
+                            if not hasattr(a_device_entry, "serial_number") or a_device_entry.serial_number is None:
+                                key_list_to_be_deleted.append(a_device_entry.id)
+
+                if len(key_list_to_be_deleted) > 0:
+                    key_list_to_be_deleted = list(dict.fromkeys(key_list_to_be_deleted))
+                    _LOGGER.info(f"NEED TO DELETE old {DOMAIN} DeviceEntries: {key_list_to_be_deleted}")
+                    for a_device_entry_id in key_list_to_be_deleted:
+                        a_device_reg.async_remove_device(device_id=a_device_entry_id)
+
+        DEVICE_REG_CLEANUP_RUNNING = False
+
 # Map platforms to their corresponding search lists
 LOCAL_PLATFORM_MAPPING: Final = {
     "sensor": MAIN_SENSOR_TYPES,
@@ -252,7 +286,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry, intg_version: str):
         UPDATE_INTERVAL_IN_SECONDS = config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2)
-
+        self._config_entry_id = config_entry.entry_id
         self._integration_version = intg_version
         self._total_increasing_sensors = []
 
@@ -266,16 +300,15 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         # WEB-API Version...
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
             self._host = "mein-senec.de"
-
-            config_entry_serial_number = config_entry.get(CONF_DEV_SERIAL, None)
-            config_entry_master_plant_number = int(config_entry.get(CONF_DEV_MASTER_NUM, -1))
-            include_wallbox_in_house_consumption = config_entry.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
+            config_entry_serial_number = config_entry.data.get(CONF_DEV_SERIAL, None)
+            config_entry_master_plant_number = int(config_entry.data.get(CONF_DEV_MASTER_NUM, -1))
+            include_wallbox_in_house_consumption = config_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
 
             # user & pwd can be changed via the options...
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
 
-            totp = config_entry.get(CONF_TOTP_SECRET, None)
+            totp = config_entry.data.get(CONF_TOTP_SECRET, None)
             is_totp_already_used = config_entry.data.get("_TOTP_ALREADY_USED", False)
 
             must_purge_access_token = False
@@ -634,9 +667,10 @@ class SenecEntity(Entity):
         return {
             "identifiers": {(DOMAIN, self.coordinator._host, device)},
             "name": f"{dtype}: {device}",
-            "model": f"{dmodel} [Serial: {dserial}]",
+            "model": f"{dmodel}",
             "sw_version": dversion,
             "manufacturer": MANUFACTURE,
+            "serial_number": dserial
         }
 
     @property

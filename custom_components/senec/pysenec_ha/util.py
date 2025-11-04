@@ -7,14 +7,29 @@ _LOGGER = logging.getLogger(__name__)
 _MASKED_VALUES = ["host", "username", "password", "street", "email", "phonenumber", "housenumber", "website",
                   "app_token", "access_token", "refresh_token", "id_token", "totp_secret", "totp_url",
                   "maincontrollerserial", "serial", "serialnumber", "dserial",
-                  "device_id", "controllerid", "systemid", "app_master_plant_id"]
+                  "device_id", "controllerid", "systemid", "app_master_plant_id", "controlunitnumber"]
 
-def mask_map(d: dict) -> dict:
-    if not isinstance(d, dict):
-        _LOGGER.info(f"mask_map expects a dictionary, got '{type(d).__name__}'")
-        return d
-    else:
+def mask_map(d: (dict, list)) -> dict:
+    if isinstance(d, dict):
         return mask_map_internal(copy.deepcopy(d))
+    elif isinstance(d, list):
+        return mask_list_internal(copy.deepcopy(d))
+    else:
+        _LOGGER.info(f"mask_map expects a dictionary or list, got '{type(d).__name__}'")
+        return d
+
+def mask_list_internal(lst: list) -> list:
+    masked_list = []
+    for item in lst:
+        if isinstance(item, dict):
+            masked_list.append(mask_map_internal(item))
+        elif isinstance(item, list):
+            masked_list.append(mask_list_internal(item))
+        elif isinstance(item, str) and any(masked_key in item.lower() for masked_key in _MASKED_VALUES):
+            masked_list.append("<MASKED>")
+        else:
+            masked_list.append(item)
+    return masked_list
 
 def mask_map_internal(d: dict) -> dict:
     for k, v in d.copy().items():
