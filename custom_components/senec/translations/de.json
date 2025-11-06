@@ -38,16 +38,18 @@
   },
   "config": {
     "abort": {
-      "already_configured": "Integration ist bereits eingerichtet",
+      "already_configured": "Integration ist bereits eingerichtet - prüfe ggf. Deine Logs für mehr Details",
       "reconfigure_successful": "Die Neukonfiguration war erfolgreich",
       "no_filesystem_access": "Diese Integration benötigt Zugriff auf das lokale Dateisystem Deiner HomeAssistant Installation, um einen Schlüssel für Deinen SENEC Account speichern zu können.\n\nHierzu wird im in dem Ordner '.storage/' einen Unterordner anlegen. Dies ist jedoch derzeit nicht möglich. Ein interner Test ist fehlgeschlagen. Details hierzu findest Du im LOG Deiner Home Assistant Instanz.\n\nBitte stelle sicher, dass Du die Home Assistant Installation mit dem richtigen Benutzer ausführst, der Schreibzugriff auf das lokale Dateisystem hat.\n\nWenn Du Home Assistant in einem Docker-Container ausführst, stelle sicher, dass Du den Container mit dem richtigen Benutzer ausführst und dass der Container Zugriff auf das lokale Dateisystem hat.\n\nBitte prüfe Deine installation und starte die Einrichtung dieser Integration neu, sobald der Zugriff auf das lokale Dateisystem möglich ist.",
-      "invalid_totp_secret": "Das OTP-auth-Secret konnte nicht interpretiert werden"
+      "invalid_totp_secret": "Das OTP-auth-Secret konnte nicht interpretiert werden",
+      "no_systems_found": "Es konnten keine SENEC.Systeme ermittelt werden - hast Du in der Senec.App ein Speicher System?"
     },
     "error": {
       "login_failed": "Login fehlgeschlagen - bitte Benutzername und/oder Passwort prüfen",
       "cannot_connect": "Keine Verbindung möglich",
       "unknown": "Unbekannter Fehler",
-      "invalid_totp_secret": "OTP-auth-Secret ist ungültig"
+      "invalid_totp_secret": "OTP-auth-Secret ist ungültig",
+      "no_systems_found": "Es konnten keine SENEC.Systeme ermittelt werden - hast Du in der Senec.App ein Speicher System?"
     },
     "step": {
       "user": {
@@ -91,14 +93,23 @@
             "name": "Experten Einstellung",
             "description": "Ändere diese Werte nur, wenn Du die Bedeutung dieser Einstellungen verstehst",
             "data" : {
-              "master_plant_number": "Anlagennummer",
+              "dserial": "SENEC Seriennummer des Gerätes",
               "include_wallbox_in_house_consumption": "Eigenverbrauch beinhaltet Wallboxverbrauch"
             },
             "data_description": {
-              "master_plant_number": "Nur bei mehreren Master Instanzen relevant - sonst 'Automatische Erkennung' verwenden",
+              "dserial": "Dieser Wert dient nur zur Anzeige - er sollte nicht von Dir editiert werden!",
               "include_wallbox_in_house_consumption": "SENEC misst der Verbrauch der Wallbox getrennt vom Hausverbrauch - wähle diese Option, wenn die Integration beide Werte zusammen führen soll."
             }
           }
+        }
+      },
+      "selectserial": {
+        "description": "### In Deinem Konto sind mehrere SENEC.Systeme hinterlegt",
+        "data": {
+          "dserial": "Deine verfügbaren SENEC.Systeme:"
+        },
+        "data_description": {
+          "dserial": "Bitte wähle eins der SENEC.Systeme aus der Liste und schließe die Einrichtung mit 'OK' ab"
         }
       },
       "optional_websetup_required_info": {

@@ -19,7 +19,7 @@ from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import slugify
 from requests.exceptions import HTTPError, Timeout
 
-from custom_components.senec.pysenec_ha import InverterLocal
+from custom_components.senec.pysenec_ha import InverterLocal, util
 from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from .const import (
     DOMAIN,
@@ -43,7 +43,6 @@ from .const import (
     SYSTYPE_SENECV4,
     SYSTYPE_WEBAPI,
     SYSTYPE_INVERTV3,
-    MASTER_PLANT_NUMBERS,
 
     SYSTYPE_NAME_SENEC,
     SYSTYPE_NAME_INVERTER,
@@ -62,7 +61,6 @@ from .const import (
     CONF_SYSTYPE_SENEC,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    CONF_DEV_MASTER_NUM,
     CONF_IGNORE_SYSTEM_STATE,
     CONFIG_VERSION,
     CONFIG_MINOR_VERSION,
@@ -77,17 +75,31 @@ def senec_host_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
     conf_hosts = []
     for entry in hass.config_entries.async_entries(DOMAIN):
-        if hasattr(entry, 'options') and CONF_HOST in entry.options:
-            conf_hosts.append(entry.options[CONF_HOST])
+        a_type = entry.data.get(CONF_TYPE, None)
+        if CONF_SYSTYPE_WEB == a_type:
+            conf_hosts.append(f"{entry.data.get(CONF_USERNAME, "UNKNOWN-USER")}_{entry.data.get(CONF_DEV_SERIAL, "UNKNOWN-SERIAL")}".lower())
         else:
-            conf_hosts.append(entry.data[CONF_HOST])
+            conf_hosts.append(entry.data.get(CONF_HOST, "UNKNOWN-HOST").lower())
     return conf_hosts
 
 
 @staticmethod
+def get_configured_web_system_serials(hass: HomeAssistant):
+    lc_serials = []
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        a_type = entry.data.get(CONF_TYPE, None)
+        if CONF_SYSTYPE_WEB == a_type:
+            lc_serials.append(entry.data.get(CONF_DEV_SERIAL, "UNKNOWN-SERIAL").lower())
+
+    if len(lc_serials) > 0:
+        return lc_serials
+    else:
+        return None
+
+@staticmethod
 def host_in_configuration_exists(hass: HomeAssistant, host: str) -> bool:
     """Return True if host exists in configuration."""
-    if host in senec_host_entries(hass):
+    if host.lower() in senec_host_entries(hass):
         return True
     return False
 
@@ -128,7 +140,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._default_pwd = None
         self._default_totp = None
         self._default_include_wallbox_in_house_consumption = True
-        self._default_master_plant_number = None
+        self._default_serial = None
 
         """Initialize."""
         self._errors = {}
@@ -137,7 +149,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._use_https = False
         self._device_type_internal = ""
         self._support_bdc = False
-        self._app_master_plant_number = -1
 
         self._device_type = ""
         self._device_model = ""
@@ -170,7 +181,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_pwd       = entry_data[CONF_PASSWORD]
             self._default_totp      = entry_data.get(CONF_TOTP_URL, entry_data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_include_wallbox_in_house_consumption = entry_data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-            self._default_master_plant_number = entry_data[CONF_DEV_MASTER_NUM]
+            self._default_serial    = entry_data[CONF_DEV_SERIAL]
 
             # fallback init, if 'CONF_TOTP_URL' or 'CONF_TOTP_SECRET' might be contained in 'entry_data'
             # but have assigned 'None'
@@ -227,29 +238,48 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.warning(f"Could not connect to build-in Inverter device at {host}, check host ip address")
         return False
 
-    async def _test_connection_senec_online(self, user: str, pwd: str, totp_secret: str, user_master_plant: int):
+    async def _test_connection_senec_online(self, user: str, pwd: str, totp_secret: str, serial_number: str, already_configured_lc_serials: list = None):
         """Check if we can connect to the Senec WEB."""
         self._errors = {}
         web_session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             senec_online = SenecOnline(user=user, pwd=pwd, totp=totp_secret, web_session=web_session,
-                                       config_entry_serial_number=None,
-                                       config_entry_master_plant_number=user_master_plant,
+                                       config_entry_serial_number=serial_number,
                                        storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR))
 
-            # we check, if we can authenticate with the APP-API
+            if serial_number is None:
+                systems = await senec_online.get_all_systems(already_configured_lc_serials)
+                if len(systems) == 0:
+                    if senec_online._app_is_authenticated:
+                        self._errors[CONF_SYSTYPE_WEB] = "no_systems_found"
+                        _LOGGER.warning(f"We could not find ANY SENEC.System (is there one available in the SENC.App?")
+                    else:
+                        self._errors[CONF_USERNAME] = "login_failed"
+                        _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials")
+                    return False
+
+                elif len(systems) == 1:
+                    # cool looks like the user have just a single system available in the SenecApp, so we use
+                    # this serial_number...
+                    serial_number = next(iter(systems))
+                    senec_online.init_config_entry_serial_number(serial_number)
+                    _LOGGER.info(f"We found a single SENEC.System with the serial number: '{util.mask_string(serial_number)}'")
+                else:
+                    # the user must select the system we want/should use...
+                    _LOGGER.debug(f"We found a multiple SENEC.Systems - User must select one...")
+                    return systems
+
+            # we check, if the serial is already configured... [when 'len(systems) == 1']
+            if self.source != SOURCE_RECONFIGURE:
+                if host_in_configuration_exists(self.hass, f"{user}_{serial_number}"):
+                    _LOGGER.warning(f"The SENEC.System with the serial number: '{util.mask_string(serial_number)}' is already configured")
+                    raise data_entry_flow.AbortFlow("already_configured")
+
             await senec_online.app_authenticate()
             if senec_online._app_is_authenticated:
-                # the 'app_authenticate()' call will also update all the required meta data
-                # so we don't have the need for additional calls... and also our properties
-                # are already stored in the token file!
 
                 # well - we need the system details... *sigh*
                 await senec_online.app_get_system_details()
-
-                # the 'app_authenticate()' have also probably corrected the
-                # master plant number... so we use it..
-                self._app_master_plant_number = senec_online.appMasterPlantNumber
 
                 # collecting other properties...
                 if senec_online.product_name is None:
@@ -283,11 +313,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return True
             else:
                 self._errors[CONF_USERNAME] = "login_failed"
-                self._errors[CONF_PASSWORD] = "login_failed"
                 _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials (! _is_authenticated)")
         except (OSError, HTTPError, Timeout, ClientResponseError):
             self._errors[CONF_USERNAME] = "login_failed"
-            self._errors[CONF_PASSWORD] = "login_failed"
             _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials (exception)")
         finally:
             web_session.detach()
@@ -481,7 +509,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             totp_entry = None
                             self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
 
-
                 #validate, if the 'totp_entry' can be processed by the lib
                 if totp_entry is not None:
                     # make sure that the provided secret will not contain any spaces...
@@ -501,59 +528,60 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         totp_url_entry = f"otpauth://totp/SENEC:{user_entry.strip().replace('@', '%40')}?secret={totp_entry}&digits=6&algorithm=SHA1&issuer=SENEC&period=30"
 
             if CONF_TOTP_SECRET not in self._errors:
-                # when the user has multiple masters, the auto-detect-code does
-                # not work - so we allow the specification of the AnlagenNummer
-                master_plant_val = user_input[key_expert][CONF_DEV_MASTER_NUM]
-                if master_plant_val == 'auto':
-                    already_exist_ident = user_entry
-                    master_plant_num = -1
-                else:
-                    already_exist_ident = f"{user_entry}_{master_plant_val}"
-                    master_plant_num = int(master_plant_val)
-
+                already_configured_lc_serials = []
                 if self.source == SOURCE_RECONFIGURE:
                     self._abort_if_unique_id_configured()
                 else:
-                    if host_in_configuration_exists(self.hass, already_exist_ident):
-                        self._errors[CONF_USERNAME] = "already_configured"
-                        raise data_entry_flow.AbortFlow("already_configured")
+                    already_configured_lc_serials = get_configured_web_system_serials(self.hass)
 
-                if await self._test_connection_senec_online(user_entry, pwd_entry, totp_entry, master_plant_num):
-                    web_data = {
-                        CONF_TYPE: CONF_SYSTYPE_WEB,
-                        CONF_NAME: name_entry,
-                        CONF_HOST: user_entry,
-                        CONF_USERNAME: user_entry,
-                        CONF_PASSWORD: pwd_entry,
-                        CONF_TOTP_SECRET: totp_entry,
-                        CONF_TOTP_URL: totp_url_entry,
-                        CONF_SCAN_INTERVAL: scan_entry,
-                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption,
-                        CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
-                        CONF_DEV_TYPE: self._device_type,
-                        CONF_DEV_MODEL: self._device_model,
-                        CONF_DEV_SERIAL: self._device_serial,
-                        CONF_DEV_VERSION: self._device_version,
-                        CONF_DEV_MASTER_NUM: self._app_master_plant_number
-                    }
-                    if self.source == SOURCE_RECONFIGURE:
-                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data)
-                    else:
-                        return self.async_create_entry(title=name_entry, data=web_data)
+                resp = await self._test_connection_senec_online(user_entry, pwd_entry, totp_entry, self._default_serial, already_configured_lc_serials)
+                if isinstance(resp, dict):
+                   # the '_test_connection_senec_online' returned multiple senec systems, so the user must select
+                   # one first...
+                   self.system_select_obj = resp
+                   self.cached_login_input = {
+                       CONF_TYPE: CONF_SYSTYPE_WEB,
+                       CONF_NAME: name_entry,
+                       CONF_USERNAME: user_entry,
+                       CONF_PASSWORD: pwd_entry,
+                       CONF_TOTP_SECRET: totp_entry,
+                       CONF_TOTP_URL: totp_url_entry,
+                       CONF_SCAN_INTERVAL: scan_entry,
+                       CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption
+                   }
+                   return await self.async_step_selectserial()
                 else:
-                    _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
-                    self._errors[CONF_USERNAME]
-                    self._errors[CONF_PASSWORD]
-                    if CONF_TOTP_SECRET in self._errors:
-                        self._errors[CONF_TOTP_SECRET]
+                    if resp:
+                        web_data = {
+                            CONF_TYPE: CONF_SYSTYPE_WEB,
+                            CONF_NAME: name_entry,
+                            CONF_HOST: user_entry,
+                            CONF_USERNAME: user_entry,
+                            CONF_PASSWORD: pwd_entry,
+                            CONF_TOTP_SECRET: totp_entry,
+                            CONF_TOTP_URL: totp_url_entry,
+                            CONF_SCAN_INTERVAL: scan_entry,
+                            CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption,
+                            CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
+                            CONF_DEV_TYPE: self._device_type,
+                            CONF_DEV_MODEL: self._device_model,
+                            CONF_DEV_SERIAL: self._device_serial,
+                            CONF_DEV_VERSION: self._device_version
+                        }
+                        if self.source == SOURCE_RECONFIGURE:
+                            return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data)
+                        else:
+                            return self.async_create_entry(title=name_entry, data=web_data)
+                    else:
+                        self.handle_web_test_errors(user_entry)
             else:
                 _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
-                self._errors[CONF_TOTP_SECRET]
+                self._errors["base"] = "invalid_totp_secret"
         else:
             user_input = {}
             if all(x is not None for x in
                    [self._default_name, self._default_user, self._default_pwd, self._default_totp,
-                    self._default_master_plant_number, self._default_interval, self._default_include_wallbox_in_house_consumption]):
+                    self._default_serial, self._default_interval, self._default_include_wallbox_in_house_consumption]):
                 user_input = {
                     CONF_NAME: self._default_name,
                     CONF_SCAN_INTERVAL: self._default_interval,
@@ -563,8 +591,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_TOTP_SECRET: self._default_totp
                     },
                     key_expert: {
-                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: self._default_include_wallbox_in_house_consumption,
-                        CONF_DEV_MASTER_NUM: str(self._default_master_plant_number)
+                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: self._default_include_wallbox_in_house_consumption
                     }
                 }
             else:
@@ -577,8 +604,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_TOTP_SECRET: ""
                     },
                     key_expert: {
-                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: True,
-                        CONF_DEV_MASTER_NUM: "auto"
+                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: True
                     }
                 }
 
@@ -604,18 +630,55 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(key_expert): section(
                         vol.Schema({
                             vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[key_expert][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
-                            vol.Required(CONF_DEV_MASTER_NUM, default=user_input[key_expert][CONF_DEV_MASTER_NUM]):
-                                selector.SelectSelector(
-                                    selector.SelectSelectorConfig(
-                                        options=MASTER_PLANT_NUMBERS,
-                                        mode=selector.SelectSelectorMode.DROPDOWN,
-                                        translation_key=CONF_DEV_MASTER_NUM))
+                            # WE don't show the (configured) serial - user should not EDIT it!
+                            #vol.Optional(CONF_DEV_SERIAL, default=user_input[key_expert][CONF_DEV_SERIAL]): str,
                         }),
                         {"collapsed": True},
                     )
                 }),
-                last_step=True,
+                last_step=self.source == SOURCE_RECONFIGURE,
                 errors=self._errors,
+            )
+
+    async def async_step_selectserial(self, user_input=None):
+        if user_input is not None:
+            _LOGGER.debug("async_step_selectserial(): finalize SETUP")
+            a_title = self.cached_login_input[CONF_NAME]
+            # we must verify again the login - but this time with a valid SERIAL
+            if await self._test_connection_senec_online(self.cached_login_input[CONF_USERNAME],
+                                                        self.cached_login_input[CONF_PASSWORD],
+                                                        self.cached_login_input[CONF_TOTP_SECRET],
+                                                        user_input[CONF_DEV_SERIAL]):
+
+                # updating the other properties of the config entry...
+                self.cached_login_input[CONF_DEV_TYPE_INT] = self._device_type_internal
+                self.cached_login_input[CONF_DEV_TYPE] = self._device_type
+                self.cached_login_input[CONF_DEV_MODEL] = self._device_model
+                self.cached_login_input[CONF_DEV_SERIAL] = self._device_serial
+                self.cached_login_input[CONF_DEV_VERSION] = self._device_version
+
+                return self.async_create_entry(title=a_title, data=self.cached_login_input)
+            else:
+                self.handle_web_test_errors(self.cached_login_input[CONF_USERNAME])
+        else:
+            _LOGGER.debug(f"async_step_selectserial(): with data: {len(self.system_select_obj)}")
+
+            available_serials = {}
+            for a_serial in self.system_select_obj:
+                _LOGGER.debug(f"a SENEC.System with Serial: {util.mask_string(a_serial)}")
+                a_serial_obj = self.system_select_obj[a_serial]
+                available_serials[a_serial] = f'{a_serial_obj["name"]} - {a_serial_obj["case"]} [Serial: {a_serial}] {a_serial_obj["addr"]}'
+
+            if len(available_serials) == 0:
+                _LOGGER.debug("No SENEC.System serials?")
+                return self.async_abort(reason="no_systems_found")
+
+            return self.async_show_form(
+                step_id="selectserial",
+                data_schema=vol.Schema(
+                    {vol.Required(CONF_DEV_SERIAL): vol.In(available_serials)}
+                ),
+                errors={}
             )
 
     async def async_step_optional_websetup_required_info(self, user_input=None):
@@ -638,7 +701,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_pwd       = self.reauth_entry.data[CONF_PASSWORD]
             self._default_totp      = self.reauth_entry.data.get(CONF_TOTP_URL, self.reauth_entry.data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_include_wallbox_in_house_consumption = self.reauth_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-            self._default_master_plant_number = self.reauth_entry.data[CONF_DEV_MASTER_NUM]
+            self._default_serial = self.reauth_entry.data[CONF_DEV_SERIAL]
 
             # fallback init, if 'CONF_TOTP_URL' or 'CONF_TOTP_SECRET' might be contained in 'entry_data'
             # but have assigned 'None'
@@ -646,6 +709,21 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._default_totp = ""
 
         return await self.async_step_websetup()
+
+    def handle_web_test_errors(self, user_entry):
+        _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials or no SENEC.Systems found")
+        _LOGGER.warning(f"ErrorObject: {self._errors}")
+
+        self._errors["base"] = "cannot_connect"
+
+        if CONF_USERNAME in self._errors:
+            self._errors["base"] = self._errors[CONF_USERNAME]
+
+        if CONF_SYSTYPE_WEB in self._errors:
+            self._errors["base"] = self._errors[CONF_SYSTYPE_WEB]
+
+        if CONF_TOTP_SECRET in self._errors:
+            self._errors["base"] = "invalid_totp_secret"
 
 #     @staticmethod
 #     @callback

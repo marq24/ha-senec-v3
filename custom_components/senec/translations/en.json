@@ -15,19 +15,6 @@
         "mode_local": "LAN: Access via local LAN (IP of SENEC.Home or Inverter)"
       }
     },
-    "master_plant_number": {
-      "options": {
-        "auto": "Autodetect (default)",
-        "0": "System number 0 (AnlagenNummer)",
-        "1": "System number 1 (AnlagenNummer)",
-        "2": "System number 2 (AnlagenNummer)",
-        "3": "System number 3 (AnlagenNummer)",
-        "4": "System number 4 (AnlagenNummer)",
-        "5": "System number 5 (AnlagenNummer)",
-        "6": "System number 6 (AnlagenNummer)",
-        "7": "System number 7 (AnlagenNummer)"
-      }
-    },
     "set_peakshaving_mode_options": {
       "options": {
         "deactivated": "Deactivated",
@@ -38,16 +25,18 @@
   },
   "config": {
     "abort": {
-      "already_configured": "Integration is already configured",
+      "already_configured": "Integration is already configured - please check your logs, there might be more details",
       "reconfigure_successful": "Re-configuration was successful",
       "no_filesystem_access": "This integration requires access to the local file system of your HomeAssistant installation to store a key for your Senec account.\n\nTo do this, a subfolder will be created in the '.storage/' folder. However, this is currently not possible. An internal test failed. You can find details in the log of your Home Assistant instance.\n\nPlease ensure that you are running the Home Assistant installation with the correct user who has write access to the local file system.\n\nIf you are running Home Assistant in a Docker container, ensure that you are running the container with the correct user and that the container has access to the local file system.\n\nPlease check your installation and restart the setup of this integration once access to the local file system is possible.",
-      "invalid_totp_secret": "The provided OTP-auth-Secret could not be interpreted"
+      "invalid_totp_secret": "The provided OTP-auth-Secret could not be interpreted",
+      "no_systems_found": "No SENEC.System could be detected  - Do you have a system in the Senec.App?"
     },
     "error": {
       "login_failed": "Login failed - please check username and/or password",
       "cannot_connect": "Failed to connect",
       "unknown": "Unknown error",
-      "invalid_totp_secret": "OTP-auth-Secret invalid"
+      "invalid_totp_secret": "OTP-auth-Secret invalid",
+      "no_systems_found": "No SENEC.System could be detected  - Do you have a system in the Senec.App?"
     },
     "step": {
       "user": {
@@ -91,14 +80,23 @@
             "name": "Expert settings",
             "description": "Only change these values if you understand the meaning of these settings",
             "data" : {
-              "master_plant_number": "System number",
+              "dserial": "Device SENEC Serial number",
               "include_wallbox_in_house_consumption": "House consumed include Wallbox consumed"
             },
             "data_description": {
-              "master_plant_number": "Only when using multiple master instances - otherwise use 'Autodetect'",
+              "dserial": "This value is just for display purpose - Do not edit this value!",
               "include_wallbox_in_house_consumption": "SENEC measures the wallbox consumption separately from the household consumption - select this option if the integration should combine both values."
             }
           }
+        }
+      },
+      "selectserial": {
+        "description": "### Multiple SENEC.Systems are available for your account",
+        "data": {
+          "dserial": "Your available SENEC.Systems:"
+        },
+        "data_description": {
+          "dserial": "Please select on of the available SENEC.Systems"
         }
       },
       "optional_websetup_required_info": {

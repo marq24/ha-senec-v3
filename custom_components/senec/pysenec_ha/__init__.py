@@ -17,7 +17,7 @@ from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
 from pathlib import Path
 from time import time, strftime, localtime
-from typing import Final
+from typing import Final, Iterable
 from urllib.parse import quote, urlparse, parse_qs
 
 import aiohttp
@@ -2980,8 +2980,13 @@ class SenecOnline:
     def __str__(self) -> str:
         return f"SenecOnline [{util.mask_string(self._SENEC_USERNAME)}, AppIsAuth? {self._app_is_authenticated} MasterPlant: {self._app_master_plant_number}, Serial: {util.mask_string(self._app_serial_number)}]"
 
-    def __init__(self, user, pwd, totp, web_session, config_entry_serial_number: str = None, config_entry_master_plant_number: int = 0, lang: str = "en", options: dict = None,
-                 storage_path: Path = None, tokens_location: str = None, integ_version: str = None):
+    def __init__(self, user, pwd, totp, web_session,
+                 config_entry_serial_number: str = None,
+                 lang: str = "en", options: dict = None,
+                 storage_path: Path = None,
+                 tokens_location: str = None,
+                 integ_version: str = None):
+
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         self._init_user_agents()
         self._lang = lang
@@ -3128,7 +3133,7 @@ class SenecOnline:
 
         # genius - _app_master_plant_number does not have to be the same then _web_master_plant_number…
         self._app_master_plant_number_must_be_verified_after_init = True
-        self._app_master_plant_number = config_entry_master_plant_number
+        self._app_master_plant_number = None
         self._web_master_plant_number = None
 
         ###################################
@@ -3184,18 +3189,15 @@ class SenecOnline:
 
         # app-token related stuff…
         self._storage_path = storage_path
-        if tokens_location is None:
-            #file_instance = "_µµµ0"
-            #if self._app_master_plant_number > 0:
-            #    file_instance = f"_µµµ{self._app_master_plant_number}"
-
-            file_instance = f"_µ@µ{slugify(config_entry_serial_number).lower()}"
+        if tokens_location is None and self._config_entry_serial_number is not None:
+            file_instance = f"_µ@µ{slugify(self._config_entry_serial_number).lower()}"
             if self._storage_path is not None:
                 self._app_stored_tokens_location = str(self._storage_path.joinpath(DOMAIN, f"{user}{file_instance}_access_token.txt"))
             else:
                 self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}{file_instance}_access_token.txt"
-
         else:
+            # warning! - so if there is no 'self._config_entry_serial_number', then we do not store any
+            # acces_token files..
             self._app_stored_tokens_location = tokens_location
 
         self._app_token_object = {}
@@ -3203,6 +3205,7 @@ class SenecOnline:
         self._app_token = None
         # the '_app_master_plant_id' will be used in any further request to
         # the senec endpoints as part of the URL...
+        self._app_master_plant_id_must_be_present = True
         self._app_master_plant_id = None
         self._app_serial_number = None
         self._app_wallbox_num_max = 4
@@ -3242,6 +3245,19 @@ class SenecOnline:
         else:
             _LOGGER.debug(f"SenecOnline initialized [RAW - no websession]")
 
+    def init_config_entry_serial_number(self, config_entry_serial_number:str):
+        if config_entry_serial_number is None:
+            _LOGGER.warning(f"init_config_entry_serial_number() CAN'T BE CALLED WITH NONE as 'config_entry_serial_number'")
+            return
+
+        self._config_entry_serial_number = config_entry_serial_number
+        if self._app_stored_tokens_location is None:
+            file_instance = f"_µ@µ{slugify(self._config_entry_serial_number).lower()}"
+            if self._storage_path is not None:
+                self._app_stored_tokens_location = str(self._storage_path.joinpath(DOMAIN, f"{self._SENEC_USERNAME}{file_instance}_access_token.txt"))
+            else:
+                self._app_stored_tokens_location = f".storage/{DOMAIN}/{self._SENEC_USERNAME}{file_instance}_access_token.txt"
+
     def set_senec_local_instance(self, a_senec_local):
         if a_senec_local is not None:
             _LOGGER.debug(f"SIBLING: SenecOnline: bound a instance of SenecLocal - BRIDGE from ONLINE to LOCAL is establish!")
@@ -3276,7 +3292,6 @@ class SenecOnline:
     #         _LOGGER.warning(f"Failed to move token file: {type(e).__name__} - {e}")
 
     async def _purge_old_token_files(self):
-        """Move a legacy token file to new _app_master_plant_number dependant if it exists"""
         if self._storage_path is not None:
             stored_tokens_location = str(self._storage_path.joinpath(DOMAIN))
         else:
@@ -3402,6 +3417,28 @@ class SenecOnline:
             "MasterPlantNumber": self._web_master_plant_number,
             "SerialNumber": self._web_serial_number,
         }}
+
+
+    async def get_all_systems(self, already_configured_lc_serials: list = None):
+        self._app_master_plant_id_must_be_present = False
+        await self.authenticate_all()
+        self._app_master_plant_id_must_be_present = True
+        systems = {}
+        if self._app_is_authenticated:
+            app_data = await self._app_do_get_request(self.APP_SYSTEM_LIST)
+            if app_data is not None and isinstance(app_data, Iterable):
+                for a_entry in app_data:
+                    serial = a_entry.get("controlUnitNumber", "UNKNOWN-SERIAL")
+                    if serial != "UNKNOWN-SERIAL":
+                        if already_configured_lc_serials is None or serial.lower() not in already_configured_lc_serials:
+                            systems[serial] = {
+                                "name": a_entry.get("product", {}).get("name", "UNKNOWN-NAME"),
+                                "case": a_entry.get("caseNumber", "CASENUMBER"),
+                                "addr": f'{a_entry.get("street", "STREET")} {a_entry.get("houseNumber", "HOUSENUMBER")}, {a_entry.get("postalCode", "POSTALCODE")} {a_entry.get("city", "CITY")}',
+                                "serial": serial
+                            }
+
+        return systems
 
     # by default, we update as fast as possible
     _UPDATE_INTERVAL = NO_LIMIT
@@ -3530,11 +3567,14 @@ class SenecOnline:
 
         if not self._app_is_authenticated:
             await self._initial_token_request_01_start()
-        elif self._app_master_plant_id is None:
+        elif self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             _LOGGER.debug(f"authenticate_all(): 'app_master_plant_id' is None - calling app_get_master_plant_id()")
             await self.app_get_master_plant_id()
         else:
-            _LOGGER.debug(f"authenticate_all(): app already authenticated [app_serial_number: {util.mask_string(self._app_serial_number)} - app_master_plant_id: {self._app_master_plant_id}]")
+            if self._app_master_plant_id_must_be_present:
+                _LOGGER.debug(f"authenticate_all(): app already authenticated [app_serial_number: {util.mask_string(self._app_serial_number)} - app_master_plant_id: {self._app_master_plant_id}]")
+            else:
+                _LOGGER.debug(f"authenticate_all(): We are in integration setup")
 
     @staticmethod
     def _format_timedelta(td):
@@ -3593,6 +3633,7 @@ class SenecOnline:
                 os.remove(testfile)
 
         return can_create_file
+
 
     #####################
     # fetch/refresh access_token
@@ -3665,7 +3706,6 @@ class SenecOnline:
             except BaseException as ex:
                 _LOGGER.debug(f"initial_token_request_01_start(): {type(ex).__name__} - {ex}")
 
-
     async def _initial_token_request_02_post_login(self, accept_http_200:bool, form_action_url, post_data:dict):
         req_headers = self._default_app_web_headers.copy()
         req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
@@ -3706,7 +3746,6 @@ class SenecOnline:
 
             except BaseException as ex:
                 _LOGGER.info(f"_initial_token_request_02_post_login(): {type(ex).__name__} - {ex}")
-
 
     async def _initial_token_request_03_get_token(self, redirect):
         if redirect.startswith(self.APP_REDIRECT_KEYCLOAK_URI):
@@ -3790,6 +3829,10 @@ class SenecOnline:
     #####################
     async def _write_token_to_storage(self, token_dict):
         """Save token to file for reuse"""
+        if self._app_stored_tokens_location is None:
+            _LOGGER.info(f"_write_token_to_storage(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
+            return
+
         if token_dict is None:
             _LOGGER.debug(f"_write_token_to_storage() - DELETE")
         else:
@@ -3809,6 +3852,10 @@ class SenecOnline:
 
     def __write_token_int(self, token_dict):
         """Synchronous method to write the token file, called from executor."""
+        if self._app_stored_tokens_location is None:
+            _LOGGER.info(f"__write_token_int(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
+            return
+
         if token_dict is None:
             try:
                 os.remove(self._app_stored_tokens_location)
@@ -3838,6 +3885,10 @@ class SenecOnline:
 
     def __read_token_int(self):
         """Synchronous method to read the token file, called from executor."""
+        if self._app_stored_tokens_location is None:
+            _LOGGER.info(f"__read_token_int(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
+            return
+
         if os.path.exists(self._app_stored_tokens_location):
             with open(self._app_stored_tokens_location, encoding="utf-8") as token_file:
                 return json.load(token_file)
@@ -3961,6 +4012,7 @@ class SenecOnline:
             self._app_wallbox_num_max   = 4
             self._app_data_start_ts     = -1
             self._app_data_end_ts       = -1
+
 
     #####################
     # backend requests from here
@@ -4110,32 +4162,37 @@ class SenecOnline:
 
     async def app_get_master_plant_id(self):
         _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
+        if self._config_entry_serial_number is None:
+            _LOGGER.warning(f"app_get_master_plant_id(): NO serial number in ConfigEntry - please reconfigure the Integration")
+            return
+
         data = await self._app_do_get_request(self.APP_SYSTEM_LIST)
-        if data is not None:
-            if self._app_master_plant_number == -1:
-                self._app_master_plant_number = 0
-            idx = int(self._app_master_plant_number)
-
-            # when SENEC API only return a single system in the 'v1/senec/anlagen' request (even if
-            # there are multiple systems)…
-            if len(data) == 1 and idx > 0:
-                _LOGGER.debug(f"app_get_master_plant_id(): IGNORE requested 'master_plant_number' {idx} will use 0 instead!")
-                idx = 0
-
-            if len(data) > idx:
-                if "id" in data[idx]:
-                    self._app_master_plant_id = data[idx]["id"]
-                    _LOGGER.debug(f"app_get_master_plant_id(): set _app_master_plant_id to {self._app_master_plant_id}")
-
-                if "wallboxIds" in data[idx]:
-                    self._app_wallbox_num_max = len(data[idx]["wallboxIds"])
-                    _LOGGER.debug(f"app_get_master_plant_id(): set _app_wallbox_num_max to {self._app_wallbox_num_max}")
-                else:
-                    self._app_wallbox_num_max = 0
-
-                if "controlUnitNumber" in data[idx]:
-                    self._app_serial_number = data[idx]["controlUnitNumber"]
+        if data is not None and isinstance(data, Iterable):
+            idx = 0
+            for a_entry in data:
+                if "controlUnitNumber" in a_entry and a_entry["controlUnitNumber"].lower() == self._config_entry_serial_number.lower():
+                    self._app_serial_number = a_entry["controlUnitNumber"]
+                    self._app_master_plant_number = idx
                     _LOGGER.debug(f"app_get_master_plant_id(): set _app_serial_number to {util.mask_string(self._app_serial_number)}")
+
+                    if "id" in a_entry:
+                        self._app_master_plant_id = a_entry["id"]
+                        _LOGGER.debug(f"app_get_master_plant_id(): set _app_master_plant_id to {self._app_master_plant_id}")
+
+                    if "wallboxIds" in a_entry:
+                        self._app_wallbox_num_max = len(a_entry["wallboxIds"])
+                        _LOGGER.debug(f"app_get_master_plant_id(): set _app_wallbox_num_max to {self._app_wallbox_num_max}")
+                    else:
+                        self._app_wallbox_num_max = 0
+
+                    # since we have found the configure object in the APP data, we can end the loop...
+                    break
+                #
+                idx += 1
+
+            if self._app_serial_number is None:
+                _LOGGER.warning(f"app_get_master_plant_id() - configured serial number: '{util.mask_string(self._config_entry_serial_number)}' COULD NOT BE FOUND in: {data}")
+                return
 
             # when we have successfully collected our primary meta-data, then we should also capture the start-end date
             # timestamps for the total data
@@ -4236,15 +4293,16 @@ class SenecOnline:
         # we need to call AT LEAT OME TIME after the SenecOnline object has been created
         # the 'self.app_get_master_plant_id()'
         # -> see also https://github.com/marq24/ha-senec-v3/issues/180
-        if self._app_master_plant_number_must_be_verified_after_init:
-            _LOGGER.debug(f"***** APP-API: _app_master_plant_number_must_be_verified ********")
-            self._app_master_plant_number_must_be_verified_after_init = False
-            await self.app_get_master_plant_id()
+        if self._app_master_plant_id_must_be_present:
+            if self._app_master_plant_number_must_be_verified_after_init:
+                _LOGGER.debug(f"***** APP-API: _app_master_plant_number_must_be_verified ********")
+                self._app_master_plant_number_must_be_verified_after_init = False
+                await self.app_get_master_plant_id()
 
-        # old/lazy 'app_get_master_plant_id()' init (should IMHO never be called, since we have now
-        # the '_app_master_plant_number_must_be_verified_after_init' boolean)
-        if self._app_master_plant_id is None:
-            await self.app_get_master_plant_id()
+            # old/lazy 'app_get_master_plant_id()' init (should IMHO never be called, since we have now
+            # the '_app_master_plant_number_must_be_verified_after_init' boolean)
+            if self._app_master_plant_id is None:
+                await self.app_get_master_plant_id()
 
         _LOGGER.debug("***** APP-API: app_get_system_details(self) ********")
         a_url = self.APP_SYSTEM_DETAILS.format(master_plant_id=self._app_master_plant_id)
@@ -4270,7 +4328,7 @@ class SenecOnline:
         #     "HEATING_ROD"
         #   ]
         # }
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         _LOGGER.debug("***** APP-API: app_get_abilities(self) ********")
@@ -4282,7 +4340,7 @@ class SenecOnline:
         return data
 
     async def app_get_data_start_and_end_ts(self):
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         _LOGGER.debug("***** APP-API: app_get_data_start_and_end_ts(self) ********")
@@ -4305,7 +4363,7 @@ class SenecOnline:
         #   "lastContact": "2025-07-22T06:06:53.304Z",
         #   "operatingMode": "FULL_OPERATION"
         # }
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         _LOGGER.debug("***** APP-API: app_get_system_status(self) ********")
@@ -4350,7 +4408,7 @@ class SenecOnline:
         #   "systemType": "V123",
         #   "storageDeviceState": "CHARGING"
         # }
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         _LOGGER.debug("***** APP-API: app_get_dashboard(self) ********")
@@ -4444,7 +4502,7 @@ class SenecOnline:
         #     "electricVehicleConnected": False
         # }
 
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         _LOGGER.debug("***** APP-API: app_get_total(self) ********")
@@ -4458,7 +4516,7 @@ class SenecOnline:
         return data
 
     # async def app_get_total(self):
-    #     if self._app_master_plant_id is None:
+    #     if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
     #         await self.app_get_master_plant_id()
     #     _LOGGER.debug("***** APP-API: app_get_total(self) ********")
     #     a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
@@ -4471,7 +4529,7 @@ class SenecOnline:
     #     return data
 
     async def app_update_total(self, wb_ids:str=None):
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         _LOGGER.debug("***** APP-API: app_update_total(self) ********")
@@ -4646,7 +4704,7 @@ class SenecOnline:
         return self.wallbox_consumption_total
 
     async def _app_update_single_wallbox_total(self, idx:int):
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total(self) index: {idx} ********")
@@ -4945,7 +5003,7 @@ class SenecOnline:
             _LOGGER.debug(f"app_set_wallbox_mode(): skipp mode change since '{local_mode_to_set}' already set")
         else:
             # first check if we are initialized…
-            if self._app_master_plant_id is None:
+            if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
                 await self.app_get_master_plant_id()
 
             success = False
@@ -5090,7 +5148,7 @@ class SenecOnline:
 
     async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         if self._app_master_plant_id is not None:
@@ -5140,7 +5198,7 @@ class SenecOnline:
 
     async def _app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True) -> bool:
         _LOGGER.debug("***** APP-API: _app_set_allow_intercharge(self) ********")
-        if self._app_master_plant_id is None:
+        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
         if self._app_master_plant_id is not None:
@@ -5188,6 +5246,7 @@ class SenecOnline:
             _LOGGER.debug("***** WEB-API: web_authenticate(self) ********")
             try:
                 async with (self.web_session.get(self._WEB_BASE_URL, allow_redirects=True, max_redirects=20, headers=self._default_web_headers) as res):
+                    _LOGGER.debug(f"web_authenticate(): requesting: {res.request_info.url}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         html_content = await res.text()
@@ -5299,7 +5358,7 @@ class SenecOnline:
             if do_update:
                 await self.update()
 
-    async def web_update_context(self, force_autodetect:bool = False):
+    async def web_update_context(self):
         if self.web_totp_required:
             _LOGGER.info("***** skipped cause TOTP required - web_update_context(self) ********")
             return
@@ -5307,21 +5366,8 @@ class SenecOnline:
         _LOGGER.debug("***** web_update_context(self) ********")
         if self._web_is_authenticated:
             await self.web_update_get_customer()
-
-            # in autodetect-mode the initial self._web_master_plant_number = -1
-            if self._web_master_plant_number is None or self._web_master_plant_number == -1 or force_autodetect:
-                self._web_master_plant_number = 0
-                is_autodetect = True
-            else:
-                is_autodetect = False
-
-            # I must check if we still need this, since we have now code, that tries to compare
-            # self._app_serial_number with the returned 'steuereinheitnummer' of the
-            # web [but of course only when app-impl is back]
-            if self._app_master_plant_number is not None and self._app_master_plant_number > 0:
-                self._web_master_plant_number = self._app_master_plant_number
-
-            await self.web_update_get_systems(a_plant_number=self._web_master_plant_number, autodetect_mode=is_autodetect)
+            # do we really want to start always with '0' here?
+            await self.web_update_get_systems(a_plant_number=0)
         else:
             await self.web_authenticate(do_update=False, throw401=False)
             if self._web_is_authenticated:
@@ -5336,6 +5382,7 @@ class SenecOnline:
 
         # grab NOW and TODAY stats
         async with self.web_session.get(self._WEB_GET_CUSTOMER, headers=self._default_web_headers, ssl=False) as res:
+            _LOGGER.debug(f"web_update_get_customer(): requesting: {res.request_info.url}")
             res.raise_for_status()
             if res.status in [200, 201, 202, 205]:
                 try:
@@ -5347,60 +5394,59 @@ class SenecOnline:
                 self._web_is_authenticated = False
                 await self.web_authenticate(do_update=False, throw401=False)
 
-    async def web_update_get_systems(self, a_plant_number: int, autodetect_mode: bool):
+    async def web_update_get_systems(self, a_plant_number: int):
         if self.web_totp_required:
             _LOGGER.info(f"***** skipped cause TOTP required - web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
             return
 
-        _LOGGER.debug(f"***** web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
+        if a_plant_number > 14:
+            _LOGGER.info(f"web_update_get_systems(): MAX Number of 15 SYSTEMS have been checked! - NO master with corresponding serial number {util.mask_string(self._config_entry_serial_number)} was found")
+            return
+
+        _LOGGER.debug(f"web_update_get_systems(): - trying AnlagenNummer: {a_plant_number} ********")
 
         a_url = self._WEB_GET_SYSTEM_INFO % str(a_plant_number)
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
+            _LOGGER.debug(f"web_update_get_systems(): requesting: {res.request_info.url}")
             res.raise_for_status()
             if res.status in [200, 201, 202, 205]:
                 try:
                     r_json = await res.json()
-                    #_LOGGER.debug(f"web_update_get_systems() - response: {r_json}")
-                    if autodetect_mode:
-                        if "master" in r_json and r_json["master"]:
-                            # we are cool that's a master-system… so we store our counter…
-                            self._web_serial_number = r_json["steuereinheitnummer"]
-                            if self._app_serial_number is None or self._app_serial_number == r_json["steuereinheitnummer"]:
-                                self._web_product_name = r_json["produktName"]
-                                if "zoneId" in r_json:
-                                    self._web_zone_id = r_json["zoneId"]
-                                else:
-                                    self._web_zone_id = "UNKNOWN"
-                                self._web_master_plant_number = a_plant_number
-                                _LOGGER.debug(f"set _web_master_plant_number to {a_plant_number} (Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{self._web_product_name}])")
-                            else:
-                                # ok it looks like the serial number does not match… let's request another system
-                                _LOGGER.debug(f"Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{r_json['produktName']}] - but not matching the SenecApp serial number: {util.mask_string(self._app_serial_number)}")
-                                a_plant_number += 1
-                                await self.web_update_get_systems(a_plant_number, autodetect_mode)
-                        else:
-                            if not hasattr(self, "_serial_number_slave"):
-                                self._serial_number_slave = []
-                                self._product_name_slave = []
-                            self._serial_number_slave.append(r_json["steuereinheitnummer"])
-                            self._product_name_slave.append(r_json["produktName"])
-                            a_plant_number += 1
-                            await self.web_update_get_systems(a_plant_number, autodetect_mode)
-                    else:
+                    #_LOGGER.debug(f"web_update_get_systems(): - response: {r_json}")
+
+                    if "master" in r_json and r_json["master"]:
+                        # we are cool that's a master-system… so we store our counter…
                         self._web_serial_number = r_json["steuereinheitnummer"]
-                        self._web_product_name = r_json["produktName"]
-                        if "zoneId" in r_json:
-                            self._web_zone_id = r_json["zoneId"]
+                        if self._config_entry_serial_number is None or self._config_entry_serial_number.lower() == r_json["steuereinheitnummer"].lower():
+                            self._web_product_name = r_json["produktName"]
+                            if "zoneId" in r_json:
+                                self._web_zone_id = r_json["zoneId"]
+                            else:
+                                self._web_zone_id = "UNKNOWN"
+                            self._web_master_plant_number = a_plant_number
+                            _LOGGER.debug(f"set _web_master_plant_number to {a_plant_number} (Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{self._web_product_name}])")
                         else:
-                            self._web_zone_id = "UNKNOWN"
-                        self._web_master_plant_number = a_plant_number
+                            # ok it looks like the serial number does not match… let's request another system
+                            _LOGGER.debug(f"web_update_get_systems(): Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{r_json['produktName']}] - but not matching the ConfigEntry serial number: {util.mask_string(self._config_entry_serial_number)}")
+                            a_plant_number += 1
+                            await self.web_update_get_systems(a_plant_number)
+                    else:
+                        if not hasattr(self, "_serial_number_slave"):
+                            self._serial_number_slave = []
+                            self._product_name_slave = []
+                        self._serial_number_slave.append(r_json["steuereinheitnummer"])
+                        self._product_name_slave.append(r_json["produktName"])
+                        a_plant_number += 1
+                        await self.web_update_get_systems(a_plant_number)
+
 
                     # let's check if the sytem support's SG-Read…
-                    if "sgReadyVisible" in r_json and r_json["sgReadyVisible"]:
-                        _LOGGER.debug("System is SGReady")
-                        self.SGREADY_SUPPORTED = True
-                    elif self._QUERY_SGREADY_DATA:
-                        _LOGGER.info(f"SGReady data is configured, but not available (for plant_number: {a_plant_number}) via mein-senec.de")
+                    if self._web_master_plant_number is not None:
+                        if "sgReadyVisible" in r_json and r_json["sgReadyVisible"]:
+                            _LOGGER.debug("System is SGReady")
+                            self.SGREADY_SUPPORTED = True
+                        elif self._QUERY_SGREADY_DATA:
+                            _LOGGER.info(f"web_update_get_systems(): SGReady data is configured, but not available (for plant_number: {a_plant_number}) via mein-senec.de")
 
                 except JSONDecodeError as exc:
                     _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
@@ -5480,8 +5526,8 @@ class SenecOnline:
             for key in self._WEB_REQUEST_KEYS:
                 a_url = self._WEB_GET_STATUS % (key, str(self._web_master_plant_number))
                 async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
-                    _LOGGER.debug(f"web_update_total() requesting: {a_url}")
                     try:
+                        _LOGGER.debug(f"web_update_total() requesting: {a_url}")
                         res.raise_for_status()
                         if res.status in [200, 201, 202, 204, 205]:
                             try:
@@ -5520,6 +5566,7 @@ class SenecOnline:
         a_url = f"{self._WEB_GET_PEAK_SHAVING}{self._web_master_plant_number}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
+                _LOGGER.debug(f"web_update_peak_shaving(): requesting: {res.request_info.url}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     try:
@@ -5553,6 +5600,7 @@ class SenecOnline:
 
         async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
+                _LOGGER.debug(f"set_peak_shaving(): requesting: {res.request_info.url}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     _LOGGER.debug("***** Set Peak Shaving successfully ********")
@@ -5583,6 +5631,7 @@ class SenecOnline:
         a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_GET_SPARE_CAPACITY}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
+                _LOGGER.debug(f"web_update_spare_capacity(): requesting: {res.request_info.url}")
                 res.raise_for_status()
                 if 200 <= res.status <= 205:
                     content = await res.text()
@@ -5644,6 +5693,7 @@ class SenecOnline:
             a_url = self._WEB_GET_SGREADY_STATE % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
+                    _LOGGER.debug(f"web_update_sgready_state(): requesting: {res.request_info.url}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         try:
@@ -5683,6 +5733,7 @@ class SenecOnline:
             a_url = self._WEB_GET_SGREADY_CONF % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
+                    _LOGGER.debug(f"web_update_sgready_conf(): requesting: {res.request_info.url}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         try:
@@ -5723,6 +5774,7 @@ class SenecOnline:
             if len(post_data) > 0 and post_data_to_backend:
                 async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False, json=post_data) as res:
                     try:
+                        _LOGGER.debug(f"set_sgready_conf(): requesting: {res.request_info.url}")
                         res.raise_for_status()
                         if res.status in [200, 201, 202, 204, 205]:
                             _LOGGER.debug("***** Set SG-Ready CONF successfully ********")
@@ -6504,6 +6556,7 @@ class SenecOnline:
         self._app_token_object = {}
         self._app_is_authenticated = False
         self._app_token = None
+        self._app_master_plant_id_must_be_present = True
         self._app_master_plant_id = None
         self._app_serial_number = None
         self._app_wallbox_num_max = 4

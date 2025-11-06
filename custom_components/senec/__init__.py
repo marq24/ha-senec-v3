@@ -54,7 +54,6 @@ from .const import (
     CONF_SYSTYPE_SENEC_V2,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    CONF_DEV_MASTER_NUM,
     CONF_IGNORE_SYSTEM_STATE,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
 
@@ -301,7 +300,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
             self._host = "mein-senec.de"
             config_entry_serial_number = config_entry.data.get(CONF_DEV_SERIAL, None)
-            config_entry_master_plant_number = int(config_entry.data.get(CONF_DEV_MASTER_NUM, -1))
             include_wallbox_in_house_consumption = config_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
 
             # user & pwd can be changed via the options...
@@ -413,13 +411,12 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # SenecApp use a master_plant_id while the MeinSenec.de web is using a master_plant_number (and to make
             # things worse, the App just can have one master_plant, while the web can have multiple...
             # once more: "Thanks for Nothing!")
-            # SO to get out of this mess, we will store the master_plant_id in our config entry and use this as our
+            # SO to get out of this mess, we will store the serial_number in our config entry and use this as our
             # general key - then when we access the web-portal, we will use assigned serial_number to the master_plant_id
             # and then query the web-portal anlagenNummer 0,1,2 ... till we find the one with the matching serial_number
             try:
                 self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_create_clientsession(hass),
                                          config_entry_serial_number=config_entry_serial_number,
-                                         config_entry_master_plant_number=config_entry_master_plant_number,  # we will not set the master_plant number - we will always use "autodetect
                                          lang=hass.config.language.lower(),
                                          options=opt,
                                          storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
