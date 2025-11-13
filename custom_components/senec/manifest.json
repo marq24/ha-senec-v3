@@ -14,5 +14,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
   "requirements": ["pyotp>=2.8.0", "xmltodict>=0.13.0", "packaging>=21.0", "python-dateutil>=2.8.0"],
-  "version": "2025.11.1"
+  "version": "2025.11.2"
 }

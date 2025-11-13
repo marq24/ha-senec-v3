@@ -3197,7 +3197,7 @@ class SenecOnline:
                 self._app_stored_tokens_location = f".storage/{DOMAIN}/{user}{file_instance}_access_token.txt"
         else:
             # warning! - so if there is no 'self._config_entry_serial_number', then we do not store any
-            # acces_token files..
+            # acces_token files...
             self._app_stored_tokens_location = tokens_location
 
         self._app_token_object = {}
@@ -3205,7 +3205,6 @@ class SenecOnline:
         self._app_token = None
         # the '_app_master_plant_id' will be used in any further request to
         # the senec endpoints as part of the URL...
-        self._app_master_plant_id_must_be_present = True
         self._app_master_plant_id = None
         self._app_serial_number = None
         self._app_wallbox_num_max = 4
@@ -3245,6 +3244,10 @@ class SenecOnline:
         else:
             _LOGGER.debug(f"SenecOnline initialized [RAW - no websession]")
 
+    @property
+    def is_app_master_plant_id_none(self):
+        return self._app_master_plant_id is None or str(self._app_master_plant_id).lower() == "none"
+        
     def init_config_entry_serial_number(self, config_entry_serial_number:str):
         if config_entry_serial_number is None:
             _LOGGER.warning(f"init_config_entry_serial_number() CAN'T BE CALLED WITH NONE as 'config_entry_serial_number'")
@@ -3401,7 +3404,7 @@ class SenecOnline:
             if not self._web_is_authenticated:
                 await self.web_authenticate(do_update=False, throw401=False)
         else:
-            # make sure that we do not male web calls by accident (yes 'web_totp_required' is not the correct
+            # make sure that we do not make web calls by accident (yes 'web_totp_required' is not the correct
             # attribute - but it will work for sure (now)...
             self.web_totp_required = True
 
@@ -3418,11 +3421,13 @@ class SenecOnline:
             "SerialNumber": self._web_serial_number,
         }}
 
-
+    # this will be only called from the config_flow... 
     async def get_all_systems(self, already_configured_lc_serials: list = None):
-        self._app_master_plant_id_must_be_present = False
-        await self.authenticate_all()
-        self._app_master_plant_id_must_be_present = True
+        if not self._app_is_authenticated:
+            # if the web_login is required, we ignore any existing tokens
+            # and directly login into the API...
+            await self.app_authenticate(check_for_existing_tokens = True, is_integration_setup_phase = True)
+
         systems = {}
         if self._app_is_authenticated:
             app_data = await self._app_do_get_request(self.APP_SYSTEM_LIST)
@@ -3437,6 +3442,8 @@ class SenecOnline:
                                 "addr": f'{a_entry.get("street", "STREET")} {a_entry.get("houseNumber", "HOUSENUMBER")}, {a_entry.get("postalCode", "POSTALCODE")} {a_entry.get("city", "CITY")}',
                                 "serial": serial
                             }
+        else:
+            _LOGGER.debug(f"get_all_systems(): self._app_is_authenticated is {self._app_is_authenticated}")
 
         return systems
 
@@ -3556,7 +3563,7 @@ class SenecOnline:
 
 
     """SENEC-APP from here"""
-    async def app_authenticate(self, check_for_existing_tokens: bool = True):
+    async def app_authenticate(self, check_for_existing_tokens: bool = True, is_integration_setup_phase:bool = False):
         # SenecApp stuff…
         if check_for_existing_tokens:
             await self.app_verify_token()
@@ -3565,16 +3572,20 @@ class SenecOnline:
             # 'other' data from a possible existing token file...
             await self.app_has_token()
 
+
         if not self._app_is_authenticated:
             await self._initial_token_request_01_start()
-        elif self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
-            _LOGGER.debug(f"authenticate_all(): 'app_master_plant_id' is None - calling app_get_master_plant_id()")
-            await self.app_get_master_plant_id()
         else:
-            if self._app_master_plant_id_must_be_present:
-                _LOGGER.debug(f"authenticate_all(): app already authenticated [app_serial_number: {util.mask_string(self._app_serial_number)} - app_master_plant_id: {self._app_master_plant_id}]")
+            if is_integration_setup_phase:
+                _LOGGER.debug(f"app_authenticate(): app_is_authenticated: {self._app_is_authenticated} - We are in integration setup (no further actions needed)")
             else:
-                _LOGGER.debug(f"authenticate_all(): We are in integration setup")
+                if self.is_app_master_plant_id_none:
+                    _LOGGER.debug(f"app_authenticate(): 'app_master_plant_id' is None - calling app_get_master_plant_id()")
+                    await self.app_get_master_plant_id()
+                    if not self.is_app_master_plant_id_none:
+                        self._app_master_plant_number_must_be_verified_after_init = False
+
+                _LOGGER.debug(f"app_authenticate(): app already authenticated [app_serial_number: {util.mask_string(self._app_serial_number)} - app_master_plant_id: {self._app_master_plant_id}]")
 
     @staticmethod
     def _format_timedelta(td):
@@ -4162,12 +4173,17 @@ class SenecOnline:
 
     async def app_get_master_plant_id(self):
         _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
-        if self._config_entry_serial_number is None:
-            _LOGGER.warning(f"app_get_master_plant_id(): NO serial number in ConfigEntry - please reconfigure the Integration")
-            return
+
 
         data = await self._app_do_get_request(self.APP_SYSTEM_LIST)
         if data is not None and isinstance(data, Iterable):
+
+            if self._config_entry_serial_number is None or str(self._config_entry_serial_number).lower() == "none":
+                _LOGGER.warning(f"app_get_master_plant_id(): NO serial number in ConfigEntry - please reconfigure the Integration")
+                if len(data) == 1 and "controlUnitNumber" in data[0]:
+                    self.init_config_entry_serial_number(data[0]["controlUnitNumber"])
+                    _LOGGER.info(f"app_get_master_plant_id(): NO serial number in ConfigEntry - USING '{util.mask_string(self._config_entry_serial_number)}' as FALLBACK")
+
             idx = 0
             for a_entry in data:
                 if "controlUnitNumber" in a_entry and a_entry["controlUnitNumber"].lower() == self._config_entry_serial_number.lower():
@@ -4293,18 +4309,21 @@ class SenecOnline:
         # we need to call AT LEAT OME TIME after the SenecOnline object has been created
         # the 'self.app_get_master_plant_id()'
         # -> see also https://github.com/marq24/ha-senec-v3/issues/180
-        if self._app_master_plant_id_must_be_present:
-            if self._app_master_plant_number_must_be_verified_after_init:
-                _LOGGER.debug(f"***** APP-API: _app_master_plant_number_must_be_verified ********")
-                self._app_master_plant_number_must_be_verified_after_init = False
-                await self.app_get_master_plant_id()
+        if self._app_master_plant_number_must_be_verified_after_init:
+            _LOGGER.debug(f"***** APP-API: _app_master_plant_number_must_be_verified ********")
+            self._app_master_plant_number_must_be_verified_after_init = False
+            await self.app_get_master_plant_id()
 
-            # old/lazy 'app_get_master_plant_id()' init (should IMHO never be called, since we have now
-            # the '_app_master_plant_number_must_be_verified_after_init' boolean)
-            if self._app_master_plant_id is None:
-                await self.app_get_master_plant_id()
+        # old/lazy 'app_get_master_plant_id()' init (should IMHO never be called, since we have now
+        # the '_app_master_plant_number_must_be_verified_after_init' boolean)
+        if self._app_master_plant_id is None:
+            await self.app_get_master_plant_id()
 
-        _LOGGER.debug("***** APP-API: app_get_system_details(self) ********")
+        _LOGGER.debug(f"***** APP-API: app_get_system_details(self) for: {self._app_master_plant_id} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"app_get_system_details(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         a_url = self.APP_SYSTEM_DETAILS.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4328,10 +4347,14 @@ class SenecOnline:
         #     "HEATING_ROD"
         #   ]
         # }
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug("***** APP-API: app_get_abilities(self) ********")
+        _LOGGER.debug(f"***** APP-API: app_get_abilities(self) for: {self._app_master_plant_id} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"app_get_abilities(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         a_url = self.APP_ABILITIES_LIST.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4340,10 +4363,14 @@ class SenecOnline:
         return data
 
     async def app_get_data_start_and_end_ts(self):
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug("***** APP-API: app_get_data_start_and_end_ts(self) ********")
+        _LOGGER.debug(f"***** APP-API: app_get_data_start_and_end_ts(self) for: {self._app_master_plant_id} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         a_url = self.APP_MEASURE_DATA_AVAIL.format(master_plant_id=self._app_master_plant_id, tz="UTC")
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4363,10 +4390,14 @@ class SenecOnline:
         #   "lastContact": "2025-07-22T06:06:53.304Z",
         #   "operatingMode": "FULL_OPERATION"
         # }
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug("***** APP-API: app_get_system_status(self) ********")
+        _LOGGER.debug(f"***** APP-API: app_get_system_status(self) for: {self._app_master_plant_id} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"app_get_system_status(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         a_url = self.APP_SYSTEM_STATUS.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4408,10 +4439,14 @@ class SenecOnline:
         #   "systemType": "V123",
         #   "storageDeviceState": "CHARGING"
         # }
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug("***** APP-API: app_get_dashboard(self) ********")
+        _LOGGER.debug(f"***** APP-API: app_get_dashboard(self) for: {self._app_master_plant_id} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"app_get_dashboard(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         a_url = self.APP_MEASURE_DASHBOARD.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4502,10 +4537,14 @@ class SenecOnline:
         #     "electricVehicleConnected": False
         # }
 
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug("***** APP-API: app_get_total(self) ********")
+        _LOGGER.debug(f"***** APP-API: app_get_total(self) for: {self._app_master_plant_id} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"app_get_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                               res_type=type_value.upper(),
                                               from_val=quote(from_value, safe=''),
@@ -4516,9 +4555,9 @@ class SenecOnline:
         return data
 
     # async def app_get_total(self):
-    #     if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+    #     if self.is_app_master_plant_id_none:
     #         await self.app_get_master_plant_id()
-    #     _LOGGER.debug("***** APP-API: app_get_total(self) ********")
+    #     _LOGGER.debug(f"***** APP-API: app_get_total(self) for: {self._app_master_plant_id} ********")
     #     a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
     #                                           res_type=type.upper(),
     #                                           from_val=quote(from_value, safe=''),
@@ -4529,10 +4568,14 @@ class SenecOnline:
     #     return data
 
     async def app_update_total(self, wb_ids:str=None):
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug("***** APP-API: app_update_total(self) ********")
+        _LOGGER.debug(f"***** APP-API: app_update_total(self) for: {self._app_master_plant_id} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         now_utc = datetime.now(timezone.utc)
         now_local =  datetime.now()
         current_year_local = now_local.year
@@ -4704,10 +4747,14 @@ class SenecOnline:
         return self.wallbox_consumption_total
 
     async def _app_update_single_wallbox_total(self, idx:int):
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total(self) index: {idx} ********")
+        _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total(self) for: {self._app_master_plant_id} index: {idx} ********")
+        if self.is_app_master_plant_id_none:
+            _LOGGER.warning(f"_app_update_single_wallbox_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            return None
+        
         now_utc = datetime.now(timezone.utc)
         now_local = datetime.now()
         current_year_local = now_local.year
@@ -5003,7 +5050,7 @@ class SenecOnline:
             _LOGGER.debug(f"app_set_wallbox_mode(): skipp mode change since '{local_mode_to_set}' already set")
         else:
             # first check if we are initialized…
-            if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+            if self.is_app_master_plant_id_none:
                 await self.app_get_master_plant_id()
 
             success = False
@@ -5148,7 +5195,7 @@ class SenecOnline:
 
     async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
         if self._app_master_plant_id is not None:
@@ -5198,7 +5245,7 @@ class SenecOnline:
 
     async def _app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True) -> bool:
         _LOGGER.debug("***** APP-API: _app_set_allow_intercharge(self) ********")
-        if self._app_master_plant_id_must_be_present and self._app_master_plant_id is None:
+        if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
         if self._app_master_plant_id is not None:
@@ -6556,7 +6603,6 @@ class SenecOnline:
         self._app_token_object = {}
         self._app_is_authenticated = False
         self._app_token = None
-        self._app_master_plant_id_must_be_present = True
         self._app_master_plant_id = None
         self._app_serial_number = None
         self._app_wallbox_num_max = 4

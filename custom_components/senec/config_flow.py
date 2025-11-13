@@ -181,7 +181,11 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_pwd       = entry_data[CONF_PASSWORD]
             self._default_totp      = entry_data.get(CONF_TOTP_URL, entry_data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_include_wallbox_in_house_consumption = entry_data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-            self._default_serial    = entry_data[CONF_DEV_SERIAL]
+            if CONF_DEV_SERIAL in entry_data:
+                self._default_serial= entry_data[CONF_DEV_SERIAL]
+            else:
+                _LOGGER.warning(f"Your entry_data does not contain a serial number - reinstall the integration {entry_data}")
+                self._default_serial = None
 
             # fallback init, if 'CONF_TOTP_URL' or 'CONF_TOTP_SECRET' might be contained in 'entry_data'
             # but have assigned 'None'
@@ -247,7 +251,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                        config_entry_serial_number=serial_number,
                                        storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR))
 
-            if serial_number is None:
+            if serial_number is None or str(serial_number).lower() == "none":
                 systems = await senec_online.get_all_systems(already_configured_lc_serials)
                 if len(systems) == 0:
                     if senec_online._app_is_authenticated:
@@ -581,7 +585,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user_input = {}
             if all(x is not None for x in
                    [self._default_name, self._default_user, self._default_pwd, self._default_totp,
-                    self._default_serial, self._default_interval, self._default_include_wallbox_in_house_consumption]):
+                    self._default_interval, self._default_include_wallbox_in_house_consumption]):
                 user_input = {
                     CONF_NAME: self._default_name,
                     CONF_SCAN_INTERVAL: self._default_interval,
@@ -701,7 +705,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_pwd       = self.reauth_entry.data[CONF_PASSWORD]
             self._default_totp      = self.reauth_entry.data.get(CONF_TOTP_URL, self.reauth_entry.data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_include_wallbox_in_house_consumption = self.reauth_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-            self._default_serial = self.reauth_entry.data[CONF_DEV_SERIAL]
+            if CONF_DEV_SERIAL in self.reauth_entry.data:
+                self._default_serial = self.reauth_entry.data[CONF_DEV_SERIAL]
+            else:
+                self._default_serial = None
 
             # fallback init, if 'CONF_TOTP_URL' or 'CONF_TOTP_SECRET' might be contained in 'entry_data'
             # but have assigned 'None'
