@@ -30,7 +30,7 @@ body:
           required: true
         - label: I have installed the **latest** release version of the integration and home assistant.
           required: true
-        - label: I have prepared DEBUG log output (for technical issues) | In most of the cases of a technical error/issue I would have the need to ask for DEBUG log output of the integration. There is a short [tutorial/guide 'How to provide DEBUG log' here](https://github.com/marq24/ha-senec-v3/blob/master/docs/HA_DEBUG.md)
+        - label: I have prepared DEBUG log output (for technical issues) | In most of the cases of a technical error/issue I would have the need to ask for DEBUG log output of the integration. There is a short [tutorial/guide 'How to provide DEBUG log' here](https://github.com/marq24/ha-senec-v3/blob/main/docs/HA_DEBUG.md)
           required: true
         - label: I understand the SHIT-__IN__ - SHIT-__OUT__ principle (in case of implausible data) | It will happen, that the data that is displayed by this integration does not make much sense (to you) - Of course this could be always the case, that something in this integration has been messed up - but so far - in all reported issues the root cause of implausible data was/is, that the SENEC.Home device itself already provided this data
           required: true
