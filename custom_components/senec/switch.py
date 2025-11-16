@@ -9,9 +9,16 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity
-from .const import DOMAIN, MAIN_SWITCH_TYPES, WEB_SWITCH_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
+from .const import (
+    DOMAIN,
+    MAIN_SWITCH_TYPES,
+    WEB_SWITCH_TYPES,
+    CONF_SYSTYPE_INVERTER,
+    CONF_SYSTYPE_WEB,
     ExtSwitchEntityDescription
+)
 
 _LOGGER = logging.getLogger(__name__)
 
