@@ -1,5 +1,6 @@
 """Platform for Senec numbers."""
 import logging
+from dataclasses import replace
 
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -78,8 +79,11 @@ class SenecNumber(SenecEntity, NumberEntity):
                 min_max = getattr(self.coordinator.senec, self.entity_description.key + "_extrema")
                 if min_max is not None:
                     self._internal_minmax_adjustment_needed = False
-                    self.entity_description.native_min_value = round(float(min_max[0]), 1)
-                    self.entity_description.native_max_value = round(float(min_max[1]), 1)
+                    self.entity_description = replace(
+                        self.entity_description,
+                        native_max_value=round(float(min_max[0]), 1),
+                        native_min_value=round(float(min_max[1]), 1)
+                    )
             except Exception as err:
                 _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
 
