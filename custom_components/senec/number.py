@@ -81,8 +81,8 @@ class SenecNumber(SenecEntity, NumberEntity):
                     self._internal_minmax_adjustment_needed = False
                     self.entity_description = replace(
                         self.entity_description,
-                        native_max_value=round(float(min_max[0]), 1),
-                        native_min_value=round(float(min_max[1]), 1)
+                        native_min_value=round(float(min_max[0]), 1),
+                        native_max_value=round(float(min_max[1]), 1)
                     )
             except Exception as err:
                 _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
