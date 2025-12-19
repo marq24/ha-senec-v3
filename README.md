@@ -25,7 +25,7 @@ __Please note__, _that this integration is not official and not supported by the
 > ## General Disclaimer
 > Please be aware that we are developing this integration to the best of our knowledge and belief, but can't give a guarantee. Therefore, use this integration **at your own risk**.
 
-[![hacs_badge][hacsbadge]][hacs] [![github][ghsbadge]][ghs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![PayPal][paypalbadge]][paypal] [![hainstall][hainstallbadge]][hainstall]
+[![hacs_badge][hacsbadge]][hacs] [![github][ghsbadge]][ghs] [![BuyMeCoffee][buymecoffeebadge]][buymecoffee] [![BuyMeCoffee2][buymecoffeebadge2]][buymecoffee2] [![PayPal][paypalbadge]][paypal] [![hainstall][hainstallbadge]][hainstall]
 
 
 > [!WARNING]
@@ -439,6 +439,9 @@ If you are interested in some details about this implementation and the current 
 
 [buymecoffee]: https://www.buymeacoffee.com/marquardt24
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a-coffee-blue.svg?style=for-the-badge&logo=buymeacoffee&logoColor=ccc
+
+[buymecoffee2]: https://buymeacoffee.com/marquardt24/membership
+[buymecoffeebadge2]: https://img.shields.io/badge/coffee-subs-blue.svg?style=for-the-badge&logo=buymeacoffee&logoColor=ccc
 
 [paypal]: https://paypal.me/marq24
 [paypalbadge]: https://img.shields.io/badge/paypal-me-blue.svg?style=for-the-badge&logo=paypal&logoColor=ccc
