@@ -1022,7 +1022,10 @@
         "name": "Wallboxstatus I"
       },
       "wallbox_1_power": {
-        "name": "Wallbox I Leistung"
+        "name": "Wallbox I Ladeleistung"
+      },
+      "wallbox_1_power_alt": {
+        "name": "Wallbox I Scheinladeleistung"
       },
       "wallbox_1_ev_connected": {
         "name": "Wallbox I EV angeschlossen"
@@ -1046,7 +1049,10 @@
         "name": "Wallboxstatus II"
       },
       "wallbox_2_power": {
-        "name": "Wallbox II Leistung"
+        "name": "Wallbox II Ladeleistung"
+      },
+      "wallbox_2_power_alt": {
+        "name": "Wallbox II Scheinladeleistung"
       },
       "wallbox_2_ev_connected": {
         "name": "Wallbox II EV angeschlossen"
@@ -1070,7 +1076,10 @@
         "name": "Wallboxstatus III"
       },
       "wallbox_3_power": {
-        "name": "Wallbox III Leistung"
+        "name": "Wallbox III Ladeleistung"
+      },
+      "wallbox_3_power_alt": {
+        "name": "Wallbox III Scheinladeleistung"
       },
       "wallbox_3_ev_connected": {
         "name": "Wallbox III EV angeschlossen"
@@ -1094,7 +1103,10 @@
         "name": "Wallboxstatus IV"
       },
       "wallbox_4_power": {
-        "name": "Wallbox IV Leistung"
+        "name": "Wallbox IV Ladeleistung"
+      },
+      "wallbox_4_power_alt": {
+        "name": "Wallbox IV Scheinladeleistung"
       },
       "wallbox_4_ev_connected": {
         "name": "Wallbox IV EV angeschlossen"

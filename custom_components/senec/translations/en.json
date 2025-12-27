@@ -1009,7 +1009,10 @@
         "name": "Wallbox I state"
       },
       "wallbox_1_power": {
-        "name": "Wallbox I Power"
+        "name": "Wallbox I charging Power"
+      },
+      "wallbox_1_power_alt": {
+        "name": "Wallbox I apparent charging Power"
       },
       "wallbox_1_ev_connected": {
         "name": "Wallbox I EV Connected"
@@ -1033,7 +1036,10 @@
         "name": "Wallbox II state"
       },
       "wallbox_2_power": {
-        "name": "Wallbox II Power"
+        "name": "Wallbox II charging Power"
+      },
+      "wallbox_2_power_alt": {
+        "name": "Wallbox II apparent charging Power"
       },
       "wallbox_2_ev_connected": {
         "name": "Wallbox II EV Connected"
@@ -1057,7 +1063,10 @@
         "name": "Wallbox III state"
       },
       "wallbox_3_power": {
-        "name": "Wallbox III Power"
+        "name": "Wallbox III charging Power"
+      },
+      "wallbox_3_power_alt": {
+        "name": "Wallbox III apparent charging Power"
       },
       "wallbox_3_ev_connected": {
         "name": "Wallbox III EV Connected"
@@ -1081,7 +1090,10 @@
         "name": "Wallbox IV state"
       },
       "wallbox_4_power": {
-        "name": "Wallbox IV Power"
+        "name": "Wallbox IV charging Power"
+      },
+      "wallbox_4_power_alt": {
+        "name": "Wallbox IV apparent charging Power"
       },
       "wallbox_4_ev_connected": {
         "name": "Wallbox IV EV Connected"
