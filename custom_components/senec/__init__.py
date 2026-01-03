@@ -56,6 +56,8 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_IGNORE_SYSTEM_STATE,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
+    CONF_TOTP_ALREADY_USED,
+    CONF_MUST_START_POST_MIGRATION_PROCESS,
 
     MAIN_SENSOR_TYPES,
     MAIN_BIN_SENSOR_TYPES,
@@ -82,6 +84,7 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["binary_sensor", "button", "number", "select", "sensor", "switch"]
 CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
 DEVICE_REG_CLEANUP_RUNNING = False
+SKIP_NEXT_RELOAD_OF_WEB = False
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if config_entry.version < CONFIG_VERSION:
@@ -95,25 +98,40 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             _LOGGER.debug(f"Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
 
     # update from 2.0 [completed wallbox implementation - and fixed total statistics stuff]
-    if config_entry.version == 2 and config_entry.minor_version == 0:
-        _LOGGER.info(f"Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
-        if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-            _LOGGER.info("Migration: for WebAPI we must clean the cache file ONCE")
-            # we need to remove the cache file, so that the next time we will
-            # access the webAPI, we will get a fresh copy of the data
-            user = config_entry.data.get(CONF_USERNAME, None)
-            pwd = config_entry.data.get(CONF_PASSWORD, None)
-            if user is not None:
-                # we just need the SenecOnline object to DELETE the access_token file...
-                web_api = SenecOnline(user=user, pwd=pwd, totp=None, web_session=None,
-                                      storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
-                                      integ_version=f"MIGRATION_v{config_entry.version}.{config_entry.minor_version}_to_v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+    if config_entry.version == 2:
+        if config_entry.minor_version == 0:
+            _LOGGER.info(f"Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+            if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+                _LOGGER.info("Migration: for WebAPI we must clean the cache file ONCE")
+                # we need to remove the cache file so that the next time we will
+                # access the webAPI, we will get a fresh copy of the data
+                user = config_entry.data.get(CONF_USERNAME, None)
+                pwd = config_entry.data.get(CONF_PASSWORD, None)
+                if user is not None:
+                    # we just need the SenecOnline object to DELETE the access_token file...
+                    web_api = SenecOnline(user=user, pwd=pwd, totp=None, web_session=None,
+                                          storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
+                                          integ_version=f"MIGRATION_v{config_entry.version}.{config_entry.minor_version}_to_v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
 
-                # this will remove the cache file...
-                await web_api._write_token_to_storage(token_dict=None)
-                _LOGGER.info(f"Migration: cache file cleared for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+                    # this will remove the cache file...
+                    await web_api._write_token_to_storage(token_dict=None)
+                    _LOGGER.info(f"Migration: cache file cleared for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
 
-        hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
+            hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
+
+        # update from 2.1 to 2.2 [mark config entry to purge data]
+        if config_entry.minor_version == 1:
+            _LOGGER.info(f"Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+            if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+                _LOGGER.info("Migration: for WebAPI we must mark for clearing ONCE")
+
+                # we must purge the 'last_stored_value' - but we can do that only during the loading phase of the config_entry
+                new_config_entry_data = {**config_entry.data, **{CONF_MUST_START_POST_MIGRATION_PROCESS: True}}
+                hass.config_entries.async_update_entry(config_entry, data=new_config_entry_data, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
+                _LOGGER.info(f"Migration: cache file marked for clearing for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+            else:
+                # do nothing for other system-types (inverter or local, just update the version info...
+                hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
 
     return True
 
@@ -189,7 +207,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 coordinator.senec.set_senec_online_instance(a_other_coord.senec)
                 a_other_coord.senec.set_senec_local_instance(coordinator.senec)
 
-
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         await coordinator.senec.update_version()
         coordinator._device_type = SYSTYPE_NAME_INVERTER
@@ -198,7 +215,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.device_versions
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-
         if coordinator.senec.product_name is None or coordinator.senec.product_name == "UNKNOWN_PROD_NAME":
             await coordinator.app_get_system_details()
 
@@ -207,10 +223,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_serial = coordinator.senec.serial_number
         coordinator._device_version = coordinator.senec.versions
 
+        # we launch the check_for_migration_tasks worker...
+        hass.async_create_task(coordinator.check_for_post_migration_tasks(hass))
+
         # Search the (optional) sibling SenecLocal for this SenecOnline via serialnumber and connect them
         for a_other_coord in hass.data[DOMAIN].values():
           if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecLocal):
-            # we must ensure, that the 'a_other_coord' have already passed it's initialization-phase...
+            # we must ensure that the 'a_other_coord' have already passed it's initialization-phase...
             max_wait_count = 0
             while max_wait_count < 5 and a_other_coord._device_serial is None:
                 await asyncio.sleep(5)
@@ -307,14 +326,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             pwd = config_entry.data[CONF_PASSWORD]
 
             totp = config_entry.data.get(CONF_TOTP_SECRET, None)
-            is_totp_already_used = config_entry.data.get("_TOTP_ALREADY_USED", False)
+            is_totp_already_used = config_entry.data.get(CONF_TOTP_ALREADY_USED, False)
 
             must_purge_access_token = False
             if totp is not None and not is_totp_already_used:
                 # looks like that the TOTP secret is present in the config, but this is the first
                 # time that it was detected...
-                new_data = {**config_entry.data, '_TOTP_ALREADY_USED': True}
-                hass.async_create_task(hass.config_entries.async_update_entry(config_entry, data=new_data))
+                new_data = {**config_entry.data, CONF_TOTP_ALREADY_USED: True}
+                hass.config_entries.async_update_entry(config_entry, data=new_data)
                 _LOGGER.info("TOTP secret configured for the first time - we must purge any existing auth-tokens")
                 must_purge_access_token = True
 
@@ -510,6 +529,33 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.warning(str(evt))
         return True
 
+    async def check_for_post_migration_tasks(self, hass: HomeAssistant):
+        _LOGGER.debug(f"check_for_post_migration_tasks() called")
+        if CONF_MUST_START_POST_MIGRATION_PROCESS in self._config_entry.data:
+            data_reload_required = False
+            _LOGGER.info(f"check_for_post_migration_tasks(): 'CONF_MUST_START_POST_MIGRATION_PROCESS' is present WE will perform the actual task in 45sec")
+            await asyncio.sleep(45)
+            _LOGGER.info(f"check_for_post_migration_tasks(): starting 'post_migration_process' now!")
+            if self._config_entry.data[CONF_MUST_START_POST_MIGRATION_PROCESS] is True:
+                if self._config_entry.data.get(CONF_TYPE, None) == CONF_SYSTYPE_WEB:
+                    _LOGGER.info("check_for_post_migration_tasks(): we must: 1) reset the access_token 2) reset all our 'total_increasing_values' sensors")
+                    await self._async_trigger_button(trigger_key="delete_cache", payload="true")
+                    self.reset_total_increasing_values()
+                    data_reload_required = True
+
+            # when the 'CONF_MUST_START_POST_MIGRATION_PROCESS' value is in the config_entry.data, then we must
+            # remove it...
+            new_data = {**self._config_entry.data}
+            new_data.pop(CONF_MUST_START_POST_MIGRATION_PROCESS)
+            global SKIP_NEXT_RELOAD_OF_WEB
+            SKIP_NEXT_RELOAD_OF_WEB = True
+            hass.config_entries.async_update_entry(self._config_entry, data=new_data)
+
+            if data_reload_required:
+                await asyncio.sleep(5)
+                await self.async_refresh()
+
+
     async def _async_is2408_or_later(self) -> bool:
         return await self.senec._is_2408_or_higher_async()
 
@@ -621,9 +667,13 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
 
 async def entry_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    global SKIP_NEXT_RELOAD_OF_WEB
     _LOGGER.debug(f"entry_update_listener() called for entry: {config_entry.entry_id}")
-    await hass.config_entries.async_reload(config_entry.entry_id)
-
+    if config_entry.data.get(CONF_TYPE, None) != CONF_SYSTYPE_WEB or SKIP_NEXT_RELOAD_OF_WEB is False:
+        await hass.config_entries.async_reload(config_entry.entry_id)
+    else:
+        _LOGGER.info(f"entry_update_listener() was called but the RELOAD will be skipped cause the updated was caused by an integrtaion-internal process - all is fine!")
+        SKIP_NEXT_RELOAD_OF_WEB = False
 
 class SenecEntity(Entity):
     """Defines a base Senec entity."""

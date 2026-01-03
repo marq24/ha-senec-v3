@@ -4601,8 +4601,10 @@ class SenecOnline:
 
         # getting PREVIOUS_YEARS - only ONCE
         if self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year_local:
+            # we MUST delete all our previous collected data, when we switch over to a new year!
+            self._static_TOTAL_SUMS_PREV_YEARS = None
             do_persist = True
-            # Loop from the data-available-start to current year [there are no older systems than 2018]
+            # Loop from the data-available-start to the current year [there are no older systems than 2018]
             # we might like to store the first year, that actually has data?!
             start_year = 2018
             if self._app_data_start_ts > 0:

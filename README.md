@@ -31,11 +31,13 @@ __Please note__, _that this integration is not official and not supported by the
 > [!WARNING]
 > ## Disclaimer for WebAPI Based Integration
 > ### SENEC WebAPI can break at any time — and there might be no fix!
-> SENEC does not provide any kind of public accessible API and/or documentation. The WebAPI can break at any time without notice. This means that the integration might stop working at any time, and there might be no fix available. Please be aware of this before using the WebAPI based integration.
+> SENEC does not provide any kind of public-accessible API and/or documentation. The WebAPI can break at any time without notice. This means that the integration might stop working at any time, and there might be no fix available. Please be aware of this before using the WebAPI-based integration.
 >  
 > You __should <ins>not</ins> make yourself <ins>dependent</ins> on the WebAPI based integration__, as it might not work in the future. If you want to use the WebAPI based integration, please be aware that __you are using it at your own risk__.
 > 
+<!--
 > I must admit that <ins>__I am not sure__</ins> if the WebAPI-Integration version <ins>__is available in the future__</ins>. it might be just coincident, but the latest changes in the infrastructure by SENEC __might indicate__ that SENEC is __actively working on blocking custom implementations__.
+-->
 
 ## Setup / Installation
 
@@ -44,7 +46,7 @@ __Please note__, _that this integration is not official and not supported by the
 #### Option 1: via HACS
 
 - Install [Home Assistant Community Store (HACS)](https://hacs.xyz/)
-- Add integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
+- Add the integration repository (search for "SENEC.Home" in "Explore & Download Repositories")
 - Use the 3-dots at the right of the list entry (not at the top bar!) to download/install the custom integration — the latest release version is automatically selected. Only select a different version if you have specific reasons.
 - After you press download and the process has completed, you must __Restart Home Assistant__ to install all dependencies
 - Setup the custom integration as described below (see _Step II: Adding or enabling the integration_)

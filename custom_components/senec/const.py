@@ -62,7 +62,7 @@ If you have any issues with this you need to open an issue here:
 """
 
 CONFIG_VERSION: Final = 2
-CONFIG_MINOR_VERSION: Final = 1
+CONFIG_MINOR_VERSION: Final = 2
 
 SYSTYPE_SENECV4: Final = "systype_senecv4"
 SYSTYPE_WEBAPI: Final = "systype_webapi"
@@ -109,6 +109,9 @@ CONF_APP_SERIALNUM: Final = "app_serialnumber"
 CONF_APP_DATA_START: Final = "app_data_start_ts"
 CONF_APP_DATA_END: Final = "app_data_end_ts"
 CONF_APP_TOTAL_DATA: Final = "app_total_data_store"
+
+CONF_TOTP_ALREADY_USED: Final = "_TOTP_ALREADY_USED" # I am sorry that this is upper case [but we must keep this upper case - 'vertrau mir Bruder!']
+CONF_MUST_START_POST_MIGRATION_PROCESS: Final = "migration_post_process_must_be_started"
 
 """Default config for Senec."""
 DEFAULT_SYSTEM: Final = SYSTYPE_SENECV3
