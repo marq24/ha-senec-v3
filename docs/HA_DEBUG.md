@@ -3,12 +3,13 @@
 There are __four steps__ that you need to do to provide debug log information 
 
 This short guide can be used for all my integrations:
-- ha-senec-v3
-- ha-evcc
-- ha-waterkotte
-- ha-tibber-pulse-local
-- ha-goecharger-api2
-- ha-fordpass
+- [ha-senec-v3](https://github.com/marq24/ha-senec-v3)
+- [ha-evcc](https://github.com/marq24/ha-evcc)
+- [ha-waterkotte](https://github.com/marq24/ha-waterkotte)
+- [ha-tibber-pulse-local](https://github.com/marq24/ha-tibber-pulse-local)
+- [ha-goecharger-api2](https://github.com/marq24/ha-goecharger-api2)
+- [ha-fordpass](https://github.com/marq24/ha-fordpass)
+- [ha-fordconnect-query](https://github.com/marq24/ha-fordconnect-query)
 
 ## 1) Enable Debug logging for the corresponding integrations
 
@@ -24,6 +25,7 @@ logger:
     custom_components.tibber_local: debug
     custom_components.goecharger_api2: debug
     custom_components.fordpass: debug
+    custom_components.fordconnect_query: debug
 ```
 
 After you modified your configuration.yaml you need to restart home assistant. 
