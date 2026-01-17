@@ -5,17 +5,6 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Final
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, Event
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import entity_registry, config_validation as config_val, device_registry as device_reg
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant.helpers.entity import EntityDescription, Entity
-from homeassistant.helpers.storage import STORAGE_DIR
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.loader import async_get_integration
-
 from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
@@ -31,6 +20,16 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import entity_registry, config_validation as config_val, device_registry as device_reg
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.entity import EntityDescription, Entity
+from homeassistant.helpers.storage import STORAGE_DIR
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.loader import async_get_integration
 from . import service as SenecService
 from .const import (
     DOMAIN,
@@ -56,6 +55,7 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_IGNORE_SYSTEM_STATE,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
+    CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE,
     CONF_TOTP_ALREADY_USED,
     CONF_MUST_START_POST_MIGRATION_PROCESS,
 
@@ -320,7 +320,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             self._host = "mein-senec.de"
             config_entry_serial_number = config_entry.data.get(CONF_DEV_SERIAL, None)
             include_wallbox_in_house_consumption = config_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-
+            force_fastest_when_switch_to_allow_intercharge = config_entry.data.get(CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE, True)
             # user & pwd can be changed via the options...
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
@@ -346,7 +346,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 QUERY_TOTALS_KEY: False,
                 QUERY_SYSTEM_DETAILS_KEY: False,
                 QUERY_SGREADY_KEY: False,
-                CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption
+                CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption,
+                CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: force_fastest_when_switch_to_allow_intercharge
             }
 
             if hass is not None and config_entry.entry_id is not None and config_entry.title is not None:

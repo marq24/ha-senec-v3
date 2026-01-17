@@ -2,6 +2,20 @@
 from dataclasses import dataclass
 from typing import Final
 
+from custom_components.senec.pysenec_ha.constants import (
+    SENEC_SECTION_BAT1,
+    SENEC_SECTION_BMS,
+    SENEC_SECTION_BMS_CELLS,
+    SENEC_SECTION_PV1,
+    SENEC_SECTION_PM1OBJ1,
+    SENEC_SECTION_PM1OBJ2,
+    SENEC_SECTION_FAN_SPEED,
+    SENEC_SECTION_STATISTIC,
+    SENEC_SECTION_SOCKETS,
+    SENEC_SECTION_WALLBOX,
+    WALLBOX_CHARGING_MODES,
+    UPDATE_INTERVAL_OPTIONS
+)
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.button import ButtonEntityDescription
 from homeassistant.components.number import (
@@ -27,21 +41,6 @@ from homeassistant.const import (
     UnitOfPower
 )
 from homeassistant.helpers.entity import EntityCategory
-
-from custom_components.senec.pysenec_ha.constants import (
-    SENEC_SECTION_BAT1,
-    SENEC_SECTION_BMS,
-    SENEC_SECTION_BMS_CELLS,
-    SENEC_SECTION_PV1,
-    SENEC_SECTION_PM1OBJ1,
-    SENEC_SECTION_PM1OBJ2,
-    SENEC_SECTION_FAN_SPEED,
-    SENEC_SECTION_STATISTIC,
-    SENEC_SECTION_SOCKETS,
-    SENEC_SECTION_WALLBOX,
-    WALLBOX_CHARGING_MODES,
-    UPDATE_INTERVAL_OPTIONS
-)
 
 # WEB_IS_OVER_DATETIME:Final = datetime(year=2025, month=7, day=23, hour=0, minute=0, second=0, tzinfo=timezone.utc)
 # def IS_AFTER_2025_07_23():
@@ -91,6 +90,7 @@ CONF_USE_HTTPS: Final = "use_https"
 CONF_SUPPORT_BDC: Final = "has_bdc_support"
 CONF_IGNORE_SYSTEM_STATE: Final = "ignore_system_state"
 CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: Final = "include_wallbox_in_house_consumption"
+CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: Final = "force_fastest_when_switch_to_allow_intercharge"
 
 CONF_DEV_TYPE: Final = "dtype"
 CONF_DEV_MODEL: Final = "dname"

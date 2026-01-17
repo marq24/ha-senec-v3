@@ -81,11 +81,13 @@
             "description": "Only change these values if you understand the meaning of these settings",
             "data" : {
               "dserial": "Device SENEC Serial number",
-              "include_wallbox_in_house_consumption": "House consumed include Wallbox consumed"
+              "include_wallbox_in_house_consumption": "House consumed include Wallbox consumed",
+              "force_fastest_when_switch_to_allow_intercharge": "Set all wallboxs to FAST(EST) mode, when the global 'Wallbox load from battery` switch will be activated"
             },
             "data_description": {
               "dserial": "This value is just for display purpose - Do not edit this value!",
-              "include_wallbox_in_house_consumption": "SENEC measures the wallbox consumption separately from the household consumption - select this option if the integration should combine both values."
+              "include_wallbox_in_house_consumption": "SENEC measures the wallbox consumption separately from the household consumption - select this option if the integration should combine both values.",
+              "force_fastest_when_switch_to_allow_intercharge": "Having this 'ON' is the default observed behaviour of the SENEC.Home System - only change this if you know what you are doing!"
             }
           }
         }

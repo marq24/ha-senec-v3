@@ -94,11 +94,13 @@
             "description": "Ändere diese Werte nur, wenn Du die Bedeutung dieser Einstellungen verstehst",
             "data" : {
               "dserial": "SENEC Seriennummer des Gerätes",
-              "include_wallbox_in_house_consumption": "Eigenverbrauch beinhaltet Wallboxverbrauch"
+              "include_wallbox_in_house_consumption": "Eigenverbrauch beinhaltet Wallboxverbrauch",
+              "force_fastest_when_switch_to_allow_intercharge": "Alle Wallboxen in den Modus SCHNELL schalten, wenn der globale Wallbox-Allow-Intercharge-Modus aktiviert wird"
             },
             "data_description": {
               "dserial": "Dieser Wert dient nur zur Anzeige - er sollte nicht von Dir editiert werden!",
-              "include_wallbox_in_house_consumption": "SENEC misst der Verbrauch der Wallbox getrennt vom Hausverbrauch - wähle diese Option, wenn die Integration beide Werte zusammen führen soll."
+              "include_wallbox_in_house_consumption": "SENEC misst der Verbrauch der Wallbox getrennt vom Hausverbrauch - wähle diese Option, wenn die Integration beide Werte zusammen führen soll.",
+              "force_fastest_when_switch_to_allow_intercharge": "Die Einstellung „EIN“ ist das standardmäßig beobachtete Verhalten des SENEC.Home-Systems – ändere dies nur, wenn Du genau weißt, was Du tust!"
             }
           }
         }
@@ -151,7 +153,7 @@
         "name": "Lithium Storage Mode - PV OFF"
       },
       "wallbox_allow_intercharge": {
-        "name": "Wallbox laden aus Speicher"
+        "name": "Wallbox aus Speicher laden"
       },
       "sockets_1_force_on": {
         "name": "Kontakt1 permanent ein"
