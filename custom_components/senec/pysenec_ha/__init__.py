@@ -6592,8 +6592,11 @@ class SenecOnline:
     @property
     def wallbox_allow_intercharge(self) -> bool:
         ret_val = True
+        loop_done = False
         for idx in range(0, self._app_wallbox_num_max):
             if self._app_wallbox_num_max > idx:
+                if not loop_done:
+                    loop_done = True
                 a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
                 a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
                 a_type = a_charging_mode_obj.get("type", None)
@@ -6601,7 +6604,7 @@ class SenecOnline:
                 is_allow_intercharge_and_correct_mode = (a_type == APP_API_WB_MODE_2025_FAST and a_allow_intercharge)
                 _LOGGER.debug(f"wallbox_allow_intercharge(): {idx} = {is_allow_intercharge_and_correct_mode}")
                 ret_val = (ret_val and is_allow_intercharge_and_correct_mode)
-        return ret_val
+        return ret_val and loop_done
 
     async def switch_wallbox_allow_intercharge(self, enabled: bool) -> bool:
         # for backward compatibility we can only switch all wallboxes at once..
