@@ -95,7 +95,7 @@
             "data" : {
               "dserial": "SENEC Seriennummer des Gerätes",
               "include_wallbox_in_house_consumption": "Eigenverbrauch beinhaltet Wallboxverbrauch",
-              "force_fastest_when_switch_to_allow_intercharge": "Alle Wallboxen in den Modus SCHNELL schalten, wenn der globale Wallbox-Allow-Intercharge-Modus aktiviert wird"
+              "force_fastest_when_switch_to_allow_intercharge": "Alle Wallboxen in den Modus 'SCHNELL (mit Batterie-Unterstützung)' schalten, wenn der globale Wallbox-Allow-Intercharge-Modus aktiviert wird"
             },
             "data_description": {
               "dserial": "Dieser Wert dient nur zur Anzeige - er sollte nicht von Dir editiert werden!",

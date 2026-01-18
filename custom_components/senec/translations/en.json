@@ -82,7 +82,7 @@
             "data" : {
               "dserial": "Device SENEC Serial number",
               "include_wallbox_in_house_consumption": "House consumed include Wallbox consumed",
-              "force_fastest_when_switch_to_allow_intercharge": "Set all wallboxs to FAST(EST) mode, when the global 'Wallbox load from battery` switch will be activated"
+              "force_fastest_when_switch_to_allow_intercharge": "Set all wallboxes to FASTEST '(supported by battery)' mode, when the global 'Wallbox load from battery` switch will be activated"
             },
             "data_description": {
               "dserial": "This value is just for display purpose - Do not edit this value!",
