@@ -75,15 +75,13 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_LOG,
 
     APP_API_WB_MODE_LOCKED,
-    APP_API_WB_MODE_FASTEST,
-    APP_API_WB_MODE_SSGCM,
-
     APP_API_WB_MODE_2025_SOLAR,
     APP_API_WB_MODE_2025_FAST,
 
     LOCAL_WB_MODE_LOCKED,
     LOCAL_WB_MODE_SSGCM_3,
     LOCAL_WB_MODE_SSGCM_4,
+    LOCAL_WB_MODE_FAST,
     LOCAL_WB_MODE_FASTEST,
     LOCAL_WB_MODE_UNKNOWN,
 
@@ -2510,7 +2508,7 @@ class SenecLocal:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 4)
-        elif local_value == LOCAL_WB_MODE_FASTEST:
+        elif local_value == LOCAL_WB_MODE_FAST or local_value == LOCAL_WB_MODE_FASTEST:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
@@ -3191,9 +3189,9 @@ class SenecOnline:
         #self.APP_SET_WALLBOX        = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}"
 
         self.APP_WALLBOX_SEARCH     = APP_WALLBOX_BASE_URL + "/v1/systems/wallboxes/search"
-        self.APP_SET_WALLBOX_LOCK   = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/locked/{lc_lock_state}"
-        self.APP_SET_WALLBOX_FC     = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/fast-charge"
-        self.APP_SET_WALLBOX_SC     = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/solar-charge"
+        self.APP_SET_WALLBOX_LOCK_MODE  = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/locked/{lc_lock_state}"
+        self.APP_SET_WALLBOX_FAST_MODE  = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/fast-charge"
+        self.APP_SET_WALLBOX_SOLAR_MODE = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/solar-charge"
 
         APP_ABILITIES_BASE_URL      = "https://senec-app-abilities-proxy.prod.senec.dev"
         self.APP_ABILITIES_LIST     = APP_ABILITIES_BASE_URL + "/abilities/packages/{master_plant_id}"
@@ -5034,7 +5032,10 @@ class SenecOnline:
                         return LOCAL_WB_MODE_SSGCM_4
 
                 elif a_type.upper() == APP_API_WB_MODE_2025_FAST:
-                    return LOCAL_WB_MODE_FASTEST
+                    if charging_mode_obj.get("allowIntercharge", False):
+                        return LOCAL_WB_MODE_FASTEST
+                    else:
+                        return LOCAL_WB_MODE_FAST
                 else:
                     _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
             else:
@@ -5080,9 +5081,9 @@ class SenecOnline:
             if self._app_master_plant_id is not None:
                 # check, if we switch to the LOCK mode
                 if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
-                    wb_url = self.APP_SET_WALLBOX_LOCK.format(master_plant_id=str(self._app_master_plant_id),
-                                                              wb_id=str(wallbox_num),
-                                                              lc_lock_state="true")
+                    wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
+                                                                   wb_id=str(wallbox_num),
+                                                                   lc_lock_state="true")
 
                     data = await self._app_do_get_request(wb_url, do_as_patch=True)
                     if data is not None:
@@ -5096,9 +5097,9 @@ class SenecOnline:
                     # if we are currently locked - and if we are locked, we
                     # must unlock first
                     if cur_local_mode == LOCAL_WB_MODE_LOCKED:
-                        wb_url = self.APP_SET_WALLBOX_LOCK.format(master_plant_id=str(self._app_master_plant_id),
-                                                                  wb_id=str(wallbox_num),
-                                                                  lc_lock_state="false")
+                        wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
+                                                                       wb_id=str(wallbox_num),
+                                                                       lc_lock_state="false")
 
                         data = await self._app_do_get_request(wb_url, do_as_patch=True)
                         if data is not None:
@@ -5108,31 +5109,34 @@ class SenecOnline:
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} UNLOCK FAILED")
 
                     # now setting the final mode…
-                    if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-                        # setting FAST MODE
-                        wb_url = self.APP_SET_WALLBOX_FC.format(master_plant_id=str(self._app_master_plant_id),
-                                                                wb_id=str(wallbox_num))
+                    if local_mode_to_set == LOCAL_WB_MODE_FASTEST or local_mode_to_set == LOCAL_WB_MODE_FAST:
+                        # setting FAST/FASTEST MODE
+                        wb_url = self.APP_SET_WALLBOX_FAST_MODE.format(master_plant_id=str(self._app_master_plant_id),
+                                                                       wb_id=str(wallbox_num))
 
-                        # I just can guess, that 'allowIntercharge' means to use battery…
-                        web_api_allow_intercharge_per_wallbox_property = True  # default value
-                        # when we post 'allowIntercharge=True' to we webAPI, then this will also set the internal
+                        # I just can guess that 'allowIntercharge' means to use battery…
+                        # when we post 'allowIntercharge=True' to the webAPI, then this will also set the internal
                         # 'chargingMode:type' value to FAST (in the wallbox object)...
-                        # So setting ate we webapi for a single WALLBOX the 'allowIntercharge' properzy to True
-                        # just means, to display 'FAST' in the WebUI/App!
-                        data = await self._app_do_post_request(wb_url, post_data={"allowIntercharge": web_api_allow_intercharge_per_wallbox_property}, read_response=True)
+                        the_post_data = {
+                            "allowIntercharge": True if local_mode_to_set == LOCAL_WB_MODE_FASTEST else False,
+                        }
+                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST_MODE final post data: {the_post_data}")
+                        data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
                         if data is not None:
                             self._app_set_wallbox_object_at_index(idx, data)
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST: {util.mask_map(data)}")
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST_MODE: {util.mask_map(data)}")
                             success = True
                         else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} FAST FAILED")
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} FAST_MODE FAILED")
 
                     elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 or local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
                         # setting SOLAR mode (with or without compatibility)
+                        wb_url = self.APP_SET_WALLBOX_SOLAR_MODE.format(master_plant_id=str(self._app_master_plant_id),
+                                                                        wb_id=str(wallbox_num))
+
                         the_post_data = {
                             "compatibilityMode": True if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 else False,
                         }
-
                         # try to copy over all other attributes from the current chargingMode:solarOptimizeSettings
                         a_wallbox_object = self._app_get_wallbox_object_at_index(idx)
                         solar_optimize_settings = a_wallbox_object.get("chargingMode", {}).get("solarOptimizeSettings", None)
@@ -5144,17 +5148,14 @@ class SenecOnline:
                         else:
                             _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
 
-                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR final post data: {the_post_data}")
-                        wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id),
-                                                                wb_id=str(wallbox_num))
-
+                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR_MODE final post data: {the_post_data}")
                         data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
                         if data is not None:
                             self._app_set_wallbox_object_at_index(idx, data)
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR: {util.mask_map(data)}")
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR_MODE: {util.mask_map(data)}")
                             success = True
                         else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} SOLAR FAILED")
+                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} SOLAR_MODE FAILED")
                     else:
                         _LOGGER.info(f"app_set_wallbox_mode(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
 
@@ -5165,11 +5166,13 @@ class SenecOnline:
                         # is no sync=False parameter here…
                         await self._bridge_to_senec_local.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
 
+                        # 2026/01/17
                         # when we have set one of the WALLBOXES to the LocalMODE FASTEST, then we must check, IF all
                         # (available) Wallboxes are set to FAST and if this is the case, we must/should enable
                         # the 'allowIntercharge' Flag at the local SENEC?!
-                        if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-                            await self._bridge_to_senec_local.check_if_allowIntercharge_must_be_set_to_true()
+                        # BUT we don't do this for now - since LOCAL '_allowIntercharge' is ONE for ALL Wallboxes
+                        # if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
+                        #    await self._bridge_to_senec_local.check_if_allowIntercharge_must_be_set_to_true()
 
                     # when we changed the mode, the backend might have automatically adjusted the
                     # 'chargingMode:solarOptimizeSettings:minChargingCurrentInA' so we need to sync
@@ -5250,7 +5253,7 @@ class SenecOnline:
                     _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_obj}")
 
                 # continue...
-                wb_url = self.APP_SET_WALLBOX_SC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+                wb_url = self.APP_SET_WALLBOX_SOLAR_MODE.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
                 data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
                 if data is not None:
                     self._app_set_wallbox_object_at_index(idx, data)
@@ -5300,7 +5303,7 @@ class SenecOnline:
             the_post_data = {
                 "allowIntercharge": value_to_set
             }
-            wb_url = self.APP_SET_WALLBOX_FC.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+            wb_url = self.APP_SET_WALLBOX_FAST_MODE.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
             data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
             if data is not None:
                 # setting the internal storage value…
@@ -5317,17 +5320,6 @@ class SenecOnline:
                 _LOGGER.debug(f"_app_set_allow_intercharge(): wallbox {wallbox_num} FAST allowIntercharge FAILED")
 
         return False
-
-    # def app_get_api_wallbox_mode_from_local_value(self, local_mode: str) -> str:
-    #     if local_mode == LOCAL_WB_MODE_LOCKED:
-    #         return APP_API_WB_MODE_LOCKED
-    #     elif local_mode == LOCAL_WB_MODE_SSGCM_3:
-    #         return APP_API_WB_MODE_SSGCM
-    #     elif local_mode == LOCAL_WB_MODE_SSGCM_4:
-    #         return APP_API_WB_MODE_SSGCM
-    #     elif local_mode == LOCAL_WB_MODE_FASTEST:
-    #         return APP_API_WB_MODE_FASTEST
-    #     return local_mode
 
 
     """MEIN-SENEC.DE from here"""
