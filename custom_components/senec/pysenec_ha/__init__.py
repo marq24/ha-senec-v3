@@ -5272,7 +5272,8 @@ class SenecOnline:
 
     async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
         _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
-        if not self._FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE:
+        if self._FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE:
+            res = True
             for idx in range(0, self._app_wallbox_num_max):
                 if self._app_wallbox_num_max > idx:
                     res = res and await self._app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
@@ -5282,7 +5283,7 @@ class SenecOnline:
                 await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
             return res
         else:
-            _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes SKIPPED, cause of '_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE' is OFF")
+            _LOGGER.debug(f"APP-API app_set_allow_intercharge_all(): for '{self._app_wallbox_num_max}' wallboxes SKIPPED, cause of '_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE' is OFF")
             return False
 
     async def _app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True) -> bool:
@@ -5297,27 +5298,31 @@ class SenecOnline:
         if self._app_master_plant_id is not None:
             idx = wallbox_num - 1
             a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
+            a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+            a_charging_mode_type = a_charging_mode_obj.get("type", None)
 
-            # when we set the "global" allow intercharge switch, then we will set all WB to the Mode FASTEST
-            # setting this property at all WB's, will also change the MODE!
-            the_post_data = {
-                "allowIntercharge": value_to_set
-            }
-            wb_url = self.APP_SET_WALLBOX_FAST_MODE.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
-            data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
-            if data is not None:
-                # setting the internal storage value…
-                self._app_set_wallbox_object_at_index(idx, data)
+            # only if the current mode is the FAST, we can set/switch the 'allowIntercharge'
+            if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_FAST:
+                # when we set the "global" allow intercharge switch, then we will set all WB to the Mode FASTEST
+                # setting this property at all WB's, will also change the MODE!
+                the_post_data = {
+                    "allowIntercharge": value_to_set
+                }
+                wb_url = self.APP_SET_WALLBOX_FAST_MODE.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
+                data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
+                if data is not None:
+                    # setting the internal storage value…
+                    self._app_set_wallbox_object_at_index(idx, data)
 
-                # 2026/01/17: this technically only manipulates the WallboxMode for each of the wallboxes... but what
-                # we do not trigger right now, is to sync this THEN also with the Senec.LOCAL Wallboxmode. They will
-                # run out of SYNC in this case :-/
-                # So IMHO the users should NOT use the 'allow_interchrage' switch in the Senec.ONLINE and in
-                # the Senec.LOCAL integrations -> ONLY the Senec Wallbox Mode SELECT's should be used, since there
-                # the code can ensure, that the LOCAL and ONLINE wallbox selects are in SYNC.
-                return True
-            else:
-                _LOGGER.debug(f"_app_set_allow_intercharge(): wallbox {wallbox_num} FAST allowIntercharge FAILED")
+                    # 2026/01/17: this technically only manipulates the WallboxMode for each of the wallboxes... but what
+                    # we do not trigger right now, is to sync this THEN also with the Senec.LOCAL Wallboxmode. They will
+                    # run out of SYNC in this case :-/
+                    # So IMHO the users should NOT use the 'allow_interchrage' switch in the Senec.ONLINE and in
+                    # the Senec.LOCAL integrations -> ONLY the Senec Wallbox Mode SELECT's should be used, since there
+                    # the code can ensure that the LOCAL and ONLINE wallbox select-entities are in SYNC.
+                    return True
+                else:
+                    _LOGGER.debug(f"_app_set_allow_intercharge(): wallbox {wallbox_num} FAST_MODE allowIntercharge FAILED")
 
         return False
 
@@ -6586,9 +6591,17 @@ class SenecOnline:
     ########################################################
     @property
     def wallbox_allow_intercharge(self) -> bool:
-        # for backward compatibility we can only switch all wallboxes at once..
-        a_wallbox_obj = self._app_get_wallbox_object_at_index(0)
-        return a_wallbox_obj.get("chargingMode", {}).get("allowIntercharge", False)
+        ret_val = True
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
+                a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+                a_type = a_charging_mode_obj.get("type", None)
+                a_allow_intercharge = a_charging_mode_obj.get("allowIntercharge", False)
+                is_allow_intercharge_and_correct_mode = (a_type == APP_API_WB_MODE_2025_FAST and a_allow_intercharge)
+                _LOGGER.debug(f"wallbox_allow_intercharge(): {idx} = {is_allow_intercharge_and_correct_mode}")
+                ret_val = (ret_val and is_allow_intercharge_and_correct_mode)
+        return ret_val
 
     async def switch_wallbox_allow_intercharge(self, enabled: bool) -> bool:
         # for backward compatibility we can only switch all wallboxes at once..
