@@ -2430,7 +2430,7 @@ class SenecLocal:
         else:
             local_mode = LOCAL_WB_MODE_SSGCM_3
 
-        if local_mode == LOCAL_WB_MODE_SSGCM_3:  # or local_mode == LOCAL_WB_MODE_SSGCM_4:
+        if local_mode == LOCAL_WB_MODE_SSGCM_3 or local_mode == LOCAL_WB_MODE_SSGCM_4:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "SET_ICMAX", "fl", value,
                                       SENEC_SECTION_WALLBOX, "MIN_CHARGING_CURRENT", "fl", value)
