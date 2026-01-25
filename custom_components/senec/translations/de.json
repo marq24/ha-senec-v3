@@ -185,7 +185,7 @@
           "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
           "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
           "fast": "SCHNELL",
-          "fastest": "SCHNELL (mit Batterie-Unterstützung)"
+          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
         }
       },
       "wallbox_2_mode": {
@@ -195,7 +195,7 @@
           "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
           "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
           "fast": "SCHNELL",
-          "fastest": "SCHNELL (mit Batterie-Unterstützung)"
+          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
         }
       },
       "wallbox_3_mode": {
@@ -205,7 +205,7 @@
           "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
           "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
           "fast": "SCHNELL",
-          "fastest": "SCHNELL (mit Batterie-Unterstützung)"
+          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
         }
       },
       "wallbox_4_mode": {
@@ -215,7 +215,7 @@
           "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
           "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
           "fast": "SCHNELL",
-          "fastest": "SCHNELL (mit Batterie-Unterstützung)"
+          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
         }
       },
       "request_throttling": {

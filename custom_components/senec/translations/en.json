@@ -172,7 +172,7 @@
           "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
           "optimized_4": "OPTIMIZED [0/charge interruption possible]",
           "fast": "FAST",
-          "fastest": "FASTEST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)"
         }
       },
       "wallbox_2_mode": {
@@ -182,7 +182,7 @@
           "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
           "optimized_4": "OPTIMIZED [0/charge interruption possible]",
           "fast": "FAST",
-          "fastest": "FASTEST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)"
         }
       },
       "wallbox_3_mode": {
@@ -192,7 +192,7 @@
           "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
           "optimized_4": "OPTIMIZED [0/charge interruption possible]",
           "fast": "FAST",
-          "fastest": "FASTEST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)"
         }
       },
       "wallbox_4_mode": {
@@ -202,7 +202,7 @@
           "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
           "optimized_4": "OPTIMIZED [0/charge interruption possible]",
           "fast": "FAST",
-          "fastest": "FASTEST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)"
         }
       },
       "request_throttling": {

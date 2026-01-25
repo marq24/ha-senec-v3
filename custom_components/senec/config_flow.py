@@ -64,8 +64,7 @@ from .const import (
     CONF_IGNORE_SYSTEM_STATE,
     CONFIG_VERSION,
     CONFIG_MINOR_VERSION,
-    CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
-    CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE
+    CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -141,7 +140,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._default_pwd = None
         self._default_totp = None
         self._default_include_wallbox_in_house_consumption = True
-        self._default_force_fastest_when_switch_to_allow_intercharge= True
         self._default_serial = None
 
         """Initialize."""
@@ -183,7 +181,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_pwd       = entry_data[CONF_PASSWORD]
             self._default_totp      = entry_data.get(CONF_TOTP_URL, entry_data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_include_wallbox_in_house_consumption = entry_data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-            self._default_force_fastest_when_switch_to_allow_intercharge = entry_data.get(CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE, True)
             if CONF_DEV_SERIAL in entry_data:
                 self._default_serial= entry_data[CONF_DEV_SERIAL]
             else:
@@ -499,7 +496,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             totp_entry = user_input[key_creden][CONF_TOTP_SECRET]
             totp_url_entry = None
             include_wallbox_in_house_consumption = user_input[key_expert][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
-            force_fastest_when_switch_to_allow_intercharge = user_input[key_expert][CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE]
 
             if totp_entry is not None:
                 if len(totp_entry) == 0:
@@ -555,8 +551,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                        CONF_TOTP_SECRET: totp_entry,
                        CONF_TOTP_URL: totp_url_entry,
                        CONF_SCAN_INTERVAL: scan_entry,
-                       CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption,
-                       CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: force_fastest_when_switch_to_allow_intercharge
+                       CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption
                    }
                    return await self.async_step_selectserial()
                 else:
@@ -571,7 +566,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_TOTP_URL: totp_url_entry,
                             CONF_SCAN_INTERVAL: scan_entry,
                             CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption,
-                            CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: force_fastest_when_switch_to_allow_intercharge,
                             CONF_DEV_TYPE_INT: self._device_type_internal, # must check what function this has for 'online' systems
                             CONF_DEV_TYPE: self._device_type,
                             CONF_DEV_MODEL: self._device_model,
@@ -601,8 +595,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_TOTP_SECRET: self._default_totp
                     },
                     key_expert: {
-                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: self._default_include_wallbox_in_house_consumption,
-                        CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: self._default_force_fastest_when_switch_to_allow_intercharge
+                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: self._default_include_wallbox_in_house_consumption
                     }
                 }
             else:
@@ -615,8 +608,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_TOTP_SECRET: ""
                     },
                     key_expert: {
-                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: True,
-                        CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: True
+                        CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: True
                     }
                 }
 
@@ -642,7 +634,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(key_expert): section(
                         vol.Schema({
                             vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[key_expert][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
-                            vol.Required(CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE, default=user_input[key_expert][CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE]): bool,
                             # WE don't show the (configured) serial - user should not EDIT it!
                             #vol.Optional(CONF_DEV_SERIAL, default=user_input[key_expert][CONF_DEV_SERIAL]): str,
                         }),
@@ -714,7 +705,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_pwd       = self.reauth_entry.data[CONF_PASSWORD]
             self._default_totp      = self.reauth_entry.data.get(CONF_TOTP_URL, self.reauth_entry.data.get(CONF_TOTP_SECRET, "")) # TOTP can be empty!!!
             self._default_include_wallbox_in_house_consumption = self.reauth_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-            self._default_force_fastest_when_switch_to_allow_intercharge = self.reauth_entry.data.get(CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE, True)
             if CONF_DEV_SERIAL in self.reauth_entry.data:
                 self._default_serial = self.reauth_entry.data[CONF_DEV_SERIAL]
             else:

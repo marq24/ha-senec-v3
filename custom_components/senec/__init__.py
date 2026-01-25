@@ -55,7 +55,6 @@ from .const import (
     CONF_SYSTYPE_WEB,
     CONF_IGNORE_SYSTEM_STATE,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
-    CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE,
     CONF_TOTP_ALREADY_USED,
     CONF_MUST_START_POST_MIGRATION_PROCESS,
 
@@ -320,7 +319,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             self._host = "mein-senec.de"
             config_entry_serial_number = config_entry.data.get(CONF_DEV_SERIAL, None)
             include_wallbox_in_house_consumption = config_entry.data.get(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, True)
-            force_fastest_when_switch_to_allow_intercharge = config_entry.data.get(CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE, True)
+
             # user & pwd can be changed via the options...
             user = config_entry.data[CONF_USERNAME]
             pwd = config_entry.data[CONF_PASSWORD]
@@ -346,8 +345,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 QUERY_TOTALS_KEY: False,
                 QUERY_SYSTEM_DETAILS_KEY: False,
                 QUERY_SGREADY_KEY: False,
-                CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption,
-                CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: force_fastest_when_switch_to_allow_intercharge
+                CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: include_wallbox_in_house_consumption
             }
 
             if hass is not None and config_entry.entry_id is not None and config_entry.title is not None:

@@ -47,7 +47,6 @@ from custom_components.senec.const import (
     CONF_APP_DATA_END,
     CONF_APP_TOTAL_DATA,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
-    CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE,
     DOMAIN
 )
 from custom_components.senec.pysenec_ha.constants import (
@@ -82,7 +81,7 @@ from custom_components.senec.pysenec_ha.constants import (
     LOCAL_WB_MODE_SSGCM_3,
     LOCAL_WB_MODE_SSGCM_4,
     LOCAL_WB_MODE_FAST,
-    LOCAL_WB_MODE_FASTEST,
+    LOCAL_WB_MODE_FASTWITHBATTERY,
     LOCAL_WB_MODE_UNKNOWN,
 
     SGREADY_CONF_KEYS,
@@ -2232,11 +2231,12 @@ class SenecLocal:
                 return self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1
 
     async def switch_wallbox_allow_intercharge(self, value: bool, sync: bool = True):
-        # BEFORE we can/should enable 'allow_intercharge' we should IMHO check
-        # if all active WB's are set to the MODE FASTEST ?!
-        if value:
-            # can we check IF a WALLBOX is active or not locally ?!
-            pass
+        # BEFORE we can/should switch 'allow_intercharge' we MUST check
+        # if ONE of the active WB's are set to the MODE FAST/FASTWITHBATTERY?!
+        if sync and self._bridge_to_senec_online is not None:
+            if not self._bridge_to_senec_online.app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode():
+                _LOGGER.warning(f"switch_wallbox_allow_intercharge(): can NOT switch 'allow_intercharge' {value}, since no WB's is in FAST mode!")
+                return False
 
         # please note this is not ARRAY data - so we code it here again…
         self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"VALUE": value})
@@ -2250,13 +2250,13 @@ class SenecLocal:
             post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_00"}}
 
         # 2026/01/17: WHEN we set the allow_intercharge flag locally ON at the senec system, then IMHO
-        # we must ALSO adjust ALL wallbox-modes to FASTEST! ?!
+        # we must ALSO adjust ALL wallbox-modes to FAST! ?!
         await self._write(post_data)
 
         if sync and self._bridge_to_senec_online is not None:
             # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting… so we need to push
             # this to all 4 possible wallboxes…
-            await self._bridge_to_senec_online.app_set_allow_intercharge_all(value_to_set=value, sync=False)
+            await self._bridge_to_senec_online.app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(value_to_set=value)
 
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
@@ -2508,7 +2508,7 @@ class SenecLocal:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 4)
-        elif local_value == LOCAL_WB_MODE_FAST or local_value == LOCAL_WB_MODE_FASTEST:
+        elif local_value == LOCAL_WB_MODE_FAST or local_value == LOCAL_WB_MODE_FASTWITHBATTERY:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
@@ -3049,12 +3049,6 @@ class SenecOnline:
             self._INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION = options[CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
         else:
             self._INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION = True
-
-        if options is not None and CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE in options:
-            self._FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE = options[CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE]
-        else:
-            self._FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE = True
-
 
         # Variable to save the latest update time for system-details/system_state data…
         self._QUERY_SYSTEM_DETAILS_TS = 0
@@ -5009,6 +5003,32 @@ class SenecOnline:
         if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx and self._app_raw_wallbox[idx] is not None:
             self._app_raw_wallbox[idx] = data
 
+    def _app_get_webapi_wallbox_mode(self, idx: int) -> str:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
+
+        # step 1 checking the LOCK/UNLOCK state…
+        if "prohibitUsage" in a_wallbox_obj:
+            if a_wallbox_obj["prohibitUsage"]:
+                return LOCAL_WB_MODE_LOCKED
+        elif len(a_wallbox_obj) > 0:
+            _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'prohibitUsage' in {a_wallbox_obj}")
+
+        # step 2 checking the chargingMode…
+        charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+        if "type" in charging_mode_obj:
+            a_type = charging_mode_obj.get("type", None)
+            if a_type is not None:
+                if a_type.upper() in [APP_API_WB_MODE_2025_SOLAR, APP_API_WB_MODE_2025_FAST]:
+                    return a_type.upper()
+                else:
+                    _LOGGER.info(f"_app_get_webapi_wallbox_mode(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+            else:
+                _LOGGER.info(f"_app_get_webapi_wallbox_mode(): 'type' is None in {charging_mode_obj}")
+        elif len(a_wallbox_obj) > 0:
+            _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'type' in {charging_mode_obj}")
+
+        return LOCAL_WB_MODE_UNKNOWN
+
     def _app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
 
@@ -5033,7 +5053,7 @@ class SenecOnline:
 
                 elif a_type.upper() == APP_API_WB_MODE_2025_FAST:
                     if charging_mode_obj.get("allowIntercharge", False):
-                        return LOCAL_WB_MODE_FASTEST
+                        return LOCAL_WB_MODE_FASTWITHBATTERY
                     else:
                         return LOCAL_WB_MODE_FAST
                 else:
@@ -5109,17 +5129,13 @@ class SenecOnline:
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} UNLOCK FAILED")
 
                     # now setting the final mode…
-                    if local_mode_to_set == LOCAL_WB_MODE_FASTEST or local_mode_to_set == LOCAL_WB_MODE_FAST:
+                    if local_mode_to_set == LOCAL_WB_MODE_FASTWITHBATTERY or local_mode_to_set == LOCAL_WB_MODE_FAST:
                         # setting FAST/FASTEST MODE
                         wb_url = self.APP_SET_WALLBOX_FAST_MODE.format(master_plant_id=str(self._app_master_plant_id),
                                                                        wb_id=str(wallbox_num))
+                        # 'allowIntercharge' means to use battery…
+                        the_post_data = {"allowIntercharge": True if local_mode_to_set == LOCAL_WB_MODE_FASTWITHBATTERY else False,}
 
-                        # I just can guess that 'allowIntercharge' means to use battery…
-                        # when we post 'allowIntercharge=True' to the webAPI, then this will also set the internal
-                        # 'chargingMode:type' value to FAST (in the wallbox object)...
-                        the_post_data = {
-                            "allowIntercharge": True if local_mode_to_set == LOCAL_WB_MODE_FASTEST else False,
-                        }
                         _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST_MODE final post data: {the_post_data}")
                         data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
                         if data is not None:
@@ -5134,9 +5150,7 @@ class SenecOnline:
                         wb_url = self.APP_SET_WALLBOX_SOLAR_MODE.format(master_plant_id=str(self._app_master_plant_id),
                                                                         wb_id=str(wallbox_num))
 
-                        the_post_data = {
-                            "compatibilityMode": True if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 else False,
-                        }
+                        the_post_data = {"compatibilityMode": True if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 else False,}
                         # try to copy over all other attributes from the current chargingMode:solarOptimizeSettings
                         a_wallbox_object = self._app_get_wallbox_object_at_index(idx)
                         solar_optimize_settings = a_wallbox_object.get("chargingMode", {}).get("solarOptimizeSettings", None)
@@ -5166,13 +5180,26 @@ class SenecOnline:
                         # is no sync=False parameter here…
                         await self._bridge_to_senec_local.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
 
-                        # 2026/01/17
-                        # when we have set one of the WALLBOXES to the LocalMODE FASTEST, then we must check, IF all
-                        # (available) Wallboxes are set to FAST and if this is the case, we must/should enable
-                        # the 'allowIntercharge' Flag at the local SENEC?!
-                        # BUT we don't do this for now - since LOCAL '_allowIntercharge' is ONE for ALL Wallboxes
-                        # if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-                        #    await self._bridge_to_senec_local.check_if_allowIntercharge_must_be_set_to_true()
+                        # we check, if after the new wallbox mode for a single wallbox has been set, what the
+                        # overall status of all the wallboxes is - since if NONE of them is the FASTWITHBATTERY,
+                        # then we should disable the senec LOCAL 'allow_intercharge' flag - or enable it, if the
+                        # "new" mode is LOCAL_WB_MODE_FASTWITHBATTERY
+                        if local_mode_to_set == LOCAL_WB_MODE_FASTWITHBATTERY:
+                            await asyncio.sleep(2)
+                            await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=True, sync=False)
+                        else:
+                            # when we set the mode to ANYTHING else, we must check if there is still ANY other WB in the
+                            # FASTWITHBATTERY mode, and IF this is NOT the case, THEN we MUST turn OFF at
+                            # senecLOCAL the 'allow_intercharge' flag...
+                            turn_allow_intercharge_off = True
+                            for idx in range(0, self._app_wallbox_num_max):
+                                if self._app_wallbox_num_max > idx:
+                                    if self._app_get_local_wallbox_mode_from_api_values(idx=idx) == LOCAL_WB_MODE_FASTWITHBATTERY:
+                                        turn_allow_intercharge_off = False
+                                        break
+                            if turn_allow_intercharge_off:
+                                await asyncio.sleep(2)
+                                await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=False, sync=False)
 
                     # when we changed the mode, the backend might have automatically adjusted the
                     # 'chargingMode:solarOptimizeSettings:minChargingCurrentInA' so we need to sync
@@ -5199,32 +5226,6 @@ class SenecOnline:
                                                                                                 sync=False, verify_state=False)
                                 else:
                                     _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
-
-                    # OLD-IMPLEMENTATION HERE (just as reference)
-                    # # when we changed the mode, the backend might have automatically adjusted the
-                    # # 'configuredMinChargingCurrentInA' so we need to sync this possible change with the LaLa_cgi
-                    # # no matter, if the 'app_set_wallbox_mode' have been called with sync=False (or not)!!!
-                    # await asyncio.sleep(2)
-                    # await self.app_get_wallbox_data(wallbox_num=wallbox_num)
-                    # if self._app_raw_wallbox[idx] is not None:
-                    #     if local_mode_to_set == LOCAL_WB_MODE_FASTEST:
-                    #         new_min_current_tmp = self._app_raw_wallbox[idx]["maxPossibleChargingCurrentInA"]
-                    #     else:
-                    #         new_min_current_tmp = self._app_raw_wallbox[idx]["configuredMinChargingCurrentInA"]
-                    #
-                    #     new_min_current = str(round(float(new_min_current_tmp), 2))
-                    #     cur_min_current = str(round(self._SenecLocal.wallbox_set_icmax[idx], 2))
-                    #
-                    #     if cur_min_current != new_min_current:
-                    #         _LOGGER.debug(f"APP-API 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
-                    #         await self._SenecLocal.set_nva_wallbox_set_icmax(pos=idx,
-                    #                                                            value=float(new_min_current),
-                    #                                                            sync=False, verify_state=False)
-                    #     else:
-                    #         _LOGGER.debug(f"APP-API 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
-                    #
-                    # else:
-                    #     _LOGGER.debug(f"APP-API could not read wallbox data 2sec after mode change")
 
     async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
@@ -5270,61 +5271,29 @@ class SenecOnline:
                 if sync and self._bridge_to_senec_local is not None:
                     await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
 
-    async def app_set_allow_intercharge_all(self, value_to_set: bool, sync: bool = True):
-        _LOGGER.debug(f"APP-API app_set_allow_intercharge_all for '{self._app_wallbox_num_max}' wallboxes")
-        if self._FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE:
-            res = True
-            for idx in range(0, self._app_wallbox_num_max):
-                if self._app_wallbox_num_max > idx:
-                    res = res and await self._app_set_allow_intercharge(value_to_set=value_to_set, wallbox_num=(idx + 1), sync=sync)
-
-            if res and sync and self._bridge_to_senec_local is not None:
-                # ok we must sync the global setting to the lala-cgi...
-                await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=value_to_set, sync=False)
-            return res
-        else:
-            _LOGGER.debug(f"APP-API app_set_allow_intercharge_all(): for '{self._app_wallbox_num_max}' wallboxes SKIPPED, cause of '_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE' is OFF")
-            return False
-
-    async def _app_set_allow_intercharge(self, value_to_set: bool, wallbox_num: int = 1, sync: bool = True) -> bool:
-        _LOGGER.debug("***** APP-API: _app_set_allow_intercharge(self) ********")
-        # 2026/01/17 - There is no 'allow_intercharge' flag at the wallbox itself - it's all encoded in the
-        # WALLBOX MODE (of the webAPI) - so when we set the 'set_allow_intercharge' at a wallbox, this technically
-        # means that we will set the wallbox mode!
-
-        if self.is_app_master_plant_id_none:
-            await self.app_get_master_plant_id()
-
-        if self._app_master_plant_id is not None:
-            idx = wallbox_num - 1
-            a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
-            a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
-            a_charging_mode_type = a_charging_mode_obj.get("type", None)
-
-            # only if the current mode is the FAST, we can set/switch the 'allowIntercharge'
-            if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_FAST:
-                # when we set the "global" allow intercharge switch, then we will set all WB to the Mode FASTEST
-                # setting this property at all WB's, will also change the MODE!
-                the_post_data = {
-                    "allowIntercharge": value_to_set
-                }
-                wb_url = self.APP_SET_WALLBOX_FAST_MODE.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
-                data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
-                if data is not None:
-                    # setting the internal storage value…
-                    self._app_set_wallbox_object_at_index(idx, data)
-
-                    # 2026/01/17: this technically only manipulates the WallboxMode for each of the wallboxes... but what
-                    # we do not trigger right now, is to sync this THEN also with the Senec.LOCAL Wallboxmode. They will
-                    # run out of SYNC in this case :-/
-                    # So IMHO the users should NOT use the 'allow_interchrage' switch in the Senec.ONLINE and in
-                    # the Senec.LOCAL integrations -> ONLY the Senec Wallbox Mode SELECT's should be used, since there
-                    # the code can ensure that the LOCAL and ONLINE wallbox select-entities are in SYNC.
+    def app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode(self):
+        # only when one of the WB's is in the FAST, FASTWITHBATTERY mode, we allow the switch of
+        # the senec LOCAL 'allow_interchange' ON/OFF...
+        # IF we switch it in senec LOCAL, then we will also adjust the WB to the corresponding mode in
+        # the 'app_only_for_local_adjust_mode_on_local_allow_intercharge_switch()'
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                if self._app_get_webapi_wallbox_mode(idx=idx) == APP_API_WB_MODE_2025_FAST:
                     return True
-                else:
-                    _LOGGER.debug(f"_app_set_allow_intercharge(): wallbox {wallbox_num} FAST_MODE allowIntercharge FAILED")
-
         return False
+
+    async def app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(self, value_to_set: bool):
+        # we don't need a sync:bool here in this method, since this will be only called from SenecLOCAL integration!
+        _LOGGER.debug(f"APP-API app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(): for '{self._app_wallbox_num_max}' wallboxes")
+        res = True
+        for idx in range(0, self._app_wallbox_num_max):
+            if self._app_wallbox_num_max > idx:
+                if self._app_get_webapi_wallbox_mode(idx=idx) == APP_API_WB_MODE_2025_FAST:
+                    if value_to_set:
+                        res = res and await self.app_set_wallbox_mode(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_FASTWITHBATTERY, sync=False)
+                    else:
+                        res = res and await self.app_set_wallbox_mode(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_FAST, sync=False)
+        return res
 
 
     """MEIN-SENEC.DE from here"""
@@ -6584,33 +6553,6 @@ class SenecOnline:
 
     async def set_nv_wallbox_4_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=4, sync=True)
-
-
-    ########################################################
-    # for wallbox_allow_intercharge we just have ONE FOR ALL
-    ########################################################
-    @property
-    def wallbox_allow_intercharge(self) -> bool:
-        ret_val = True
-        loop_done = False
-        for idx in range(0, self._app_wallbox_num_max):
-            if self._app_wallbox_num_max > idx:
-                if not loop_done:
-                    loop_done = True
-                a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
-                a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
-                a_type = a_charging_mode_obj.get("type", None)
-                a_allow_intercharge = a_charging_mode_obj.get("allowIntercharge", False)
-                is_allow_intercharge_and_correct_mode = (a_type == APP_API_WB_MODE_2025_FAST and a_allow_intercharge)
-                _LOGGER.debug(f"wallbox_allow_intercharge(): {idx} = {is_allow_intercharge_and_correct_mode}")
-                ret_val = (ret_val and is_allow_intercharge_and_correct_mode)
-        return ret_val and loop_done
-
-    async def switch_wallbox_allow_intercharge(self, enabled: bool) -> bool:
-        # for backward compatibility we can only switch all wallboxes at once..
-        await self.app_set_allow_intercharge_all(value_to_set=enabled, sync=True)
-        return True
-
 
     ###################################
     # SWITCH-STUFF

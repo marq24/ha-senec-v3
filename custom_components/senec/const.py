@@ -90,7 +90,6 @@ CONF_USE_HTTPS: Final = "use_https"
 CONF_SUPPORT_BDC: Final = "has_bdc_support"
 CONF_IGNORE_SYSTEM_STATE: Final = "ignore_system_state"
 CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION: Final = "include_wallbox_in_house_consumption"
-CONF_FORCE_FASTEST_WHEN_SWITCH_TO_ALLOW_INTERCHARGE: Final = "force_fastest_when_switch_to_allow_intercharge"
 
 CONF_DEV_TYPE: Final = "dtype"
 CONF_DEV_MODEL: Final = "dname"
@@ -934,14 +933,15 @@ WEB_SWITCH_TYPES = [
         icon="mdi:toggle-switch",
     ),
 
-    # WALLBOX
-    ExtSwitchEntityDescription(
-        entity_registry_enabled_default=False,
-        key="wallbox_allow_intercharge",
-        name="Wallbox allow intercharge",
-        icon="mdi:battery",
-        icon_off="mdi:battery-off",
-    ),
+    # 2026/01/25 - REMOVED - will be set via individual WB-Modes!
+    # # WALLBOX
+    # ExtSwitchEntityDescription(
+    #     entity_registry_enabled_default=False,
+    #     key="wallbox_allow_intercharge",
+    #     name="Wallbox allow intercharge",
+    #     icon="mdi:battery",
+    #     icon_off="mdi:battery-off",
+    # ),
 ]
 
 WEB_BUTTON_TYPES =[

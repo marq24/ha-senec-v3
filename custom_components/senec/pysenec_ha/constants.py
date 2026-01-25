@@ -554,7 +554,7 @@ LOCAL_WB_MODE_LOCKED: Final  = "locked"
 LOCAL_WB_MODE_SSGCM_3: Final = "optimized_3"
 LOCAL_WB_MODE_SSGCM_4: Final = "optimized_4"
 LOCAL_WB_MODE_FAST: Final    = "fast"
-LOCAL_WB_MODE_FASTEST: Final = "fastest"
+LOCAL_WB_MODE_FASTWITHBATTERY: Final = "fast_with_battery"
 LOCAL_WB_MODE_UNKNOWN: Final = "unknown"
 
 WALLBOX_CHARGING_MODES : Final = {
@@ -562,7 +562,7 @@ WALLBOX_CHARGING_MODES : Final = {
     1: LOCAL_WB_MODE_SSGCM_3,
     2: LOCAL_WB_MODE_SSGCM_4,
     3: LOCAL_WB_MODE_FAST,
-    4: LOCAL_WB_MODE_FASTEST
+    4: LOCAL_WB_MODE_FASTWITHBATTERY
 }
 
 NO_LIMIT: Final         = "no_limit"
