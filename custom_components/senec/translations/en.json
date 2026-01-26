@@ -168,9 +168,9 @@
       "wallbox_1_mode": {
         "name": "Wallbox I Mode",
         "state": {
-          "locked": "OFF",
-          "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
-          "optimized_4": "OPTIMIZED [0/charge interruption possible]",
+          "locked": "LOCKED",
+          "optimized_3": "OPTIMIZED [no charge-interruption]",
+          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }
@@ -178,9 +178,9 @@
       "wallbox_2_mode": {
         "name": "Wallbox II Mode",
         "state": {
-          "locked": "OFF",
-          "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
-          "optimized_4": "OPTIMIZED [0/charge interruption possible]",
+          "locked": "LOCKED",
+          "optimized_3": "OPTIMIZED [no charge-interruption]",
+          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }
@@ -188,9 +188,9 @@
       "wallbox_3_mode": {
         "name": "Wallbox III Mode",
         "state": {
-          "locked": "OFF",
-          "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
-          "optimized_4": "OPTIMIZED [0/charge interruption possible]",
+          "locked": "LOCKED",
+          "optimized_3": "OPTIMIZED [no charge-interruption]",
+          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }
@@ -198,9 +198,9 @@
       "wallbox_4_mode": {
         "name": "Wallbox IV Mode",
         "state": {
-          "locked": "OFF",
-          "optimized_3": "OPTIMIZED [1/prevent charge interruption]",
-          "optimized_4": "OPTIMIZED [0/charge interruption possible]",
+          "locked": "LOCKED",
+          "optimized_3": "OPTIMIZED [no charge-interruption]",
+          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }

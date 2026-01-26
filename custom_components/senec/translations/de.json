@@ -181,41 +181,41 @@
       "wallbox_1_mode": {
         "name": "Wallbox I Modus",
         "state": {
-          "locked": "AUS",
-          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
-          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
-          "fast": "SCHNELL",
-          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
+          "locked":             "gesperrt",
+          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "fast":               "schnell",
+          "fast_with_battery":  "schnell (laden aus Batterie)"
         }
       },
       "wallbox_2_mode": {
         "name": "Wallbox II Modus",
         "state": {
-          "locked": "AUS",
-          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
-          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
-          "fast": "SCHNELL",
-          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
+          "locked":             "gesperrt",
+          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "fast":               "schnell",
+          "fast_with_battery":  "schnell (laden aus Batterie)"
         }
       },
       "wallbox_3_mode": {
         "name": "Wallbox III Modus",
         "state": {
-          "locked": "AUS",
-          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
-          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
-          "fast": "SCHNELL",
-          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
+          "locked":             "gesperrt",
+          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "fast":               "schnell",
+          "fast_with_battery":  "schnell (laden aus Batterie)"
         }
       },
       "wallbox_4_mode": {
         "name": "Wallbox IV Modus",
         "state": {
-          "locked": "AUS",
-          "optimized_3": "OPTIMIERT [1/Ladeunterbrechung verhindern]",
-          "optimized_4": "OPTIMIERT [0/Ladeunterbrechung zulässig]",
-          "fast": "SCHNELL",
-          "fast_with_battery": "SCHNELL (mit Batterie-Unterstützung)"
+          "locked":             "gesperrt",
+          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "fast":               "schnell",
+          "fast_with_battery":  "schnell (laden aus Batterie)"
         }
       },
       "request_throttling": {

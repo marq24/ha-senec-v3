@@ -118,7 +118,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
 
         # even if this is currently implemented generically, only the new WebAPI WALLBOX Sensor
         # 'wallbox_status' is implementing attrs
-        if self.entity_description.key in ["wallbox_1_state", "wallbox_3_state", "wallbox_3_state", "wallbox_4_state"]:
+        if self.entity_description.key in ["wallbox_1_state", "wallbox_2_state", "wallbox_3_state", "wallbox_4_state"]:
             attr_func_name = f"{self.entity_description.key}_attr"
             if hasattr(self.coordinator.senec, attr_func_name):
                 return getattr(self.coordinator.senec, attr_func_name)

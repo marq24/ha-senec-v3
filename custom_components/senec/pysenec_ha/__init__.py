@@ -23,7 +23,7 @@ from urllib.parse import quote, urlparse, parse_qs
 import aiohttp
 import pyotp
 import xmltodict
-from aiohttp import ClientResponseError, ClientConnectorError
+from aiohttp import ClientResponseError, ClientConnectionError
 
 from custom_components.senec.const import (
     QUERY_PV1_KEY,
@@ -354,7 +354,7 @@ class SenecLocal:
     async def _read_senec_lala_with_retry(self, retry: bool = False):
         try:
             await self._read_senec_lala()
-        except ClientConnectorError as exc:
+        except ClientConnectionError as exc:
             _LOGGER.info(f"{exc}")
             if retry:
                 await asyncio.sleep(5)
@@ -2657,7 +2657,7 @@ class InverterLocal:
     async def read_inverter_with_retry(self, retry: bool = False):
         try:
             await self.read_inverter()
-        except ClientConnectorError as exc:
+        except ClientConnectionError as exc:
             _LOGGER.info(f"{exc}")
             if retry:
                 await asyncio.sleep(5)
