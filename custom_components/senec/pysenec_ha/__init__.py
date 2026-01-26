@@ -3260,7 +3260,7 @@ class SenecOnline:
     @property
     def is_app_master_plant_id_none(self):
         return self._app_master_plant_id is None or str(self._app_master_plant_id).lower() == "none"
-        
+
     def init_config_entry_serial_number(self, config_entry_serial_number:str):
         if config_entry_serial_number is None:
             _LOGGER.warning(f"init_config_entry_serial_number() CAN'T BE CALLED WITH NONE as 'config_entry_serial_number'")
@@ -3434,7 +3434,7 @@ class SenecOnline:
             "SerialNumber": self._web_serial_number,
         }}
 
-    # this will be only called from the config_flow... 
+    # this will be only called from the config_flow...
     async def get_all_systems(self, already_configured_lc_serials: list = None):
         if not self._app_is_authenticated:
             # if the web_login is required, we ignore any existing tokens
@@ -4336,7 +4336,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"app_get_system_details(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         a_url = self.APP_SYSTEM_DETAILS.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4367,7 +4367,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"app_get_abilities(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         a_url = self.APP_ABILITIES_LIST.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4383,7 +4383,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         a_url = self.APP_MEASURE_DATA_AVAIL.format(master_plant_id=self._app_master_plant_id, tz="UTC")
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4410,7 +4410,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"app_get_system_status(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         a_url = self.APP_SYSTEM_STATUS.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4459,7 +4459,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"app_get_dashboard(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         a_url = self.APP_MEASURE_DASHBOARD.format(master_plant_id=self._app_master_plant_id)
         data = await self._app_do_get_request(a_url)
         if data is not None:
@@ -4557,7 +4557,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"app_get_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                               res_type=type_value.upper(),
                                               from_val=quote(from_value, safe=''),
@@ -4588,7 +4588,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         now_utc = datetime.now(timezone.utc)
         now_local =  datetime.now()
         current_year_local = now_local.year
@@ -4769,7 +4769,7 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             _LOGGER.warning(f"_app_update_single_wallbox_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
-        
+
         now_utc = datetime.now(timezone.utc)
         now_local = datetime.now()
         current_year_local = now_local.year
@@ -5014,18 +5014,23 @@ class SenecOnline:
             _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'prohibitUsage' in {a_wallbox_obj}")
 
         # step 2 checking the chargingMode…
-        charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
-        if "type" in charging_mode_obj:
-            a_type = charging_mode_obj.get("type", None)
-            if a_type is not None:
-                if a_type.upper() in [APP_API_WB_MODE_2025_SOLAR, APP_API_WB_MODE_2025_FAST]:
-                    return a_type.upper()
+        return self._app_get_webapi_wallbox_mode_ignore_prohibit(a_wallbox_obj)
+
+    def _app_get_webapi_wallbox_mode_ignore_prohibit(self, a_wallbox_obj: dict) -> str:
+        if a_wallbox_obj is not None and len(a_wallbox_obj) > 0:
+            # step 2 checking the chargingMode…
+            charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+            if "type" in charging_mode_obj:
+                a_type = charging_mode_obj.get("type", None)
+                if a_type is not None:
+                    if a_type.upper() in [APP_API_WB_MODE_2025_SOLAR, APP_API_WB_MODE_2025_FAST]:
+                        return a_type.upper()
+                    else:
+                        _LOGGER.info(f"_app_get_webapi_wallbox_mode(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
                 else:
-                    _LOGGER.info(f"_app_get_webapi_wallbox_mode(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
-            else:
-                _LOGGER.info(f"_app_get_webapi_wallbox_mode(): 'type' is None in {charging_mode_obj}")
-        elif len(a_wallbox_obj) > 0:
-            _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'type' in {charging_mode_obj}")
+                    _LOGGER.info(f"_app_get_webapi_wallbox_mode(): 'type' is None in {charging_mode_obj}")
+            elif len(a_wallbox_obj) > 0:
+                _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'type' in {charging_mode_obj}")
 
         return LOCAL_WB_MODE_UNKNOWN
 
@@ -5040,28 +5045,32 @@ class SenecOnline:
             _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): no 'prohibitUsage' in {a_wallbox_obj}")
 
         # step 2 checking the chargingMode…
-        charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
-        if "type" in charging_mode_obj:
-            a_type = charging_mode_obj.get("type", None)
-            if a_type is not None:
-                # FAST or SOLAR
-                if a_type.upper() == APP_API_WB_MODE_2025_SOLAR:
-                    if charging_mode_obj.get("compatibilityMode", False):
-                        return LOCAL_WB_MODE_SSGCM_3
-                    else:
-                        return LOCAL_WB_MODE_SSGCM_4
+        return self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit(a_wallbox_obj)
 
-                elif a_type.upper() == APP_API_WB_MODE_2025_FAST:
-                    if charging_mode_obj.get("allowIntercharge", False):
-                        return LOCAL_WB_MODE_FASTWITHBATTERY
+    def _app_get_local_wallbox_mode_from_api_values_ignore_prohibit(self, a_wallbox_obj: dict) -> str:
+        if a_wallbox_obj is not None and len(a_wallbox_obj) > 0:
+            charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+            if "type" in charging_mode_obj:
+                a_type = charging_mode_obj.get("type", None)
+                if a_type is not None:
+                    # FAST or SOLAR
+                    if a_type.upper() == APP_API_WB_MODE_2025_SOLAR:
+                        if charging_mode_obj.get("compatibilityMode", False):
+                            return LOCAL_WB_MODE_SSGCM_3
+                        else:
+                            return LOCAL_WB_MODE_SSGCM_4
+
+                    elif a_type.upper() == APP_API_WB_MODE_2025_FAST:
+                        if charging_mode_obj.get("allowIntercharge", False):
+                            return LOCAL_WB_MODE_FASTWITHBATTERY
+                        else:
+                            return LOCAL_WB_MODE_FAST
                     else:
-                        return LOCAL_WB_MODE_FAST
+                        _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
                 else:
-                    _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
-            else:
-                _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): 'type' is None in {charging_mode_obj}")
-        elif len(a_wallbox_obj) > 0:
-            _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): no 'type' in {charging_mode_obj}")
+                    _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): 'type' is None in {charging_mode_obj}")
+            elif len(a_wallbox_obj) > 0:
+                _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): no 'type' in {charging_mode_obj}")
 
         return LOCAL_WB_MODE_UNKNOWN
 
@@ -6001,6 +6010,9 @@ class SenecOnline:
             return self._get_sum_for_index(self._app_raw_total["measurements"].index("POWER_CONSUMPTION"))
         elif hasattr(self, '_web_energy_entities') and "consumption_total" in self._web_energy_entities:
             return self._web_energy_entities["consumption_total"]
+    # @property
+    # def consumption_total_attr(self) -> dict:
+    #     return {"abc": 123, "def": False, "ghi": {"001": "val1", "002": "val2"}}
 
     @property
     def wallbox_1_consumption_total(self) -> float:
@@ -6386,6 +6398,18 @@ class SenecOnline:
     ##########################
     # WEB/API WALLBOX ENTITIES
     ##########################
+    def _get_wallbox_attrs_for_index(self, idx:int) -> dict:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
+        if a_wallbox_obj is not None and len(a_wallbox_obj) > 0:
+            return {
+                "json": a_wallbox_obj,
+                "modes": {
+                    "integration":  self._app_get_local_wallbox_mode_from_api_values(idx),
+                    "senec":        self._app_get_webapi_wallbox_mode_ignore_prohibit(a_wallbox_obj),
+                    "restore":      self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit(a_wallbox_obj),
+                }
+            }
+        return None
 
     ## WALLBOX: 1
     @property
@@ -6397,6 +6421,10 @@ class SenecOnline:
     def wallbox_1_state(self) -> str:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(0)
         return a_wallbox_obj.get("state", {}).get("statusCode", None)
+
+    @property
+    def wallbox_1_state_attr(self) -> dict:
+        return self._get_wallbox_attrs_for_index(0)
 
     @property
     def wallbox_1_ev_connected(self) -> bool:
@@ -6441,6 +6469,10 @@ class SenecOnline:
         return a_wallbox_obj.get("state", {}).get("statusCode", None)
 
     @property
+    def wallbox_2_state_attr(self) -> dict:
+        return self._get_wallbox_attrs_for_index(1)
+
+    @property
     def wallbox_2_ev_connected(self) -> bool:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(1)
         return a_wallbox_obj.get("state", {}).get("electricVehicleConnected", None)
@@ -6483,6 +6515,10 @@ class SenecOnline:
         return a_wallbox_obj.get("state", {}).get("statusCode", None)
 
     @property
+    def wallbox_3_state_attr(self) -> dict:
+        return self._get_wallbox_attrs_for_index(2)
+
+    @property
     def wallbox_3_ev_connected(self) -> bool:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(2)
         return a_wallbox_obj.get("state", {}).get("electricVehicleConnected", None)
@@ -6523,6 +6559,10 @@ class SenecOnline:
     def wallbox_4_state(self) -> str:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(3)
         return a_wallbox_obj.get("state", {}).get("statusCode", None)
+
+    @property
+    def wallbox_4_state_attr(self) -> dict:
+        return self._get_wallbox_attrs_for_index(3)
 
     @property
     def wallbox_4_ev_connected(self) -> bool:

@@ -112,6 +112,19 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
             coordinator.add_total_increasing_sensor(self)
 
     @property
+    def extra_state_attributes(self):
+        if self.coordinator.data is None:
+            return None
+
+        # even if this is currently implemented generically, only the new WebAPI WALLBOX Sensor
+        # 'wallbox_status' is implementing attrs
+        if self.entity_description.key in ["wallbox_1_state", "wallbox_3_state", "wallbox_3_state", "wallbox_4_state"]:
+            attr_func_name = f"{self.entity_description.key}_attr"
+            if hasattr(self.coordinator.senec, attr_func_name):
+                return getattr(self.coordinator.senec, attr_func_name)
+        return None
+
+    @property
     def native_value(self):
         """Return the current state."""
         if self.entity_description.array_key is not None:
