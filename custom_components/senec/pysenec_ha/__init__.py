@@ -5055,12 +5055,28 @@ class SenecOnline:
                 if a_type is not None:
                     # FAST or SOLAR
                     if a_type.upper() == APP_API_WB_MODE_2025_SOLAR:
+                        #optimized_3: "OPTIMIZED [no charge-interruption]"
+                        #optimized_4: "OPTIMIZED [with charge-interruption]"
+
+                        # for what ever reason, when in the SenecAPP you configure
+                        # expert-settings: Ladeunterbrechungen-verhindern: EIN,
+                        # then 'chargingMode:compatibilityMode: False'
+
+                        # https://github.com/marq24/ha-senec-v3/issues/190#issuecomment-3819727873
+                        # In SENEC App auf "Solaroptimiert / Ladeunterbrechung verhindern EIN" schalten:
+                        # - chargingMode:compatibilityMode: False
+                        # - SMART_CHARGE_ACTIVE == 3
+                        # In SENEC App auf "Solaroptimiert / Ladeunterbrechung verhindern AUS" schalten:
+                        # - chargingMode:compatibilityMode: True
+                        # - SMART_CHARGE_ACTIVE == 4
                         if charging_mode_obj.get("compatibilityMode", False):
-                            return LOCAL_WB_MODE_SSGCM_3
-                        else:
                             return LOCAL_WB_MODE_SSGCM_4
+                        else:
+                            return LOCAL_WB_MODE_SSGCM_3
 
                     elif a_type.upper() == APP_API_WB_MODE_2025_FAST:
+                        #fast:              "FAST",
+                        #fast_with_battery: "FAST (supported by battery)"
                         if charging_mode_obj.get("allowIntercharge", False):
                             return LOCAL_WB_MODE_FASTWITHBATTERY
                         else:

@@ -11,7 +11,7 @@
     },
     "smode": {
       "options": {
-        "mode_web": "WEB-API: Zugriff über die https://mein-senec.de/ WebAPI",
+        "mode_web": "WEB-API: Zugriff über die (nicht-öffentliche) WEB-API des mein-senec.de Portals",
         "mode_local": "LAN: direkter Zugriff über das LAN (IP deines SENEC.Home oder des Wechselrichters)"
       }
     },
@@ -53,13 +53,13 @@
     },
     "step": {
       "user": {
-        "description": "Bitte wähle die Version Deines SENEC.Home Systems das Du einbinden möchtest.\n\n\nZusätzliche Informationen zur Einrichtung findest Du hier: https://github.com/marq24/ha-senec-v3",
+        "description": "Bitte wähle die Version Deines SENEC.Home Systems das Du einbinden möchtest.\n\n\nZusätzliche Informationen zur Einrichtung findest Du hier: {repo}",
         "data": {
           "stype": "System Version wählen"
         }
       },
       "localsystem": {
-        "description": "Wenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3",
+        "description": "Wenn Du Hilfe benötigst, findest du sie hier: {repo}",
         "data": {
           "name": "Anzeige Name",
           "host": "IP oder Hostname des SENEC.Home V3 Systems bzw des Inverters",
@@ -68,7 +68,7 @@
         }
       },
       "websetup": {
-        "description": "### Deine Zugangsdaten zu SENEC.App & mein-senec.de\n\nBitte gib Deine mein-senec.de-Zugangsdaten (eMail und Dein Passwort) ein, um Home Assistant mit Deinem mein-senec.de-Konto zu verbinden. Diese werden dann __unverschlüsselt__ in Deiner Home Assistant Konfiguration für diese Integration gespeichert.\n\nWenn Du Hilfe benötigst, findest du sie hier: https://github.com/marq24/ha-senec-v3\n\n\n### Wichtige Informationen zu MFA/OTP/TOTP @ SENEC\n\nSolltest Du für den Zugang zu mein-senec.de noch keine Aufforderung zur Einrichtung eines zusätzlichen Faktors (MFA) erhalten haben, ist die Eingabe des OTP-auth-Secret derzeit nicht erforderlich.\n\nDu solltest Dich aber schon jetzt über die notwendigen Schritte informieren, damit Du auch zukünftig diese Integration verwenden kannst - diese findest Du unter https://github.com/marq24/ha-senec-v3/blob/main/docs/SENEC_OTP_SETUP.md\n\nWenn Du bereits einen MFA Zugang eingerichtet hast, stelle bitte sicher, dass Du deinen 'geheimen Schlüssel' im Zugriff hast und diesen unter 'OTP-auth-Secret' bei der Einrichtung angibst - Details hierzu findet Du ebenfalls unter dem o.g. Link zu SENEC_OTP_SETUP.md",
+        "description": "### Deine Zugangsdaten zu SENEC.App & mein-senec.de\n\nBitte gib Deine mein-senec.de-Zugangsdaten (eMail und Dein Passwort) ein, um Home Assistant mit Deinem mein-senec.de-Konto zu verbinden. Diese werden dann __unverschlüsselt__ in Deiner Home Assistant Konfiguration für diese Integration gespeichert.\n\nWenn Du Hilfe benötigst, findest du sie hier: {repo}\n\n\n### Wichtige Informationen zu MFA/OTP/TOTP @ SENEC\n\nSolltest Du für den Zugang zu mein-senec.de noch keine Aufforderung zur Einrichtung eines zusätzlichen Faktors (MFA) erhalten haben, ist die Eingabe des OTP-auth-Secret derzeit nicht erforderlich.\n\nDu solltest Dich aber schon jetzt über die notwendigen Schritte informieren, damit Du auch zukünftig diese Integration verwenden kannst - diese findest Du unter {repo}/blob/main/docs/SENEC_OTP_SETUP.md\n\nWenn Du bereits einen MFA Zugang eingerichtet hast, stelle bitte sicher, dass Du deinen 'geheimen Schlüssel' im Zugriff hast und diesen unter 'OTP-auth-Secret' bei der Einrichtung angibst - Details hierzu findet Du ebenfalls unter dem o.g. Link zu SENEC_OTP_SETUP.md",
         "data" : {
           "name": "Anzeige Name",
           "scan_interval": "Aktualisierungsintervall in Sekunden"
@@ -116,7 +116,7 @@
       },
       "optional_websetup_required_info": {
         "title": "Bitte beachte!",
-        "description": "Dein SENEC.Home V2/V3-System hat leider keine Langzeit-Statistik-Daten bereitgestellt (z.b. 'Gesamtmenge Selbst erzeugter Strom').\n\n\nDu hast die Möglichkeit mit dieser Integration einen zusätzlichen 'WEB.API: mein-senec.de Portal' Integrationseintrag hinzuzufügen, um diese fehlenden Daten vom Mein-SENEC.Webportal zu beziehen.\n\n\n[Die Verwendung der WebAPI ist aber nur eine Option! Alternativ können diese Daten auch über die Home Assistent 'Riemann-Integral' oder 'PowerCalc' Platformen selbst errechnet werden. mehr hierzu findest Du wenn Du diesem Link folgst.](https://github.com/marq24/ha-senec-v3/blob/main/docs/STATSENSORS.md)"
+        "description": "Dein SENEC.Home V2/V3-System hat leider keine Langzeit-Statistik-Daten bereitgestellt (z.b. 'Gesamtmenge Selbst erzeugter Strom').\n\n\nDu hast die Möglichkeit mit dieser Integration einen zusätzlichen 'WEB.API: mein-senec.de Portal' Integrationseintrag hinzuzufügen, um diese fehlenden Daten vom Mein-SENEC.Webportal zu beziehen.\n\n\n[Die Verwendung der WebAPI ist aber nur eine Option! Alternativ können diese Daten auch über die Home Assistent 'Riemann-Integral' oder 'PowerCalc' Platformen selbst errechnet werden. mehr hierzu findest Du wenn Du diesem Link folgst.]({repo}/blob/main/docs/STATSENSORS.md)"
       },
       "reauth_confirm": {
         "title": "Re-Authentifizierung erforderlich",
@@ -180,10 +180,11 @@
     "select": {
       "wallbox_1_mode": {
         "name": "Wallbox I Modus",
+        "description": "keine Ladeunterbrechungen: Es wird immer mit der konfigurierten minimalen Leistung geladen, bei zu geringer PV-Leistung, wird zusätzlich Strom aus dem Netz bezogen.\nLadeunterbrechungen möglich:Bei zu geringer PV-Leistung wird das Laden des Fahrzeugs pausiert.",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechungen möglich)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)"
         }
@@ -192,8 +193,8 @@
         "name": "Wallbox II Modus",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechung möglich)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)"
         }
@@ -202,8 +203,8 @@
         "name": "Wallbox III Modus",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechung möglich)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)"
         }
@@ -212,8 +213,8 @@
         "name": "Wallbox IV Modus",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (ohne Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechung zulässig)",
+          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechung möglich)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)"
         }

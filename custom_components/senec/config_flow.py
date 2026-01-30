@@ -358,6 +358,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                 }
             ),
+            description_placeholders={
+                "repo": "https://github.com/marq24/ha-senec-v3",
+            },
             last_step=False,
             errors=self._errors,
         )
@@ -374,6 +377,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 host_entry = host_entry.replace("http://", "")
             if host_entry.startswith('https://'):
                 host_entry = host_entry.replace("https://", "")
+
+            # removing for the morons also any trailing /...
+            while host_entry.endswith("/"):
+                host_entry = host_entry[:-1]
 
             # check if the input is some sort of valid...
             if self.source == SOURCE_RECONFIGURE:
@@ -436,7 +443,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             _LOGGER.warning("Need WEB-API for full data...")
                             self._xdata = local_data
                             self._xname = name_entry
-                            return self.async_show_form(step_id="optional_websetup_required_info", last_step=False, errors=self._errors)
+                            return self.async_show_form(
+                                step_id="optional_websetup_required_info",
+                                description_placeholders={
+                                    "repo": "https://github.com/marq24/ha-senec-v3",
+                                },
+                                last_step=False,
+                                errors=self._errors
+                            )
                         else:
                             return self.async_create_entry(title=name_entry, data=local_data)
 
@@ -481,7 +495,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
                 })
 
-            return self.async_show_form(step_id="localsystem", data_schema=a_schema, last_step=True, errors=self._errors)
+            return self.async_show_form(step_id="localsystem", data_schema=a_schema, description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"}, last_step=True, errors=self._errors)
 
     async def async_step_websetup(self, user_input=None):
         key_creden = "credentials"
@@ -640,6 +654,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         {"collapsed": True},
                     )
                 }),
+                description_placeholders={
+                    "repo": "https://github.com/marq24/ha-senec-v3",
+                },
                 last_step=self.source == SOURCE_RECONFIGURE,
                 errors=self._errors,
             )

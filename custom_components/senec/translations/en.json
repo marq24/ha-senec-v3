@@ -11,7 +11,7 @@
     },
     "smode": {
       "options": {
-        "mode_web": "WEB-API: Access via https://mein-senec.de/ web api",
+        "mode_web": "WEB-API: Access via the (un-official) WEB-API of the mein-senec.de Portal",
         "mode_local": "LAN: Access via local LAN (IP of SENEC.Home or Inverter)"
       }
     },
@@ -40,13 +40,13 @@
     },
     "step": {
       "user": {
-        "description": "Please select the version of your SENEC.Home System you would like to add.\n\n\nIf you need help with the configuration have a look at: https://github.com/marq24/ha-senec-v3",
+        "description": "Please select the version of your SENEC.Home System you would like to add.\n\n\nIf you need help with the configuration have a look at: {repo}",
         "data": {
           "stype": "Select System type"
         }
       },
       "localsystem": {
-        "description": "If you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3",
+        "description": "If you need help with the configuration have a look here: {repo}",
         "data": {
           "name": "Display name",
           "host": "IP or hostname of the SENEC.Home V3 System OR the Inverter",
@@ -55,7 +55,7 @@
         }
       },
       "websetup": {
-        "description": "### Your login credentials for mein-senec.de\n\nPlease provide your mein-senec.de login credentials (eMail and password) in order to connect home assistant with your mein-senec.de account. These are then saved __as plain text__ (unencrypted) in your Home Assistant configuration for this integration.\n\nIf you need help with the configuration have a look here: https://github.com/marq24/ha-senec-v3\n\n\n### Important information about MFA/OTP/TOTP @ SENEC\n\nIf you have not yet received a request to set up an additional factor (MFA) to access mein-senec.de, entering the OTP auth secret is currently not required.\n\n\nYou should familiarize yourself with the necessary steps now so that you can continue to use this integration in the future. You can find them at https://github.com/marq24/ha-senec-v3/blob/main/docs/SENEC_OTP_SETUP.md\n\n\nIf you have already set up MFA access, please ensure that you have your 'secret key' for access and enter it under 'OTP-auth-Secret' during setup. You can also find details on the SENEC_OTP_SETUP.md linked above",
+        "description": "### Your login credentials for mein-senec.de\n\nPlease provide your mein-senec.de login credentials (eMail and password) in order to connect home assistant with your mein-senec.de account. These are then saved __as plain text__ (unencrypted) in your Home Assistant configuration for this integration.\n\nIf you need help with the configuration have a look here: {repo}\n\n\n### Important information about MFA/OTP/TOTP @ SENEC\n\nIf you have not yet received a request to set up an additional factor (MFA) to access mein-senec.de, entering the OTP auth secret is currently not required.\n\n\nYou should familiarize yourself with the necessary steps now so that you can continue to use this integration in the future. You can find them at {repo}/blob/main/docs/SENEC_OTP_SETUP.md\n\n\nIf you have already set up MFA access, please ensure that you have your 'secret key' for access and enter it under 'OTP-auth-Secret' during setup. You can also find details on the SENEC_OTP_SETUP.md linked above",
         "data" : {
           "name": "Display name",
           "scan_interval": "Polling Interval in seconds"
@@ -103,7 +103,7 @@
       },
       "optional_websetup_required_info": {
         "title": "Important !",
-        "description": "Your SENEC.Home V2/V3 System did not provide any long term statistic data (like total generated solar power).\n\n\nWith this integration you have the option to add an additional 'WEB.API: mein-senec.de Portal' integration entry in order to collect this data from the MySENEC.WebPortal.\n\n\n[However, using the WebAPI is only one option! Alternatively, this data can also be calculated using the Home Assistant 'Riemann sum integral' or 'PowerCalc' platforms. For details open this link.](https://github.com/marq24/ha-senec-v3/blob/main/docs/STATSENSORS.md)"
+        "description": "Your SENEC.Home V2/V3 System did not provide any long term statistic data (like total generated solar power).\n\n\nWith this integration you have the option to add an additional 'WEB.API: mein-senec.de Portal' integration entry in order to collect this data from the MySENEC.WebPortal.\n\n\n[However, using the WebAPI is only one option! Alternatively, this data can also be calculated using the Home Assistant 'Riemann sum integral' or 'PowerCalc' platforms. For details open this link.]({repo}/blob/main/docs/STATSENSORS.md)"
       },
       "reauth_confirm": {
         "title": "Re-Authentication required",
@@ -169,8 +169,8 @@
         "name": "Wallbox I Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED [no charge-interruption]",
-          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
+          "optimized_3": "OPTIMIZED (no charge-interruption)",
+          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }
@@ -179,8 +179,8 @@
         "name": "Wallbox II Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED [no charge-interruption]",
-          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
+          "optimized_3": "OPTIMIZED (no charge-interruption)",
+          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }
@@ -189,8 +189,8 @@
         "name": "Wallbox III Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED [no charge-interruption]",
-          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
+          "optimized_3": "OPTIMIZED (no charge-interruption)",
+          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }
@@ -199,8 +199,8 @@
         "name": "Wallbox IV Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED [no charge-interruption]",
-          "optimized_4": "OPTIMIZED [allow charge-interruptions]",
+          "optimized_3": "OPTIMIZED (no charge-interruption)",
+          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
           "fast": "FAST",
           "fast_with_battery": "FAST (supported by battery)"
         }
