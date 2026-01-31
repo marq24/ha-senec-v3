@@ -1,4 +1,5 @@
 """Platform for Senec numbers."""
+import asyncio
 import logging
 from dataclasses import replace
 
@@ -8,7 +9,6 @@ from homeassistant.const import CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import (
     DOMAIN,
@@ -30,8 +30,27 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No numbers for Inverters...")
+
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_NUMBER_TYPES:
+            # we want to adjust the MIN value for the ic_max selectors...
+            if description.key.endswith("set_icmax"):
+                try:
+                    a_state_key = description.key.replace("_set_icmax", "_state")
+                    attr_func_name = f"{a_state_key}_attr"
+                    if hasattr(coordinator.senec, attr_func_name):
+                        a_dict = getattr(coordinator.senec, attr_func_name)
+                        if a_dict is not None:
+                            the_min_current = a_dict.get("json", {}).get("chargingCurrents", {}).get("minPossibleCharging", -1)
+                            if the_min_current > 0:
+                                description = replace(
+                                    description,
+                                    native_min_value = the_min_current,
+                                    native_max_value = 16.02
+                                )
+                except Exception as err:
+                    _LOGGER.error(f"WEB: Could not fetch min/max values for '{description.key}' - cause: {err}")
+
             entity = SenecNumber(coordinator, description, False)
             entities.append(entity)
     else:
@@ -67,25 +86,30 @@ class SenecNumber(SenecEntity, NumberEntity):
         self._attr_translation_key = key
         self._attr_has_entity_name = True
 
-        self._internal_minmax_adjustment_needed = False
-        if self._adjust_min_max and key.endswith("set_icmax"):
-            self._internal_minmax_adjustment_needed = True
-            self._internal_check_minmax_adjustment()
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
 
-    def _internal_check_minmax_adjustment(self):
-        # a_pos = int(key[8:9])-1
-        if self._adjust_min_max:
+        # we want to adjust the MIN value for the ic_max selectors...
+        if self._adjust_min_max and self.entity_description.key.endswith("set_icmax"):
             try:
+                # waiting for WEBapi Integration to become available...
+                counter = 1
+                while counter < 6 and self.coordinator.senec._bridge_to_senec_online is None:
+                    _LOGGER.debug(f"LOCAL: Waiting {(counter * 5)} sec for WEBapi Integration to become available - counter: {counter}")
+                    await asyncio.sleep(counter * 5)
+                    counter += 1
+
+                _LOGGER.debug(f"LOCAL: Try to adjust min/max values for '{self.entity_description.key}'")
                 min_max = getattr(self.coordinator.senec, self.entity_description.key + "_extrema")
                 if min_max is not None:
-                    self._internal_minmax_adjustment_needed = False
                     self.entity_description = replace(
                         self.entity_description,
                         native_min_value=round(float(min_max[0]), 1),
                         native_max_value=round(float(min_max[1]), 1)
                     )
             except Exception as err:
-                _LOGGER.error(f"Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
+                _LOGGER.error(f"LOCAL: Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
 
     @property
     def native_value(self) -> float:
@@ -98,11 +122,10 @@ class SenecNumber(SenecEntity, NumberEntity):
         else:
             value = getattr(self.coordinator.senec, self.entity_description.key)
 
-        if self._adjust_min_max and self._internal_minmax_adjustment_needed:
-            self._internal_check_minmax_adjustment()
-
         if value is not None:
             return float(value)
+
+        return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
