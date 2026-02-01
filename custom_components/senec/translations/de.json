@@ -187,9 +187,9 @@
           "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
           "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
           "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
@@ -201,9 +201,9 @@
           "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
           "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
           "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
@@ -215,9 +215,9 @@
           "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
           "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
           "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
@@ -229,9 +229,9 @@
           "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
           "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
           "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
           "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
