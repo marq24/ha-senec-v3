@@ -46,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                                 description = replace(
                                     description,
                                     native_min_value = the_min_current,
-                                    native_max_value = 16.02
+                                    native_max_value = 12
                                 )
                 except Exception as err:
                     _LOGGER.error(f"WEB: Could not fetch min/max values for '{description.key}' - cause: {err}")

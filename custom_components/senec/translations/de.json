@@ -183,40 +183,56 @@
         "description": "keine Ladeunterbrechungen: Es wird immer mit der konfigurierten minimalen Leistung geladen, bei zu geringer PV-Leistung, wird zusätzlich Strom aus dem Netz bezogen.\nLadeunterbrechungen möglich:Bei zu geringer PV-Leistung wird das Laden des Fahrzeugs pausiert.",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechungen möglich)",
+          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)"
+          "fast_with_battery":  "schnell (laden aus Batterie)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
       "wallbox_2_mode": {
         "name": "Wallbox II Modus",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechung möglich)",
+          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)"
+          "fast_with_battery":  "schnell (laden aus Batterie)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
       "wallbox_3_mode": {
         "name": "Wallbox III Modus",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechung möglich)",
+          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)"
+          "fast_with_battery":  "schnell (laden aus Batterie)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
       "wallbox_4_mode": {
         "name": "Wallbox IV Modus",
         "state": {
           "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (keine Ladeunterbrechungen)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechung möglich)",
+          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
           "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)"
+          "fast_with_battery":  "schnell (laden aus Batterie)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Lade)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Lade)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
         }
       },
       "request_throttling": {

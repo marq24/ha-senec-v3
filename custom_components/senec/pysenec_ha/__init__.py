@@ -76,12 +76,17 @@ from custom_components.senec.pysenec_ha.constants import (
     APP_API_WB_MODE_LOCKED,
     APP_API_WB_MODE_2025_SOLAR,
     APP_API_WB_MODE_2025_FAST,
+    APP_API_WB_MODE_2025_COMFORT,
 
     LOCAL_WB_MODE_LOCKED,
     LOCAL_WB_MODE_SSGCM_3,
     LOCAL_WB_MODE_SSGCM_4,
     LOCAL_WB_MODE_FAST,
-    LOCAL_WB_MODE_FASTWITHBATTERY,
+    LOCAL_WB_MODE_FAST_WITHBATTERY,
+    LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON,
+    LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF,
+    LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON,
+    LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF,
     LOCAL_WB_MODE_UNKNOWN,
 
     SGREADY_CONF_KEYS,
@@ -2508,7 +2513,7 @@ class SenecLocal:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 4)
-        elif local_value == LOCAL_WB_MODE_FAST or local_value == LOCAL_WB_MODE_FASTWITHBATTERY:
+        elif local_value == LOCAL_WB_MODE_FAST or local_value == LOCAL_WB_MODE_FAST_WITHBATTERY:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
@@ -3182,10 +3187,12 @@ class SenecOnline:
         # THIS DOES NOT EXISTs anylonger…
         #self.APP_SET_WALLBOX        = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}"
 
-        self.APP_WALLBOX_SEARCH     = APP_WALLBOX_BASE_URL + "/v1/systems/wallboxes/search"
-        self.APP_SET_WALLBOX_LOCK_MODE  = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/locked/{lc_lock_state}"
-        self.APP_SET_WALLBOX_FAST_MODE  = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/fast-charge"
-        self.APP_SET_WALLBOX_SOLAR_MODE = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}/settings/solar-charge"
+        self.APP_WALLBOX_SEARCH         = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/wallboxes/search"
+        self.APP_SET_WALLBOX_LOCK_MODE  = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/locked/{lc_lock_state}"
+        self.APP_SET_WALLBOX_MODE       = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/charging-mode/{new_mode}"
+        self.APP_SET_WALLBOX_FAST_MODE_SETTINGS     = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/settings/fast-charge"
+        self.APP_SET_WALLBOX_SOLAR_MODE_SETTINGS    = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/settings/solar-charge"
+        self.APP_SET_WALLBOX_COMFORT_MODE_SETTINGS  = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/comfort-charge-expert-settings"
 
         APP_ABILITIES_BASE_URL      = "https://senec-app-abilities-proxy.prod.senec.dev"
         self.APP_ABILITIES_LIST     = APP_ABILITIES_BASE_URL + "/abilities/packages/{master_plant_id}"
@@ -3195,7 +3202,7 @@ class SenecOnline:
         self.APP_MEASURE_DASHBOARD      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
         self.APP_MEASURE_TOTAL          = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
         self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}&wallboxIds={wb_ids}"
-        self.APP_MEASURE_WB_TOTAL       = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/measurements?wallboxIds={wb_id}&resolution={res_type}&from={from_val}&to={to_val}"
+        self.APP_MEASURE_WB_TOTAL       = self.APP_MEASURE_BASE_URL + "/measurements/api/v1/systems/{master_plant_id}/wallboxes/measurements?wallboxIds={wb_uuid}&resolution={res_type}&from={from_val}&to={to_val}"
 
         # https://senec-app-systems-proxy.prod.senec.dev/systems/settings/user-energy-settings?systemId={master_plant_id}
         # -> http 204 NO-CONTENT
@@ -3492,6 +3499,11 @@ class SenecOnline:
 
                 await self.app_get_dashboard()
 
+                # we MUST QUERY possible WB-DATA BEFORE we _QUERY_TOTALS (since
+                # we need the wallbox UUID!)
+                if self._QUERY_WALLBOX:
+                    await self.app_update_all_wallboxes()
+
                 if self._QUERY_TOTALS:
                     # only request the totals at min update of 15 minutes
                     # 15min * 60 sec = 900 sec - 5sec
@@ -3502,9 +3514,6 @@ class SenecOnline:
                         await self.app_update_total(wb_ids=the_wb_ids)
                         if self._QUERY_WALLBOX:
                             await self.app_update_total_all_wallboxes()
-
-                if self._QUERY_WALLBOX:
-                    await self.app_update_all_wallboxes()
 
                 if self._QUERY_SPARE_CAPACITY:
                     # 1 day = 24 h = 24 * 60 min = 24 * 60 * 60 sec = 86400 sec
@@ -4096,7 +4105,11 @@ class SenecOnline:
             req_headers = self._default_app_headers.copy()
             req_headers["Authorization"] = self._app_token
             try:
-                _LOGGER.debug(f"_app_do_post_request(): requesting: {a_url} - with post_data: {util.mask_map(post_data)}")
+                if post_data is not None:
+                    _LOGGER.debug(f"_app_do_post_request(): requesting: {a_url} - with post_data: {util.mask_map(post_data)}")
+                else:
+                    _LOGGER.debug(f"_app_do_post_request(): requesting: {a_url} - with EMPTY post_data")
+
                 async with self.web_session.post(a_url, headers=req_headers, json=post_data) as res:
                     try:
                         res.raise_for_status()
@@ -4114,7 +4127,10 @@ class SenecOnline:
                                     else:
                                         _LOGGER.error(f"_app_do_post_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
                             else:
-                                _LOGGER.debug(f"APP-API HTTP:200 for post {util.mask_map(post_data)} to {a_url}")
+                                if post_data is not None:
+                                    _LOGGER.debug(f"APP-API HTTP:200 for post {util.mask_map(post_data)} to {a_url}")
+                                else:
+                                    _LOGGER.debug(f"APP-API HTTP:200 for post EMPTY-DATA to {a_url}")
                                 return True
                         else:
                             _LOGGER.error(f"_app_do_post_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
@@ -4776,6 +4792,10 @@ class SenecOnline:
         current_month_local = now_local.month
         current_day_local = now_local.day
         do_persist = False
+        the_wb_uuid = self._app_get_wallbox_uuid(idx)
+        if the_wb_uuid is None:
+            the_wb_uuid = str((idx + 1))
+            _LOGGER.warning(f"_app_update_single_wallbox_total(): there is NO WB-UUID: '{the_wb_uuid}'")
 
         # restore the data from our persistent storage
         if CONF_APP_TOTAL_DATA in self._app_token_object and "wallbox" in self._app_token_object[CONF_APP_TOTAL_DATA]:
@@ -4792,18 +4812,21 @@ class SenecOnline:
 
         # getting PREVIOUS_YEARS - only ONCE
         if local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS != current_year_local:
+            # we MUST delete all our previous collected data, when we switch over to a new year!
+            local_TOTAL_SUMS_PREV_YEARS = None
+            local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS = None
             do_persist = True
             # Loop from the data-available-start to current year [there are no older systems than 2018]
             # we might like to store the first year, that actually has data?!
             start_year = 2018
             if self._app_data_start_ts > 0:
                 start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
-                _LOGGER.debug(f"_app_update_single_wallbox_total() - data start year is set to {start_year}")
+                _LOGGER.debug(f"_app_update_single_wallbox_total() - data start year is set to {start_year} [{self._app_data_start_ts}]")
 
             for a_year in range(start_year, current_year_local):
                 _LOGGER.debug(f"_app_update_single_wallbox_total() - fetching data for year {a_year}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                         wb_id=str((idx + 1)),
+                                                         wb_uuid=the_wb_uuid,
                                                          res_type="MONTH",
                                                          from_val=quote(app_get_utc_date_start(a_year, 1), safe=''),
                                                          to_val=quote(app_get_utc_date_end(a_year, 12), safe=''))
@@ -4827,7 +4850,7 @@ class SenecOnline:
             else:
                 _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                      wb_id=str((idx + 1)),
+                                                      wb_uuid   =the_wb_uuid,
                                                       res_type  ="MONTH",
                                                       from_val  =quote(app_get_utc_date_start(current_year_local, 1), safe=''),
                                                       to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local - 1), safe=''))
@@ -4847,7 +4870,7 @@ class SenecOnline:
             else:
                 _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                         wb_id     =str((idx + 1)),
+                                                         wb_uuid   =the_wb_uuid,
                                                          res_type  ="MONTH",
                                                          from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, 1), safe=''),
                                                          to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local, current_day_local - 1), safe=''))
@@ -4871,11 +4894,12 @@ class SenecOnline:
                 "days":         local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_DAYS,
                 "days_data":    local_TOTAL_SUMS_PREV_DAYS
             }
+            self._static_TOTAL_WALLBOX_DATA[idx] = copy.deepcopy(self._app_token_object[CONF_APP_TOTAL_DATA]["wallbox"][idx])
             await self._app_on_new_token_data_received(self._app_token_object)
 
         # getting TODAY
         a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
-                                                 wb_id      =str((idx + 1)),
+                                                 wb_uuid    =the_wb_uuid,
                                                  res_type   ="DAY",
                                                  from_val   =quote(app_get_utc_date_start(current_year_local, current_month_local, current_day_local), safe=''),
                                                  to_val     =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
@@ -4903,8 +4927,77 @@ class SenecOnline:
     #####################
     # all new WALLBOX stuff
     #
+    # https://github.com/marq24/ha-senec-v3/issues/179#issuecomment-3829041744
+    # a_P4_device = {
+    #     "id": "A-32-char-UUID-HERE",
+    #     "productFamily": "P4",
+    #     "controllerId": "v4-000NNNeN",
+    #     "name": "Wallbox 1",
+    #     "prohibitUsage": False,
+    #     "isInterchargeAvailable": True,
+    #     "isSolarChargingAvailable": True,
+    #     "type": "V4",
+    #     "state": {
+    #         "electricVehicleConnected": False,
+    #         "hasError": False,
+    #         "temperatureInCelsius": 9.73958,
+    #         "isCharging": False,
+    #         "statusCode": "READY"
+    #     },
+    #     "chargingMode": {
+    #         "type": "FAST",
+    #         "allowIntercharge": True,
+    #         "compatibilityMode": True,
+    #         "fastChargingSettings": {
+    #             "allowIntercharge": True
+    #         },
+    #         "comfortChargeSettings": {
+    #             "allowIntercharge": True,
+    #             "compatibilityMode": False,
+    #             "configuredChargingCurrent": 6,
+    #             "activeWeekDays": [
+    #                 "MON",
+    #                 "TUE",
+    #                 "WED",
+    #                 "THU",
+    #                 "FRI"],
+    #             "useDynamicTariffs": False,
+    #             "chargingPeriodFromGridInH": 4,
+    #             "priceLimitInCtPerKwh": -99
+    #         },
+    #         "solarOptimizeSettings": {
+    #             "preventInterruptions": True,
+    #             "compatibilityMode": False,
+    #             "minChargingCurrentInA": 6,
+    #             "useDynamicTariffs": False,
+    #             "priceLimitInCtPerKwh": -99
+    #         }
+    #     },
+    #     "chargingCurrents": {
+    #         "minPossibleCharging": 6,
+    #         "configuredChargingCurrent": 6,
+    #         "currentApparentChargingPowerInKw": 0
+    #     },
+    #     "chargingPowerStats": {
+    #         "phase1": {
+    #             "min": 1.38,
+    #             "max": 3.68
+    #         },
+    #         "phase2": {
+    #             "min": 2.76,
+    #             "max": 7.36
+    #         },
+    #         "phase3": {
+    #             "min": 4.14,
+    #             "max": 11.04
+    #         },
+    #         "numberOfPhasesUsed": 0,
+    #         "disconnected": None
+    #     }
+    # }
+
     #####################
-    # NEW OBJECT
+    # NEW OBJECT Senec V2/V3
     # sample_data =[
     #     {
     #         "id": "1",
@@ -5003,6 +5096,13 @@ class SenecOnline:
         if self._app_raw_wallbox is not None and len(self._app_raw_wallbox) > idx and self._app_raw_wallbox[idx] is not None:
             self._app_raw_wallbox[idx] = data
 
+    def _app_get_wallbox_uuid(self, idx:int):
+        wbo = self._app_get_wallbox_object_at_index(idx)
+        if wbo is not None and "id" in wbo:
+            return wbo["id"]
+        else:
+            return None
+
     def _app_get_webapi_wallbox_mode(self, idx: int) -> str:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
 
@@ -5023,7 +5123,7 @@ class SenecOnline:
             if "type" in charging_mode_obj:
                 a_type = charging_mode_obj.get("type", None)
                 if a_type is not None:
-                    if a_type.upper() in [APP_API_WB_MODE_2025_SOLAR, APP_API_WB_MODE_2025_FAST]:
+                    if a_type.upper() in [APP_API_WB_MODE_2025_SOLAR, APP_API_WB_MODE_2025_FAST, APP_API_WB_MODE_2025_COMFORT]:
                         return a_type.upper()
                     else:
                         _LOGGER.info(f"_app_get_webapi_wallbox_mode(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
@@ -5053,34 +5153,73 @@ class SenecOnline:
             if "type" in charging_mode_obj:
                 a_type = charging_mode_obj.get("type", None)
                 if a_type is not None:
-                    # FAST or SOLAR
-                    if a_type.upper() == APP_API_WB_MODE_2025_SOLAR:
-                        #optimized_3: "OPTIMIZED [no charge-interruption]"
-                        #optimized_4: "OPTIMIZED [with charge-interruption]"
-
-                        # for what ever reason, when in the SenecAPP you configure
-                        # expert-settings: Ladeunterbrechungen-verhindern: EIN,
-                        # then 'chargingMode:compatibilityMode: False'
-
-                        # https://github.com/marq24/ha-senec-v3/issues/190#issuecomment-3819727873
-                        # In SENEC App auf "Solaroptimiert / Ladeunterbrechung verhindern EIN" schalten:
-                        # - chargingMode:compatibilityMode: False
-                        # - SMART_CHARGE_ACTIVE == 3
-                        # In SENEC App auf "Solaroptimiert / Ladeunterbrechung verhindern AUS" schalten:
-                        # - chargingMode:compatibilityMode: True
-                        # - SMART_CHARGE_ACTIVE == 4
-                        if charging_mode_obj.get("compatibilityMode", False):
-                            return LOCAL_WB_MODE_SSGCM_4
-                        else:
-                            return LOCAL_WB_MODE_SSGCM_3
-
-                    elif a_type.upper() == APP_API_WB_MODE_2025_FAST:
+                    f_type = a_type.upper()
+                    if f_type == APP_API_WB_MODE_2025_FAST:
                         #fast:              "FAST",
                         #fast_with_battery: "FAST (supported by battery)"
-                        if charging_mode_obj.get("allowIntercharge", False):
-                            return LOCAL_WB_MODE_FASTWITHBATTERY
+                        # JSON:
+                        # "fastChargingSettings": {
+                        #     "allowIntercharge": false
+                        # },
+                        if charging_mode_obj.get("fastChargingSettings", {}).get("allowIntercharge", False):
+                            return LOCAL_WB_MODE_FAST_WITHBATTERY
                         else:
                             return LOCAL_WB_MODE_FAST
+
+                    elif f_type == APP_API_WB_MODE_2025_SOLAR:
+                        #optimized_3: "OPTIMIZED [continuous-charging]" - LADEUNTERBRECHUNG VERHINDERN EIN
+                        #optimized_4: "OPTIMIZED [allow charge-interruptions]"
+
+                        # JSON:
+                        # "solarOptimizeSettings": {
+                        #     "preventInterruptions": true,
+                        #     "compatibilityMode": false,
+                        #     "minChargingCurrentInA": 7.0,
+                        #     "useDynamicTariffs": false,
+                        #     "priceLimitInCtPerKwh": -99.0
+                        # }
+
+                        #the_solar_optimize_settings = charging_mode_obj.get("solarOptimizeSettings", {})
+                        #current_prevent_interruptions = the_solar_optimize_settings.get("preventInterruptions", False)
+                        #current_compatibilityMode = the_solar_optimize_settings.get("compatibilityMode", False)
+                        #_LOGGER.info(f"---- continue wallbox - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
+
+                        # this is TOTALLY SILLY! - when 'preventInterruptions' is 'True', then this means that the toggle
+                        # in the SenecAPP (called 'Ladeunterbrechung verhindern') is OFF - this is beyond ANY logic!!!
+                        if charging_mode_obj.get("solarOptimizeSettings", {}).get("preventInterruptions", False):
+                            #_LOGGER.info(f"---- RETURN MODE 4 [FOUR]")
+                            return LOCAL_WB_MODE_SSGCM_4
+                        else:
+                            #_LOGGER.info(f"---- RETURN MODE 3 [THREE]")
+                            return LOCAL_WB_MODE_SSGCM_3
+
+                    # only for P4/V4
+                    elif f_type == APP_API_WB_MODE_2025_COMFORT:
+                        # JSON:
+                        # "comfortChargeSettings": {
+                        #     "allowIntercharge": false,
+                        #     "preventInterruptions": false,
+                        #     "configuredChargingCurrent": 6.0,
+                        #     "activeWeekDays": ["MON", "TUE", "WED", "THU", "FRI"],
+                        #     "useDynamicTariffs": false,
+                        #     "chargingPeriodFromGridInH": 4,
+                        #     "priceLimitInCtPerKwh": -99.0,
+                        #     "compatibilityMode": true
+                        # },
+                        the_comfort_charge_settings = charging_mode_obj.get("comfortChargeSettings", {})
+                        night_allow_intercharge = the_comfort_charge_settings.get("allowIntercharge", False)
+                        day_prevent_interruptions = the_comfort_charge_settings.get("preventInterruptions", False)
+                        if night_allow_intercharge:
+                            if day_prevent_interruptions:
+                                return LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON
+                            else:
+                                return LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF
+                        else:
+                            if day_prevent_interruptions:
+                                return LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON
+                            else:
+                                return LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF
+
                     else:
                         _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
                 else:
@@ -5114,6 +5253,10 @@ class SenecOnline:
     async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
         idx = wallbox_num - 1
+        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+        if len(the_wb_obj) == 0:
+            return False
+
         cur_local_mode = self._app_get_local_wallbox_mode_from_api_values(idx)
         if cur_local_mode == local_mode_to_set:
             _LOGGER.debug(f"app_set_wallbox_mode(): skipp mode change since '{local_mode_to_set}' already set")
@@ -5124,10 +5267,17 @@ class SenecOnline:
 
             success = False
             if self._app_master_plant_id is not None:
-                # check, if we switch to the LOCK mode
+                # we will use now the uuid of the wallbox for all our requests... I have
+                # captured this 2026/2/1 with the support from Julian R.
+                the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+                the_current_charge_type = the_wb_obj.get("chargingMode", {}).get("type", None)
+                if the_current_charge_type is not None:
+                    the_current_charge_type = the_current_charge_type.upper()
+
+                # check if we switch to the LOCK mode
                 if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
                     wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
-                                                                   wb_id=str(wallbox_num),
+                                                                   wb_uuid=the_wb_uuid,
                                                                    lc_lock_state="true")
 
                     data = await self._app_do_get_request(wb_url, do_as_patch=True)
@@ -5143,7 +5293,7 @@ class SenecOnline:
                     # must unlock first
                     if cur_local_mode == LOCAL_WB_MODE_LOCKED:
                         wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
-                                                                       wb_id=str(wallbox_num),
+                                                                       wb_uuid=the_wb_uuid,
                                                                        lc_lock_state="false")
 
                         data = await self._app_do_get_request(wb_url, do_as_patch=True)
@@ -5152,55 +5302,116 @@ class SenecOnline:
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
                         else:
                             _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} UNLOCK FAILED")
+                            return False
+
+                    # OK now the WALLBOX should be UNLOCKED...
 
                     # now setting the final mode…
-                    if local_mode_to_set == LOCAL_WB_MODE_FASTWITHBATTERY or local_mode_to_set == LOCAL_WB_MODE_FAST:
-                        # setting FAST/FASTEST MODE
-                        wb_url = self.APP_SET_WALLBOX_FAST_MODE.format(master_plant_id=str(self._app_master_plant_id),
-                                                                       wb_id=str(wallbox_num))
-                        # 'allowIntercharge' means to use battery…
-                        the_post_data = {"allowIntercharge": True if local_mode_to_set == LOCAL_WB_MODE_FASTWITHBATTERY else False,}
+                    if local_mode_to_set in [LOCAL_WB_MODE_FAST_WITHBATTERY, LOCAL_WB_MODE_FAST]:
+                        # check if we first need to "push" the mode
+                        if the_current_charge_type != APP_API_WB_MODE_2025_FAST:
+                            if not await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_FAST):
+                                return False
 
-                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST_MODE final post data: {the_post_data}")
-                        data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
-                        if data is not None:
-                            self._app_set_wallbox_object_at_index(idx, data)
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to FAST_MODE: {util.mask_map(data)}")
-                            success = True
-                        else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} FAST_MODE FAILED")
+                        # ok, the mode is now 'FAST" - but we must check if the mode itself has changed...
+                        the_post_data = None
+                        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+                        current_allow_intercharge = the_wb_obj.get("chargingMode",{}).get("fastChargingSettings", {}).get("allowIntercharge", False)
 
-                    elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 or local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
-                        # setting SOLAR mode (with or without compatibility)
-                        wb_url = self.APP_SET_WALLBOX_SOLAR_MODE.format(master_plant_id=str(self._app_master_plant_id),
-                                                                        wb_id=str(wallbox_num))
+                        if local_mode_to_set == LOCAL_WB_MODE_FAST_WITHBATTERY and not current_allow_intercharge:
+                            the_post_data = {"allowIntercharge": True}
+                        elif local_mode_to_set == LOCAL_WB_MODE_FAST and current_allow_intercharge:
+                            the_post_data = {"allowIntercharge": False}
 
-                        the_post_data = {"compatibilityMode": True if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 else False,}
-                        # try to copy over all other attributes from the current chargingMode:solarOptimizeSettings
-                        a_wallbox_object = self._app_get_wallbox_object_at_index(idx)
-                        solar_optimize_settings = a_wallbox_object.get("chargingMode", {}).get("solarOptimizeSettings", None)
-                        if solar_optimize_settings is not None:
+                        if the_post_data is not None:
+                            wb_url = self.APP_SET_WALLBOX_FAST_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+                            success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_FAST, wb_url, the_post_data)
+
+                    elif local_mode_to_set in [LOCAL_WB_MODE_SSGCM_3, LOCAL_WB_MODE_SSGCM_4]:
+                        #optimized_3: "OPTIMIZED [continuous-charging]" - LADEUNTERBRECHUNG VERHINDERN EIN
+                        #optimized_4: "OPTIMIZED [allow charge-interruptions]"
+
+                        if the_current_charge_type != APP_API_WB_MODE_2025_SOLAR:
+                            if not await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_SOLAR):
+                                return False
+
+                        the_post_data = None
+                        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+                        the_solar_optimize_settings = the_wb_obj.get("chargingMode",{}).get("solarOptimizeSettings", {})
+                        current_prevent_interruptions = the_solar_optimize_settings.get("preventInterruptions", False)
+                        current_compatibilityMode = the_solar_optimize_settings.get("compatibilityMode", False)
+
+                        _LOGGER.info(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
+
+                        if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 and current_prevent_interruptions:
+                            the_post_data = {"preventInterruptions": False}
+                        elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_4 and not current_prevent_interruptions:
+                            # TOTALLY SILLY - in the SenecAPP the TOGGLE/SWITCH called 'Ladeunterbrechung verhindern'
+                            # will be shown as OFF, when the 'preventInterruptions' is set to 'True'
+                            the_post_data = {"preventInterruptions": True}
+
+                        _LOGGER.info(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} -> {the_post_data}")
+
+                        if the_post_data is not None:
+                            # we need to copy over the other post data value(s)...
                             for a_field in ["minChargingCurrentInA", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
-                                a_value = solar_optimize_settings.get(a_field, None)
+                                a_value = the_solar_optimize_settings.get(a_field, None)
                                 if a_value is not None:
                                     the_post_data[a_field] = a_value
-                        else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_object}")
 
-                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR_MODE final post data: {the_post_data}")
-                        data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
-                        if data is not None:
-                            self._app_set_wallbox_object_at_index(idx, data)
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to SOLAR_MODE: {util.mask_map(data)}")
-                            success = True
-                        else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} SOLAR_MODE FAILED")
+                            # setting SOLAR mode (with or without compatibility)
+                            wb_url = self.APP_SET_WALLBOX_SOLAR_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+                            success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_SOLAR, wb_url, the_post_data)
+
+                    elif local_mode_to_set in [LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF,
+                                               LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF]:
+                        if the_current_charge_type != APP_API_WB_MODE_2025_COMFORT:
+                            if not await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_COMFORT):
+                                return False
+
+                        #_LOGGER.warning(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num}")
+
+                        the_post_data = None
+                        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+                        the_comfort_charge_settings = the_wb_obj.get("chargingMode",{}).get("comfortChargeSettings", {})
+
+                        # here comes quite some ugly code... we must check if any of the both properties
+                        # must be changed
+                        current_allow_intercharge = the_comfort_charge_settings.get("allowIntercharge", False)
+                        current_prevent_interruptions = the_comfort_charge_settings.get("preventInterruptions", False)
+
+                        new_allow_intercharge = local_mode_to_set in [LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF]
+                        new_prevent_interruptions = local_mode_to_set in [LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON]
+
+                        if (current_allow_intercharge is not new_allow_intercharge) or (current_prevent_interruptions is not new_prevent_interruptions):
+                            the_post_data = {
+                                "allowIntercharge": new_allow_intercharge,
+                                "preventInterruptions": new_prevent_interruptions
+                            }
+
+                        #_LOGGER.warning(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} -> {the_post_data}")
+
+                        if the_post_data is not None:
+                            # we need to copy over the other post data value(s)...
+
+                            # for whatever reason, the `comfortChargeSettings` does not have a `minChargingCurrentInA`
+                            # attribute, so we use the `configuredChargingCurrent`
+                            the_post_data["minChargingCurrentInA"] = the_comfort_charge_settings.get("configuredChargingCurrent", 6.0)
+                            for a_field in ["useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                                a_value = the_comfort_charge_settings.get(a_field, None)
+                                if a_value is not None:
+                                    the_post_data[a_field] = a_value
+
+                            # setting COMFORT mode
+                            wb_url = self.APP_SET_WALLBOX_COMFORT_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+                            success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_COMFORT, wb_url, the_post_data)
+
                     else:
                         _LOGGER.info(f"app_set_wallbox_mode(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
 
-                if success:
+                if success and self._bridge_to_senec_local is not None:
                     # do we need to sync the value back to the 'lala_cgi' integration?
-                    if sync and self._bridge_to_senec_local is not None:
+                    if sync:
                         # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
                         # is no sync=False parameter here…
                         await self._bridge_to_senec_local.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set)
@@ -5209,7 +5420,7 @@ class SenecOnline:
                         # overall status of all the wallboxes is - since if NONE of them is the FASTWITHBATTERY,
                         # then we should disable the senec LOCAL 'allow_intercharge' flag - or enable it, if the
                         # "new" mode is LOCAL_WB_MODE_FASTWITHBATTERY
-                        if local_mode_to_set == LOCAL_WB_MODE_FASTWITHBATTERY:
+                        if local_mode_to_set == LOCAL_WB_MODE_FAST_WITHBATTERY:
                             await asyncio.sleep(2)
                             await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=True, sync=False)
                         else:
@@ -5219,7 +5430,7 @@ class SenecOnline:
                             turn_allow_intercharge_off = True
                             for idx in range(0, self._app_wallbox_num_max):
                                 if self._app_wallbox_num_max > idx:
-                                    if self._app_get_local_wallbox_mode_from_api_values(idx=idx) == LOCAL_WB_MODE_FASTWITHBATTERY:
+                                    if self._app_get_local_wallbox_mode_from_api_values(idx=idx) == LOCAL_WB_MODE_FAST_WITHBATTERY:
                                         turn_allow_intercharge_off = False
                                         break
                             if turn_allow_intercharge_off:
@@ -5251,6 +5462,44 @@ class SenecOnline:
                                                                                                 sync=False, verify_state=False)
                                 else:
                                     _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+
+        return success
+
+    async def app_switch_wallbox_mode(self, idx:int, wallbox_num:int, the_wb_uuid:str, mode:str):
+        _LOGGER.debug("***** APP-API: app_switch_wallbox_mode(self) ********")
+        try:
+            wb_url = self.APP_SET_WALLBOX_MODE.format(master_plant_id=str(self._app_master_plant_id),
+                                                           wb_uuid=the_wb_uuid,
+                                                           new_mode=mode.upper())
+            data = await self._app_do_post_request(wb_url, post_data=None, read_response=True)
+            if data is not None:
+                self._app_set_wallbox_object_at_index(idx, data)
+                _LOGGER.debug(f"app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode}): {util.mask_map(data)}")
+                return True
+            else:
+                _LOGGER.debug(f"app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode} FAILED")
+                return False
+
+        except BaseException as ex:
+            _LOGGER.error(f"app_switch_wallbox_mode(): Exception: {type(ex).__name__} - {ex}")
+            return False
+
+    async def app_update_wallbox_mode_setting(self, idx:int, wallbox_num:int, mode, wb_url, the_post_data):
+        _LOGGER.debug("***** APP-API: app_update_wallbox_mode_setting(self) ********")
+        try:
+            _LOGGER.debug(f"app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} final post data: {the_post_data}")
+            data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
+            if data is not None:
+                self._app_set_wallbox_object_at_index(idx, data)
+                _LOGGER.debug(f"app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} settings: {util.mask_map(data)}")
+                return True
+            else:
+                _LOGGER.debug(f"app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} settings FAILED")
+
+        except BaseException as ex:
+            _LOGGER.error(f"app_update_wallbox_mode_setting(): Exception: {type(ex).__name__} - {ex}")
+
+        return False
 
     async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
@@ -5315,7 +5564,7 @@ class SenecOnline:
             if self._app_wallbox_num_max > idx:
                 if self._app_get_webapi_wallbox_mode(idx=idx) == APP_API_WB_MODE_2025_FAST:
                     if value_to_set:
-                        res = res and await self.app_set_wallbox_mode(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_FASTWITHBATTERY, sync=False)
+                        res = res and await self.app_set_wallbox_mode(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_FAST_WITHBATTERY, sync=False)
                     else:
                         res = res and await self.app_set_wallbox_mode(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_FAST, sync=False)
         return res

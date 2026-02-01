@@ -1,6 +1,7 @@
 """Platform for Senec Selects."""
 import asyncio
 import logging
+from dataclasses import replace
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -10,11 +11,11 @@ from homeassistant.core import State
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
-
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SELECT_TYPES, WEB_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
     ExtSelectEntityDescription
 from .pysenec_ha import LOCAL_WB_MODE_UNKNOWN
+from .pysenec_ha.constants import WALLBOX_CHARGING_MODES_P4
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,24 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
         _LOGGER.info("No selects for Inverters...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SELECT_TYPES:
+            # we need to check, if for the wallbox modes, we have a V4 or a V2/V3 system - since
+            # the V4 have more options!
+            if description.key in ["wallbox_1_mode", "wallbox_2_mode", "wallbox_3_mode", "wallbox_4_mode"]:
+                try:
+                    a_state_key = description.key.replace("_mode", "_state")
+                    attr_func_name = f"{a_state_key}_attr"
+                    if hasattr(coordinator.senec, attr_func_name):
+                        a_dict = getattr(coordinator.senec, attr_func_name)
+                        if a_dict is not None:
+                            the_wallbox_type = a_dict.get("json", {}).get("type", None)
+                            if the_wallbox_type is not None and the_wallbox_type.upper() in ["V4", "P4"]:
+                                description = replace(
+                                    description,
+                                    options = list(WALLBOX_CHARGING_MODES_P4.values())
+                                )
+                except Exception as err:
+                    _LOGGER.error(f"WEB: Could not fetch wallbox-type for '{description.key}' - cause: {err}")
+
             entity = SenecSelect(coordinator, description)
             entities.append(entity)
     else:

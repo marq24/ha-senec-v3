@@ -169,40 +169,56 @@
         "name": "Wallbox I Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED (no charge-interruption)",
-          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
+          "optimized_3": "SOLAR (continuous-charging)",
+          "optimized_4": "SOLAR (allow charge-interruptions)",
           "fast": "FAST",
-          "fast_with_battery": "FAST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
         }
       },
       "wallbox_2_mode": {
         "name": "Wallbox II Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED (no charge-interruption)",
-          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
+          "optimized_3": "SOLAR (continuous-charging)",
+          "optimized_4": "SOLAR (allow charge-interruptions)",
           "fast": "FAST",
-          "fast_with_battery": "FAST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
         }
       },
       "wallbox_3_mode": {
         "name": "Wallbox III Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED (no charge-interruption)",
-          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
+          "optimized_3": "SOLAR (continuous-charging)",
+          "optimized_4": "SOLAR (allow charge-interruptions)",
           "fast": "FAST",
-          "fast_with_battery": "FAST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
         }
       },
       "wallbox_4_mode": {
         "name": "Wallbox IV Mode",
         "state": {
           "locked": "LOCKED",
-          "optimized_3": "OPTIMIZED (no charge-interruption)",
-          "optimized_4": "OPTIMIZED (allow charge-interruptions)",
+          "optimized_3": "SOLAR (continuous-charging)",
+          "optimized_4": "SOLAR (allow charge-interruptions)",
           "fast": "FAST",
-          "fast_with_battery": "FAST (supported by battery)"
+          "fast_with_battery": "FAST (supported by battery)",
+          "comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
+          "comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
+          "comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
         }
       },
       "request_throttling": {

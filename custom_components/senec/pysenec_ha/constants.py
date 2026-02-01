@@ -549,12 +549,17 @@ WALLBOX_STATE_NAME = {
 APP_API_WB_MODE_LOCKED: Final       = "LOCKED"
 APP_API_WB_MODE_2025_SOLAR: Final   = "SOLAR"
 APP_API_WB_MODE_2025_FAST: Final    = "FAST"
+APP_API_WB_MODE_2025_COMFORT: Final = "COMFORT"
 
 LOCAL_WB_MODE_LOCKED: Final  = "locked"
 LOCAL_WB_MODE_SSGCM_3: Final = "optimized_3"
 LOCAL_WB_MODE_SSGCM_4: Final = "optimized_4"
 LOCAL_WB_MODE_FAST: Final    = "fast"
-LOCAL_WB_MODE_FASTWITHBATTERY: Final = "fast_with_battery"
+LOCAL_WB_MODE_FAST_WITHBATTERY: Final = "fast_with_battery"
+LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON: Final = "comfort_night_bat_support_off_day_continuous_charge_on"
+LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF: Final = "comfort_night_bat_support_off_day_continuous_charge_off"
+LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON: Final = "comfort_night_bat_support_on_day_continuous_charge_on"
+LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF: Final = "comfort_night_bat_support_on_day_continuous_charge_off"
 LOCAL_WB_MODE_UNKNOWN: Final = "unknown"
 
 WALLBOX_CHARGING_MODES : Final = {
@@ -562,7 +567,19 @@ WALLBOX_CHARGING_MODES : Final = {
     1: LOCAL_WB_MODE_SSGCM_3,
     2: LOCAL_WB_MODE_SSGCM_4,
     3: LOCAL_WB_MODE_FAST,
-    4: LOCAL_WB_MODE_FASTWITHBATTERY
+    4: LOCAL_WB_MODE_FAST_WITHBATTERY
+}
+
+WALLBOX_CHARGING_MODES_P4 : Final = {
+    0: LOCAL_WB_MODE_LOCKED,
+    1: LOCAL_WB_MODE_SSGCM_3,
+    2: LOCAL_WB_MODE_SSGCM_4,
+    3: LOCAL_WB_MODE_FAST,
+    4: LOCAL_WB_MODE_FAST_WITHBATTERY,
+    5: LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON,
+    6: LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF,
+    7: LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON,
+    8: LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF,
 }
 
 NO_LIMIT: Final         = "no_limit"
