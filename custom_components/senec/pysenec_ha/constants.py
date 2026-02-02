@@ -551,35 +551,54 @@ APP_API_WB_MODE_2025_SOLAR: Final   = "SOLAR"
 APP_API_WB_MODE_2025_FAST: Final    = "FAST"
 APP_API_WB_MODE_2025_COMFORT: Final = "COMFORT"
 
-LOCAL_WB_MODE_LOCKED: Final  = "locked"
-LOCAL_WB_MODE_SSGCM_3: Final = "optimized_3"
-LOCAL_WB_MODE_SSGCM_4: Final = "optimized_4"
-LOCAL_WB_MODE_FAST: Final    = "fast"
-LOCAL_WB_MODE_FAST_WITHBATTERY: Final = "fast_with_battery"
-LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON: Final = "comfort_night_bat_support_off_day_continuous_charge_on"
-LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF: Final = "comfort_night_bat_support_off_day_continuous_charge_off"
-LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON: Final = "comfort_night_bat_support_on_day_continuous_charge_on"
-LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF: Final = "comfort_night_bat_support_on_day_continuous_charge_off"
-LOCAL_WB_MODE_UNKNOWN: Final = "unknown"
+LOCAL_WB_MODE_2026_LOCKED: Final  = "locked"
+LOCAL_WB_MODE_2026_SSGCM: Final   = "optimized"
+LOCAL_WB_MODE_2026_FAST: Final    = "fast"
+LOCAL_WB_MODE_2026_COMFORT: Final = "comfort"
+LOCAL_WB_MODE_2026_UNKNOWN: Final = "unknown"
 
-WALLBOX_CHARGING_MODES : Final = {
-    0: LOCAL_WB_MODE_LOCKED,
-    1: LOCAL_WB_MODE_SSGCM_3,
-    2: LOCAL_WB_MODE_SSGCM_4,
-    3: LOCAL_WB_MODE_FAST,
-    4: LOCAL_WB_MODE_FAST_WITHBATTERY
+WALLBOX_CHARGING_MODES_2026 : Final = {
+    0: LOCAL_WB_MODE_2026_LOCKED,
+    1: LOCAL_WB_MODE_2026_FAST,
+    2: LOCAL_WB_MODE_2026_SSGCM,
 }
 
-WALLBOX_CHARGING_MODES_P4 : Final = {
-    0: LOCAL_WB_MODE_LOCKED,
-    1: LOCAL_WB_MODE_SSGCM_3,
-    2: LOCAL_WB_MODE_SSGCM_4,
-    3: LOCAL_WB_MODE_FAST,
-    4: LOCAL_WB_MODE_FAST_WITHBATTERY,
-    5: LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON,
-    6: LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF,
-    7: LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON,
-    8: LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF,
+WALLBOX_CHARGING_MODES_2026_P4 : Final = {
+    0: LOCAL_WB_MODE_2026_LOCKED,
+    1: LOCAL_WB_MODE_2026_FAST,
+    2: LOCAL_WB_MODE_2026_SSGCM,
+    3: LOCAL_WB_MODE_2026_COMFORT
+}
+
+LOCAL_WB_MODE_LEGACY_LOCKED: Final  = "legacy_locked"
+LOCAL_WB_MODE_LEGACY_SSGCM_3: Final = "legacy_optimized_3"
+LOCAL_WB_MODE_LEGACY_SSGCM_4: Final = "legacy_optimized_4"
+LOCAL_WB_MODE_LEGACY_FAST: Final    = "legacy_fast"
+LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY: Final = "legacy_fast_with_battery"
+LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_ON: Final = "legacy_comfort_night_bat_support_off_day_continuous_charge_on"
+LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_OFF: Final = "legacy_comfort_night_bat_support_off_day_continuous_charge_off"
+LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_ON: Final = "legacy_comfort_night_bat_support_on_day_continuous_charge_on"
+LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_OFF: Final = "legacy_comfort_night_bat_support_on_day_continuous_charge_off"
+LOCAL_WB_MODE_LEGACY_UNKNOWN: Final = "legacy_unknown"
+
+WALLBOX_CHARGING_MODES_LEGACY : Final = {
+    0: LOCAL_WB_MODE_LEGACY_LOCKED,
+    1: LOCAL_WB_MODE_LEGACY_SSGCM_3,
+    2: LOCAL_WB_MODE_LEGACY_SSGCM_4,
+    3: LOCAL_WB_MODE_LEGACY_FAST,
+    4: LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY
+}
+
+WALLBOX_CHARGING_MODES_LEGACY_P4 : Final = {
+    0: LOCAL_WB_MODE_LEGACY_LOCKED,
+    1: LOCAL_WB_MODE_LEGACY_SSGCM_3,
+    2: LOCAL_WB_MODE_LEGACY_SSGCM_4,
+    3: LOCAL_WB_MODE_LEGACY_FAST,
+    4: LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY,
+    5: LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_ON,
+    6: LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_OFF,
+    7: LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_ON,
+    8: LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_OFF,
 }
 
 NO_LIMIT: Final         = "no_limit"

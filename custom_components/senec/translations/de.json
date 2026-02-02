@@ -178,63 +178,100 @@
       }
     },
     "select": {
+      "wallbox_1_mode_legacy": {
+        "name": "Wallbox I Modus [veraltet]",
+        "state": {
+          "legacy_locked":             "gesperrt",
+          "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_fast":               "schnell",
+          "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+        }
+      },
+      "wallbox_2_mode_legacy": {
+        "name": "Wallbox II Modus [veraltet]",
+        "state": {
+          "legacy_locked":             "gesperrt",
+          "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_fast":               "schnell",
+          "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+        }
+      },
+      "wallbox_3_mode_legacy": {
+        "name": "Wallbox III Modus [veraltet]",
+        "state": {
+          "legacy_locked":             "gesperrt",
+          "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_fast":               "schnell",
+          "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+        }
+      },
+      "wallbox_4_mode_legacy": {
+        "name": "Wallbox IV Modus [veraltet]",
+        "state": {
+          "legacy_locked":             "gesperrt",
+          "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
+          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_fast":               "schnell",
+          "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+        }
+      },
+
       "wallbox_1_mode": {
         "name": "Wallbox I Modus",
-        "description": "keine Ladeunterbrechungen: Es wird immer mit der konfigurierten minimalen Leistung geladen, bei zu geringer PV-Leistung, wird zusätzlich Strom aus dem Netz bezogen.\nLadeunterbrechungen möglich:Bei zu geringer PV-Leistung wird das Laden des Fahrzeugs pausiert.",
         "state": {
-          "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
-          "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "locked":   "gesperrt",
+          "optimized":"solar-optimiert",
+          "fast":     "schnell",
+          "comfort":  "komfort"
         }
       },
       "wallbox_2_mode": {
         "name": "Wallbox II Modus",
         "state": {
-          "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
-          "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "locked":   "gesperrt",
+          "optimized":"solar-optimiert",
+          "fast":     "schnell",
+          "comfort":  "komfort"
         }
       },
       "wallbox_3_mode": {
         "name": "Wallbox III Modus",
         "state": {
-          "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
-          "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "locked":   "gesperrt",
+          "optimized":"solar-optimiert",
+          "fast":     "schnell",
+          "comfort":  "komfort"
         }
       },
       "wallbox_4_mode": {
         "name": "Wallbox IV Modus",
         "state": {
-          "locked":             "gesperrt",
-          "optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
-          "fast":               "schnell",
-          "fast_with_battery":  "schnell (laden aus Batterie)",
-          "comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
-          "comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "locked":   "gesperrt",
+          "optimized":"solar-optimiert",
+          "fast":     "schnell",
+          "comfort":  "Komfort"
         }
       },
+
       "request_throttling": {
         "name": "Request Drosselung",
         "state": {

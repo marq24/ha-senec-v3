@@ -14,8 +14,8 @@ from homeassistant.util import slugify
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SELECT_TYPES, WEB_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
     ExtSelectEntityDescription
-from .pysenec_ha import LOCAL_WB_MODE_UNKNOWN
-from .pysenec_ha.constants import WALLBOX_CHARGING_MODES_P4
+from .pysenec_ha import LOCAL_WB_MODE_LEGACY_UNKNOWN, LOCAL_WB_MODE_2026_UNKNOWN
+from .pysenec_ha.constants import WALLBOX_CHARGING_MODES_LEGACY_P4, WALLBOX_CHARGING_MODES_2026_P4
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,9 +32,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
         for description in WEB_SELECT_TYPES:
             # we need to check, if for the wallbox modes, we have a V4 or a V2/V3 system - since
             # the V4 have more options!
-            if description.key in ["wallbox_1_mode", "wallbox_2_mode", "wallbox_3_mode", "wallbox_4_mode"]:
+            if description.key in ["wallbox_1_mode", "wallbox_1_mode_legacy", "wallbox_2_mode", "wallbox_2_mode_legacy",
+                                   "wallbox_3_mode", "wallbox_3_mode_legacy", "wallbox_4_mode", "wallbox_4_mode_legacy"]:
                 try:
-                    a_state_key = description.key.replace("_mode", "_state")
+                    is_legacy = description.key.endswith("_mode_legacy")
+                    if is_legacy:
+                        a_state_key = description.key.replace("_mode_legacy", "_state")
+                    else:
+                        a_state_key = description.key.replace("_mode", "_state")
+
                     attr_func_name = f"{a_state_key}_attr"
                     if hasattr(coordinator.senec, attr_func_name):
                         a_dict = getattr(coordinator.senec, attr_func_name)
@@ -43,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             if the_wallbox_type is not None and the_wallbox_type.upper() in ["V4", "P4"]:
                                 description = replace(
                                     description,
-                                    options = list(WALLBOX_CHARGING_MODES_P4.values())
+                                    options = list(WALLBOX_CHARGING_MODES_LEGACY_P4.values()) if is_legacy else list(WALLBOX_CHARGING_MODES_2026_P4.values())
                                 )
                 except Exception as err:
                     _LOGGER.error(f"WEB: Could not fetch wallbox-type for '{description.key}' - cause: {err}")
@@ -73,7 +79,7 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
         title = self.coordinator._config_entry.title
         key = self.entity_description.key.lower()
         name = self.entity_description.name
-        self.entity_id = f"select.{slugify(title)}_{key}"
+        self.entity_id = f"select.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
         # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
@@ -98,7 +104,7 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
 
             # if value is not set or the unknown-wallbox value, then check, if we
             # have a previous value... and then use it - or reset it to None
-            if value is None or str(value) == LOCAL_WB_MODE_UNKNOWN:
+            if value is None or str(value) == LOCAL_WB_MODE_LEGACY_UNKNOWN or str(value) == LOCAL_WB_MODE_2026_UNKNOWN:
                 if self._previous_value is not None:
                     value = self._previous_value
                 else:

@@ -6,7 +6,6 @@ from homeassistant.const import CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-
 from . import SenecEntity, SenecDataUpdateCoordinator
 from .const import (
     DOMAIN,
@@ -59,7 +58,7 @@ class SenecButton(SenecEntity, ButtonEntity):
         key = self.entity_description.key.lower()
         name = self.entity_description.name
         self._attr_icon = self.entity_description.icon
-        self.entity_id = f"button.{slugify(title)}_{key}"
+        self.entity_id = f"button.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
         # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!

@@ -17,7 +17,7 @@ from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
 from pathlib import Path
 from time import time, strftime, localtime
-from typing import Final, Iterable
+from typing import Final, Iterable, Any
 from urllib.parse import quote, urlparse, parse_qs
 
 import aiohttp
@@ -78,16 +78,22 @@ from custom_components.senec.pysenec_ha.constants import (
     APP_API_WB_MODE_2025_FAST,
     APP_API_WB_MODE_2025_COMFORT,
 
-    LOCAL_WB_MODE_LOCKED,
-    LOCAL_WB_MODE_SSGCM_3,
-    LOCAL_WB_MODE_SSGCM_4,
-    LOCAL_WB_MODE_FAST,
-    LOCAL_WB_MODE_FAST_WITHBATTERY,
-    LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON,
-    LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF,
-    LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON,
-    LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF,
-    LOCAL_WB_MODE_UNKNOWN,
+    LOCAL_WB_MODE_LEGACY_LOCKED,
+    LOCAL_WB_MODE_LEGACY_SSGCM_3,
+    LOCAL_WB_MODE_LEGACY_SSGCM_4,
+    LOCAL_WB_MODE_LEGACY_FAST,
+    LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY,
+    LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_ON,
+    LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_OFF,
+    LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_ON,
+    LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_OFF,
+    LOCAL_WB_MODE_LEGACY_UNKNOWN,
+
+    LOCAL_WB_MODE_2026_LOCKED,
+    LOCAL_WB_MODE_2026_SSGCM,
+    LOCAL_WB_MODE_2026_FAST,
+    LOCAL_WB_MODE_2026_COMFORT,
+    LOCAL_WB_MODE_2026_UNKNOWN,
 
     SGREADY_CONF_KEYS,
     SGREADY_MODES,
@@ -2321,7 +2327,7 @@ class SenecLocal:
     #
     #     await self.set_wallbox_mode_post_int(pos=pos, local_value=mode)
     #     if sync and self._SenecOnline is not None:
-    #         await self._SenecOnline.app_set_wallbox_mode(local_mode_to_set=mode, wallbox_num=(pos + 1), sync=False)
+    #         await self._SenecOnline.app_set_wallbox_mode_legacy(local_mode_to_set=mode, wallbox_num=(pos + 1), sync=False)
 
     def read_array_data(self, section_key: str, array_values_key) -> []:
         if self._raw is not None and section_key in self._raw and array_values_key in self._raw[section_key]:
@@ -2429,13 +2435,13 @@ class SenecLocal:
     async def set_nva_wallbox_set_icmax(self, pos: int, value: float, sync: bool = True, verify_state: bool = True):
         if verify_state:
             if self._bridge_to_senec_online is not None:
-                local_mode = self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(pos)
+                local_mode = self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(pos)
             else:
                 local_mode = "no-bridge-avail"
         else:
-            local_mode = LOCAL_WB_MODE_SSGCM_3
+            local_mode = LOCAL_WB_MODE_LEGACY_SSGCM_3
 
-        if local_mode == LOCAL_WB_MODE_SSGCM_3 or local_mode == LOCAL_WB_MODE_SSGCM_4:
+        if local_mode == LOCAL_WB_MODE_LEGACY_SSGCM_3 or local_mode == LOCAL_WB_MODE_LEGACY_SSGCM_4:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "SET_ICMAX", "fl", value,
                                       SENEC_SECTION_WALLBOX, "MIN_CHARGING_CURRENT", "fl", value)
@@ -2459,61 +2465,61 @@ class SenecLocal:
     @property
     def wallbox_1_mode(self) -> str:
         if self._bridge_to_senec_online is not None:
-            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(0)
-        return LOCAL_WB_MODE_UNKNOWN
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(0)
+        return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
     async def set_string_value_wallbox_1_mode(self, value: str):
         await self.set_wallbox_mode_post_int(0, value)
         if self._bridge_to_senec_online is not None:
-            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=False)
+            await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=1, sync=False)
 
     @property
     def wallbox_2_mode(self) -> str:
         if self._bridge_to_senec_online is not None:
-            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(1)
-        return LOCAL_WB_MODE_UNKNOWN
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(1)
+        return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
     async def set_string_value_wallbox_2_mode(self, value: str):
         await self.set_wallbox_mode_post_int(1, value)
         if self._bridge_to_senec_online is not None:
-            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=False)
+            await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=2, sync=False)
 
     @property
     def wallbox_3_mode(self) -> str:
         if self._bridge_to_senec_online is not None:
-            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(2)
-        return LOCAL_WB_MODE_UNKNOWN
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(2)
+        return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
     async def set_string_value_wallbox_3_mode(self, value: str):
         await self.set_wallbox_mode_post_int(2, value)
         if self._bridge_to_senec_online is not None:
-            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=False)
+            await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=3, sync=False)
 
     @property
     def wallbox_4_mode(self) -> str:
         if self._bridge_to_senec_online is not None:
-            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values(3)
-        return LOCAL_WB_MODE_UNKNOWN
+            return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(3)
+        return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
     async def set_string_value_wallbox_4_mode(self, value: str):
         await self.set_wallbox_mode_post_int(3, value)
         if self._bridge_to_senec_online is not None:
-            await self._bridge_to_senec_online.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=False)
+            await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=4, sync=False)
 
     async def set_wallbox_mode_post_int(self, pos: int, local_value: str):
-        if local_value == LOCAL_WB_MODE_LOCKED:
+        if local_value == LOCAL_WB_MODE_LEGACY_LOCKED:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 1,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
-        elif local_value == LOCAL_WB_MODE_SSGCM_3:
+        elif local_value == LOCAL_WB_MODE_LEGACY_SSGCM_3:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 3)
-        elif local_value == LOCAL_WB_MODE_SSGCM_4:
+        elif local_value == LOCAL_WB_MODE_LEGACY_SSGCM_4:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 4)
-        elif local_value == LOCAL_WB_MODE_FAST or local_value == LOCAL_WB_MODE_FAST_WITHBATTERY:
+        elif local_value == LOCAL_WB_MODE_LEGACY_FAST or local_value == LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY:
             await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE", "u8", 0,
                                       SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE", "u8", 0)
@@ -5109,7 +5115,7 @@ class SenecOnline:
         # step 1 checking the LOCK/UNLOCK state…
         if "prohibitUsage" in a_wallbox_obj:
             if a_wallbox_obj["prohibitUsage"]:
-                return LOCAL_WB_MODE_LOCKED
+                return LOCAL_WB_MODE_LEGACY_LOCKED
         elif len(a_wallbox_obj) > 0:
             _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'prohibitUsage' in {a_wallbox_obj}")
 
@@ -5132,22 +5138,22 @@ class SenecOnline:
             elif len(a_wallbox_obj) > 0:
                 _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'type' in {charging_mode_obj}")
 
-        return LOCAL_WB_MODE_UNKNOWN
+        return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
-    def _app_get_local_wallbox_mode_from_api_values(self, idx: int) -> str:
+    def _app_get_local_wallbox_mode_from_api_values_legacy(self, idx: int) -> str:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
 
         # step 1 checking the LOCK/UNLOCK state…
         if "prohibitUsage" in a_wallbox_obj:
             if a_wallbox_obj["prohibitUsage"]:
-                return LOCAL_WB_MODE_LOCKED
+                return LOCAL_WB_MODE_LEGACY_LOCKED
         elif len(a_wallbox_obj) > 0:
-            _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): no 'prohibitUsage' in {a_wallbox_obj}")
+            _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_legacy(): no 'prohibitUsage' in {a_wallbox_obj}")
 
         # step 2 checking the chargingMode…
-        return self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit(a_wallbox_obj)
+        return self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(a_wallbox_obj)
 
-    def _app_get_local_wallbox_mode_from_api_values_ignore_prohibit(self, a_wallbox_obj: dict) -> str:
+    def _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(self, a_wallbox_obj: dict) -> str:
         if a_wallbox_obj is not None and len(a_wallbox_obj) > 0:
             charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
             if "type" in charging_mode_obj:
@@ -5162,9 +5168,9 @@ class SenecOnline:
                         #     "allowIntercharge": false
                         # },
                         if charging_mode_obj.get("fastChargingSettings", {}).get("allowIntercharge", False):
-                            return LOCAL_WB_MODE_FAST_WITHBATTERY
+                            return LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY
                         else:
-                            return LOCAL_WB_MODE_FAST
+                            return LOCAL_WB_MODE_LEGACY_FAST
 
                     elif f_type == APP_API_WB_MODE_2025_SOLAR:
                         #optimized_3: "OPTIMIZED [continuous-charging]" - LADEUNTERBRECHUNG VERHINDERN EIN
@@ -5188,10 +5194,10 @@ class SenecOnline:
                         # in the SenecAPP (called 'Ladeunterbrechung verhindern') is OFF - this is beyond ANY logic!!!
                         if charging_mode_obj.get("solarOptimizeSettings", {}).get("preventInterruptions", False):
                             #_LOGGER.info(f"---- RETURN MODE 4 [FOUR]")
-                            return LOCAL_WB_MODE_SSGCM_4
+                            return LOCAL_WB_MODE_LEGACY_SSGCM_4
                         else:
                             #_LOGGER.info(f"---- RETURN MODE 3 [THREE]")
-                            return LOCAL_WB_MODE_SSGCM_3
+                            return LOCAL_WB_MODE_LEGACY_SSGCM_3
 
                     # only for P4/V4
                     elif f_type == APP_API_WB_MODE_2025_COMFORT:
@@ -5211,23 +5217,62 @@ class SenecOnline:
                         day_prevent_interruptions = the_comfort_charge_settings.get("preventInterruptions", False)
                         if night_allow_intercharge:
                             if day_prevent_interruptions:
-                                return LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON
+                                return LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_ON
                             else:
-                                return LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF
+                                return LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_OFF
                         else:
                             if day_prevent_interruptions:
-                                return LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON
+                                return LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_ON
                             else:
-                                return LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF
+                                return LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_OFF
 
                     else:
-                        _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+                        _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
                 else:
-                    _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): 'type' is None in {charging_mode_obj}")
+                    _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): 'type' is None in {charging_mode_obj}")
             elif len(a_wallbox_obj) > 0:
-                _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values(): no 'type' in {charging_mode_obj}")
+                _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): no 'type' in {charging_mode_obj}")
 
-        return LOCAL_WB_MODE_UNKNOWN
+        return LOCAL_WB_MODE_LEGACY_UNKNOWN
+
+    def _app_get_local_wallbox_mode_from_api_values_2026(self, idx: int) -> str:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
+
+        # step 1 checking the LOCK/UNLOCK state…
+        if "prohibitUsage" in a_wallbox_obj:
+            if a_wallbox_obj["prohibitUsage"]:
+                return LOCAL_WB_MODE_2026_LOCKED
+        elif len(a_wallbox_obj) > 0:
+            _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): no 'prohibitUsage' in {a_wallbox_obj}")
+
+        # step 2 checking the chargingMode…
+        return self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(a_wallbox_obj)
+
+    def _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(self, a_wallbox_obj: dict) -> str:
+        if a_wallbox_obj is not None and len(a_wallbox_obj) > 0:
+            charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+            if "type" in charging_mode_obj:
+                a_type = charging_mode_obj.get("type", None)
+                if a_type is not None:
+                    f_type = a_type.upper()
+                    if f_type == APP_API_WB_MODE_2025_FAST:
+                        return LOCAL_WB_MODE_2026_FAST
+
+                    elif f_type == APP_API_WB_MODE_2025_SOLAR:
+                        return LOCAL_WB_MODE_2026_SSGCM
+
+                    # only for P4/V4
+                    elif f_type == APP_API_WB_MODE_2025_COMFORT:
+                        return LOCAL_WB_MODE_2026_COMFORT
+
+                    else:
+                        _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+                else:
+                    _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): 'type' is None in {charging_mode_obj}")
+            elif len(a_wallbox_obj) > 0:
+                _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): no 'type' in {charging_mode_obj}")
+
+        return LOCAL_WB_MODE_2026_UNKNOWN
 
     async def app_update_all_wallboxes(self):
         _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
@@ -5250,16 +5295,16 @@ class SenecOnline:
         for idx in range(0, max_idx):
             self._app_raw_wallbox[idx] = data[idx]
 
-    async def app_set_wallbox_mode(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
-        _LOGGER.debug("***** APP-API: app_set_wallbox_mode(self) ********")
+    async def app_set_wallbox_mode_legacy(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
+        _LOGGER.debug("***** APP-API: app_set_wallbox_mode_legacy(self) ********")
         idx = wallbox_num - 1
         the_wb_obj = self._app_get_wallbox_object_at_index(idx)
         if len(the_wb_obj) == 0:
             return False
 
-        cur_local_mode = self._app_get_local_wallbox_mode_from_api_values(idx)
+        cur_local_mode = self._app_get_local_wallbox_mode_from_api_values_legacy(idx)
         if cur_local_mode == local_mode_to_set:
-            _LOGGER.debug(f"app_set_wallbox_mode(): skipp mode change since '{local_mode_to_set}' already set")
+            _LOGGER.debug(f"app_set_wallbox_mode_legacy(): skipp mode change since '{local_mode_to_set}' already set")
         else:
             # first check if we are initialized…
             if self.is_app_master_plant_id_none:
@@ -5275,7 +5320,7 @@ class SenecOnline:
                     the_current_charge_type = the_current_charge_type.upper()
 
                 # check if we switch to the LOCK mode
-                if local_mode_to_set == LOCAL_WB_MODE_LOCKED:
+                if local_mode_to_set == LOCAL_WB_MODE_LEGACY_LOCKED:
                     wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
                                                                    wb_uuid=the_wb_uuid,
                                                                    lc_lock_state="true")
@@ -5283,15 +5328,15 @@ class SenecOnline:
                     data = await self._app_do_get_request(wb_url, do_as_patch=True)
                     if data is not None:
                         self._app_set_wallbox_object_at_index(idx, data)
-                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
+                        _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
                         success = True
                     else:
-                        _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} LOCK FAILED")
+                        _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} LOCK FAILED")
                 else:
                     # when we switch to any other mode, we must check
                     # if we are currently locked - and if we are locked, we
                     # must unlock first
-                    if cur_local_mode == LOCAL_WB_MODE_LOCKED:
+                    if cur_local_mode == LOCAL_WB_MODE_LEGACY_LOCKED:
                         wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
                                                                        wb_uuid=the_wb_uuid,
                                                                        lc_lock_state="false")
@@ -5299,15 +5344,15 @@ class SenecOnline:
                         data = await self._app_do_get_request(wb_url, do_as_patch=True)
                         if data is not None:
                             self._app_set_wallbox_object_at_index(idx, data)
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
+                            _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
                         else:
-                            _LOGGER.debug(f"app_set_wallbox_mode(): set wallbox {wallbox_num} UNLOCK FAILED")
+                            _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} UNLOCK FAILED")
                             return False
 
                     # OK now the WALLBOX should be UNLOCKED...
 
                     # now setting the final mode…
-                    if local_mode_to_set in [LOCAL_WB_MODE_FAST_WITHBATTERY, LOCAL_WB_MODE_FAST]:
+                    if local_mode_to_set in [LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY, LOCAL_WB_MODE_LEGACY_FAST]:
                         # check if we first need to "push" the mode
                         if the_current_charge_type != APP_API_WB_MODE_2025_FAST:
                             if not await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_FAST):
@@ -5318,16 +5363,16 @@ class SenecOnline:
                         the_wb_obj = self._app_get_wallbox_object_at_index(idx)
                         current_allow_intercharge = the_wb_obj.get("chargingMode",{}).get("fastChargingSettings", {}).get("allowIntercharge", False)
 
-                        if local_mode_to_set == LOCAL_WB_MODE_FAST_WITHBATTERY and not current_allow_intercharge:
+                        if local_mode_to_set == LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY and not current_allow_intercharge:
                             the_post_data = {"allowIntercharge": True}
-                        elif local_mode_to_set == LOCAL_WB_MODE_FAST and current_allow_intercharge:
+                        elif local_mode_to_set == LOCAL_WB_MODE_LEGACY_FAST and current_allow_intercharge:
                             the_post_data = {"allowIntercharge": False}
 
                         if the_post_data is not None:
                             wb_url = self.APP_SET_WALLBOX_FAST_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
                             success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_FAST, wb_url, the_post_data)
 
-                    elif local_mode_to_set in [LOCAL_WB_MODE_SSGCM_3, LOCAL_WB_MODE_SSGCM_4]:
+                    elif local_mode_to_set in [LOCAL_WB_MODE_LEGACY_SSGCM_3, LOCAL_WB_MODE_LEGACY_SSGCM_4]:
                         #optimized_3: "OPTIMIZED [continuous-charging]" - LADEUNTERBRECHUNG VERHINDERN EIN
                         #optimized_4: "OPTIMIZED [allow charge-interruptions]"
 
@@ -5343,9 +5388,9 @@ class SenecOnline:
 
                         _LOGGER.info(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
 
-                        if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 and current_prevent_interruptions:
+                        if local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_3 and current_prevent_interruptions:
                             the_post_data = {"preventInterruptions": False}
-                        elif local_mode_to_set == LOCAL_WB_MODE_SSGCM_4 and not current_prevent_interruptions:
+                        elif local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_4 and not current_prevent_interruptions:
                             # TOTALLY SILLY - in the SenecAPP the TOGGLE/SWITCH called 'Ladeunterbrechung verhindern'
                             # will be shown as OFF, when the 'preventInterruptions' is set to 'True'
                             the_post_data = {"preventInterruptions": True}
@@ -5363,8 +5408,8 @@ class SenecOnline:
                             wb_url = self.APP_SET_WALLBOX_SOLAR_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
                             success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_SOLAR, wb_url, the_post_data)
 
-                    elif local_mode_to_set in [LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF,
-                                               LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_OFF]:
+                    elif local_mode_to_set in [LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_OFF,
+                                               LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_ON, LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_OFF]:
                         if the_current_charge_type != APP_API_WB_MODE_2025_COMFORT:
                             if not await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_COMFORT):
                                 return False
@@ -5380,8 +5425,8 @@ class SenecOnline:
                         current_allow_intercharge = the_comfort_charge_settings.get("allowIntercharge", False)
                         current_prevent_interruptions = the_comfort_charge_settings.get("preventInterruptions", False)
 
-                        new_allow_intercharge = local_mode_to_set in [LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_OFF]
-                        new_prevent_interruptions = local_mode_to_set in [LOCAL_WB_MODE_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_COMFORT_NIGHT_OFF_DAY_ON]
+                        new_allow_intercharge = local_mode_to_set in [LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_OFF]
+                        new_prevent_interruptions = local_mode_to_set in [LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_ON_DAY_ON, LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_ON]
 
                         if (current_allow_intercharge is not new_allow_intercharge) or (current_prevent_interruptions is not new_prevent_interruptions):
                             the_post_data = {
@@ -5407,7 +5452,7 @@ class SenecOnline:
                             success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_COMFORT, wb_url, the_post_data)
 
                     else:
-                        _LOGGER.info(f"app_set_wallbox_mode(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
+                        _LOGGER.info(f"app_set_wallbox_mode_legacy(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
 
                 if success and self._bridge_to_senec_local is not None:
                     # do we need to sync the value back to the 'lala_cgi' integration?
@@ -5420,7 +5465,7 @@ class SenecOnline:
                         # overall status of all the wallboxes is - since if NONE of them is the FASTWITHBATTERY,
                         # then we should disable the senec LOCAL 'allow_intercharge' flag - or enable it, if the
                         # "new" mode is LOCAL_WB_MODE_FASTWITHBATTERY
-                        if local_mode_to_set == LOCAL_WB_MODE_FAST_WITHBATTERY:
+                        if local_mode_to_set == LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY:
                             await asyncio.sleep(2)
                             await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=True, sync=False)
                         else:
@@ -5430,7 +5475,7 @@ class SenecOnline:
                             turn_allow_intercharge_off = True
                             for idx in range(0, self._app_wallbox_num_max):
                                 if self._app_wallbox_num_max > idx:
-                                    if self._app_get_local_wallbox_mode_from_api_values(idx=idx) == LOCAL_WB_MODE_FAST_WITHBATTERY:
+                                    if self._app_get_local_wallbox_mode_from_api_values_legacy(idx=idx) == LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY:
                                         turn_allow_intercharge_off = False
                                         break
                             if turn_allow_intercharge_off:
@@ -5439,9 +5484,9 @@ class SenecOnline:
 
                     # when we changed the mode, the backend might have automatically adjusted the
                     # 'chargingMode:solarOptimizeSettings:minChargingCurrentInA' so we need to sync
-                    # this possible change with the LaLa_cgi no matter, if the 'app_set_wallbox_mode'
+                    # this possible change with the LaLa_cgi no matter if the 'app_set_wallbox_mode_legacy'
                     # have been called with sync=False (or not)!!!
-                    if local_mode_to_set == LOCAL_WB_MODE_SSGCM_3 or local_mode_to_set == LOCAL_WB_MODE_SSGCM_4:
+                    if local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_3 or local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_4:
                         await asyncio.sleep(2)
                         await self.app_update_all_wallboxes()
 
@@ -5456,12 +5501,150 @@ class SenecOnline:
                                 cur_min_current = str(round(self._bridge_to_senec_local.wallbox_set_icmax[idx], 2))
 
                                 if cur_min_current != new_min_current:
-                                    _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                    _LOGGER.debug(f"app_set_wallbox_mode_legacy(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
                                     await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx,
                                                                                                 value=float(new_min_current),
                                                                                                 sync=False, verify_state=False)
                                 else:
-                                    _LOGGER.debug(f"app_set_wallbox_mode(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+                                    _LOGGER.debug(f"app_set_wallbox_mode_legacy(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+
+        return success
+
+    async def app_set_wallbox_mode_2026(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
+        _LOGGER.debug("***** APP-API: app_set_wallbox_mode_2026(self) ********")
+        idx = wallbox_num - 1
+        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+        if len(the_wb_obj) == 0:
+            return False
+
+        cur_local_mode = self._app_get_local_wallbox_mode_from_api_values_2026(idx)
+        if cur_local_mode == local_mode_to_set:
+            _LOGGER.debug(f"app_set_wallbox_mode_2026(): skipp mode change since '{local_mode_to_set}' already set")
+        else:
+            # first check if we are initialized…
+            if self.is_app_master_plant_id_none:
+                await self.app_get_master_plant_id()
+
+            success = False
+            if self._app_master_plant_id is not None:
+                # we will use now the uuid of the wallbox for all our requests... I have
+                # captured this 2026/2/1 with the support from Julian R.
+                the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+                the_current_charge_type = the_wb_obj.get("chargingMode", {}).get("type", None)
+                if the_current_charge_type is not None:
+                    the_current_charge_type = the_current_charge_type.upper()
+
+                # check if we switch to the LOCK mode
+                if local_mode_to_set == LOCAL_WB_MODE_2026_LOCKED:
+                    wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
+                                                                   wb_uuid=the_wb_uuid,
+                                                                   lc_lock_state="true")
+
+                    data = await self._app_do_get_request(wb_url, do_as_patch=True)
+                    if data is not None:
+                        self._app_set_wallbox_object_at_index(idx, data)
+                        _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
+                        success = True
+                    else:
+                        _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} LOCK FAILED")
+                else:
+                    # when we switch to any other mode, we must check
+                    # if we are currently locked - and if we are locked, we
+                    # must unlock first
+                    if cur_local_mode == LOCAL_WB_MODE_2026_LOCKED:
+                        wb_url = self.APP_SET_WALLBOX_LOCK_MODE.format(master_plant_id=str(self._app_master_plant_id),
+                                                                       wb_uuid=the_wb_uuid,
+                                                                       lc_lock_state="false")
+
+                        data = await self._app_do_get_request(wb_url, do_as_patch=True)
+                        if data is not None:
+                            self._app_set_wallbox_object_at_index(idx, data)
+                            _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
+                        else:
+                            _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} UNLOCK FAILED")
+                            return False
+
+                    # now setting the final mode…
+                    if local_mode_to_set == LOCAL_WB_MODE_2026_FAST:
+                        if the_current_charge_type != APP_API_WB_MODE_2025_FAST:
+                            if await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_FAST):
+                                success = True
+                            else:
+                                return False
+
+                    elif local_mode_to_set == LOCAL_WB_MODE_2026_SSGCM:
+                        if the_current_charge_type != APP_API_WB_MODE_2025_SOLAR:
+                            if await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_SOLAR):
+                                success = True
+                            else:
+                                return False
+
+                    elif local_mode_to_set == LOCAL_WB_MODE_2026_COMFORT:
+                        if the_current_charge_type != APP_API_WB_MODE_2025_COMFORT:
+                            if await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_COMFORT):
+                                success = True
+                            else:
+                                return False
+
+
+                    else:
+                        _LOGGER.info(f"app_set_wallbox_mode_2026(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
+
+                if success and self._bridge_to_senec_local is not None:
+                    # do we need to sync the value back to the 'lala_cgi' integration?
+                    if sync:
+                        local_mode_to_set_legacy = self._app_get_local_wallbox_mode_from_api_values_legacy(idx=idx)
+
+                        # since the '_set_wallbox_mode_post' method is not calling the APP-API again, there
+                        # is no sync=False parameter here…
+                        await self._bridge_to_senec_local.set_wallbox_mode_post_int(pos=idx, local_value=local_mode_to_set_legacy)
+
+                        # we check, if after the new wallbox mode for a single wallbox has been set, what the
+                        # overall status of all the wallboxes is - since if NONE of them is the FASTWITHBATTERY,
+                        # then we should disable the senec LOCAL 'allow_intercharge' flag - or enable it, if the
+                        # "new" mode is LOCAL_WB_MODE_FASTWITHBATTERY
+                        if local_mode_to_set_legacy == LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY:
+                            await asyncio.sleep(2)
+                            await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=True, sync=False)
+                        else:
+                            # when we set the mode to ANYTHING else, we must check if there is still ANY other WB in the
+                            # FASTWITHBATTERY mode, and IF this is NOT the case, THEN we MUST turn OFF at
+                            # senecLOCAL the 'allow_intercharge' flag...
+                            turn_allow_intercharge_off = True
+                            for idx in range(0, self._app_wallbox_num_max):
+                                if self._app_wallbox_num_max > idx:
+                                    if self._app_get_local_wallbox_mode_from_api_values_legacy(idx=idx) == LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY:
+                                        turn_allow_intercharge_off = False
+                                        break
+                            if turn_allow_intercharge_off:
+                                await asyncio.sleep(2)
+                                await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=False, sync=False)
+
+                    # when we changed the mode, the backend might have automatically adjusted the
+                    # 'chargingMode:solarOptimizeSettings:minChargingCurrentInA' so we need to sync
+                    # this possible change with the LaLa_cgi no matter if the 'app_set_wallbox_mode'
+                    # have been called with sync=False (or not)!!!
+                    if local_mode_to_set_legacy == LOCAL_WB_MODE_LEGACY_SSGCM_3 or local_mode_to_set_legacy == LOCAL_WB_MODE_LEGACY_SSGCM_4:
+                        await asyncio.sleep(2)
+                        await self.app_update_all_wallboxes()
+
+                        a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
+                        a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
+                        a_charging_mode_type = a_charging_mode_obj.get("type", None)
+                        if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
+                            a_solar_settings_obj = a_charging_mode_obj.get("solarOptimizeSettings", {})
+                            min_charging_current_in_a_value = a_solar_settings_obj.get("minChargingCurrentInA", None)
+                            if min_charging_current_in_a_value is not None:
+                                new_min_current = str(round(float(min_charging_current_in_a_value), 2))
+                                cur_min_current = str(round(self._bridge_to_senec_local.wallbox_set_icmax[idx], 2))
+
+                                if cur_min_current != new_min_current:
+                                    _LOGGER.debug(f"app_set_wallbox_mode_2026(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                    await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx,
+                                                                                                value=float(new_min_current),
+                                                                                                sync=False, verify_state=False)
+                                else:
+                                    _LOGGER.debug(f"app_set_wallbox_mode_2026(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
 
         return success
 
@@ -5564,11 +5747,77 @@ class SenecOnline:
             if self._app_wallbox_num_max > idx:
                 if self._app_get_webapi_wallbox_mode(idx=idx) == APP_API_WB_MODE_2025_FAST:
                     if value_to_set:
-                        res = res and await self.app_set_wallbox_mode(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_FAST_WITHBATTERY, sync=False)
+                        res = res and await self.app_set_wallbox_mode_legacy(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY, sync=False)
                     else:
-                        res = res and await self.app_set_wallbox_mode(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_FAST, sync=False)
+                        res = res and await self.app_set_wallbox_mode_legacy(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_LEGACY_FAST, sync=False)
         return res
 
+    @staticmethod
+    def app_static_availability_get_wallbox_obj(data: dict[str, Any], idx:int):
+        if "wallbox" in data:
+            _app_raw_wallbox = data["wallbox"]
+            if _app_raw_wallbox is not None and len(_app_raw_wallbox) > idx:
+                a_wallbox_obj = _app_raw_wallbox[idx]
+                if a_wallbox_obj is not None and isinstance(a_wallbox_obj, dict):
+                    return a_wallbox_obj
+        return None
+
+    @staticmethod
+    def app_availability_check_wallbox_mode(data: dict[str, Any], idx:int, mode:str):
+        a_wallbox_obj = SenecOnline.app_static_availability_get_wallbox_obj(data, idx)
+        if a_wallbox_obj is not None:
+            if not a_wallbox_obj.get("prohibitUsage", True):
+                if a_wallbox_obj.get("chargingMode", {}).get("type", None) == mode:
+                    return True
+        return False
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_COMFORT)
 
     """MEIN-SENEC.DE from here"""
     async def web_authenticate(self, do_update:bool=False, throw401:bool=False):
@@ -6669,9 +6918,11 @@ class SenecOnline:
             return {
                 "json": a_wallbox_obj,
                 "modes": {
-                    "integration":  self._app_get_local_wallbox_mode_from_api_values(idx),
-                    "senec":        self._app_get_webapi_wallbox_mode_ignore_prohibit(a_wallbox_obj),
-                    "restore":      self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit(a_wallbox_obj),
+                    "senec": self._app_get_webapi_wallbox_mode_ignore_prohibit(a_wallbox_obj),
+                    "integration": self._app_get_local_wallbox_mode_from_api_values_2026(idx),
+                    "restore": self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(a_wallbox_obj),
+                    "integration_legacy": self._app_get_local_wallbox_mode_from_api_values_legacy(idx),
+                    "restore_legacy": self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(a_wallbox_obj),
                 }
             }
         return None
@@ -6708,10 +6959,17 @@ class SenecOnline:
 
     @property
     def wallbox_1_mode(self) -> float:
-        return self._app_get_local_wallbox_mode_from_api_values(idx=0)
+        return self._app_get_local_wallbox_mode_from_api_values_2026(idx=0)
 
     async def set_string_value_wallbox_1_mode(self, value: str) -> bool:
-        return await self.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=1, sync=True)
+        return await self.app_set_wallbox_mode_2026(local_mode_to_set=value, wallbox_num=1, sync=True)
+
+    @property
+    def wallbox_1_mode_legacy(self) -> float:
+        return self._app_get_local_wallbox_mode_from_api_values_legacy(idx=0)
+
+    async def set_string_value_wallbox_1_mode_legacy(self, value: str) -> bool:
+        return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=1, sync=True)
 
     @property
     def wallbox_1_set_icmax(self) -> float:
@@ -6754,10 +7012,17 @@ class SenecOnline:
 
     @property
     def wallbox_2_mode(self) -> float:
-        return self._app_get_local_wallbox_mode_from_api_values(idx=1)
+        return self._app_get_local_wallbox_mode_from_api_values_2026(idx=1)
 
     async def set_string_value_wallbox_2_mode(self, value: str) -> bool:
-        return await self.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=2, sync=True)
+        return await self.app_set_wallbox_mode_2026(local_mode_to_set=value, wallbox_num=2, sync=True)
+
+    @property
+    def wallbox_2_mode_legacy(self) -> float:
+        return self._app_get_local_wallbox_mode_from_api_values_legacy(idx=1)
+
+    async def set_string_value_wallbox_2_mode_legacy(self, value: str) -> bool:
+        return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=2, sync=True)
 
     @property
     def wallbox_2_set_icmax(self) -> float:
@@ -6800,10 +7065,17 @@ class SenecOnline:
 
     @property
     def wallbox_3_mode(self) -> float:
-        return self._app_get_local_wallbox_mode_from_api_values(idx=2)
+        return self._app_get_local_wallbox_mode_from_api_values_2026(idx=2)
 
     async def set_string_value_wallbox_3_mode(self, value: str) -> bool:
-        return await self.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=3, sync=True)
+        return await self.app_set_wallbox_mode_2026(local_mode_to_set=value, wallbox_num=3, sync=True)
+
+    @property
+    def wallbox_3_mode_legacy(self) -> float:
+        return self._app_get_local_wallbox_mode_from_api_values_legacy(idx=2)
+
+    async def set_string_value_wallbox_3_mode_legacy(self, value: str) -> bool:
+        return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=3, sync=True)
 
     @property
     def wallbox_3_set_icmax(self) -> float:
@@ -6846,10 +7118,17 @@ class SenecOnline:
 
     @property
     def wallbox_4_mode(self) -> float:
-        return self._app_get_local_wallbox_mode_from_api_values(idx=3)
+        return self._app_get_local_wallbox_mode_from_api_values_2026(idx=3)
 
     async def set_string_value_wallbox_4_mode(self, value: str) -> bool:
-        return await self.app_set_wallbox_mode(local_mode_to_set=value, wallbox_num=4, sync=True)
+        return await self.app_set_wallbox_mode_2026(local_mode_to_set=value, wallbox_num=4, sync=True)
+
+    @property
+    def wallbox_4_mode_legacy(self) -> float:
+        return self._app_get_local_wallbox_mode_from_api_values_legacy(idx=3)
+
+    async def set_string_value_wallbox_4_mode_legacy(self, value: str) -> bool:
+        return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=4, sync=True)
 
     @property
     def wallbox_4_set_icmax(self) -> float:

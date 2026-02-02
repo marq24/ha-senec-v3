@@ -9,7 +9,6 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import (
     DOMAIN,
@@ -58,7 +57,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         title = self.coordinator._config_entry.title
         key = self.entity_description.key.lower()
         name = self.entity_description.name
-        self.entity_id = f"switch.{slugify(title)}_{key}"
+        self.entity_id = f"switch.{slugify(title)}_{key}".lower()
         self._attr_icon = self.entity_description.icon
         self._attr_icon_off = self.entity_description.icon_off
 
@@ -66,6 +65,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
         self._attr_translation_key = key
         self._attr_has_entity_name = True
+
 
     async def async_turn_on(self, **kwargs):  # pylint: disable=unused-argument
         """Turn on the switch."""
@@ -144,3 +144,10 @@ class SenecSwitch(SenecEntity, SwitchEntity):
             return self._attr_icon_off
         else:
             return self._attr_icon
+
+    @property
+    def available(self):
+        ret = super().available()
+        if self.entity_description.availability_check is not None:
+            ret = ret and self.entity_description.availability_check(self.coordinator.data)
+        return ret

@@ -79,7 +79,7 @@ class SenecNumber(SenecEntity, NumberEntity):
         title = self.coordinator._config_entry.title
         key = self.entity_description.key.lower()
         name = self.entity_description.name
-        self.entity_id = f"number.{slugify(title)}_{key}"
+        self.entity_id = f"number.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
         # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!

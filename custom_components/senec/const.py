@@ -1,7 +1,8 @@
 """Constants for the Senec integration."""
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, Any, Callable
 
+from custom_components.senec import SenecOnline
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BAT1,
     SENEC_SECTION_BMS,
@@ -13,7 +14,8 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_STATISTIC,
     SENEC_SECTION_SOCKETS,
     SENEC_SECTION_WALLBOX,
-    WALLBOX_CHARGING_MODES,
+    WALLBOX_CHARGING_MODES_LEGACY,
+    WALLBOX_CHARGING_MODES_2026,
     UPDATE_INTERVAL_OPTIONS
 )
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
@@ -186,6 +188,7 @@ class ExtSwitchEntityDescription(SwitchEntityDescription):
     inverted: bool = False
     icon_off: str | None = None
     require_2408: bool = False
+    availability_check: Callable[[dict[str, Any]], Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -942,6 +945,14 @@ WEB_SWITCH_TYPES = [
     #     icon="mdi:battery",
     #     icon_off="mdi:battery-off",
     # ),
+
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_mode_fast_battery_support",
+        name="SGReady",
+        icon="mdi:toggle-switch",
+        availability_check=SenecOnline.app_availability_check_wallbox_1_fast_battery_support
+    ),
 ]
 
 WEB_BUTTON_TYPES =[
@@ -965,13 +976,50 @@ WEB_SELECT_TYPES = [
         controls=["local_persistence", "restore_from_local_persistence"],
         entity_registry_enabled_default=True,
     ),
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_mode_legacy",
+        name="Wallbox I legacy charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_mode_legacy",
+        name="Wallbox II legacy charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_mode_legacy",
+        name="Wallbox III legacy charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
+    ExtSelectEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_mode_legacy",
+        name="Wallbox IV legacy charging mode",
+        icon="mdi:toggle-switch",
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
+        controls=["local_persistence"],
+        update_after_switch_delay_in_sec=2,
+    ),
 
+    # the new wallbox stuff from here...
     ExtSelectEntityDescription(
         entity_registry_enabled_default=False,
         key="wallbox_1_mode",
         name="Wallbox I charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_2026.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
@@ -980,7 +1028,7 @@ WEB_SELECT_TYPES = [
         key="wallbox_2_mode",
         name="Wallbox II charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_2026.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
@@ -989,7 +1037,7 @@ WEB_SELECT_TYPES = [
         key="wallbox_3_mode",
         name="Wallbox III charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_2026.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
@@ -998,7 +1046,7 @@ WEB_SELECT_TYPES = [
         key="wallbox_4_mode",
         name="Wallbox IV charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_2026.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
@@ -1828,7 +1876,7 @@ MAIN_SELECT_TYPES = [
         key="wallbox_1_mode",
         name="Wallbox I charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
@@ -1838,7 +1886,7 @@ MAIN_SELECT_TYPES = [
         key="wallbox_2_mode",
         name="Wallbox II charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
@@ -1848,7 +1896,7 @@ MAIN_SELECT_TYPES = [
         key="wallbox_3_mode",
         name="Wallbox III charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
@@ -1858,7 +1906,7 @@ MAIN_SELECT_TYPES = [
         key="wallbox_4_mode",
         name="Wallbox IV charging mode",
         icon="mdi:toggle-switch",
-        options=list(WALLBOX_CHARGING_MODES.values()),
+        options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
         controls=["local_persistence"],
         update_after_switch_delay_in_sec=2,
     ),
