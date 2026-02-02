@@ -17,7 +17,7 @@ from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
 from pathlib import Path
 from time import time, strftime, localtime
-from typing import Final, Iterable, Any
+from typing import Final, Iterable
 from urllib.parse import quote, urlparse, parse_qs
 
 import aiohttp
@@ -2242,27 +2242,34 @@ class SenecLocal:
                 return self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1
 
     async def switch_wallbox_allow_intercharge(self, value: bool, sync: bool = True):
-        # BEFORE we can/should switch 'allow_intercharge' we MUST check
-        # if ONE of the active WB's are set to the MODE FAST/FASTWITHBATTERY?!
-        if sync and self._bridge_to_senec_online is not None:
-            if not self._bridge_to_senec_online.app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode():
-                _LOGGER.warning(f"switch_wallbox_allow_intercharge(): can NOT switch 'allow_intercharge' {value}, since no WB's is in FAST mode!")
-                return False
-
-        # please note this is not ARRAY data - so we code it here again…
-        self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"VALUE": value})
-        self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"TS": time()})
-        post_data = {}
-        if (value):
-            self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 1
-            post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_01"}}
+        # WE must check if the lala ALLOW_INTERCHARGE is already in the state,
+        # that will be requested to set!!!
+        if value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1:
+            _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN ON, since it's already ON")
+        elif not value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 0:
+            _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN OFF, since it's already OFF")
         else:
-            self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 0
-            post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_00"}}
+            # BEFORE we can/should switch 'allow_intercharge' we MUST check
+            # if ONE of the active WB's are set to the MODE FAST/FASTWITHBATTERY?!
+            if sync and self._bridge_to_senec_online is not None:
+                if not self._bridge_to_senec_online.app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode():
+                    _LOGGER.warning(f"switch_wallbox_allow_intercharge(): can NOT switch 'allow_intercharge' {value}, since no WB's is in FAST mode!")
+                    return False
 
-        # 2026/01/17: WHEN we set the allow_intercharge flag locally ON at the senec system, then IMHO
-        # we must ALSO adjust ALL wallbox-modes to FAST! ?!
-        await self._write(post_data)
+            # please note this is not ARRAY data - so we code it here again…
+            self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"VALUE": value})
+            self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"TS": time()})
+            post_data = {}
+            if (value):
+                self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 1
+                post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_01"}}
+            else:
+                self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 0
+                post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_00"}}
+
+            # 2026/01/17: WHEN we set the allow_intercharge flag locally ON at the senec system, then IMHO
+            # we must ALSO adjust ALL wallbox-modes to FAST! ?!
+            await self._write(post_data)
 
         if sync and self._bridge_to_senec_online is not None:
             # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting… so we need to push
@@ -5295,6 +5302,9 @@ class SenecOnline:
         for idx in range(0, max_idx):
             self._app_raw_wallbox[idx] = data[idx]
 
+
+
+
     async def app_set_wallbox_mode_legacy(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_mode_legacy(self) ********")
         idx = wallbox_num - 1
@@ -5586,7 +5596,6 @@ class SenecOnline:
                             else:
                                 return False
 
-
                     else:
                         _LOGGER.info(f"app_set_wallbox_mode_2026(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
 
@@ -5608,15 +5617,15 @@ class SenecOnline:
                             await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=True, sync=False)
                         else:
                             # when we set the mode to ANYTHING else, we must check if there is still ANY other WB in the
-                            # FASTWITHBATTERY mode, and IF this is NOT the case, THEN we MUST turn OFF at
+                            # FAST_WITHBATTERY mode, and IF this is NOT the case, THEN we MUST turn OFF at
                             # senecLOCAL the 'allow_intercharge' flag...
-                            turn_allow_intercharge_off = True
+                            turn_off_allow_intercharge_at_local_senec = True
                             for idx in range(0, self._app_wallbox_num_max):
                                 if self._app_wallbox_num_max > idx:
                                     if self._app_get_local_wallbox_mode_from_api_values_legacy(idx=idx) == LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY:
-                                        turn_allow_intercharge_off = False
+                                        turn_off_allow_intercharge_at_local_senec = False
                                         break
-                            if turn_allow_intercharge_off:
+                            if turn_off_allow_intercharge_at_local_senec:
                                 await asyncio.sleep(2)
                                 await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=False, sync=False)
 
@@ -5647,6 +5656,9 @@ class SenecOnline:
                                     _LOGGER.debug(f"app_set_wallbox_mode_2026(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
 
         return success
+
+
+
 
     async def app_switch_wallbox_mode(self, idx:int, wallbox_num:int, the_wb_uuid:str, mode:str):
         _LOGGER.debug("***** APP-API: app_switch_wallbox_mode(self) ********")
@@ -5681,6 +5693,265 @@ class SenecOnline:
 
         except BaseException as ex:
             _LOGGER.error(f"app_update_wallbox_mode_setting(): Exception: {type(ex).__name__} - {ex}")
+
+        return False
+
+
+
+
+
+
+    @property
+    def wallbox_1_fast_battery_supported(self) -> bool:
+        return self.app_wallbox_fast_battery_supported(0)
+
+    async def switch_wallbox_1_fast_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_fast_battery_supported(enabled, 0)
+
+    @property
+    def wallbox_1_optimized_continuous_loading(self) -> bool:
+        return self.app_wallbox_optimized_continuous_loading(0)
+
+    async def switch_wallbox_1_optimized_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_optimized_continuous_loading(enabled, 0)
+
+    @property
+    def wallbox_1_comfort_battery_supported(self) -> bool:
+        return self.app_wallbox_comfort_battery_supported(0)
+
+    async def switch_wallbox_1_comfort_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_battery_supported(enabled, 0)
+
+    @property
+    def wallbox_1_comfort_continuous_loading(self) -> bool:
+        return self.app_wallbox_comfort_continuous_loading(0)
+
+    async def switch_wallbox_1_comfort_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_continuous_loading(enabled, 0)
+
+
+
+
+    @property
+    def wallbox_2_fast_battery_supported(self) -> bool:
+        return self.app_wallbox_fast_battery_supported(1)
+
+    async def switch_wallbox_2_fast_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_fast_battery_supported(enabled, 1)
+
+    @property
+    def wallbox_2_optimized_continuous_loading(self) -> bool:
+        return self.app_wallbox_optimized_continuous_loading(1)
+
+    async def switch_wallbox_2_optimized_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_optimized_continuous_loading(enabled, 1)
+
+    @property
+    def wallbox_2_comfort_battery_supported(self) -> bool:
+        return self.app_wallbox_comfort_battery_supported(1)
+
+    async def switch_wallbox_2_comfort_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_battery_supported(enabled, 1)
+
+    @property
+    def wallbox_2_comfort_continuous_loading(self) -> bool:
+        return self.app_wallbox_comfort_continuous_loading(1)
+
+    async def switch_wallbox_2_comfort_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_continuous_loading(enabled, 1)
+
+
+
+    @property
+    def wallbox_3_fast_battery_supported(self) -> bool:
+        return self.app_wallbox_fast_battery_supported(2)
+
+    async def switch_wallbox_3_fast_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_fast_battery_supported(enabled, 2)
+
+    @property
+    def wallbox_3_optimized_continuous_loading(self) -> bool:
+        return self.app_wallbox_optimized_continuous_loading(2)
+
+    async def switch_wallbox_3_optimized_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_optimized_continuous_loading(enabled, 2)
+
+    @property
+    def wallbox_3_comfort_battery_supported(self) -> bool:
+        return self.app_wallbox_comfort_battery_supported(2)
+
+    async def switch_wallbox_3_comfort_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_battery_supported(enabled, 2)
+
+    @property
+    def wallbox_3_comfort_continuous_loading(self) -> bool:
+        return self.app_wallbox_comfort_continuous_loading(2)
+
+    async def switch_wallbox_3_comfort_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_continuous_loading(enabled, 2)
+
+
+
+    @property
+    def wallbox_4_fast_battery_supported(self) -> bool:
+        return self.app_wallbox_fast_battery_supported(3)
+
+    async def switch_wallbox_4_fast_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_fast_battery_supported(enabled, 3)
+
+    @property
+    def wallbox_4_optimized_continuous_loading(self) -> bool:
+        return self.app_wallbox_optimized_continuous_loading(3)
+
+    async def switch_wallbox_4_optimized_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_optimized_continuous_loading(enabled, 3)
+
+    @property
+    def wallbox_4_comfort_battery_supported(self) -> bool:
+        return self.app_wallbox_comfort_battery_supported(3)
+
+    async def switch_wallbox_4_comfort_battery_supported(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_battery_supported(enabled, 3)
+
+    @property
+    def wallbox_4_comfort_continuous_loading(self) -> bool:
+        return self.app_wallbox_comfort_continuous_loading(3)
+
+    async def switch_wallbox_4_comfort_continuous_loading(self, enabled: bool) -> bool:
+        return await self.app_switch_wallbox_comfort_continuous_loading(enabled, 3)
+
+
+
+
+
+
+
+
+
+
+    def app_wallbox_fast_battery_supported(self, idx:int) -> bool:
+        return self._app_get_wallbox_object_at_index(idx).get("chargingMode",{}).get("fastChargingSettings", {}).get("allowIntercharge", False)
+
+    async def app_switch_wallbox_fast_battery_supported(self, enabled: bool, idx:int) -> bool:
+        wallbox_num = idx+1
+        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+        current_allow_intercharge = the_wb_obj.get("chargingMode",{}).get("fastChargingSettings", {}).get("allowIntercharge", False)
+        if len(the_wb_obj) > 0 and current_allow_intercharge != enabled:
+            the_post_data = {"allowIntercharge": enabled}
+            the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+            wb_url = self.APP_SET_WALLBOX_FAST_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+            success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_FAST, wb_url, the_post_data)
+
+            # do local sync stuff (if needed)
+            if success and self._bridge_to_senec_local is not None:
+                await asyncio.sleep(2)
+                if enabled:
+                    # if we switch this on for a WALLBOX then the lala allowIntercharge must be turned ON...
+                    await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=True, sync=False)
+                else:
+                    # if this is the last wb, that has allowIntercharge enabled, we must
+                    # switch off the lala allowIntercharge flag...
+                    
+                    turn_off_allow_intercharge_at_local_senec = True
+                    for idx in range(0, self._app_wallbox_num_max):
+                        if self._app_wallbox_num_max > idx:
+                            if self._app_get_local_wallbox_mode_from_api_values_2026(idx=idx) == LOCAL_WB_MODE_2026_FAST:
+                                if self.app_wallbox_fast_battery_supported(idx=idx):
+                                    turn_off_allow_intercharge_at_local_senec = False
+                                    break
+
+                    if turn_off_allow_intercharge_at_local_senec:
+                        await self._bridge_to_senec_local.switch_wallbox_allow_intercharge(value=False, sync=False)
+            return success
+
+        return False
+
+    def app_wallbox_optimized_continuous_loading(self, idx:int) -> bool:
+        return not self._app_get_wallbox_object_at_index(idx).get("chargingMode",{}).get("solarOptimizeSettings", {}).get("preventInterruptions", False)
+
+    async def app_switch_wallbox_optimized_continuous_loading(self, enabled: bool, idx:int) -> bool:
+        # this have the INVERTED logic!!!
+
+        wallbox_num = idx+1
+        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+        the_solar_optimize_settings = the_wb_obj.get("chargingMode",{}).get("solarOptimizeSettings", {})
+        current_prevent_interruptions = not the_solar_optimize_settings.get("preventInterruptions", False)
+        current_compatibility_mode = the_solar_optimize_settings.get("compatibilityMode", False)
+        if len(the_wb_obj) > 0 and current_prevent_interruptions != enabled:
+
+            _LOGGER.info(f"---- continue with mode SOLAR for wallbox {wallbox_num} - preventInterruptions: {(not current_prevent_interruptions)} compatibilityMode: {current_compatibility_mode}")
+
+            the_post_data = {"preventInterruptions": not enabled}
+
+            _LOGGER.info(f"---- continue with mode SOLAR for wallbox {wallbox_num} -> {the_post_data}")
+
+            # we need to copy over the other post data value(s)...
+            for a_field in ["minChargingCurrentInA", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                a_value = the_solar_optimize_settings.get(a_field, None)
+                if a_value is not None:
+                    the_post_data[a_field] = a_value
+
+            the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+            wb_url = self.APP_SET_WALLBOX_SOLAR_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+            success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_SOLAR, wb_url, the_post_data)
+
+            return success
+
+        return False
+
+    def app_wallbox_comfort_battery_supported(self, idx:int) -> bool:
+        return self._app_get_wallbox_object_at_index(idx).get("chargingMode",{}).get("comfortChargeSettings", {}).get("allowIntercharge", False)
+
+    async def app_switch_wallbox_comfort_battery_supported(self, enabled: bool, idx:int) -> bool:
+        wallbox_num = idx+1
+        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+        current_allow_intercharge = the_wb_obj.get("chargingMode",{}).get("comfortChargeSettings", {}).get("allowIntercharge", False)
+        if len(the_wb_obj) > 0 and current_allow_intercharge != enabled:
+            the_comfort_charge_settings = the_wb_obj.get("chargingMode",{}).get("comfortChargeSettings", {})
+            the_post_data = {
+                "allowIntercharge": enabled,
+            }
+            # for whatever reason, the `comfortChargeSettings` does not have a `minChargingCurrentInA`
+            # attribute, so we use the `configuredChargingCurrent`
+            the_post_data["minChargingCurrentInA"] = the_comfort_charge_settings.get("configuredChargingCurrent", 6.0)
+            for a_field in ["preventInterruptions", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                a_value = the_comfort_charge_settings.get(a_field, None)
+                if a_value is not None:
+                    the_post_data[a_field] = a_value
+
+            # setting COMFORT mode
+            the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+            wb_url = self.APP_SET_WALLBOX_COMFORT_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+            success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_COMFORT, wb_url, the_post_data)
+            return success
+
+        return False
+
+    def app_wallbox_comfort_continuous_loading(self, idx:int) -> bool:
+        return self._app_get_wallbox_object_at_index(idx).get("chargingMode",{}).get("comfortChargeSettings", {}).get("preventInterruptions", False)
+
+    async def app_switch_wallbox_comfort_continuous_loading(self, enabled: bool, idx:int) -> bool:
+        wallbox_num = idx+1
+        the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+        current_prevent_interruptions = the_wb_obj.get("chargingMode",{}).get("comfortChargeSettings", {}).get("preventInterruptions", False)
+        if len(the_wb_obj) > 0 and current_prevent_interruptions != enabled:
+            the_comfort_charge_settings = the_wb_obj.get("chargingMode",{}).get("comfortChargeSettings", {})
+            the_post_data = {
+                "preventInterruptions": enabled,
+            }
+            # for whatever reason, the `comfortChargeSettings` does not have a `minChargingCurrentInA`
+            # attribute, so we use the `configuredChargingCurrent`
+            the_post_data["minChargingCurrentInA"] = the_comfort_charge_settings.get("configuredChargingCurrent", 6.0)
+            for a_field in ["allowIntercharge", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                a_value = the_comfort_charge_settings.get(a_field, None)
+                if a_value is not None:
+                    the_post_data[a_field] = a_value
+
+            # setting COMFORT mode
+            the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+            wb_url = self.APP_SET_WALLBOX_COMFORT_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+            success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_COMFORT, wb_url, the_post_data)
+            return success
 
         return False
 
@@ -5722,7 +5993,6 @@ class SenecOnline:
             else:
                 _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR, so we cannot set 'minChargingCurrentInA' - current mode: '{a_charging_mode_type}' - wallbox object: {a_wallbox_obj}")
 
-
             if success:
                 # do we need to sync the value back to the 'lala_cgi' integration?
                 if sync and self._bridge_to_senec_local is not None:
@@ -5752,72 +6022,6 @@ class SenecOnline:
                         res = res and await self.app_set_wallbox_mode_legacy(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_LEGACY_FAST, sync=False)
         return res
 
-    @staticmethod
-    def app_static_availability_get_wallbox_obj(data: dict[str, Any], idx:int):
-        if "wallbox" in data:
-            _app_raw_wallbox = data["wallbox"]
-            if _app_raw_wallbox is not None and len(_app_raw_wallbox) > idx:
-                a_wallbox_obj = _app_raw_wallbox[idx]
-                if a_wallbox_obj is not None and isinstance(a_wallbox_obj, dict):
-                    return a_wallbox_obj
-        return None
-
-    @staticmethod
-    def app_availability_check_wallbox_mode(data: dict[str, Any], idx:int, mode:str):
-        a_wallbox_obj = SenecOnline.app_static_availability_get_wallbox_obj(data, idx)
-        if a_wallbox_obj is not None:
-            if not a_wallbox_obj.get("prohibitUsage", True):
-                if a_wallbox_obj.get("chargingMode", {}).get("type", None) == mode:
-                    return True
-        return False
-
-    @staticmethod
-    def app_availability_check_wallbox_1_is_fast(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_FAST)
-
-    @staticmethod
-    def app_availability_check_wallbox_2_is_fast(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_FAST)
-
-    @staticmethod
-    def app_availability_check_wallbox_3_is_fast(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_FAST)
-
-    @staticmethod
-    def app_availability_check_wallbox_4_is_fast(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_FAST)
-
-    @staticmethod
-    def app_availability_check_wallbox_1_is_solar(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_SOLAR)
-
-    @staticmethod
-    def app_availability_check_wallbox_2_is_solar(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_SOLAR)
-
-    @staticmethod
-    def app_availability_check_wallbox_3_is_solar(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_SOLAR)
-
-    @staticmethod
-    def app_availability_check_wallbox_4_is_solar(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_SOLAR)
-
-    @staticmethod
-    def app_availability_check_wallbox_1_is_comfort(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_COMFORT)
-
-    @staticmethod
-    def app_availability_check_wallbox_2_is_comfort(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_COMFORT)
-
-    @staticmethod
-    def app_availability_check_wallbox_3_is_comfort(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_COMFORT)
-
-    @staticmethod
-    def app_availability_check_wallbox_4_is_comfort(data: dict[str, Any]):
-        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_COMFORT)
 
     """MEIN-SENEC.DE from here"""
     async def web_authenticate(self, do_update:bool=False, throw401:bool=False):

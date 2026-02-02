@@ -146,36 +146,32 @@
   },
   "entity": {
     "switch": {
-      "safe_charge": {
-        "name": "Akku Volladung"
-      },
-      "li_storage_mode": {
-        "name": "Lithium Storage Mode - PV OFF"
-      },
-      "wallbox_allow_intercharge": {
-        "name": "Wallbox aus Speicher laden"
-      },
-      "sockets_1_force_on": {
-        "name": "Kontakt1 permanent ein"
-      },
-      "sockets_2_force_on": {
-        "name": "Kontakt2 permanent ein"
-      },
-      "sockets_1_enable": {
-        "name": "Kontakt1 Automatik aktiviert"
-      },
-      "sockets_2_enable": {
-        "name": "Kontakt2 Automatik aktiviert"
-      },
-      "sockets_1_use_time": {
-        "name": "Kontakt1 Schaltzeit aktivieren"
-      },
-      "sockets_2_use_time": {
-        "name": "Kontakt2 Schaltzeit aktivieren"
-      },
-      "sgready_enabled": {
-        "name": "SGReady"
-      }
+      "safe_charge": {"name": "Akku Volladung"},
+      "li_storage_mode": {"name": "Lithium Storage Mode - PV OFF"},
+      "wallbox_allow_intercharge": {"name": "Wallbox aus Speicher laden"},
+      "sockets_1_force_on": {"name": "Kontakt1 permanent ein"},
+      "sockets_2_force_on": {"name": "Kontakt2 permanent ein"},
+      "sockets_1_enable": {"name": "Kontakt1 Automatik aktiviert"},
+      "sockets_2_enable": {"name": "Kontakt2 Automatik aktiviert"},
+      "sockets_1_use_time": {"name": "Kontakt1 Schaltzeit aktivieren"},
+      "sockets_2_use_time": {"name": "Kontakt2 Schaltzeit aktivieren"},
+      "sgready_enabled": {"name": "SGReady"},
+      "wallbox_1_fast_battery_supported":       {"name": "Wallbox I Schnell: Laden aus Batterie"},
+      "wallbox_1_optimized_continuous_loading": {"name": "Wallbox I Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_1_comfort_battery_supported":    {"name": "Wallbox I Komfort Nachts: Laden aus Batterie"},
+      "wallbox_1_comfort_continuous_loading":   {"name": "Wallbox I Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_2_fast_battery_supported":       {"name": "Wallbox II Schnell: Laden aus Batterie"},
+      "wallbox_2_optimized_continuous_loading": {"name": "Wallbox II Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_2_comfort_battery_supported":    {"name": "Wallbox II Komfort Nachts: Laden aus Batterie"},
+      "wallbox_2_comfort_continuous_loading":   {"name": "Wallbox II Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_3_fast_battery_supported":       {"name": "Wallbox III Schnell: Laden aus Batterie"},
+      "wallbox_3_optimized_continuous_loading": {"name": "Wallbox III Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_3_comfort_battery_supported":    {"name": "Wallbox III Komfort Nachts: Laden aus Batterie"},
+      "wallbox_3_comfort_continuous_loading":   {"name": "Wallbox III Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_4_fast_battery_supported":       {"name": "Wallbox IV Schnell: Laden aus Batterie"},
+      "wallbox_4_optimized_continuous_loading": {"name": "Wallbox IV Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_4_comfort_battery_supported":    {"name": "Wallbox IV Komfort Nachts: Laden aus Batterie"},
+      "wallbox_4_comfort_continuous_loading":   {"name": "Wallbox IV Komfort Tags: Kontinuierliches Laden"}
     },
     "select": {
       "wallbox_1_mode_legacy": {

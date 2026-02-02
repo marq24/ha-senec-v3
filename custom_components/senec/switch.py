@@ -147,7 +147,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
 
     @property
     def available(self):
-        ret = super().available()
-        if self.entity_description.availability_check is not None:
+        ret = super().available
+        if hasattr(self.entity_description, "availability_check") and self.entity_description.availability_check is not None:
             ret = ret and self.entity_description.availability_check(self.coordinator.data)
         return ret

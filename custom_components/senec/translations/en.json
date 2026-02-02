@@ -133,36 +133,32 @@
   },
   "entity": {
     "switch": {
-      "safe_charge": {
-        "name": "Load Battery"
-      },
-      "li_storage_mode": {
-        "name": "Lithium Storage Mode - PV OFF"
-      },
-      "wallbox_allow_intercharge": {
-        "name": "Wallbox load from battery"
-      },
-      "sockets_1_force_on": {
-        "name": "Socket1 permanent on"
-      },
-      "sockets_2_force_on": {
-        "name": "Socket2 permanent on"
-      },
-      "sockets_1_enable": {
-        "name": "Socket1 automatic enable"
-      },
-      "sockets_2_enable": {
-        "name": "Socket2 automatic enable"
-      },
-      "sockets_1_use_time": {
-        "name": "Socket1 use timer"
-      },
-      "sockets_2_use_time": {
-        "name": "Socket2 use timer"
-      },
-      "sgready_enabled": {
-        "name": "SGReady"
-      }
+      "safe_charge": {"name": "Load Battery"},
+      "li_storage_mode": {"name": "Lithium Storage Mode - PV OFF"},
+      "wallbox_allow_intercharge": {"name": "Wallbox load from battery"},
+      "sockets_1_force_on": {"name": "Socket1 permanent on"},
+      "sockets_2_force_on": {"name": "Socket2 permanent on"},
+      "sockets_1_enable": {"name": "Socket1 automatic enable"},
+      "sockets_2_enable": {"name": "Socket2 automatic enable"},
+      "sockets_1_use_time": {"name": "Socket1 use timer"},
+      "sockets_2_use_time": {"name": "Socket2 use timer"},
+      "sgready_enabled": {"name": "SGReady"},
+      "wallbox_1_fast_battery_supported":       {"name": "Wallbox I FAST battery supported"},
+      "wallbox_1_optimized_continuous_loading": {"name": "Wallbox I SOLAR continuous-charging"},
+      "wallbox_1_comfort_battery_supported":    {"name": "Wallbox I COMFORT Night: battery supported"},
+      "wallbox_1_comfort_continuous_loading":   {"name": "Wallbox I COMFORT Day: continuous-charging"},
+      "wallbox_2_fast_battery_supported":       {"name": "Wallbox II FAST battery supported"},
+      "wallbox_2_optimized_continuous_loading": {"name": "Wallbox II SOLAR continuous-charging"},
+      "wallbox_2_comfort_battery_supported":    {"name": "Wallbox II COMFORT Night: battery supported"},
+      "wallbox_2_comfort_continuous_loading":   {"name": "Wallbox II COMFORT Day: continuous-charging"},
+      "wallbox_3_fast_battery_supported":       {"name": "Wallbox III FAST battery supported"},
+      "wallbox_3_optimized_continuous_loading": {"name": "Wallbox III SOLAR continuous-charging"},
+      "wallbox_3_comfort_battery_supported":    {"name": "Wallbox III COMFORT Night: battery supported"},
+      "wallbox_3_comfort_continuous_loading":   {"name": "Wallbox III COMFORT Day: continuous-charging"},
+      "wallbox_4_fast_battery_supported":       {"name": "Wallbox IV FAST battery supported"},
+      "wallbox_4_optimized_continuous_loading": {"name": "Wallbox IV SOLAR continuous-charging"},
+      "wallbox_4_comfort_battery_supported":    {"name": "Wallbox IV COMFORT Night: battery supported"},
+      "wallbox_4_comfort_continuous_loading":   {"name": "Wallbox IV COMFORT Day: continuous-charging"}
     },
     "select": {
       "wallbox_1_mode_legacy": {

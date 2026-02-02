@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 from typing import Final, Any, Callable
 
-from custom_components.senec import SenecOnline
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BAT1,
     SENEC_SECTION_BMS,
@@ -16,7 +15,10 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_WALLBOX,
     WALLBOX_CHARGING_MODES_LEGACY,
     WALLBOX_CHARGING_MODES_2026,
-    UPDATE_INTERVAL_OPTIONS
+    UPDATE_INTERVAL_OPTIONS,
+    APP_API_WB_MODE_2025_FAST,
+    APP_API_WB_MODE_2025_SOLAR,
+    APP_API_WB_MODE_2025_COMFORT
 )
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.button import ButtonEntityDescription
@@ -152,6 +154,76 @@ PEAK_SHAVING_OPTIONS: Final = ["deactivated", "manual", "auto"]
 
 # Service names
 SERVICE_SET_PEAKSHAVING: Final = "set_peakshaving"
+
+
+class StaticFuncs:
+    def app_get_wallbox_obj(data: dict[str, Any], idx:int):
+        if "wallbox" in data:
+            _app_raw_wallbox = data["wallbox"]
+            if _app_raw_wallbox is not None and len(_app_raw_wallbox) > idx:
+                a_wallbox_obj = _app_raw_wallbox[idx]
+                if a_wallbox_obj is not None and isinstance(a_wallbox_obj, dict):
+                    return a_wallbox_obj
+        return None
+
+    @staticmethod
+    def app_availability_check_wallbox_mode(data: dict[str, Any], idx:int, mode:str):
+        a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(data, idx)
+        if a_wallbox_obj is not None:
+            if not a_wallbox_obj.get("prohibitUsage", True):
+                if a_wallbox_obj.get("chargingMode", {}).get("type", None) == mode:
+                    return True
+        return False
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_fast(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_fast(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_fast(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_fast(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_FAST)
+
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_solar(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_solar(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_solar(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_solar(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_SOLAR)
+
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_comfort(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_comfort(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_comfort(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_comfort(data: dict[str, Any]):
+        return StaticFuncs.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_COMFORT)
 
 
 @dataclass(frozen=True)
@@ -948,10 +1020,107 @@ WEB_SWITCH_TYPES = [
 
     ExtSwitchEntityDescription(
         entity_registry_enabled_default=False,
-        key="wallbox_1_mode_fast_battery_support",
-        name="SGReady",
+        key="wallbox_1_fast_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_1_is_fast
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_optimized_continuous_loading",
         icon="mdi:toggle-switch",
-        availability_check=SenecOnline.app_availability_check_wallbox_1_fast_battery_support
+        availability_check=StaticFuncs.app_availability_check_wallbox_1_is_solar
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_comfort_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_1_is_comfort
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_comfort_continuous_loading",
+        icon="mdi:toggle-switch",
+        availability_check=StaticFuncs.app_availability_check_wallbox_1_is_comfort
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_fast_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_2_is_fast
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_optimized_continuous_loading",
+        icon="mdi:toggle-switch",
+        availability_check=StaticFuncs.app_availability_check_wallbox_2_is_solar
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_comfort_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_2_is_comfort
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_comfort_continuous_loading",
+        icon="mdi:toggle-switch",
+        availability_check=StaticFuncs.app_availability_check_wallbox_2_is_comfort
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_fast_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_3_is_fast
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_optimized_continuous_loading",
+        icon="mdi:toggle-switch",
+        availability_check=StaticFuncs.app_availability_check_wallbox_3_is_solar
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_comfort_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_3_is_comfort
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_comfort_continuous_loading",
+        icon="mdi:toggle-switch",
+        availability_check=StaticFuncs.app_availability_check_wallbox_3_is_comfort
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_fast_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_4_is_fast
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_optimized_continuous_loading",
+        icon="mdi:toggle-switch",
+        availability_check=StaticFuncs.app_availability_check_wallbox_4_is_solar
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_comfort_battery_supported",
+        icon="mdi:battery",
+        icon_off="mdi:battery-off",
+        availability_check=StaticFuncs.app_availability_check_wallbox_4_is_comfort
+    ),
+    ExtSwitchEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_comfort_continuous_loading",
+        icon="mdi:toggle-switch",
+        availability_check=StaticFuncs.app_availability_check_wallbox_4_is_comfort
     ),
 ]
 
