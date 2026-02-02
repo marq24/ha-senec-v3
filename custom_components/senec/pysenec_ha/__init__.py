@@ -17,7 +17,7 @@ from datetime import datetime, timezone, timedelta
 from json import JSONDecodeError
 from pathlib import Path
 from time import time, strftime, localtime
-from typing import Final, Iterable
+from typing import Final, Iterable, Any
 from urllib.parse import quote, urlparse, parse_qs
 
 import aiohttp
@@ -6022,6 +6022,72 @@ class SenecOnline:
                         res = res and await self.app_set_wallbox_mode_legacy(wallbox_num=(idx + 1), mode=LOCAL_WB_MODE_LEGACY_FAST, sync=False)
         return res
 
+    @staticmethod
+    def app_static_availability_get_wallbox_obj(data: dict[str, Any], idx:int):
+        if "wallbox" in data:
+            _app_raw_wallbox = data["wallbox"]
+            if _app_raw_wallbox is not None and len(_app_raw_wallbox) > idx:
+                a_wallbox_obj = _app_raw_wallbox[idx]
+                if a_wallbox_obj is not None and isinstance(a_wallbox_obj, dict):
+                    return a_wallbox_obj
+        return None
+
+    @staticmethod
+    def app_availability_check_wallbox_mode(data: dict[str, Any], idx:int, mode:str):
+        a_wallbox_obj = SenecOnline.app_static_availability_get_wallbox_obj(data, idx)
+        if a_wallbox_obj is not None:
+            if not a_wallbox_obj.get("prohibitUsage", True):
+                if a_wallbox_obj.get("chargingMode", {}).get("type", None) == mode:
+                    return True
+        return False
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_fast(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_FAST)
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_solar(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_SOLAR)
+
+    @staticmethod
+    def app_availability_check_wallbox_1_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 0, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_2_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 1, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_3_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 2, APP_API_WB_MODE_2025_COMFORT)
+
+    @staticmethod
+    def app_availability_check_wallbox_4_is_comfort(data: dict[str, Any]):
+        return SenecOnline.app_availability_check_wallbox_mode(data, 3, APP_API_WB_MODE_2025_COMFORT)
 
     """MEIN-SENEC.DE from here"""
     async def web_authenticate(self, do_update:bool=False, throw401:bool=False):
