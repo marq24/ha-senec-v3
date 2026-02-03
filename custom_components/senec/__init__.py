@@ -32,6 +32,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.loader import async_get_integration
 from . import service as SenecService
 from .const import (
+    StaticFuncs,
     DOMAIN,
     MANUFACTURE,
     DEFAULT_HOST,
@@ -75,7 +76,12 @@ from .const import (
     QUERY_PEAK_SHAVING_KEY,
     IGNORE_SYSTEM_STATE_KEY,
     SERVICE_SET_PEAKSHAVING,
-    CONFIG_VERSION, CONFIG_MINOR_VERSION, QUERY_TOTALS_KEY, QUERY_SYSTEM_DETAILS_KEY, QUERY_SGREADY_KEY, STARTUP_MESSAGE
+    CONFIG_VERSION,
+    CONFIG_MINOR_VERSION,
+    QUERY_TOTALS_KEY,
+    QUERY_SYSTEM_DETAILS_KEY,
+    QUERY_SGREADY_KEY,
+    STARTUP_MESSAGE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -709,15 +715,42 @@ class SenecEntity(Entity):
 
         device = self._name
 
-        # "hw_version": self.coordinator._config_entry.data.get(CONF_DEV_NAME, "UNKNOWN_HW_VERSION"),
-        return {
-            "identifiers": {(DOMAIN, self.coordinator._host, device)},
-            "name": f"{dtype}: {device}",
-            "model": f"{dmodel}",
-            "sw_version": dversion,
-            "manufacturer": MANUFACTURE,
-            "serial_number": dserial
-        }
+        a_wallbox_obj = None
+        if self.entity_description is not None and self.entity_description.key.lower().startswith("wallbox"):
+            possible_idx_str = self.entity_description.key.lower().split('_')[1]
+            try:
+                idx = int(possible_idx_str) - 1
+                a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(self.coordinator.data, idx)
+            except ValueError:
+                _LOGGER.debug(f"No valid wallbox index found in key: {self.entity_description.key} - {possible_idx_str}")
+
+        if a_wallbox_obj is not None:
+            #         "id": "1",
+            #         "productFamily": None,
+            #         "controllerId": "Sxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            #         "name": "Wallbox 1",
+            #         "prohibitUsage": False,
+            #         "isInterchargeAvailable": True,
+            #         "isSolarChargingAvailable": True,
+            #         "type": "V123",
+            return {
+                "identifiers": {(DOMAIN, self.coordinator._host, device, a_wallbox_obj.get("id"))},
+                "name": f"{a_wallbox_obj.get("name")} @ {dtype}: {device}",
+                "model": f"{a_wallbox_obj.get("name")} @ {dmodel}",
+                "sw_version": dversion,
+                "manufacturer": MANUFACTURE,
+                "serial_number": {a_wallbox_obj.get("controllerId")}
+            }
+        else:
+            # "hw_version": self.coordinator._config_entry.data.get(CONF_DEV_NAME, "UNKNOWN_HW_VERSION"),
+            return {
+                "identifiers": {(DOMAIN, self.coordinator._host, device)},
+                "name": f"{dtype}: {device}",
+                "model": f"{dmodel}",
+                "sw_version": dversion,
+                "manufacturer": MANUFACTURE,
+                "serial_number": dserial
+            }
 
     @property
     def available(self):

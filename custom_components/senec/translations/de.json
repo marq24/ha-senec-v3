@@ -156,26 +156,26 @@
       "sockets_1_use_time": {"name": "Kontakt1 Schaltzeit aktivieren"},
       "sockets_2_use_time": {"name": "Kontakt2 Schaltzeit aktivieren"},
       "sgready_enabled": {"name": "SGReady"},
-      "wallbox_1_fast_battery_supported":       {"name": "Wallbox I Schnell: Laden aus Batterie"},
-      "wallbox_1_optimized_continuous_loading": {"name": "Wallbox I Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_1_comfort_battery_supported":    {"name": "Wallbox I Komfort Nachts: Laden aus Batterie"},
-      "wallbox_1_comfort_continuous_loading":   {"name": "Wallbox I Komfort Tags: Kontinuierliches Laden"},
-      "wallbox_2_fast_battery_supported":       {"name": "Wallbox II Schnell: Laden aus Batterie"},
-      "wallbox_2_optimized_continuous_loading": {"name": "Wallbox II Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_2_comfort_battery_supported":    {"name": "Wallbox II Komfort Nachts: Laden aus Batterie"},
-      "wallbox_2_comfort_continuous_loading":   {"name": "Wallbox II Komfort Tags: Kontinuierliches Laden"},
-      "wallbox_3_fast_battery_supported":       {"name": "Wallbox III Schnell: Laden aus Batterie"},
-      "wallbox_3_optimized_continuous_loading": {"name": "Wallbox III Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_3_comfort_battery_supported":    {"name": "Wallbox III Komfort Nachts: Laden aus Batterie"},
-      "wallbox_3_comfort_continuous_loading":   {"name": "Wallbox III Komfort Tags: Kontinuierliches Laden"},
-      "wallbox_4_fast_battery_supported":       {"name": "Wallbox IV Schnell: Laden aus Batterie"},
-      "wallbox_4_optimized_continuous_loading": {"name": "Wallbox IV Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_4_comfort_battery_supported":    {"name": "Wallbox IV Komfort Nachts: Laden aus Batterie"},
-      "wallbox_4_comfort_continuous_loading":   {"name": "Wallbox IV Komfort Tags: Kontinuierliches Laden"}
+      "wallbox_1_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
+      "wallbox_1_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_1_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
+      "wallbox_1_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_2_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
+      "wallbox_2_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_2_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
+      "wallbox_2_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_3_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
+      "wallbox_3_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_3_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
+      "wallbox_3_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_4_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
+      "wallbox_4_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_4_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
+      "wallbox_4_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"}
     },
     "select": {
       "wallbox_1_mode_legacy": {
-        "name": "Wallbox I Modus [veraltet]",
+        "name": "Modus [veraltet]",
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
@@ -189,7 +189,7 @@
         }
       },
       "wallbox_2_mode_legacy": {
-        "name": "Wallbox II Modus [veraltet]",
+        "name": "Modus [veraltet]",
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
@@ -203,7 +203,7 @@
         }
       },
       "wallbox_3_mode_legacy": {
-        "name": "Wallbox III Modus [veraltet]",
+        "name": "Modus [veraltet]",
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
@@ -217,7 +217,7 @@
         }
       },
       "wallbox_4_mode_legacy": {
-        "name": "Wallbox IV Modus [veraltet]",
+        "name": "Modus [veraltet]",
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
@@ -232,7 +232,7 @@
       },
 
       "wallbox_1_mode": {
-        "name": "Wallbox I Modus",
+        "name": "Modus",
         "state": {
           "locked":   "gesperrt",
           "optimized":"solar-optimiert",
@@ -241,7 +241,7 @@
         }
       },
       "wallbox_2_mode": {
-        "name": "Wallbox II Modus",
+        "name": "Modus",
         "state": {
           "locked":   "gesperrt",
           "optimized":"solar-optimiert",
@@ -250,7 +250,7 @@
         }
       },
       "wallbox_3_mode": {
-        "name": "Wallbox III Modus",
+        "name": "Modus",
         "state": {
           "locked":   "gesperrt",
           "optimized":"solar-optimiert",
@@ -259,7 +259,7 @@
         }
       },
       "wallbox_4_mode": {
-        "name": "Wallbox IV Modus",
+        "name": "Modus",
         "state": {
           "locked":   "gesperrt",
           "optimized":"solar-optimiert",
@@ -289,28 +289,28 @@
         "name": "Reservekapazität"
       },
       "wallbox_1_set_icmax": {
-        "name": "Wallbox I ICMIN"
+        "name": "ICMIN"
       },
       "wallbox_2_set_icmax": {
-        "name": "Wallbox II ICMIN"
+        "name": "ICMIN"
       },
       "wallbox_3_set_icmax": {
-        "name": "Wallbox III ICMIN"
+        "name": "ICMIN"
       },
       "wallbox_4_set_icmax": {
-        "name": "Wallbox IV ICMIN"
+        "name": "ICMIN"
       },
       "wallbox_1_set_idefault": {
-        "name": "Wallbox I IDEFAULT"
+        "name": "IDEFAULT"
       },
       "wallbox_2_set_idefault": {
-        "name": "Wallbox II IDEFAULT"
+        "name": "IDEFAULT"
       },
       "wallbox_3_set_idefault": {
-        "name": "Wallbox III IDEFAULT"
+        "name": "IDEFAULT"
       },
       "wallbox_4_set_idefault": {
-        "name": "Wallbox IV IDEFAULT"
+        "name": "IDEFAULT"
       },
       "sockets_1_lower_limit": {
         "name": "Kontakt1 Einschaltschwelle (W)"
@@ -351,100 +351,100 @@
     },
     "binary_sensor": {
       "wallbox_1_l1_used": {
-        "name": "Wallbox I L1 in Verwendung"
+        "name": "L1 in Verwendung"
       },
       "wallbox_1_l2_used": {
-        "name": "Wallbox I L2 in Verwendung"
+        "name": "L2 in Verwendung"
       },
       "wallbox_1_l3_used": {
-        "name": "Wallbox I L3 in Verwendung"
+        "name": "L3 in Verwendung"
       },
       "wallbox_2_l1_used": {
-        "name": "Wallbox II L1 in Verwendung"
+        "name": "L1 in Verwendung"
       },
       "wallbox_2_l2_used": {
-        "name": "Wallbox II L2 in Verwendung"
+        "name": "L2 in Verwendung"
       },
       "wallbox_2_l3_used": {
-        "name": "Wallbox II L3 in Verwendung"
+        "name": "L3 in Verwendung"
       },
       "wallbox_3_l1_used": {
-        "name": "Wallbox III L1 in Verwendung"
+        "name": "L1 in Verwendung"
       },
       "wallbox_3_l2_used": {
-        "name": "Wallbox III L2 in Verwendung"
+        "name": "L2 in Verwendung"
       },
       "wallbox_3_l3_used": {
-        "name": "Wallbox III L3 in Verwendung"
+        "name": "L3 in Verwendung"
       },
       "wallbox_4_l1_used": {
-        "name": "Wallbox IV L1 in Verwendung"
+        "name": "L1 in Verwendung"
       },
       "wallbox_4_l2_used": {
-        "name": "Wallbox IV L2 in Verwendung"
+        "name": "L2 in Verwendung"
       },
       "wallbox_4_l3_used": {
-        "name": "Wallbox IV L3 in Verwendung"
+        "name": "L3 in Verwendung"
       },
       "wallbox_1_smart_charge_active": {
-        "name": "Wallbox I Smart-Charge aktiv"
+        "name": "Smart-Charge aktiv"
       },
       "wallbox_2_smart_charge_active": {
-        "name": "Wallbox II Smart-Charge aktiv"
+        "name": "Smart-Charge aktiv"
       },
       "wallbox_3_smart_charge_active": {
-        "name": "Wallbox III Smart-Charge aktiv"
+        "name": "Smart-Charge aktiv"
       },
       "wallbox_4_smart_charge_active": {
-        "name": "Wallbox IV Smart-Charge aktiv"
+        "name": "Smart-Charge aktiv"
       },
       "wallbox_1_prohibit_usage": {
-        "name": "Wallbox I gesperrt"
+        "name": "gesperrt"
       },
       "wallbox_2_prohibit_usage": {
-        "name": "Wallbox II gesperrt"
+        "name": "gesperrt"
       },
       "wallbox_3_prohibit_usage": {
-        "name": "Wallbox III gesperrt"
+        "name": "gesperrt"
       },
       "wallbox_4_prohibit_usage": {
-        "name": "Wallbox IV gesperrt"
+        "name": "gesperrt"
       },
       "wallbox_1_ev_connected": {
-        "name": "Wallbox I EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_2_ev_connected": {
-        "name": "Wallbox II EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_3_ev_connected": {
-        "name": "Wallbox III EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_4_ev_connected": {
-        "name": "Wallbox IV EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_1_ev_charging": {
-        "name": "Wallbox I EV lädt"
+        "name": "EV lädt"
       },
       "wallbox_2_ev_charging": {
-        "name": "Wallbox II EV lädt"
+        "name": "EV lädt"
       },
       "wallbox_3_ev_charging": {
-        "name": "Wallbox III EV lädt"
+        "name": "EV lädt"
       },
       "wallbox_4_ev_charging": {
-        "name": "Wallbox IV EV lädt"
+        "name": "EV lädt"
       },
       "wallbox_1_ev_errors": {
-        "name": "Wallbox I Störung"
+        "name": "Störung"
       },
       "wallbox_2_ev_errors": {
-        "name": "Wallbox II Störung"
+        "name": "Störung"
       },
       "wallbox_3_ev_errors": {
-        "name": "Wallbox III Störung"
+        "name": "Störung"
       },
       "wallbox_4_ev_errors": {
-        "name": "Wallbox IV Störung"
+        "name": "Störung"
       },
       "fan_inv_lv": {
         "name": "Lüfter LV-Inverter"
@@ -1075,112 +1075,112 @@
         "name": "Module D: Zyklen"
       },
       "wallbox_1_state": {
-        "name": "Wallboxstatus I"
+        "name": "Wallboxstatus"
       },
       "wallbox_1_power": {
-        "name": "Wallbox I Ladeleistung"
+        "name": "Ladeleistung"
       },
       "wallbox_1_power_alt": {
-        "name": "Wallbox I Scheinladeleistung"
+        "name": "Scheinladeleistung"
       },
       "wallbox_1_ev_connected": {
-        "name": "Wallbox I EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_1_energy": {
-        "name": "Wallbox I Energie"
+        "name": "Energie"
       },
       "wallbox_1_l1_charging_current": {
-        "name": "Wallbox I L1 Ladestrom"
+        "name": "L1 Ladestrom"
       },
       "wallbox_1_l2_charging_current": {
-        "name": "Wallbox I L2 Ladestrom"
+        "name": "L2 Ladestrom"
       },
       "wallbox_1_l3_charging_current": {
-        "name": "Wallbox I L3 Ladestrom"
+        "name": "L3 Ladestrom"
       },
       "wallbox_1_min_charging_current": {
-        "name": "Wallbox I MIN Ladestrom"
+        "name": "MIN Ladestrom"
       },
       "wallbox_2_state": {
-        "name": "Wallboxstatus II"
+        "name": "Wallboxstatus"
       },
       "wallbox_2_power": {
-        "name": "Wallbox II Ladeleistung"
+        "name": "Ladeleistung"
       },
       "wallbox_2_power_alt": {
-        "name": "Wallbox II Scheinladeleistung"
+        "name": "Scheinladeleistung"
       },
       "wallbox_2_ev_connected": {
-        "name": "Wallbox II EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_2_energy": {
-        "name": "Wallbox II Energie"
+        "name": "Energie"
       },
       "wallbox_2_l1_charging_current": {
-        "name": "Wallbox II L1 Ladestrom"
+        "name": "L1 Ladestrom"
       },
       "wallbox_2_l2_charging_current": {
-        "name": "Wallbox II L2 Ladestrom"
+        "name": "L2 Ladestrom"
       },
       "wallbox_2_l3_charging_current": {
-        "name": "Wallbox II L3 Ladestrom"
+        "name": "L3 Ladestrom"
       },
       "wallbox_2_min_charging_current": {
-        "name": "Wallbox II MIN Ladestrom"
+        "name": "MIN Ladestrom"
       },
       "wallbox_3_state": {
-        "name": "Wallboxstatus III"
+        "name": "Wallboxstatus"
       },
       "wallbox_3_power": {
-        "name": "Wallbox III Ladeleistung"
+        "name": "Ladeleistung"
       },
       "wallbox_3_power_alt": {
-        "name": "Wallbox III Scheinladeleistung"
+        "name": "Scheinladeleistung"
       },
       "wallbox_3_ev_connected": {
-        "name": "Wallbox III EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_3_energy": {
-        "name": "Wallbox III Energie"
+        "name": "Energie"
       },
       "wallbox_3_l1_charging_current": {
-        "name": "Wallbox III L1 Ladestrom"
+        "name": "L1 Ladestrom"
       },
       "wallbox_3_l2_charging_current": {
-        "name": "Wallbox III L2 Ladestrom"
+        "name": "L2 Ladestrom"
       },
       "wallbox_3_l3_charging_current": {
-        "name": "Wallbox III L3 Ladestrom"
+        "name": "L3 Ladestrom"
       },
       "wallbox_3_min_charging_current": {
-        "name": "Wallbox III MIN Ladestrom"
+        "name": "MIN Ladestrom"
       },
       "wallbox_4_state": {
-        "name": "Wallboxstatus IV"
+        "name": "Wallboxstatus"
       },
       "wallbox_4_power": {
-        "name": "Wallbox IV Ladeleistung"
+        "name": "Ladeleistung"
       },
       "wallbox_4_power_alt": {
-        "name": "Wallbox IV Scheinladeleistung"
+        "name": "Scheinladeleistung"
       },
       "wallbox_4_ev_connected": {
-        "name": "Wallbox IV EV angeschlossen"
+        "name": "EV angeschlossen"
       },
       "wallbox_4_energy": {
-        "name": "Wallbox IV Energie"
+        "name": "Energie"
       },
       "wallbox_4_l1_charging_current": {
-        "name": "Wallbox IV L1 Ladestrom"
+        "name": "L1 Ladestrom"
       },
       "wallbox_4_l2_charging_current": {
-        "name": "Wallbox IV L2 Ladestrom"
+        "name": "L2 Ladestrom"
       },
       "wallbox_4_l3_charging_current": {
-        "name": "Wallbox IV L3 Ladestrom"
+        "name": "L3 Ladestrom"
       },
       "wallbox_4_min_charging_current": {
-        "name": "Wallbox IV MIN Ladestrom"
+        "name": "MIN Ladestrom"
       },
       "sockets_1_priority": {
         "name": "Kontakt1 Priorität"
@@ -1284,10 +1284,10 @@
       "spare_capacity": {
         "name": "Reservekapazität"
       },
-      "wallbox_1_temperature": {"name": "Wallbox I Temperatur"},
-      "wallbox_2_temperature": {"name": "Wallbox II Temperatur"},
-      "wallbox_3_temperature": {"name": "Wallbox III Temperatur"},
-      "wallbox_4_temperature": {"name": "Wallbox IV Temperatur"}
+      "wallbox_1_temperature": {"name": "Temperatur"},
+      "wallbox_2_temperature": {"name": "Temperatur"},
+      "wallbox_3_temperature": {"name": "Temperatur"},
+      "wallbox_4_temperature": {"name": "Temperatur"}
     },
     "button": {
       "system_reboot": {"name": "System Neustart"},
