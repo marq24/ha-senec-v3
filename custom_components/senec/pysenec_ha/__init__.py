@@ -5851,7 +5851,7 @@ class SenecOnline:
                 else:
                     # if this is the last wb, that has allowIntercharge enabled, we must
                     # switch off the lala allowIntercharge flag...
-                    
+
                     turn_off_allow_intercharge_at_local_senec = True
                     for idx in range(0, self._app_wallbox_num_max):
                         if self._app_wallbox_num_max > idx:
@@ -5963,35 +5963,61 @@ class SenecOnline:
         if self._app_master_plant_id is not None:
             success = False
             idx = wallbox_num - 1
-            a_wallbox_obj = self._app_get_wallbox_object_at_index(idx)
-            a_charging_mode_obj = a_wallbox_obj.get("chargingMode", {})
-            a_charging_mode_type = a_charging_mode_obj.get("type", None)
+            the_wb_obj = self._app_get_wallbox_object_at_index(idx)
+            the_charging_mode_obj = the_wb_obj.get("chargingMode", {})
+            the_charging_mode_type = the_charging_mode_obj.get("type", None)
 
             # only if the current mode is the SOLAR, we can set the 'minChargingCurrentInA'
-            if a_charging_mode_type is not None and a_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
-                the_post_data = {
-                    "minChargingCurrentInA": float(round(value_to_set, 2))
-                }
-                solar_optimize_settings = a_charging_mode_obj.get("solarOptimizeSettings", None)
-                if solar_optimize_settings is not None:
-                    for a_field in ["compatibilityMode", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+            if the_charging_mode_type is not None:
+                success = False
+                if the_charging_mode_type == APP_API_WB_MODE_2025_SOLAR:
+                    # "solarOptimizeSettings": {
+                    #     "preventInterruptions": True,
+                    #     "compatibilityMode": False,
+                    #     "minChargingCurrentInA": 6,
+                    #     "useDynamicTariffs": False,
+                    #     "priceLimitInCtPerKwh": -99
+                    # }
+                    the_post_data = {
+                        "minChargingCurrentInA": float(round(value_to_set, 2))
+                    }
+                    solar_optimize_settings = the_charging_mode_obj.get("solarOptimizeSettings", None)
+                    for a_field in ["preventInterruptions", "compatibilityMode", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
                         a_value = solar_optimize_settings.get(a_field, None)
                         if a_value is not None:
                             the_post_data[a_field] = a_value
-                else:
-                    _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - no 'solar_optimize_settings' - just using default 'compatibilityMode' - wallbox object: {a_wallbox_obj}")
 
-                # continue...
-                wb_url = self.APP_SET_WALLBOX_SOLAR_MODE.format(master_plant_id=str(self._app_master_plant_id), wb_id=str(wallbox_num))
-                data = await self._app_do_post_request(a_url=wb_url, post_data=the_post_data, read_response=True)
-                if data is not None:
-                    self._app_set_wallbox_object_at_index(idx, data)
-                    _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR attributes: {util.mask_map(data)}")
-                    success = True
-                else:
-                    _LOGGER.debug(f"app_set_wallbox_icmax(): set wallbox {wallbox_num} SOLAR FAILED")
+                    the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+                    wb_url = self.APP_SET_WALLBOX_SOLAR_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+                    success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_SOLAR, wb_url, the_post_data)
+
+                elif the_charging_mode_type == APP_API_WB_MODE_2025_COMFORT:
+                    # "comfortChargeSettings": {
+                    #     "allowIntercharge": false,
+                    #     "preventInterruptions": false,
+                    #     "configuredChargingCurrent": 6.0,
+                    #     "activeWeekDays": ["MON", "TUE", "WED", "THU", "FRI"],
+                    #     "useDynamicTariffs": false,
+                    #     "chargingPeriodFromGridInH": 4,
+                    #     "priceLimitInCtPerKwh": -99.0,
+                    #     "compatibilityMode": true
+                    # },
+                    the_post_data = {
+                        "minChargingCurrentInA": float(round(value_to_set, 2))
+                    }
+                    the_comfort_charge_settings = the_charging_mode_obj.get("comfortChargeSettings", {})
+                    # we need to copy over the other post data value(s)...
+                    for a_field in ["allowIntercharge", "preventInterruptions", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
+                        a_value = the_comfort_charge_settings.get(a_field, None)
+                        if a_value is not None:
+                            the_post_data[a_field] = a_value
+
+                    # setting COMFORT mode
+                    the_wb_uuid = the_wb_obj.get("id", str(wallbox_num))
+                    wb_url = self.APP_SET_WALLBOX_COMFORT_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
+                    success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_COMFORT, wb_url, the_post_data)
             else:
-                _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR, so we cannot set 'minChargingCurrentInA' - current mode: '{a_charging_mode_type}' - wallbox object: {a_wallbox_obj}")
+                _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR or COMFORT, so we cannot set 'minChargingCurrentInA' - current mode: '{the_charging_mode_type}' - wallbox object: {the_wb_obj}")
 
             if success:
                 # do we need to sync the value back to the 'lala_cgi' integration?
@@ -7242,11 +7268,19 @@ class SenecOnline:
         return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=1, sync=True)
 
     @property
-    def wallbox_1_set_icmax(self) -> float:
+    def wallbox_1_optimized_set_icmax(self) -> float:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(0)
         return a_wallbox_obj.get("chargingMode", {}).get("solarOptimizeSettings", {}).get("minChargingCurrentInA", None)
 
-    async def set_nv_wallbox_1_set_icmax(self, value: float) -> bool:
+    async def set_nv_wallbox_1_optimized_set_icmax(self, value: float) -> bool:
+        return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=1, sync=True)
+
+    @property
+    def wallbox_1_comfort_set_icmax(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(0)
+        return a_wallbox_obj.get("chargingMode", {}).get("comfortChargeSettings", {}).get("configuredChargingCurrent", None)
+
+    async def set_nv_wallbox_1_comfort_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=1, sync=True)
 
 
@@ -7295,13 +7329,20 @@ class SenecOnline:
         return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=2, sync=True)
 
     @property
-    def wallbox_2_set_icmax(self) -> float:
+    def wallbox_2_optimized_set_icmax(self) -> float:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(1)
         return a_wallbox_obj.get("chargingMode", {}).get("solarOptimizeSettings", {}).get("minChargingCurrentInA", None)
 
-    async def set_nv_wallbox_2_set_icmax(self, value: float) -> bool:
+    async def set_nv_wallbox_2_optimized_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=2, sync=True)
 
+    @property
+    def wallbox_2_comfort_set_icmax(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(1)
+        return a_wallbox_obj.get("chargingMode", {}).get("comfortChargeSettings", {}).get("configuredChargingCurrent", None)
+
+    async def set_nv_wallbox_2_comfort_set_icmax(self, value: float) -> bool:
+        return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=2, sync=True)
 
     ## WALLBOX: 3
     @property
@@ -7348,13 +7389,20 @@ class SenecOnline:
         return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=3, sync=True)
 
     @property
-    def wallbox_3_set_icmax(self) -> float:
+    def wallbox_3_optimized_set_icmax(self) -> float:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(2)
         return a_wallbox_obj.get("chargingMode", {}).get("solarOptimizeSettings", {}).get("minChargingCurrentInA", None)
 
-    async def set_nv_wallbox_3_set_icmax(self, value: float) -> bool:
+    async def set_nv_wallbox_3_optimized_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=3, sync=True)
 
+    @property
+    def wallbox_3_comfort_set_icmax(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(2)
+        return a_wallbox_obj.get("chargingMode", {}).get("comfortChargeSettings", {}).get("configuredChargingCurrent", None)
+
+    async def set_nv_wallbox_3_comfort_set_icmax(self, value: float) -> bool:
+        return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=3, sync=True)
 
     ## WALLBOX: 4
     @property
@@ -7401,11 +7449,19 @@ class SenecOnline:
         return await self.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=4, sync=True)
 
     @property
-    def wallbox_4_set_icmax(self) -> float:
+    def wallbox_4_optimized_set_icmax(self) -> float:
         a_wallbox_obj = self._app_get_wallbox_object_at_index(3)
         return a_wallbox_obj.get("chargingMode", {}).get("solarOptimizeSettings", {}).get("minChargingCurrentInA", None)
 
-    async def set_nv_wallbox_4_set_icmax(self, value: float) -> bool:
+    async def set_nv_wallbox_4_optimized_set_icmax(self, value: float) -> bool:
+        return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=4, sync=True)
+
+    @property
+    def wallbox_4_comfort_set_icmax(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(3)
+        return a_wallbox_obj.get("chargingMode", {}).get("comfortChargeSettings", {}).get("configuredChargingCurrent", None)
+
+    async def set_nv_wallbox_4_comfort_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=4, sync=True)
 
     ###################################

@@ -143,22 +143,22 @@
       "sockets_1_use_time": {"name": "Socket1 use timer"},
       "sockets_2_use_time": {"name": "Socket2 use timer"},
       "sgready_enabled": {"name": "SGReady"},
-      "wallbox_1_fast_battery_supported":       {"name": "FAST battery supported"},
-      "wallbox_1_optimized_continuous_loading": {"name": "SOLAR continuous-charging"},
-      "wallbox_1_comfort_battery_supported":    {"name": "COMFORT Night: battery supported"},
-      "wallbox_1_comfort_continuous_loading":   {"name": "COMFORT Day: continuous-charging"},
-      "wallbox_2_fast_battery_supported":       {"name": "FAST battery supported"},
-      "wallbox_2_optimized_continuous_loading": {"name": "SOLAR continuous-charging"},
-      "wallbox_2_comfort_battery_supported":    {"name": "COMFORT Night: battery supported"},
-      "wallbox_2_comfort_continuous_loading":   {"name": "COMFORT Day: continuous-charging"},
-      "wallbox_3_fast_battery_supported":       {"name": "FAST battery supported"},
-      "wallbox_3_optimized_continuous_loading": {"name": "SOLAR continuous-charging"},
-      "wallbox_3_comfort_battery_supported":    {"name": "COMFORT Night: battery supported"},
-      "wallbox_3_comfort_continuous_loading":   {"name": "COMFORT Day: continuous-charging"},
-      "wallbox_4_fast_battery_supported":       {"name": "FAST battery supported"},
-      "wallbox_4_optimized_continuous_loading": {"name": "SOLAR continuous-charging"},
-      "wallbox_4_comfort_battery_supported":    {"name": "COMFORT Night: battery supported"},
-      "wallbox_4_comfort_continuous_loading":   {"name": "COMFORT Day: continuous-charging"}
+      "wallbox_1_fast_battery_supported":       {"name": "Mode FAST: battery supported"},
+      "wallbox_1_optimized_continuous_loading": {"name": "Mode SOLAR: continuous-charging"},
+      "wallbox_1_comfort_battery_supported":    {"name": "Mode COMFORT Night: battery supported"},
+      "wallbox_1_comfort_continuous_loading":   {"name": "Mode COMFORT Day: continuous-charging"},
+      "wallbox_2_fast_battery_supported":       {"name": "Mode FAST: battery supported"},
+      "wallbox_2_optimized_continuous_loading": {"name": "Mode SOLAR: continuous-charging"},
+      "wallbox_2_comfort_battery_supported":    {"name": "Mode COMFORT Night: battery supported"},
+      "wallbox_2_comfort_continuous_loading":   {"name": "Mode COMFORT Day: continuous-charging"},
+      "wallbox_3_fast_battery_supported":       {"name": "Mode FAST: battery supported"},
+      "wallbox_3_optimized_continuous_loading": {"name": "Mode SOLAR: continuous-charging"},
+      "wallbox_3_comfort_battery_supported":    {"name": "Mode COMFORT Night: battery supported"},
+      "wallbox_3_comfort_continuous_loading":   {"name": "Mode COMFORT Day: continuous-charging"},
+      "wallbox_4_fast_battery_supported":       {"name": "Mode FAST: battery supported"},
+      "wallbox_4_optimized_continuous_loading": {"name": "Mode SOLAR: continuous-charging"},
+      "wallbox_4_comfort_battery_supported":    {"name": "Mode COMFORT Night: battery supported"},
+      "wallbox_4_comfort_continuous_loading":   {"name": "Mode COMFORT Day: continuous-charging"}
     },
     "select": {
       "wallbox_1_mode_legacy": {
@@ -166,13 +166,13 @@
         "state": {
           "legacy_locked": "LOCKED",
           "legacy_optimized_3": "SOLAR (continuous-charging)",
-          "legacy_optimized_4": "SOLAR (allow charge-interruptions)",
+          "legacy_optimized_4": "SOLAR",
           "legacy_fast": "FAST",
           "legacy_fast_with_battery": "FAST (supported by battery)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported)"
         }
       },
       "wallbox_2_mode_legacy": {
@@ -180,13 +180,13 @@
         "state": {
           "legacy_locked": "LOCKED",
           "legacy_optimized_3": "SOLAR (continuous-charging)",
-          "legacy_optimized_4": "SOLAR (allow charge-interruptions)",
+          "legacy_optimized_4": "SOLAR",
           "legacy_fast": "FAST",
           "legacy_fast_with_battery": "FAST (supported by battery)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported)"
         }
       },
       "wallbox_3_mode_legacy": {
@@ -194,13 +194,13 @@
         "state": {
           "legacy_locked": "LOCKED",
           "legacy_optimized_3": "SOLAR (continuous-charging)",
-          "legacy_optimized_4": "SOLAR (allow charge-interruptions)",
+          "legacy_optimized_4": "SOLAR",
           "legacy_fast": "FAST",
           "legacy_fast_with_battery": "FAST (supported by battery)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported)"
         }
       },
       "wallbox_4_mode_legacy": {
@@ -208,16 +208,15 @@
         "state": {
           "legacy_locked": "LOCKED",
           "legacy_optimized_3": "SOLAR (continuous-charging)",
-          "legacy_optimized_4": "SOLAR (allow charge-interruptions)",
+          "legacy_optimized_4": "SOLAR",
           "legacy_fast": "FAST",
           "legacy_fast_with_battery": "FAST (supported by battery)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "COMFORT (Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT (Day: allow charge-interruptions)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "COMFORT",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "COMFORT (Night: battery supported | Day: continuous-charging)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported | Day: allow charge-interruptions)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "COMFORT (Night: battery supported)"
         }
       },
-
       "wallbox_1_mode": {
         "name": "Mode",
         "state": {
@@ -254,7 +253,6 @@
           "comfort":  "COMFORT"
         }
       },
-
       "request_throttling": {
         "name": "Request Throttling",
         "state": {
@@ -272,33 +270,19 @@
       }
     },
     "number": {
-      "spare_capacity": {
-        "name": "Spare Capacity"
-      },
-      "wallbox_1_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_2_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_3_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_4_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_1_set_idefault": {
-        "name": "IDEFAULT"
-      },
-      "wallbox_2_set_idefault": {
-        "name": "IDEFAULT"
-      },
-      "wallbox_3_set_idefault": {
-        "name": "IDEFAULT"
-      },
-      "wallbox_4_set_idefault": {
-        "name": "IDEFAULT"
-      },
+      "spare_capacity": {"name": "Spare Capacity"},
+      "wallbox_1_optimized_set_icmax": {"name": "Mode SOLAR: ICMIN"},
+      "wallbox_2_optimized_set_icmax": {"name": "Mode SOLAR: ICMIN"},
+      "wallbox_3_optimized_set_icmax": {"name": "Mode SOLAR: ICMIN"},
+      "wallbox_4_optimized_set_icmax": {"name": "Mode SOLAR: ICMIN"},
+      "wallbox_1_comfort_set_icmax": {"name": "Mode COMFORT: ICMIN"},
+      "wallbox_2_comfort_set_icmax": {"name": "Mode COMFORT: ICMIN"},
+      "wallbox_3_comfort_set_icmax": {"name": "Mode COMFORT: ICMIN"},
+      "wallbox_4_comfort_set_icmax": {"name": "Mode COMFORT: ICMIN"},
+      "wallbox_1_set_idefault": {"name": "IDEFAULT"},
+      "wallbox_2_set_idefault": {"name": "IDEFAULT"},
+      "wallbox_3_set_idefault": {"name": "IDEFAULT"},
+      "wallbox_4_set_idefault": {"name": "IDEFAULT"},
       "sockets_1_lower_limit": {
         "name": "Socket1 lower limit (W)"
       },

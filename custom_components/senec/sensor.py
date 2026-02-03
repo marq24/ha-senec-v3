@@ -1,5 +1,6 @@
 """Platform for Senec sensors."""
 import logging
+from dataclasses import replace
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -18,7 +19,7 @@ from .const import (
     CONF_SUPPORT_BDC,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    ExtSensorEntityDescription
+    ExtSensorEntityDescription, StaticFuncs
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,6 +51,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SENSOR_TYPES:
+            # when we have wallbox data, we want to enable the entity by default...
+            if description.key.startswith("wallbox"):
+                possible_idx_str = description.key.lower().split('_')[1]
+                try:
+                    idx = int(possible_idx_str) - 1
+                    a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(coordinator.data, idx)
+                    if a_wallbox_obj is not None:
+                        description = replace(description, entity_registry_enabled_default=True)
+                except ValueError:
+                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+
             entity = SenecSensor(coordinator, description)
             entities.append(entity)
 

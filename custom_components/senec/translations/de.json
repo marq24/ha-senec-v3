@@ -156,22 +156,22 @@
       "sockets_1_use_time": {"name": "Kontakt1 Schaltzeit aktivieren"},
       "sockets_2_use_time": {"name": "Kontakt2 Schaltzeit aktivieren"},
       "sgready_enabled": {"name": "SGReady"},
-      "wallbox_1_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
-      "wallbox_1_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_1_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
-      "wallbox_1_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"},
-      "wallbox_2_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
-      "wallbox_2_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_2_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
-      "wallbox_2_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"},
-      "wallbox_3_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
-      "wallbox_3_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_3_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
-      "wallbox_3_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"},
-      "wallbox_4_fast_battery_supported":       {"name": "Schnell: Laden aus Batterie"},
-      "wallbox_4_optimized_continuous_loading": {"name": "Solar-optimiert: Kontinuierliches Laden"},
-      "wallbox_4_comfort_battery_supported":    {"name": "Komfort Nachts: Laden aus Batterie"},
-      "wallbox_4_comfort_continuous_loading":   {"name": "Komfort Tags: Kontinuierliches Laden"}
+      "wallbox_1_fast_battery_supported":       {"name": "Modus Schnell: Laden aus Batterie"},
+      "wallbox_1_optimized_continuous_loading": {"name": "Modus Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_1_comfort_battery_supported":    {"name": "Modus Komfort Nachts: Laden aus Batterie"},
+      "wallbox_1_comfort_continuous_loading":   {"name": "Modus Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_2_fast_battery_supported":       {"name": "Modus Schnell: Laden aus Batterie"},
+      "wallbox_2_optimized_continuous_loading": {"name": "Modus Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_2_comfort_battery_supported":    {"name": "Modus Komfort Nachts: Laden aus Batterie"},
+      "wallbox_2_comfort_continuous_loading":   {"name": "Modus Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_3_fast_battery_supported":       {"name": "Modus Schnell: Laden aus Batterie"},
+      "wallbox_3_optimized_continuous_loading": {"name": "Modus Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_3_comfort_battery_supported":    {"name": "Modus Komfort Nachts: Laden aus Batterie"},
+      "wallbox_3_comfort_continuous_loading":   {"name": "Modus Komfort Tags: Kontinuierliches Laden"},
+      "wallbox_4_fast_battery_supported":       {"name": "Modus Schnell: Laden aus Batterie"},
+      "wallbox_4_optimized_continuous_loading": {"name": "Modus Solar-optimiert: Kontinuierliches Laden"},
+      "wallbox_4_comfort_battery_supported":    {"name": "Modus Komfort Nachts: Laden aus Batterie"},
+      "wallbox_4_comfort_continuous_loading":   {"name": "Modus Komfort Tags: Kontinuierliches Laden"}
     },
     "select": {
       "wallbox_1_mode_legacy": {
@@ -179,13 +179,13 @@
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_optimized_4":        "solar-optimiert",
           "legacy_fast":               "schnell",
           "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie)"
         }
       },
       "wallbox_2_mode_legacy": {
@@ -193,13 +193,13 @@
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_optimized_4":        "solar-optimiert",
           "legacy_fast":               "schnell",
           "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie)"
         }
       },
       "wallbox_3_mode_legacy": {
@@ -207,13 +207,13 @@
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_optimized_4":        "solar-optimiert",
           "legacy_fast":               "schnell",
           "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie)"
         }
       },
       "wallbox_4_mode_legacy": {
@@ -221,16 +221,15 @@
         "state": {
           "legacy_locked":             "gesperrt",
           "legacy_optimized_3":        "solar-optimiert (kontinuierliches Laden)",
-          "legacy_optimized_4":        "solar-optimiert (Ladeunterbrechungen zulässig)",
+          "legacy_optimized_4":        "solar-optimiert",
           "legacy_fast":               "schnell",
           "legacy_fast_with_battery":  "schnell (laden aus Batterie)",
           "legacy_comfort_night_bat_support_off_day_continuous_charge_on":   "Komfort (Tags: kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort (Tags: Ladeunterbrechungen zulässig)",
+          "legacy_comfort_night_bat_support_off_day_continuous_charge_off":  "Komfort",
           "legacy_comfort_night_bat_support_on_day_continuous_charge_on":    "Komfort (Nachts: Laden aus Batterie | Tags: Kontinuierliches Laden)",
-          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie | Tags: Ladeunterbrechungen zulässig)"
+          "legacy_comfort_night_bat_support_on_day_continuous_charge_off":   "Komfort (Nachts: Laden aus Batterie)"
         }
       },
-
       "wallbox_1_mode": {
         "name": "Modus",
         "state": {
@@ -267,7 +266,6 @@
           "comfort":  "Komfort"
         }
       },
-
       "request_throttling": {
         "name": "Request Drosselung",
         "state": {
@@ -285,33 +283,19 @@
       }
     },
     "number": {
-      "spare_capacity": {
-        "name": "Reservekapazität"
-      },
-      "wallbox_1_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_2_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_3_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_4_set_icmax": {
-        "name": "ICMIN"
-      },
-      "wallbox_1_set_idefault": {
-        "name": "IDEFAULT"
-      },
-      "wallbox_2_set_idefault": {
-        "name": "IDEFAULT"
-      },
-      "wallbox_3_set_idefault": {
-        "name": "IDEFAULT"
-      },
-      "wallbox_4_set_idefault": {
-        "name": "IDEFAULT"
-      },
+      "spare_capacity": {"name": "Reservekapazität"},
+      "wallbox_1_optimized_set_icmax": {"name": "Modus Solar-optimiert: ICMIN"},
+      "wallbox_2_optimized_set_icmax": {"name": "Modus Solar-optimiert: ICMIN"},
+      "wallbox_3_optimized_set_icmax": {"name": "Modus Solar-optimiert: ICMIN"},
+      "wallbox_4_optimized_set_icmax": {"name": "Modus Solar-optimiert: ICMIN"},
+      "wallbox_1_comfort_set_icmax": {"name": "Modus Komfort: ICMIN"},
+      "wallbox_2_comfort_set_icmax": {"name": "Modus Komfort: ICMIN"},
+      "wallbox_3_comfort_set_icmax": {"name": "Modus Komfort: ICMIN"},
+      "wallbox_4_comfort_set_icmax": {"name": "Modus Komfort: ICMIN"},
+      "wallbox_1_set_idefault": {"name": "IDEFAULT"},
+      "wallbox_2_set_idefault": {"name": "IDEFAULT"},
+      "wallbox_3_set_idefault": {"name": "IDEFAULT"},
+      "wallbox_4_set_idefault": {"name": "IDEFAULT"},
       "sockets_1_lower_limit": {
         "name": "Kontakt1 Einschaltschwelle (W)"
       },

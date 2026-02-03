@@ -15,7 +15,7 @@ from .const import (
     MAIN_NUMBER_TYPES,
     WEB_NUMBER_TYPES,
     CONF_SYSTYPE_WEB,
-    CONF_SYSTYPE_INVERTER
+    CONF_SYSTYPE_INVERTER, StaticFuncs
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
-    """Initialize sensor platform from config entry."""
+    """Initialize number platform from config entry."""
     _LOGGER.info("NUMBER async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
@@ -33,23 +33,33 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_NUMBER_TYPES:
-            # we want to adjust the MIN value for the ic_max selectors...
-            if description.key.endswith("set_icmax"):
+
+            # when we have wallbox data, we want to enable the entity by default...
+            a_wallbox_obj = None
+            if description.key.startswith("wallbox"):
+                possible_idx_str = description.key.lower().split('_')[1]
                 try:
-                    a_state_key = description.key.replace("_set_icmax", "_state")
-                    attr_func_name = f"{a_state_key}_attr"
-                    if hasattr(coordinator.senec, attr_func_name):
-                        a_dict = getattr(coordinator.senec, attr_func_name)
-                        if a_dict is not None:
-                            the_min_current = a_dict.get("json", {}).get("chargingCurrents", {}).get("minPossibleCharging", -1)
+                    idx = int(possible_idx_str) - 1
+                    a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(coordinator.data, idx)
+                except ValueError:
+                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+
+                if a_wallbox_obj is not None:
+                    description = replace(description, entity_registry_enabled_default=True)
+
+                    # we want to adjust the MIN value for the ic_max selectors...
+                    if description.key.endswith("set_icmax"):
+                        try:
+                            the_min_current = a_wallbox_obj.get("chargingCurrents", {}).get("minPossibleCharging", -1)
                             if the_min_current > 0:
+                                _LOGGER.warning(f"aaaa {description.key} {the_min_current}")
                                 description = replace(
                                     description,
                                     native_min_value = the_min_current,
                                     native_max_value = 12
                                 )
-                except Exception as err:
-                    _LOGGER.error(f"WEB: Could not fetch min/max values for '{description.key}' - cause: {err}")
+                        except Exception as err:
+                            _LOGGER.error(f"WEB: Could not fetch min/max values for '{description.key}' - cause: {err}")
 
             entity = SenecNumber(coordinator, description, False)
             entities.append(entity)
@@ -140,3 +150,10 @@ class SenecNumber(SenecEntity, NumberEntity):
             else:
                 await api.set_number_value(self.entity_description.key, float(value))
         self.async_schedule_update_ha_state(force_refresh=True)
+
+    @property
+    def available(self):
+        ret = super().available
+        if hasattr(self.entity_description, "availability_check") and self.entity_description.availability_check is not None:
+            ret = ret and self.entity_description.availability_check(self.coordinator.data)
+        return ret

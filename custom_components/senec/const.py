@@ -233,12 +233,14 @@ class ExtSensorEntityDescription(SensorEntityDescription):
     array_key: str | None = None
     array_pos: int = -1
     require_2408: bool = False
+    availability_check: Callable[[dict[str, Any]], Any] | None = None
 
 
 @dataclass(frozen=True)
 class ExtButtonEntityDescription(ButtonEntityDescription):
     payload: str | None = None
     require_2408: bool = False
+    availability_check: Callable[[dict[str, Any]], Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -249,6 +251,7 @@ class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     array_pos: int = -1
     on_values: [int] = None
     require_2408: bool = False
+    availability_check: Callable[[dict[str, Any]], Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -271,6 +274,7 @@ class ExtSelectEntityDescription(SelectEntityDescription):
     array_key: str | None = None
     array_pos: int = -1
     require_2408: bool = False
+    availability_check: Callable[[dict[str, Any]], Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -280,6 +284,7 @@ class ExtNumberEntityDescription(NumberEntityDescription):
     array_key: str | None = None
     array_pos: int = -1
     require_2408: bool = False
+    availability_check: Callable[[dict[str, Any]], Any] | None = None
 
 
 WEB_NUMBER_TYPES = [
@@ -298,7 +303,7 @@ WEB_NUMBER_TYPES = [
 
     ExtNumberEntityDescription(
         entity_registry_enabled_default=False,
-        key="wallbox_1_set_icmax",
+        key="wallbox_1_optimized_set_icmax",
         name="Wallbox I set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.SLIDER,
@@ -307,10 +312,11 @@ WEB_NUMBER_TYPES = [
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_1_is_solar
     ),
     ExtNumberEntityDescription(
         entity_registry_enabled_default=False,
-        key="wallbox_2_set_icmax",
+        key="wallbox_2_optimized_set_icmax",
         name="Wallbox II set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.SLIDER,
@@ -319,10 +325,11 @@ WEB_NUMBER_TYPES = [
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_2_is_solar
     ),
     ExtNumberEntityDescription(
         entity_registry_enabled_default=False,
-        key="wallbox_3_set_icmax",
+        key="wallbox_3_optimized_set_icmax",
         name="Wallbox III set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.SLIDER,
@@ -331,10 +338,11 @@ WEB_NUMBER_TYPES = [
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_3_is_solar
     ),
     ExtNumberEntityDescription(
         entity_registry_enabled_default=False,
-        key="wallbox_4_set_icmax",
+        key="wallbox_4_optimized_set_icmax",
         name="Wallbox IV set ICMAX",
         icon="mdi:current-dc",
         mode=NumberMode.SLIDER,
@@ -343,6 +351,59 @@ WEB_NUMBER_TYPES = [
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_4_is_solar
+    ),
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_comfort_set_icmax",
+        name="Wallbox I set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_1_is_comfort
+    ),
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_comfort_set_icmax",
+        name="Wallbox II set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_2_is_comfort
+    ),
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_comfort_set_icmax",
+        name="Wallbox III set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_3_is_comfort
+    ),
+    ExtNumberEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_comfort_set_icmax",
+        name="Wallbox IV set ICMAX",
+        icon="mdi:current-dc",
+        mode=NumberMode.SLIDER,
+        native_max_value=64,
+        native_min_value=0,
+        native_step=1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        device_class=SensorDeviceClass.ENERGY,
+        availability_check=StaticFuncs.app_availability_check_wallbox_4_is_comfort
     ),
 ]
 
