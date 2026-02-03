@@ -767,7 +767,7 @@ class SenecEntity(Entity):
     @property
     def unique_id(self):
         """Return a unique ID to use for this entity."""
-        return f"{self._name}_{self.entity_description.key}".lower()
+        return f"{self._name}_{self.entity_description.key}"
 
     async def async_added_to_hass(self):
         """Connect to dispatcher listening for entity data notifications."""
