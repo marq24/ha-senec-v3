@@ -178,7 +178,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             # by calling the async_start_reauth() method on the config_entry
             hass.add_job(config_entry.async_start_reauth, hass)
 
+    # for the webAPI integration we want to search ALWAYS for possible existing wallboxes during the
+    # initial start of the integration [to automatically enable the Wallbox DEVICE if there is some data]
+    if hasattr(coordinator.senec, 'is_integration_startup_phase'):
+        coordinator.senec.is_integration_startup_phase = True
     await coordinator.async_refresh()
+    if hasattr(coordinator.senec, 'is_integration_startup_phase'):
+        coordinator.senec.is_integration_startup_phase = False
+
     if not coordinator.last_update_success:
         raise ConfigEntryNotReady
 

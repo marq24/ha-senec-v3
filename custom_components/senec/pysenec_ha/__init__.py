@@ -3008,6 +3008,8 @@ class ReConfigurationRequired(Exception):
 class SenecOnline:
 
     USE_DEFAULT_USER_AGENT:Final = True
+    is_integration_startup_phase: bool = False
+
     def __str__(self) -> str:
         return f"SenecOnline [{util.mask_string(self._SENEC_USERNAME)}, AppIsAuth? {self._app_is_authenticated} MasterPlant: {self._app_master_plant_number}, Serial: {util.mask_string(self._app_serial_number)}]"
 
@@ -3018,6 +3020,7 @@ class SenecOnline:
                  tokens_location: str = None,
                  integ_version: str = None):
 
+        self.is_integration_startup_phase = False
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
         self._init_user_agents()
         self._lang = lang
@@ -3514,7 +3517,7 @@ class SenecOnline:
 
                 # we MUST QUERY possible WB-DATA BEFORE we _QUERY_TOTALS (since
                 # we need the wallbox UUID!)
-                if self._QUERY_WALLBOX:
+                if self._QUERY_WALLBOX or self.is_integration_startup_phase:
                     await self.app_update_all_wallboxes()
 
                 if self._QUERY_TOTALS:
@@ -5283,14 +5286,23 @@ class SenecOnline:
 
     async def app_update_all_wallboxes(self):
         _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
+        if self.is_integration_startup_phase:
+            _LOGGER.info(f"app_update_all_wallboxes(): INITIAL STARTUP - searching ONCE for possible existing wallboxes")
+
         data = await self._app_do_post_request(self.APP_WALLBOX_SEARCH, post_data={"systemIds":[self._app_master_plant_id]}, read_response=True)
         # the data should be an array… and this array should have the same length then
         # our known wallboxes… [but it's better to check that]
 
         # Check if data is valid and has content
         if not data or not isinstance(data, list):
-            _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+            if self.is_integration_startup_phase:
+                _LOGGER.debug(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+            else:
+                _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
             return
+        else:
+            if self.is_integration_startup_phase:
+                _LOGGER.info(f"app_update_all_wallboxes(): INITIAL STARTUP - found {len(data)} wallbox(es)")
 
         # Check if we have enough data for all expected wallboxes
         if len(data) < self._app_wallbox_num_max:

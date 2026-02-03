@@ -52,7 +52,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                         try:
                             the_min_current = a_wallbox_obj.get("chargingCurrents", {}).get("minPossibleCharging", -1)
                             if the_min_current > 0:
-                                _LOGGER.warning(f"aaaa {description.key} {the_min_current}")
                                 description = replace(
                                     description,
                                     native_min_value = the_min_current,

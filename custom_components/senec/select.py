@@ -32,38 +32,29 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
         for description in WEB_SELECT_TYPES:
             # when we have wallbox data, we want to enable the entity by default...
             if description.key.startswith("wallbox"):
+                is_legacy = description.key.endswith("_mode_legacy")
                 possible_idx_str = description.key.lower().split('_')[1]
                 try:
                     idx = int(possible_idx_str) - 1
                     a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(coordinator.data, idx)
-                    if a_wallbox_obj is not None:
-                        description = replace(description, entity_registry_enabled_default=True)
                 except ValueError:
                     _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
 
-            # we need to check, if for the wallbox modes, we have a V4 or a V2/V3 system - since
-            # the V4 have more options!
-            if description.key in ["wallbox_1_mode", "wallbox_1_mode_legacy", "wallbox_2_mode", "wallbox_2_mode_legacy",
-                                   "wallbox_3_mode", "wallbox_3_mode_legacy", "wallbox_4_mode", "wallbox_4_mode_legacy"]:
-                try:
-                    is_legacy = description.key.endswith("_mode_legacy")
-                    if is_legacy:
-                        a_state_key = description.key.replace("_mode_legacy", "_state")
-                    else:
-                        a_state_key = description.key.replace("_mode", "_state")
+                if a_wallbox_obj is not None:
+                    # the legacy wallbox-mode selector should still be disabled by default!
+                    if not is_legacy:
+                        description = replace(description, entity_registry_enabled_default=True)
 
-                    attr_func_name = f"{a_state_key}_attr"
-                    if hasattr(coordinator.senec, attr_func_name):
-                        a_dict = getattr(coordinator.senec, attr_func_name)
-                        if a_dict is not None:
-                            the_wallbox_type = a_dict.get("json", {}).get("type", None)
-                            if the_wallbox_type is not None and the_wallbox_type.upper() in ["V4", "P4"]:
-                                description = replace(
-                                    description,
-                                    options = list(WALLBOX_CHARGING_MODES_LEGACY_P4.values()) if is_legacy else list(WALLBOX_CHARGING_MODES_2026_P4.values())
-                                )
-                except Exception as err:
-                    _LOGGER.error(f"WEB: Could not fetch wallbox-type for '{description.key}' - cause: {err}")
+                    # we need to check, if for the wallbox modes, we have a V4 or a V2/V3 system - since
+                    # the V4 have more options!
+                    if description.key in ["wallbox_1_mode", "wallbox_1_mode_legacy", "wallbox_2_mode", "wallbox_2_mode_legacy",
+                                           "wallbox_3_mode", "wallbox_3_mode_legacy", "wallbox_4_mode", "wallbox_4_mode_legacy"]:
+                        the_wallbox_type = a_wallbox_obj.get("type", None)
+                        if the_wallbox_type is not None and the_wallbox_type.upper() in ["V4", "P4"]:
+                            description = replace(
+                                description,
+                                options = list(WALLBOX_CHARGING_MODES_LEGACY_P4.values()) if is_legacy else list(WALLBOX_CHARGING_MODES_2026_P4.values())
+                            )
 
             entity = SenecSelect(coordinator, description)
             entities.append(entity)
