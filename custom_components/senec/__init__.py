@@ -138,6 +138,36 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 # do nothing for other system-types (inverter or local, just update the version info...
                 hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
 
+        # update from 2.2 to 2.3 [ensure that all unique_id's are lower case!]
+        if config_entry.minor_version == 2:
+            _LOGGER.info(f"async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+            registry = entity_registry.async_get(hass)
+
+            # 1'st run - ensure that all 'unique_id' are lower case...
+            entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
+            for entity in entities:
+                if entity.unique_id != entity.unique_id.lower():
+                    new_unique_id = entity.unique_id.lower()
+                    _LOGGER.info(f"Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} updated!")
+                    for already_existing_entity in entities:
+                        if already_existing_entity.unique_id == new_unique_id:
+                            _LOGGER.info(f"Entity ID: {entity.entity_id}, Unique ID: {new_unique_id} already exists! - Will PURGE previous {already_existing_entity.entity_id}")
+                            registry.async_remove(already_existing_entity.entity_id)
+
+                    registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
+
+            # 2'nd run - add the DOMAIN...
+            entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
+            prefix = f"{DOMAIN.lower()}.".lower()
+            for entity in entities:
+                if not entity.unique_id.startswith(prefix):
+                    new_unique_id = f"{DOMAIN}.{entity.unique_id}".lower()
+                    _LOGGER.debug(f"Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} will be updated!")
+                    registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
+
+            hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
+            _LOGGER.info(f"async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
+
     return True
 
 
@@ -767,7 +797,7 @@ class SenecEntity(Entity):
     @property
     def unique_id(self):
         """Return a unique ID to use for this entity."""
-        return f"{self._name}_{self.entity_description.key}"
+        return f"{DOMAIN}.{self._name}_{self.entity_description.key}".lower()
 
     async def async_added_to_hass(self):
         """Connect to dispatcher listening for entity data notifications."""

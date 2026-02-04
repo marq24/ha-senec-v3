@@ -5289,6 +5289,10 @@ class SenecOnline:
         if self.is_integration_startup_phase:
             _LOGGER.info(f"app_update_all_wallboxes(): INITIAL STARTUP - searching ONCE for possible existing wallboxes")
 
+        if self._app_master_plant_id is None:
+            _LOGGER.warning(f"app_update_all_wallboxes(): self._app_master_plant_id is NONE!")
+            return
+
         data = await self._app_do_post_request(self.APP_WALLBOX_SEARCH, post_data={"systemIds":[self._app_master_plant_id]}, read_response=True)
         # the data should be an array… and this array should have the same length then
         # our known wallboxes… [but it's better to check that]
