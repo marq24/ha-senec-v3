@@ -2103,7 +2103,7 @@ MAIN_SELECT_TYPES = [
     ExtSelectEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_1_mode",
+        key="wallbox_1_mode_legacy",
         name="Wallbox I charging mode",
         icon="mdi:toggle-switch",
         options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
@@ -2113,7 +2113,7 @@ MAIN_SELECT_TYPES = [
     ExtSelectEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_2_mode",
+        key="wallbox_2_mode_legacy",
         name="Wallbox II charging mode",
         icon="mdi:toggle-switch",
         options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
@@ -2123,7 +2123,7 @@ MAIN_SELECT_TYPES = [
     ExtSelectEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_3_mode",
+        key="wallbox_3_mode_legacy",
         name="Wallbox III charging mode",
         icon="mdi:toggle-switch",
         options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),
@@ -2133,7 +2133,7 @@ MAIN_SELECT_TYPES = [
     ExtSelectEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
         entity_registry_enabled_default=False,
-        key="wallbox_4_mode",
+        key="wallbox_4_mode_legacy",
         name="Wallbox IV charging mode",
         icon="mdi:toggle-switch",
         options=list(WALLBOX_CHARGING_MODES_LEGACY.values()),

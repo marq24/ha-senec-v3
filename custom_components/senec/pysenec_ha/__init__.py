@@ -2470,45 +2470,45 @@ class SenecLocal:
         return await getattr(self, 'set_nva_' + str(array_key))(array_pos, value)
 
     @property
-    def wallbox_1_mode(self) -> str:
+    def wallbox_1_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(0)
         return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
-    async def set_string_value_wallbox_1_mode(self, value: str):
+    async def set_string_value_wallbox_1_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(0, value)
         if self._bridge_to_senec_online is not None:
             await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=1, sync=False)
 
     @property
-    def wallbox_2_mode(self) -> str:
+    def wallbox_2_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(1)
         return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
-    async def set_string_value_wallbox_2_mode(self, value: str):
+    async def set_string_value_wallbox_2_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(1, value)
         if self._bridge_to_senec_online is not None:
             await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=2, sync=False)
 
     @property
-    def wallbox_3_mode(self) -> str:
+    def wallbox_3_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(2)
         return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
-    async def set_string_value_wallbox_3_mode(self, value: str):
+    async def set_string_value_wallbox_3_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(2, value)
         if self._bridge_to_senec_online is not None:
             await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=3, sync=False)
 
     @property
-    def wallbox_4_mode(self) -> str:
+    def wallbox_4_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(3)
         return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
-    async def set_string_value_wallbox_4_mode(self, value: str):
+    async def set_string_value_wallbox_4_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(3, value)
         if self._bridge_to_senec_online is not None:
             await self._bridge_to_senec_online.app_set_wallbox_mode_legacy(local_mode_to_set=value, wallbox_num=4, sync=False)
