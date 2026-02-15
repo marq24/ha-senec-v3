@@ -532,6 +532,9 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                 a_entity_platform = a_id.split(".")[0]
                                 if a_entity_platform in LOCAL_PLATFORM_MAPPING:
                                     for a_entity_desc in LOCAL_PLATFORM_MAPPING[a_entity_platform]:
+                                        # truncating the stupid possible existing _2, _3 ... _10
+                                        # simplest solution, first right trim all digits, then trim the _
+                                        a_id = a_id.rstrip("0123456789").rstrip("_")
                                         if a_id.endswith(a_entity_desc.key):
                                             if hasattr(a_entity_desc, "senec_lala_section"):
                                                 a_lala_section  = a_entity_desc.senec_lala_section
