@@ -29,7 +29,12 @@ template:
         unit_of_measurement: "€/kWh"
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {{i.now_price()|float|round(4)}}
+          {% set a_value = i.now_price()%}
+          {% if a_value is number or (a_value | is_number) %}
+          {{a_value|float|round(4)}}
+          {%- else -%}
+          {{None}}
+          {%- endif -%}
         attributes:
           today: >
             {% import 'pow_vars.jinja' as i %}
@@ -44,7 +49,12 @@ template:
         unit_of_measurement: "€/kWh"
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {{i.average_price()|float|round(4)}}
+          {% set a_value = i.average_price()%}
+          {% if a_value is number or (a_value | is_number) %}
+          {{a_value|float|round(4)}}
+          {%- else -%}
+          {{None}}
+          {%- endif -%}
 
       - name: "POW Tibber average price"
         unique_id: pow_tibber_avg_price
@@ -52,7 +62,7 @@ template:
         unit_of_measurement: "€/kWh"
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {{i.tibb_avg_price()|float|round(4)}}
+          {{i.tibb_avg_price()|trim|float(0)|round(4)}}
 
       - name: "POW average price from now"
         unique_id: pow_avg_price_from_now
@@ -60,7 +70,7 @@ template:
         unit_of_measurement: "€/kWh"
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {{i.avgprice_ahead()|float|round(4)}}
+          {{i.avgprice_ahead()|trim|float(0)|round(4)}}
 
       - name: "POW low price duration"
         unique_id: pow_low_price_duration
@@ -258,7 +268,7 @@ template:
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set a_price = i.storage_charging_cost() %}
-          {%- if a_price|trim != 'None' -%}
+          {% if a_price is number or (a_price | is_number) %}
           {{a_price|float|round(3)}}
           {%- else -%}
           {{0}}
@@ -271,7 +281,7 @@ template:
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set a_price = i.storage_charging_overhead_cost() %}
-          {%- if a_price|trim != 'None' -%}
+          {% if a_price is number or (a_price | is_number) %}
           {{a_price|float|round(3)}}
           {%- else -%}
           {{0}}
@@ -284,8 +294,8 @@ template:
         state: >
           {% import 'pow_vars.jinja' as i %}
           {% set a_price = i.storage_usage_savings() %}
-          {%- if a_price|trim != 'None' -%}
-          {{a_price|float|round(3)}}
+          {% if a_price is number or (a_price | is_number) %}
+          {{a_price|float(0)|round(3)}}
           {%- else -%}
           {{0}}
           {%- endif -%}
@@ -296,8 +306,8 @@ template:
         unique_id: pow_pv_power_can_fully_load_storage
         state: >
           {% import 'pow_vars.jinja' as i %}
-          {% set storage_need_ = i.storage_need()|float %}
-          {%- if storage_need_ > 0 and i.remain_prod_energy()|float > storage_need_ -%}
+          {% set storage_need_ = i.storage_need()|trim|float %}
+          {%- if storage_need_ > 0 and i.remain_prod_energy()|trim|float > storage_need_ -%}
           {{'on'}}
           {%- else -%}
           {{'off'}}
