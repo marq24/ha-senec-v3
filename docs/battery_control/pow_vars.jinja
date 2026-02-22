@@ -241,7 +241,7 @@
     {%- else -%}
         {% set prices_data = [] %}
     {%- endif %}
-{{ prices_data | average(0) }}
+{{ prices_data|average(0) }}
 {%- endmacro %}
 
 {% macro avgprice_ahead() -%}
@@ -255,7 +255,7 @@
 
 {% macro avgprice_ahead_internal(a_nowidx, prices_data) -%}
     {% if tibb_avg_price()|trim != 'None' -%}
-{{ (prices_data[a_nowidx|int:now_max_idx(a_nowidx|int, prices_data|length)|int], tibb_avg_price()|float)|average(0)|round(4) }}
+{{ (prices_data[a_nowidx|int:now_max_idx(a_nowidx|int, prices_data|length)|int]|average(0), tibb_avg_price()|float)|average(0)|round(4) }}
     {%- else -%}
 {{ (prices_data[a_nowidx|int:now_max_idx(a_nowidx|int, prices_data|length)|int])|average(0)|round(4) }}
     {%- endif %}
@@ -307,7 +307,7 @@
         {% set prices_data = [] %}
     {%- endif %}
     {% if prices_data|length > 0 -%}
-{{ ((prices_data | max) - (prices_data | min)) | float(0) }}
+{{ ((prices_data|max) - (prices_data|min))|float(0) }}
     {%- else -%}
 {{ None }}
     {%- endif %}
@@ -320,7 +320,7 @@
         {% set prices_data = [] %}
     {%- endif %}
     {% if prices_data|length > 0 -%}
-{{ ((prices_data | max) - (prices_data | min)) | float(0) }}
+{{ ((prices_data|max) - (prices_data|min))|float(0) }}
     {%- else -%}
 {{ None }}
     {%- endif %}
@@ -478,7 +478,7 @@
         {% set ei = now_max_idx(si, prices_data|length)|int %}
         {% set price_slice = prices_data[si:ei] %}
 
-        {% if price_slice | length > 0 %}
+        {% if price_slice|length > 0 %}
             {% set min_price = min(price_slice) %}
             {% set min_price_idx = si + price_slice.index(min_price) %}
             {% set ns_pmin.startidx = min_price_idx %}
