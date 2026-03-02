@@ -24,6 +24,7 @@ import aiohttp
 import pyotp
 import xmltodict
 from aiohttp import ClientResponseError, ClientConnectionError
+from homeassistant.util import slugify
 
 from custom_components.senec.const import (
     QUERY_PV1_KEY,
@@ -107,7 +108,6 @@ from custom_components.senec.pysenec_ha.constants import (
 )
 from custom_components.senec.pysenec_ha.phones import PHONE_BUILD_MAPPING
 from custom_components.senec.pysenec_ha.util import parse
-from homeassistant.util import slugify
 
 # 4: "INITIAL CHARGE",
 # 5: "MAINTENANCE CHARGE",
@@ -3697,8 +3697,11 @@ class SenecOnline:
             has_password = re.search(r'<input[^>]*(?:name|id)=["\']?password["\']?[^>]*>', form_content, re.IGNORECASE)
             if has_username and has_password:
                 # This is the login form we're looking for
-                return form_match.group(1)
-
+                return "user+pwd", form_match.group(1)
+            elif has_username:
+                return "user", form_match.group(1)
+            elif has_password:
+                return "pwd", form_match.group(1)
         return None
 
     def _parse_totp_action_form_url(self, html_content):
@@ -3741,13 +3744,19 @@ class SenecOnline:
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     html_content = await res.text()
-                    the_form_action_url = self._parse_login_action_form_url(html_content)
+                    login_and_pwd, the_form_action_url = self._parse_login_action_form_url(html_content)
                     if the_form_action_url:
-                        login_data = {
-                            "username": self._SENEC_USERNAME,
-                            "password": self._SENEC_PASSWORD
-                        }
-                        await self._initial_token_request_02_post_login(accept_http_200=True, form_action_url=the_form_action_url, post_data=login_data)
+                        if login_and_pwd == "user+pwd":
+                            login_data = {
+                                "username": self._SENEC_USERNAME,
+                                "password": self._SENEC_PASSWORD
+                            }
+                            await self._initial_token_request_03_post_login(accept_http_200=True, form_action_url=the_form_action_url, post_data=login_data)
+                        elif login_and_pwd == "user":
+                            login_data = {
+                                "username": self._SENEC_USERNAME,
+                            }
+                            await self._initial_token_request_02_post_login_substep(form_action_url=the_form_action_url, post_data=login_data)
                     else:
                         _LOGGER.info(f"initial_token_request_01_start(): did not find the expected form action URL in the response HTML! {html_content}")
                 else:
@@ -3755,7 +3764,47 @@ class SenecOnline:
             except BaseException as ex:
                 _LOGGER.debug(f"initial_token_request_01_start(): {type(ex).__name__} - {ex}")
 
-    async def _initial_token_request_02_post_login(self, accept_http_200:bool, form_action_url, post_data:dict):
+    async def _initial_token_request_02_post_login_substep(self, form_action_url, post_data:dict):
+        req_headers = self._default_app_web_headers.copy()
+        req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+        #req_headers["Host"]             = "sso.senec.com"
+        req_headers["Content-Type"]     = "application/x-www-form-urlencoded"
+        req_headers["Cache-Control"]    = "max-age=0"
+
+        async with self.web_session.post(form_action_url, data=post_data, allow_redirects=False, headers=req_headers) as res:
+            try:
+                _LOGGER.debug(f"_initial_token_request_02_post_login_substep(): requesting: {form_action_url}")
+                res.raise_for_status()
+                # checking if OTP code must be submitted
+                if res.status in [200, 201, 202, 204, 205]:
+                    html_content = await res.text()
+                    login_and_pwd, the_form_action_url = self._parse_login_action_form_url(html_content)
+                    if the_form_action_url:
+                        if login_and_pwd == "user+pwd":
+                            login_data = {
+                                "username": self._SENEC_USERNAME,
+                                "password": self._SENEC_PASSWORD
+                            }
+                            await self._initial_token_request_03_post_login(accept_http_200=True, form_action_url=the_form_action_url, post_data=login_data)
+                        elif login_and_pwd == "pwd":
+                            login_data = {
+                                "password": self._SENEC_PASSWORD,
+                            }
+                            await self._initial_token_request_02_post_login(accept_http_200=True, form_action_url=the_form_action_url, post_data=login_data)
+
+                elif res.status == 302:
+                    location = res.headers.get("Location")
+                    if location:
+                        await self._initial_token_request_04_get_token(location)
+                    else:
+                        _LOGGER.info(f"_initial_token_request_02_post_login_substep(): no 'Location' in response Header")
+                else:
+                    _LOGGER.info(f"_initial_token_request_02_post_login_substep(): unexpected [302] response code: {res.status} - {res}")
+
+            except BaseException as ex:
+                _LOGGER.info(f"_initial_token_request_02_post_login_substep(): {type(ex).__name__} - {ex}")
+
+    async def _initial_token_request_03_post_login(self, accept_http_200:bool, form_action_url, post_data:dict):
         req_headers = self._default_app_web_headers.copy()
         req_headers["Accept"]           = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
         #req_headers["Host"]             = "sso.senec.com"
@@ -3765,9 +3814,9 @@ class SenecOnline:
         async with self.web_session.post(form_action_url, data=post_data, allow_redirects=False, headers=req_headers) as res:
             try:
                 if accept_http_200:
-                    _LOGGER.debug(f"_initial_token_request_02_post_login(): requesting: {form_action_url}")
+                    _LOGGER.debug(f"_initial_token_request_03_post_login(): requesting: {form_action_url}")
                 else:
-                    _LOGGER.debug(f"_initial_token_request_02_post_login(): SEND OTP CODE requesting: {form_action_url}")
+                    _LOGGER.debug(f"_initial_token_request_03_post_login(): SEND OTP CODE requesting: {form_action_url}")
 
                 res.raise_for_status()
                 # checking if OTP code must be submitted
@@ -3777,26 +3826,26 @@ class SenecOnline:
                     if the_form_action_url:
                         if self._SENEC_TOTP_SECRET is not None:
                             otp_data = {"otp": pyotp.TOTP(self._SENEC_TOTP_SECRET).now()}
-                            await self._initial_token_request_02_post_login(accept_http_200=False, form_action_url=the_form_action_url, post_data=otp_data)
+                            await self._initial_token_request_03_post_login(accept_http_200=False, form_action_url=the_form_action_url, post_data=otp_data)
                         else:
-                            _LOGGER.error(f"_initial_token_request_02_post_login(): TOTP Code required, but not configured/provided - need RECONFIG!")
+                            _LOGGER.error(f"_initial_token_request_03_post_login(): TOTP Code required, but not configured/provided - need RECONFIG!")
                             raise ReConfigurationRequired("TOTP Code required, but not configured/provided - need RECONFIG")
                     else:
-                        _LOGGER.info(f"_initial_token_request_02_post_login(): did not find the expected form action URL in the response HTML! {html_content}")
+                        _LOGGER.info(f"_initial_token_request_03_post_login(): did not find the expected form action URL in the response HTML! {html_content}")
 
                 elif res.status == 302:
                     location = res.headers.get("Location")
                     if location:
-                        await self._initial_token_request_03_get_token(location)
+                        await self._initial_token_request_04_get_token(location)
                     else:
-                        _LOGGER.info(f"_initial_token_request_02_post_login(): no 'Location' in response Header")
+                        _LOGGER.info(f"_initial_token_request_03_post_login(): no 'Location' in response Header")
                 else:
-                    _LOGGER.info(f"_initial_token_request_02_post_login(): unexpected [302] response code: {res.status} - {res}")
+                    _LOGGER.info(f"_initial_token_request_03_post_login(): unexpected [302] response code: {res.status} - {res}")
 
             except BaseException as ex:
-                _LOGGER.info(f"_initial_token_request_02_post_login(): {type(ex).__name__} - {ex}")
+                _LOGGER.info(f"_initial_token_request_03_post_login(): {type(ex).__name__} - {ex}")
 
-    async def _initial_token_request_03_get_token(self, redirect):
+    async def _initial_token_request_04_get_token(self, redirect):
         if redirect.startswith(self.APP_REDIRECT_KEYCLOAK_URI):
             # from the incoming redirect location url we are parsing the url parameters…
             params = parse_qs(urlparse(redirect).query)
@@ -3807,7 +3856,7 @@ class SenecOnline:
             # iss = params.get('iss', [None])[0]
             # session_state = params.get('session_state', [None])[0]
 
-            _LOGGER.debug(f"_initial_token_request_03_get_token(): got final code: '{util.mask_string(code)}' in redirect URL - going to continue…")
+            _LOGGER.debug(f"_initial_token_request_04_get_token(): got final code: '{util.mask_string(code)}' in redirect URL - going to continue…")
 
             req_headers = self._default_app_web_headers.copy()
             req_headers["User-Agent"]   = self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else self.APP_SSO_USER_AGENT
@@ -3825,22 +3874,22 @@ class SenecOnline:
             # we have to follow the redirect…
             async with self.web_session.post(self.TOKEN_URL, data=post_data, headers=req_headers) as res:
                 try:
-                    _LOGGER.debug(f"_initial_token_request_03_get_token(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
+                    _LOGGER.debug(f"_initial_token_request_04_get_token(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         token_data = await res.json()
                         if "access_token" in token_data:
-                            _LOGGER.debug(f"_initial_token_request_03_get_token(): received token data: {util.mask_map(token_data)}")
+                            _LOGGER.debug(f"_initial_token_request_04_get_token(): received token data: {util.mask_map(token_data)}")
                             await self._app_on_new_token_data_received(token_data)
                         else:
-                            _LOGGER.info(f"_initial_token_request_03_get_token(): NO access_token in {util.mask_map(token_data)}")
+                            _LOGGER.info(f"_initial_token_request_04_get_token(): NO access_token in {util.mask_map(token_data)}")
                     else:
-                        _LOGGER.info(f"_initial_token_request_03_get_token(): unexpected [200] response code: {res.status} - {res}")
+                        _LOGGER.info(f"_initial_token_request_04_get_token(): unexpected [200] response code: {res.status} - {res}")
 
                 except BaseException as ex:
-                    _LOGGER.info(f"_initial_token_request_03_get_token(): {type(ex).__name__} - {ex}")
+                    _LOGGER.info(f"_initial_token_request_04_get_token(): {type(ex).__name__} - {ex}")
         else:
-            _LOGGER.info(f"_initial_token_request_03_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
+            _LOGGER.info(f"_initial_token_request_04_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
 
     async def _refresh_token_request(self, refresh_token):
         req_headers = self._default_app_web_headers.copy()
