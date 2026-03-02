@@ -284,16 +284,16 @@
       "wallbox_3_set_idefault": {"name": "IDEFAULT"},
       "wallbox_4_set_idefault": {"name": "IDEFAULT"},
       "sockets_1_lower_limit": {
-        "name": "Socket1 lower limit (W)"
+        "name": "Socket1 OFF lower limit (W)"
       },
       "sockets_2_lower_limit": {
-        "name": "Socket2 lower limit (W)"
+        "name": "Socket2 OFF lower limit (W)"
       },
       "sockets_1_upper_limit": {
-        "name": "Socket1 upper limit (W)"
+        "name": "Socket1 ON upper limit (W)"
       },
       "sockets_2_upper_limit": {
-        "name": "Socket2 upper limit (W)"
+        "name": "Socket2 ON upper limit (W)"
       },
       "sockets_1_time_limit": {
         "name": "Socket1 time limit"

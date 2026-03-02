@@ -297,16 +297,16 @@
       "wallbox_3_set_idefault": {"name": "IDEFAULT"},
       "wallbox_4_set_idefault": {"name": "IDEFAULT"},
       "sockets_1_lower_limit": {
-        "name": "Kontakt1 Einschaltschwelle (W)"
-      },
-      "sockets_2_lower_limit": {
-        "name": "Kontakt2 Einschaltschwelle (W)"
-      },
-      "sockets_1_upper_limit": {
         "name": "Kontakt1 Abschaltschwelle (W)"
       },
-      "sockets_2_upper_limit": {
+      "sockets_2_lower_limit": {
         "name": "Kontakt2 Abschaltschwelle (W)"
+      },
+      "sockets_1_upper_limit": {
+        "name": "Kontakt1 Einschaltschwelle (W)"
+      },
+      "sockets_2_upper_limit": {
+        "name": "Kontakt2 Einschaltschwelle (W)"
       },
       "sockets_1_time_limit": {
         "name": "Kontakt1 Dauer Leistungsüberschuss (min)"
