@@ -10,6 +10,7 @@ from homeassistant.core import State
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity, InverterLocal
 from .const import (
     DOMAIN,
@@ -104,9 +105,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
         self.entity_id = f"sensor.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
-        # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
         self._attr_translation_key = key
-        self._attr_has_entity_name = True
         self._previous_float_value: float | None = None
         self._is_total_increasing: bool = (description is not None and
                                            isinstance(description, ExtSensorEntityDescription) and

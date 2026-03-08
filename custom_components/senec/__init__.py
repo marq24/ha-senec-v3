@@ -5,6 +5,18 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Final
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.core import HomeAssistant, Event
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import entity_registry, config_validation as config_val, device_registry as device_reg
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.entity import EntityDescription
+from homeassistant.helpers.storage import STORAGE_DIR
+from homeassistant.helpers.typing import UNDEFINED
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.loader import async_get_integration
+
 from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
@@ -20,16 +32,6 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_TEMPMEASURE,
     SENEC_SECTION_WALLBOX
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_NAME, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant, Event
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import entity_registry, config_validation as config_val, device_registry as device_reg
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant.helpers.entity import EntityDescription, Entity
-from homeassistant.helpers.storage import STORAGE_DIR
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.loader import async_get_integration
 from . import service as SenecService
 from .const import (
     StaticFuncs,
@@ -83,6 +85,7 @@ from .const import (
     QUERY_SGREADY_KEY,
     STARTUP_MESSAGE
 )
+from .entity import CustomFriendlyNameEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -720,10 +723,11 @@ async def entry_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) 
         _LOGGER.info(f"entry_update_listener() was called but the RELOAD will be skipped cause the updated was caused by an integrtaion-internal process - all is fine!")
         SKIP_NEXT_RELOAD_OF_WEB = False
 
-class SenecEntity(Entity):
+class SenecEntity(CustomFriendlyNameEntity):
     """Defines a base Senec entity."""
 
     _attr_should_poll = False
+    _attr_has_entity_name = True
 
     def __init__(
             self, coordinator: SenecDataUpdateCoordinator, description: EntityDescription
@@ -814,3 +818,27 @@ class SenecEntity(Entity):
     def should_poll(self) -> bool:
         """Entities do not individually poll."""
         return False
+
+    def _friendly_name_internal(self) -> str | None:
+        """Return the friendly name.
+
+        If has_entity_name is False, this returns self.name
+        If has_entity_name is True, this returns device.name + self.name
+        """
+        name = self.name
+        if name is UNDEFINED:
+            name = None
+
+        if not self.has_entity_name or not (device_entry := self.device_entry):
+            return name
+
+        device_name = device_entry.name_by_user or device_entry.name
+        if name is None and self.use_device_name:
+            return device_name
+
+        # we overwrite the default impl here and just return our 'name'
+        # return f"{device_name} {name}" if device_name else name
+        if device_entry.name_by_user is not None:
+            return f"{device_entry.name_by_user} {name}" if device_name else name
+        else:
+            return name

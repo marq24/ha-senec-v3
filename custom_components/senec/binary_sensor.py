@@ -9,6 +9,7 @@ from homeassistant.const import STATE_ON, STATE_OFF, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import (
     DOMAIN,
@@ -72,9 +73,7 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
         self.entity_id = f"binary_sensor.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
-        # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
         self._attr_translation_key = key
-        self._attr_has_entity_name = True
 
     @property
     def is_on(self) -> bool | None:

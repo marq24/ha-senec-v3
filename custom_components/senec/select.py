@@ -11,6 +11,7 @@ from homeassistant.core import State
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import slugify
+
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SELECT_TYPES, WEB_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
     ExtSelectEntityDescription, StaticFuncs
@@ -84,9 +85,7 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
         self.entity_id = f"select.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
-        # to set the '_attr_has_entity_name' to trigger the calls to the localization framework!
         self._attr_translation_key = key
-        self._attr_has_entity_name = True
 
         self._previous_value: str | None = None
 
