@@ -8,10 +8,6 @@ from urllib.parse import urlparse, unquote, parse_qs
 import pyotp
 import voluptuous as vol
 from aiohttp import ClientResponseError
-from requests.exceptions import HTTPError, Timeout
-
-from custom_components.senec.pysenec_ha import InverterLocal, util
-from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.config_entries import ConfigFlowResult, SOURCE_RECONFIGURE, SOURCE_REAUTH
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
@@ -21,6 +17,10 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import slugify
+from requests.exceptions import HTTPError, Timeout
+
+from custom_components.senec.pysenec_ha import InverterLocal, util
+from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
@@ -409,8 +409,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_DEV_SERIAL: self._device_serial,
                         CONF_DEV_VERSION: self._device_version
                     }
-                    if self.source == SOURCE_RECONFIGURE or self.source == SOURCE_REAUTH:
-                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=inv_data)
+                    if self.source == SOURCE_RECONFIGURE:
+                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=inv_data, reason="reconfigure_successful")
+                    elif self.source == SOURCE_REAUTH:
+                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=inv_data, reason="reauth_successful")
                     else:
                         # initial setup...
                         return self.async_create_entry(title=name_entry, data=inv_data)
@@ -434,8 +436,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_DEV_SERIAL: self._device_serial,
                         CONF_DEV_VERSION: self._device_version
                     }
-                    if self.source == SOURCE_RECONFIGURE or self.source == SOURCE_REAUTH:
-                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=local_data)
+                    if self.source == SOURCE_RECONFIGURE:
+                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=inv_data, reason="reconfigure_successful")
+                    elif self.source == SOURCE_REAUTH:
+                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=inv_data, reason="reauth_successful")
                     else:
                         # initial setup...
                         if not self._stats_available:
@@ -586,8 +590,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_DEV_SERIAL: self._device_serial,
                             CONF_DEV_VERSION: self._device_version
                         }
-                        if self.source == SOURCE_RECONFIGURE or self.source == SOURCE_REAUTH:
-                            return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data)
+                        if self.source == SOURCE_RECONFIGURE:
+                            return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data, reason="reconfigure_successful")
+                        elif self.source == SOURCE_REAUTH:
+                            return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=web_data, reason="reauth_successful")
                         else:
                             return self.async_create_entry(title=name_entry, data=web_data)
                     else:
