@@ -74,7 +74,7 @@ def parse_value(value: str):
             return value
 
     except Exception as e:
-        _LOGGER.error(f"Error parsing value: {value} - {e}")
+        _LOGGER.warning(f"Error parsing value: {value} - {e}")
         return value
 
     # if key == "u8":

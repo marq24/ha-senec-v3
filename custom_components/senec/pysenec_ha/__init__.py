@@ -3099,7 +3099,7 @@ class SenecOnline:
                 if len(pyotp.TOTP(totp).now()) != 6:
                     raise ValueError("Invalid TOTP secret length")
             except BaseException as exc:
-                _LOGGER.error(f"Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc).__name__} - {exc}")
+                _LOGGER.warning(f"Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc).__name__} - {exc}")
                 totp = None
                 raise ReConfigurationRequired(exc)
 
@@ -3828,7 +3828,7 @@ class SenecOnline:
                             otp_data = {"otp": pyotp.TOTP(self._SENEC_TOTP_SECRET).now()}
                             await self._initial_token_request_03_post_login(accept_http_200=False, form_action_url=the_form_action_url, post_data=otp_data)
                         else:
-                            _LOGGER.error(f"_initial_token_request_03_post_login(): TOTP Code required, but not configured/provided - need RECONFIG!")
+                            _LOGGER.warning(f"_initial_token_request_03_post_login(): TOTP Code required, but not configured/provided - need RECONFIG!")
                             raise ReConfigurationRequired("TOTP Code required, but not configured/provided - need RECONFIG")
                     else:
                         _LOGGER.info(f"_initial_token_request_03_post_login(): did not find the expected form action URL in the response HTML! {html_content}")
@@ -4141,27 +4141,27 @@ class SenecOnline:
                                 return data
 
                             except JSONDecodeError as jexc:
-                                _LOGGER.warning(f"_app_do_get_request(): JSONDecodeError while 'await res.json()' {jexc}")
+                                _LOGGER.info(f"_app_do_get_request(): JSONDecodeError while 'await res.json()' {jexc}")
                             except Exception as exc:
                                 if data is not None:
-                                    _LOGGER.error(f"_app_do_get_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
+                                    _LOGGER.warning(f"_app_do_get_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
                                 else:
-                                    _LOGGER.error(f"_app_do_get_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
+                                    _LOGGER.warning(f"_app_do_get_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
                         else:
-                            _LOGGER.error(f"_app_do_get_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
+                            _LOGGER.warning(f"_app_do_get_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
 
                     except Exception as exc:
                         if res is not None:
                             if res.status == 408:
                                 _LOGGER.info(f"_app_do_get_request(): http status 408 while access {a_url}")
                             else:
-                                _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
+                                _LOGGER.warning(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
-                            _LOGGER.error(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}]")
+                            _LOGGER.warning(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}]")
             except Exception as exc:
-                _LOGGER.error(f"_app_do_get_request(): Error when try to call {a_url}: [Exception: {exc}]")
+                _LOGGER.warning(f"_app_do_get_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
-            _LOGGER.error(f"_app_do_get_request(): 'self._app_is_authenticated' is False")
+            _LOGGER.warning(f"_app_do_get_request(): 'self._app_is_authenticated' is False")
 
     async def _app_do_post_request(self, a_url:str,  post_data: dict, read_response: bool = False):
         _LOGGER.debug("***** APP-API: _app_do_post_request(self) ********")
@@ -4185,12 +4185,12 @@ class SenecOnline:
                                     _LOGGER.debug(f"_app_do_post_request(): response: {util.mask_map(data)}")
                                     return data
                                 except JSONDecodeError as jexc:
-                                    _LOGGER.warning(f"_app_do_post_request(): JSONDecodeError while 'await res.json()' {jexc}")
+                                    _LOGGER.info(f"_app_do_post_request(): JSONDecodeError while 'await res.json()' {jexc}")
                                 except Exception as exc:
                                     if data is not None:
-                                        _LOGGER.error(f"_app_do_post_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
+                                        _LOGGER.warning(f"_app_do_post_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
                                     else:
-                                        _LOGGER.error(f"_app_do_post_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
+                                        _LOGGER.warning(f"_app_do_post_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
                             else:
                                 if post_data is not None:
                                     _LOGGER.debug(f"APP-API HTTP:200 for post {util.mask_map(post_data)} to {a_url}")
@@ -4198,20 +4198,20 @@ class SenecOnline:
                                     _LOGGER.debug(f"APP-API HTTP:200 for post EMPTY-DATA to {a_url}")
                                 return True
                         else:
-                            _LOGGER.error(f"_app_do_post_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
+                            _LOGGER.warning(f"_app_do_post_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
 
                     except Exception as exc:
                         if res is not None:
                             if res.status == 408:
                                 _LOGGER.info(f"_app_do_post_request(): http status 408 while access {a_url}")
                             else:
-                                _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
+                                _LOGGER.warning(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
-                            _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}]")
+                            _LOGGER.warning(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}]")
             except Exception as exc:
-                _LOGGER.error(f"_app_do_post_request(): Error when try to call {a_url}: [Exception: {exc}]")
+                _LOGGER.warning(f"_app_do_post_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
-            _LOGGER.error(f"_app_do_post_request(): 'self._app_is_authenticated' is False")
+            _LOGGER.warning(f"_app_do_post_request(): 'self._app_is_authenticated' is False")
         return False
 
     # async def app_post_data(self, a_url: str, post_data: dict, read_response: bool = False) -> bool:
@@ -5741,7 +5741,7 @@ class SenecOnline:
                 return False
 
         except BaseException as ex:
-            _LOGGER.error(f"app_switch_wallbox_mode(): Exception: {type(ex).__name__} - {ex}")
+            _LOGGER.warning(f"app_switch_wallbox_mode(): Exception: {type(ex).__name__} - {ex}")
             return False
 
     async def app_update_wallbox_mode_setting(self, idx:int, wallbox_num:int, mode, wb_url, the_post_data):
@@ -5757,7 +5757,7 @@ class SenecOnline:
                 _LOGGER.debug(f"app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} settings FAILED")
 
         except BaseException as ex:
-            _LOGGER.error(f"app_update_wallbox_mode_setting(): Exception: {type(ex).__name__} - {ex}")
+            _LOGGER.warning(f"app_update_wallbox_mode_setting(): Exception: {type(ex).__name__} - {ex}")
 
         return False
 
@@ -6216,14 +6216,14 @@ class SenecOnline:
                                 _LOGGER.info(f"web_authenticate(): looks like are already authenticated")
                                 await self._web_set_is_authenticated(do_update=do_update)
                             else:
-                                _LOGGER.error(f"web_authenticate(): no form action url could be found {html_content}")
+                                _LOGGER.warning(f"web_authenticate(): no form action url could be found {html_content}")
                     else:
-                        _LOGGER.error(f"web_authenticate(): unexpected status code [200] {res.status} - {res}")
+                        _LOGGER.warning(f"web_authenticate(): unexpected status code [200] {res.status} - {res}")
             except Exception as exc:
                 if throw401:
                     raise exc
                 else:
-                    _LOGGER.error(f"web_authenticate(): Error when try to call {self._WEB_BASE_URL}: [Exception: {exc}]")
+                    _LOGGER.warning(f"web_authenticate(): Error when try to call {self._WEB_BASE_URL}: [Exception: {exc}]")
 
     def _web_validate_html_structure(self, html_content: str) -> bool:
         """Quick check for main Angular components in the HTML content"""
@@ -6800,7 +6800,7 @@ class SenecOnline:
                 d = bat_inv_obj["firmware"]["firmwareVersionHumanMachineInterface"]
                 e = bat_inv_obj["firmware"]["firmwareVersionPowerUnit"]
                 f = bat_inv_obj["firmware"]["firmwareVersionBidirectionalDcConverter"]
-        # _LOGGER.error(f"VERSION INFO **************** {a} {b} {c} {d} {e} {f} ")
+        # _LOGGER.info(f"VERSION INFO **************** {a} {b} {c} {d} {e} {f} ")
         if a is not None and b is not None:
             if c is not None:
                 return f"App:{a} FW:{b} Inverter: v{c}"

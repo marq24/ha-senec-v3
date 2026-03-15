@@ -417,7 +417,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         # initial setup...
                         return self.async_create_entry(title=name_entry, data=inv_data)
                 else:
-                    _LOGGER.error(f"Could not connect to build-in Inverter device at {host_entry}, check host ip address")
+                    _LOGGER.warning(f"Could not connect to build-in Inverter device at {host_entry}, check host ip address")
 
             # SENEC.Home stuff
             else:
@@ -459,7 +459,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             return self.async_create_entry(title=name_entry, data=local_data)
 
                 else:
-                    _LOGGER.error(f"Could not connect to via http or https to SENEC.Home at {host_entry}, check host ip address")
+                    _LOGGER.warning(f"Could not connect to via http or https to SENEC.Home at {host_entry}, check host ip address")
 
         else:
             user_input = {
@@ -543,7 +543,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         else:
                             self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
                     except ValueError as e:
-                        _LOGGER.error(f"async_step_websetup(): Invalid TOTP secret: {type(e).__name__} - {e}")
+                        _LOGGER.warning(f"async_step_websetup(): Invalid TOTP secret: {type(e).__name__} - {e}")
                         self._errors[CONF_TOTP_SECRET] = "invalid_totp_secret"
 
                     if user_entry is not None and totp_url_entry is None and CONF_TOTP_SECRET not in self._errors:
@@ -599,7 +599,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     else:
                         self.handle_web_test_errors(user_entry)
             else:
-                _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
+                _LOGGER.warning(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials")
                 self._errors["base"] = "invalid_totp_secret"
         else:
             user_input = {}
@@ -741,8 +741,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_websetup()
 
     def handle_web_test_errors(self, user_entry):
-        _LOGGER.error(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials or no SENEC.Systems found")
-        _LOGGER.warning(f"ErrorObject: {self._errors}")
+        _LOGGER.warning(f"Could not connect to mein-senec.de with User '{user_entry}', check credentials or no SENEC.Systems found")
+        _LOGGER.debug(f"ErrorObject: {self._errors}")
 
         self._errors["base"] = "cannot_connect"
 
@@ -968,7 +968,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 #                     # New config entry
 #                     return self.async_create_entry(title=f"LocalAI ({user_input[CONF_IP_ADDRESS]})", data=user_input)
 #             except ServiceValidationError as e:
-#                 _LOGGER.error(f"Validation failed: {e}")
+#                 _LOGGER.warning(f"Validation failed: {e}")
 #                 return self.async_show_form(
 #                     step_id="localai",
 #                     data_schema=data_schema,

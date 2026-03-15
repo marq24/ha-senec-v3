@@ -59,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                                     native_max_value = 12
                                 )
                         except Exception as err:
-                            _LOGGER.error(f"WEB: Could not fetch min/max values for '{description.key}' - cause: {err}")
+                            _LOGGER.warning(f"WEB: Could not fetch min/max values for '{description.key}' - cause: {err}")
 
             entity = SenecNumber(coordinator, description, False)
             entities.append(entity)
@@ -117,7 +117,7 @@ class SenecNumber(SenecEntity, NumberEntity):
                         native_max_value=round(float(min_max[1]), 1)
                     )
             except Exception as err:
-                _LOGGER.error(f"LOCAL: Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
+                _LOGGER.warning(f"LOCAL: Could not fetch min/max values for '{self.entity_description.key}' - cause: {err}")
 
     @property
     def native_value(self) -> float:
