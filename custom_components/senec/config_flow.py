@@ -437,9 +437,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_DEV_VERSION: self._device_version
                     }
                     if self.source == SOURCE_RECONFIGURE:
-                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=inv_data, reason="reconfigure_successful")
+                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=local_data, reason="reconfigure_successful")
                     elif self.source == SOURCE_REAUTH:
-                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=inv_data, reason="reauth_successful")
+                        return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=local_data, reason="reauth_successful")
                     else:
                         # initial setup...
                         if not self._stats_available:
