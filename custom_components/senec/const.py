@@ -2,24 +2,6 @@
 from dataclasses import dataclass
 from typing import Final, Any, Callable
 
-from custom_components.senec.pysenec_ha.constants import (
-    SENEC_SECTION_BAT1,
-    SENEC_SECTION_BMS,
-    SENEC_SECTION_BMS_CELLS,
-    SENEC_SECTION_PV1,
-    SENEC_SECTION_PM1OBJ1,
-    SENEC_SECTION_PM1OBJ2,
-    SENEC_SECTION_FAN_SPEED,
-    SENEC_SECTION_STATISTIC,
-    SENEC_SECTION_SOCKETS,
-    SENEC_SECTION_WALLBOX,
-    WALLBOX_CHARGING_MODES_LEGACY,
-    WALLBOX_CHARGING_MODES_2026,
-    UPDATE_INTERVAL_OPTIONS,
-    APP_API_WB_MODE_2025_FAST,
-    APP_API_WB_MODE_2025_SOLAR,
-    APP_API_WB_MODE_2025_COMFORT
-)
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.button import ButtonEntityDescription
 from homeassistant.components.number import (
@@ -45,6 +27,25 @@ from homeassistant.const import (
     UnitOfPower
 )
 from homeassistant.helpers.entity import EntityCategory
+
+from custom_components.senec.pysenec_ha.constants import (
+    SENEC_SECTION_BAT1,
+    SENEC_SECTION_BMS,
+    SENEC_SECTION_BMS_CELLS,
+    SENEC_SECTION_PV1,
+    SENEC_SECTION_PM1OBJ1,
+    SENEC_SECTION_PM1OBJ2,
+    SENEC_SECTION_FAN_SPEED,
+    SENEC_SECTION_STATISTIC,
+    SENEC_SECTION_SOCKETS,
+    SENEC_SECTION_WALLBOX,
+    WALLBOX_CHARGING_MODES_LEGACY,
+    WALLBOX_CHARGING_MODES_2026,
+    UPDATE_INTERVAL_OPTIONS,
+    APP_API_WB_MODE_2025_FAST,
+    APP_API_WB_MODE_2025_SOLAR,
+    APP_API_WB_MODE_2025_COMFORT
+)
 
 # WEB_IS_OVER_DATETIME:Final = datetime(year=2025, month=7, day=23, hour=0, minute=0, second=0, tzinfo=timezone.utc)
 # def IS_AFTER_2025_07_23():
@@ -2156,6 +2157,7 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:counter",
         native_unit_of_measurement=UnitOfTime.HOURS,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
         key="battery_temp",
@@ -2164,6 +2166,7 @@ MAIN_SENSOR_TYPES = [
         suggested_display_precision=2,
         icon="mdi:thermometer",
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
         key="case_temp",
@@ -2172,6 +2175,7 @@ MAIN_SENSOR_TYPES = [
         suggested_display_precision=2,
         icon="mdi:thermometer",
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
         key="mcu_temp",
@@ -2180,6 +2184,7 @@ MAIN_SENSOR_TYPES = [
         suggested_display_precision=2,
         icon="mdi:thermometer",
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
         key="solar_generated_power",
