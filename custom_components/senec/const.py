@@ -2156,6 +2156,7 @@ MAIN_SENSOR_TYPES = [
         icon="mdi:counter",
         native_unit_of_measurement=UnitOfTime.HOURS,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     ExtSensorEntityDescription(
         key="battery_temp",
@@ -2164,6 +2165,7 @@ MAIN_SENSOR_TYPES = [
         suggested_display_precision=2,
         icon="mdi:thermometer",
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
         key="case_temp",
@@ -2172,6 +2174,7 @@ MAIN_SENSOR_TYPES = [
         suggested_display_precision=2,
         icon="mdi:thermometer",
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
         key="mcu_temp",
@@ -2180,6 +2183,7 @@ MAIN_SENSOR_TYPES = [
         suggested_display_precision=2,
         icon="mdi:thermometer",
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     ExtSensorEntityDescription(
         key="solar_generated_power",
