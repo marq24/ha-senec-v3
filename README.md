@@ -17,6 +17,9 @@
 > Negative potential consequences of an action.
 -->
 
+> [!IMPORTANT]  
+> Please don't fork this repositiory, use the original one and cherry pic from me !
+
 This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4 Systems. In addition and where possible functions are provided to control the system.
 
 __Please note__, _that this integration is not official and not supported by the SENEC development team. I am not affiliated with SENEC in any way._
