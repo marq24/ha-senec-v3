@@ -5249,14 +5249,12 @@ class SenecOnline:
                         #current_compatibilityMode = the_solar_optimize_settings.get("compatibilityMode", False)
                         #_LOGGER.info(f"---- continue wallbox - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
 
-                        # this is TOTALLY SILLY! - when 'preventInterruptions' is 'True', then this means that the toggle
-                        # in the SenecAPP (called 'Ladeunterbrechung verhindern') is OFF - this is beyond ANY logic!!!
                         if charging_mode_obj.get("solarOptimizeSettings", {}).get("preventInterruptions", False):
-                            #_LOGGER.info(f"---- RETURN MODE 4 [FOUR]")
-                            return LOCAL_WB_MODE_LEGACY_SSGCM_4
-                        else:
                             #_LOGGER.info(f"---- RETURN MODE 3 [THREE]")
                             return LOCAL_WB_MODE_LEGACY_SSGCM_3
+                        else:
+                            #_LOGGER.info(f"---- RETURN MODE 4 [FOUR]")
+                            return LOCAL_WB_MODE_LEGACY_SSGCM_4
 
                     # only for P4/V4
                     elif f_type == APP_API_WB_MODE_2025_COMFORT:
@@ -5463,12 +5461,10 @@ class SenecOnline:
 
                         _LOGGER.info(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
 
-                        if local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_3 and current_prevent_interruptions:
-                            the_post_data = {"preventInterruptions": False}
-                        elif local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_4 and not current_prevent_interruptions:
-                            # TOTALLY SILLY - in the SenecAPP the TOGGLE/SWITCH called 'Ladeunterbrechung verhindern'
-                            # will be shown as OFF, when the 'preventInterruptions' is set to 'True'
+                        if local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_3 and not current_prevent_interruptions:
                             the_post_data = {"preventInterruptions": True}
+                        elif local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_4 and current_prevent_interruptions:
+                            the_post_data = {"preventInterruptions": False}
 
                         _LOGGER.info(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} -> {the_post_data}")
 
@@ -5932,7 +5928,7 @@ class SenecOnline:
         return False
 
     def app_wallbox_optimized_continuous_loading(self, idx:int) -> bool:
-        return not self._app_get_wallbox_object_at_index(idx).get("chargingMode",{}).get("solarOptimizeSettings", {}).get("preventInterruptions", False)
+        return self._app_get_wallbox_object_at_index(idx).get("chargingMode",{}).get("solarOptimizeSettings", {}).get("preventInterruptions", False)
 
     async def app_switch_wallbox_optimized_continuous_loading(self, enabled: bool, idx:int) -> bool:
         # this have the INVERTED logic!!!
@@ -5940,13 +5936,13 @@ class SenecOnline:
         wallbox_num = idx+1
         the_wb_obj = self._app_get_wallbox_object_at_index(idx)
         the_solar_optimize_settings = the_wb_obj.get("chargingMode",{}).get("solarOptimizeSettings", {})
-        current_prevent_interruptions = not the_solar_optimize_settings.get("preventInterruptions", False)
+        current_prevent_interruptions = the_solar_optimize_settings.get("preventInterruptions", False)
         current_compatibility_mode = the_solar_optimize_settings.get("compatibilityMode", False)
         if len(the_wb_obj) > 0 and current_prevent_interruptions != enabled:
 
-            _LOGGER.info(f"---- continue with mode SOLAR for wallbox {wallbox_num} - preventInterruptions: {(not current_prevent_interruptions)} compatibilityMode: {current_compatibility_mode}")
+            _LOGGER.info(f"---- continue with mode SOLAR for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibility_mode}")
 
-            the_post_data = {"preventInterruptions": not enabled}
+            the_post_data = {"preventInterruptions": enabled}
 
             _LOGGER.info(f"---- continue with mode SOLAR for wallbox {wallbox_num} -> {the_post_data}")
 
