@@ -571,7 +571,9 @@ WALLBOX_CHARGING_MODES_2026_P4 : Final = {
 }
 
 LOCAL_WB_MODE_LEGACY_LOCKED: Final  = "legacy_locked"
+#optimized_3: "OPTIMIZED [continuous-charging]" - LADEUNTERBRECHUNG VERHINDERN EIN
 LOCAL_WB_MODE_LEGACY_SSGCM_3: Final = "legacy_optimized_3"
+#optimized_4: "OPTIMIZED [allow charge-interruptions]" - LADEUNTERBRECHUNGEN SIND ZULÄSSIG
 LOCAL_WB_MODE_LEGACY_SSGCM_4: Final = "legacy_optimized_4"
 LOCAL_WB_MODE_LEGACY_FAST: Final    = "legacy_fast"
 LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY: Final = "legacy_fast_with_battery"

@@ -5232,8 +5232,8 @@ class SenecOnline:
                             return LOCAL_WB_MODE_LEGACY_FAST
 
                     elif f_type == APP_API_WB_MODE_2025_SOLAR:
-                        #optimized_3: "OPTIMIZED [continuous-charging]" - LADEUNTERBRECHUNG VERHINDERN EIN
-                        #optimized_4: "OPTIMIZED [allow charge-interruptions]"
+                        #optimized_3: "OPTIMIZED [continuous-charging]" preventInterruptions: True - LADEUNTERBRECHUNG VERHINDERN EIN
+                        #optimized_4: "OPTIMIZED [allow charge-interruptions]" preventInterruptions: False - LADEUNTERBRECHNUNGEN SIND ZULÄSSIG
 
                         # JSON:
                         # "solarOptimizeSettings": {
@@ -5244,15 +5244,12 @@ class SenecOnline:
                         #     "priceLimitInCtPerKwh": -99.0
                         # }
 
-                        #the_solar_optimize_settings = charging_mode_obj.get("solarOptimizeSettings", {})
-                        #current_prevent_interruptions = the_solar_optimize_settings.get("preventInterruptions", False)
-                        #current_compatibilityMode = the_solar_optimize_settings.get("compatibilityMode", False)
-                        #_LOGGER.info(f"---- continue wallbox - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
-
                         if charging_mode_obj.get("solarOptimizeSettings", {}).get("preventInterruptions", False):
+                            # when 'preventInterruptions' == True, then it's SSGCM_3 (Ladeunterbrechnung verhindern)
                             #_LOGGER.info(f"---- RETURN MODE 3 [THREE]")
                             return LOCAL_WB_MODE_LEGACY_SSGCM_3
                         else:
+                            # when 'preventInterruptions' == False, then it's SSGCM_4 (Ladeunterbrechungen sind zulässig)
                             #_LOGGER.info(f"---- RETURN MODE 4 [FOUR]")
                             return LOCAL_WB_MODE_LEGACY_SSGCM_4
 
