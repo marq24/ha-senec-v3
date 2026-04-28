@@ -726,12 +726,12 @@ async def entry_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) 
 class SenecEntity(CustomFriendlyNameEntity):
     """Defines a base Senec entity."""
 
-    _attr_should_poll = False
     _attr_has_entity_name = True
 
     def __init__(
             self, coordinator: SenecDataUpdateCoordinator, description: EntityDescription
     ) -> None:
+        super().__init__(coordinator, description)
         self.coordinator = coordinator
         self.entity_description = description
         self._name = coordinator._config_entry.title
@@ -809,15 +809,7 @@ class SenecEntity(CustomFriendlyNameEntity):
     async def async_added_to_hass(self):
         """Connect to dispatcher listening for entity data notifications."""
         self.async_on_remove(self.coordinator.async_add_listener(self.async_write_ha_state))
-
-    async def async_update(self):
-        """Update entity."""
-        await self.coordinator.async_request_refresh()
-
-    @property
-    def should_poll(self) -> bool:
-        """Entities do not individually poll."""
-        return False
+        await super().async_added_to_hass()
 
     def _friendly_name_internal(self) -> str | None:
         """Return the friendly name.
