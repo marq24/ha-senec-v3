@@ -5362,9 +5362,6 @@ class SenecOnline:
         for idx in range(0, max_idx):
             self._app_raw_wallbox[idx] = data[idx]
 
-
-
-
     async def app_set_wallbox_mode_legacy(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
         _LOGGER.debug("***** APP-API: app_set_wallbox_mode_legacy(self) ********")
         idx = wallbox_num - 1
@@ -5375,6 +5372,7 @@ class SenecOnline:
         cur_local_mode = self._app_get_local_wallbox_mode_from_api_values_legacy(idx)
         if cur_local_mode == local_mode_to_set:
             _LOGGER.debug(f"app_set_wallbox_mode_legacy(): skipp mode change since '{local_mode_to_set}' already set")
+            success = True
         else:
             # first check if we are initialized…
             if self.is_app_master_plant_id_none:
@@ -5588,6 +5586,7 @@ class SenecOnline:
         cur_local_mode = self._app_get_local_wallbox_mode_from_api_values_2026(idx)
         if cur_local_mode == local_mode_to_set:
             _LOGGER.debug(f"app_set_wallbox_mode_2026(): skipp mode change since '{local_mode_to_set}' already set")
+            success = True
         else:
             # first check if we are initialized…
             if self.is_app_master_plant_id_none:
@@ -5715,9 +5714,6 @@ class SenecOnline:
 
         return success
 
-
-
-
     async def app_switch_wallbox_mode(self, idx:int, wallbox_num:int, the_wb_uuid:str, mode:str):
         _LOGGER.debug("***** APP-API: app_switch_wallbox_mode(self) ********")
         try:
@@ -5753,10 +5749,6 @@ class SenecOnline:
             _LOGGER.warning(f"app_update_wallbox_mode_setting(): Exception: {type(ex).__name__} - {ex}")
 
         return False
-
-
-
-
 
 
     @property
