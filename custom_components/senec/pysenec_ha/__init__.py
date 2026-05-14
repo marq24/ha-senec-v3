@@ -3790,7 +3790,7 @@ class SenecOnline:
                             login_data = {
                                 "password": self._SENEC_PASSWORD,
                             }
-                            await self._initial_token_request_02_post_login(accept_http_200=True, form_action_url=the_form_action_url, post_data=login_data)
+                            await self._initial_token_request_03_post_login(accept_http_200=True, form_action_url=the_form_action_url, post_data=login_data)
 
                 elif res.status == 302:
                     location = res.headers.get("Location")
