@@ -3465,6 +3465,7 @@ class SenecOnline:
             await self.app_authenticate(check_for_existing_tokens = True, is_integration_setup_phase = True)
 
         systems = {}
+        already_in_use_systems = {}
         if self._app_is_authenticated:
             app_data = await self._app_do_get_request(self.APP_SYSTEM_LIST)
             if app_data is not None and isinstance(app_data, Iterable):
@@ -3478,10 +3479,17 @@ class SenecOnline:
                                 "addr": f'{a_entry.get("street", "STREET")} {a_entry.get("houseNumber", "HOUSENUMBER")}, {a_entry.get("postalCode", "POSTALCODE")} {a_entry.get("city", "CITY")}',
                                 "serial": serial
                             }
+                        else:
+                            already_in_use_systems[serial] = {
+                                "name": a_entry.get("product", {}).get("name", "UNKNOWN-NAME"),
+                                "case": a_entry.get("caseNumber", "CASENUMBER"),
+                                "serial": serial
+                            }
+                            _LOGGER.info(f"get_all_systems(): Skipping already configured system with serial {serial} - since it is already in the 'already_configured_lc_serials' list {already_configured_lc_serials}")
         else:
             _LOGGER.debug(f"get_all_systems(): self._app_is_authenticated is {self._app_is_authenticated}")
 
-        return systems
+        return systems, already_in_use_systems
 
     # by default, we update as fast as possible
     _UPDATE_INTERVAL = NO_LIMIT

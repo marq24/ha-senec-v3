@@ -252,11 +252,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                        storage_path=Path(self.hass.config.config_dir).joinpath(STORAGE_DIR))
 
             if serial_number is None or str(serial_number).lower() == "none":
-                systems = await senec_online.get_all_systems(already_configured_lc_serials)
+                systems, already_in_use_systems = await senec_online.get_all_systems(already_configured_lc_serials)
                 if len(systems) == 0:
                     if senec_online._app_is_authenticated:
-                        self._errors[CONF_SYSTYPE_WEB] = "no_systems_found"
-                        _LOGGER.warning(f"We could not find ANY SENEC.System (is there one available in the SENC.App?")
+                        if len(already_in_use_systems) > 0:
+                            self._errors[CONF_SYSTYPE_WEB] = "no_new_systems_found"
+                            _LOGGER.warning(f"We could not find ANY NEW SENEC.System - already configured: {already_in_use_systems}")
+                        else:
+                            self._errors[CONF_SYSTYPE_WEB] = "no_systems_found"
+                            _LOGGER.warning(f"We could not find ANY SENEC.System (is there one available in the SENC.App?")
                     else:
                         self._errors[CONF_USERNAME] = "login_failed"
                         _LOGGER.warning(f"Could not connect to mein-senec.de with '{user}', check credentials")
