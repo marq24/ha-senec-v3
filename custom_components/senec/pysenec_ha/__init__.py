@@ -3496,12 +3496,13 @@ class SenecOnline:
     _LAST_UPDATE_TS = 0
 
     async def update(self):
-        if self._LAST_UPDATE_TS + UPDATE_INTERVALS[self._UPDATE_INTERVAL] < time():
+        a_time = time()
+        if self._LAST_UPDATE_TS + UPDATE_INTERVALS[self._UPDATE_INTERVAL] < a_time:
             success = await self.app_update()
             if not success:
                 await self.web_update()
 
-            self._LAST_UPDATE_TS = time()
+            self._LAST_UPDATE_TS = a_time
         else:
             _LOGGER.debug(f"update(): SKIPP UPDATE REQUEST - last update was at {strftime('%Y-%m-%d %H:%M:%S', localtime(self._LAST_UPDATE_TS))} and we are still within the update interval of '{self._UPDATE_INTERVAL}' [{UPDATE_INTERVALS[self._UPDATE_INTERVAL]} seconds]")
 
@@ -7341,6 +7342,11 @@ class SenecOnline:
     async def set_nv_wallbox_1_comfort_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=1, sync=True)
 
+    @property
+    def wallbox_1_current_apparent_charging_power(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(0)
+        return a_wallbox_obj.get("chargingCurrents", {}).get("currentApparentChargingPowerInKw", None)
+
 
     ## WALLBOX: 2
     @property
@@ -7402,6 +7408,12 @@ class SenecOnline:
     async def set_nv_wallbox_2_comfort_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=2, sync=True)
 
+    @property
+    def wallbox_2_current_apparent_charging_power(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(1)
+        return a_wallbox_obj.get("chargingCurrents", {}).get("currentApparentChargingPowerInKw", None)
+
+
     ## WALLBOX: 3
     @property
     def wallbox_3_temperature(self) -> str:
@@ -7462,6 +7474,12 @@ class SenecOnline:
     async def set_nv_wallbox_3_comfort_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=3, sync=True)
 
+    @property
+    def wallbox_3_current_apparent_charging_power(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(2)
+        return a_wallbox_obj.get("chargingCurrents", {}).get("currentApparentChargingPowerInKw", None)
+
+
     ## WALLBOX: 4
     @property
     def wallbox_4_temperature(self) -> str:
@@ -7521,6 +7539,12 @@ class SenecOnline:
 
     async def set_nv_wallbox_4_comfort_set_icmax(self, value: float) -> bool:
         return await self.app_set_wallbox_icmax(value_to_set=value, wallbox_num=4, sync=True)
+
+    @property
+    def wallbox_4_current_apparent_charging_power(self) -> float:
+        a_wallbox_obj = self._app_get_wallbox_object_at_index(3)
+        return a_wallbox_obj.get("chargingCurrents", {}).get("currentApparentChargingPowerInKw", None)
+
 
     ###################################
     # SWITCH-STUFF

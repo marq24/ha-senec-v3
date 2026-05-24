@@ -983,6 +983,42 @@ WEB_SENSOR_TYPES = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
 
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_1_current_apparent_charging_power",
+        name="Wallbox I current apparent charging power",
+        icon="mdi:lightning-bolt-outline",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_2_current_apparent_charging_power",
+        name="Wallbox II current apparent charging power",
+        icon="mdi:lightning-bolt-outline",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_3_current_apparent_charging_power",
+        name="Wallbox III current apparent charging power",
+        icon="mdi:lightning-bolt-outline",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
+    ExtSensorEntityDescription(
+        entity_registry_enabled_default=False,
+        key="wallbox_4_current_apparent_charging_power",
+        name="Wallbox IV current apparent charging power",
+        icon="mdi:lightning-bolt-outline",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
 ]
 
 WEB_BIN_SENSOR_TYPES =[

@@ -1068,7 +1068,7 @@
         "name": "Ladeleistung"
       },
       "wallbox_1_power_alt": {
-        "name": "Scheinladeleistung"
+        "name": "Scheinladeleistung [lokal]"
       },
       "wallbox_1_ev_connected": {
         "name": "EV angeschlossen"
@@ -1088,6 +1088,9 @@
       "wallbox_1_min_charging_current": {
         "name": "MIN Ladestrom"
       },
+      "wallbox_1_current_apparent_charging_power": {
+        "name": "Scheinladeleistung [web]"
+      },
       "wallbox_2_state": {
         "name": "Wallboxstatus"
       },
@@ -1095,7 +1098,7 @@
         "name": "Ladeleistung"
       },
       "wallbox_2_power_alt": {
-        "name": "Scheinladeleistung"
+        "name": "Scheinladeleistung [lokal]"
       },
       "wallbox_2_ev_connected": {
         "name": "EV angeschlossen"
@@ -1115,6 +1118,9 @@
       "wallbox_2_min_charging_current": {
         "name": "MIN Ladestrom"
       },
+      "wallbox_2_current_apparent_charging_power": {
+        "name": "Scheinladeleistung [web]"
+      },
       "wallbox_3_state": {
         "name": "Wallboxstatus"
       },
@@ -1122,7 +1128,7 @@
         "name": "Ladeleistung"
       },
       "wallbox_3_power_alt": {
-        "name": "Scheinladeleistung"
+        "name": "Scheinladeleistung [lokal]"
       },
       "wallbox_3_ev_connected": {
         "name": "EV angeschlossen"
@@ -1142,6 +1148,9 @@
       "wallbox_3_min_charging_current": {
         "name": "MIN Ladestrom"
       },
+      "wallbox_3_current_apparent_charging_power": {
+        "name": "Scheinladeleistung [web]"
+      },
       "wallbox_4_state": {
         "name": "Wallboxstatus"
       },
@@ -1149,7 +1158,7 @@
         "name": "Ladeleistung"
       },
       "wallbox_4_power_alt": {
-        "name": "Scheinladeleistung"
+        "name": "Scheinladeleistung [lokal]"
       },
       "wallbox_4_ev_connected": {
         "name": "EV angeschlossen"
@@ -1168,6 +1177,9 @@
       },
       "wallbox_4_min_charging_current": {
         "name": "MIN Ladestrom"
+      },
+      "wallbox_4_current_apparent_charging_power": {
+        "name": "Scheinladeleistung [web]"
       },
       "sockets_1_priority": {
         "name": "Kontakt1 Priorität"

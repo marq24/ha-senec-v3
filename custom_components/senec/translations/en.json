@@ -1055,7 +1055,7 @@
         "name": "Charging Power"
       },
       "wallbox_1_power_alt": {
-        "name": "Apparent charging Power"
+        "name": "Apparent charging Power [local]"
       },
       "wallbox_1_ev_connected": {
         "name": "EV Connected"
@@ -1075,6 +1075,9 @@
       "wallbox_1_min_charging_current": {
         "name": "MIN charging Current"
       },
+      "wallbox_1_current_apparent_charging_power": {
+        "name": "Apparent charging Power [web]"
+      },
       "wallbox_2_state": {
         "name": "State"
       },
@@ -1082,7 +1085,7 @@
         "name": "Charging Power"
       },
       "wallbox_2_power_alt": {
-        "name": "Apparent charging Power"
+        "name": "Apparent charging Power [local]"
       },
       "wallbox_2_ev_connected": {
         "name": "EV Connected"
@@ -1102,6 +1105,9 @@
       "wallbox_2_min_charging_current": {
         "name": "MIN charging Current"
       },
+      "wallbox_2_current_apparent_charging_power": {
+        "name": "Apparent charging Power [web]"
+      },
       "wallbox_3_state": {
         "name": "State"
       },
@@ -1109,7 +1115,7 @@
         "name": "Charging Power"
       },
       "wallbox_3_power_alt": {
-        "name": "Apparent charging Power"
+        "name": "Apparent charging Power [local]"
       },
       "wallbox_3_ev_connected": {
         "name": "EV Connected"
@@ -1129,6 +1135,9 @@
       "wallbox_3_min_charging_current": {
         "name": "MIN charging Current"
       },
+      "wallbox_3_current_apparent_charging_power": {
+        "name": "Apparent charging Power [web]"
+      },
       "wallbox_4_state": {
         "name": "State"
       },
@@ -1136,7 +1145,7 @@
         "name": "charging Power"
       },
       "wallbox_4_power_alt": {
-        "name": "Apparent charging Power"
+        "name": "Apparent charging Power [local]"
       },
       "wallbox_4_ev_connected": {
         "name": "EV Connected"
@@ -1155,6 +1164,9 @@
       },
       "wallbox_4_min_charging_current": {
         "name": "MIN charging Current"
+      },
+      "wallbox_4_current_apparent_charging_power": {
+        "name": "Apparent charging Power [web]"
       },
       "sockets_1_priority": {
         "name": "Socket1 priority"
