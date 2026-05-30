@@ -4213,14 +4213,17 @@ class SenecOnline:
                         if res is not None:
                             if res.status == 408:
                                 _LOGGER.info(f"_app_do_post_request(): http status 408 while access {a_url}")
+                            elif self.is_integration_startup_phase:
+                                _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                             else:
-                                _LOGGER.warning(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
+                               _LOGGER.info(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
                             _LOGGER.warning(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}]")
             except Exception as exc:
                 _LOGGER.warning(f"_app_do_post_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
             _LOGGER.warning(f"_app_do_post_request(): 'self._app_is_authenticated' is False")
+
         return False
 
     # async def app_post_data(self, a_url: str, post_data: dict, read_response: bool = False) -> bool:
@@ -5353,9 +5356,14 @@ class SenecOnline:
         # Check if data is valid and has content
         if not data or not isinstance(data, list):
             if self.is_integration_startup_phase:
-                _LOGGER.debug(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+                if data is False:
+                    _LOGGER.error(f"app_update_all_wallboxes(): Senec backend probably respond wih HTTP-status 401 to the initial wallbox search - this will cause fatal issues during restart - please check yor provided credentials and restart the integration!")
+                else:
+                    _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
             else:
-                _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+                _LOGGER.debug(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+
+            # we do not update any data in our 'self._app_raw_wallbox[idx]' object (so we keep the old wallbox data)
             return
         else:
             if self.is_integration_startup_phase:

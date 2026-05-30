@@ -53,7 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SENSOR_TYPES:
             # when we have wallbox data, we want to enable the entity by default...
-            if description.key.startswith("wallbox"):
+            if description.key.startswith("wallbox") and description.key != "wallbox_consumption_total":
                 possible_idx_str = description.key.lower().split('_')[1]
                 try:
                     idx = int(possible_idx_str) - 1
