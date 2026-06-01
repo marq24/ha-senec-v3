@@ -5353,11 +5353,15 @@ class SenecOnline:
         # the data should be an array… and this array should have the same length then
         # our known wallboxes… [but it's better to check that]
 
-        # Check if data is valid and has content
-        if not data or not isinstance(data, list):
+        request_is_invalid = data is False
+        data_is_list = isinstance(data, list)
+
+        if request_is_invalid or not data_is_list:
             if self.is_integration_startup_phase:
-                if data is False:
+                if request_is_invalid:
                     _LOGGER.error(f"app_update_all_wallboxes(): Senec backend probably respond wih HTTP-status 401 to the initial wallbox search - this will cause fatal issues during restart - please check yor provided credentials and restart the integration!")
+                elif data_is_list and len(data) == 0:
+                    _LOGGER.debug(f"app_update_all_wallboxes(): No Wallbox found - response was: '{data}' - probably this is fine, since you do not own a Senec Wallbox (good for you).")
                 else:
                     _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
             else:
