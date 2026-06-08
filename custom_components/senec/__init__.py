@@ -781,9 +781,9 @@ class SenecEntity(CustomFriendlyNameEntity):
                 "identifiers": {(DOMAIN, self.coordinator._host, device, a_wallbox_obj.get("id"))},
                 "name": f"{a_wallbox_obj.get("name")} @ {dtype}: {device}",
                 "model": f"{a_wallbox_obj.get("name")} @ {dmodel}",
-                "sw_version": dversion,
+                "sw_version": f"{dversion}",
                 "manufacturer": MANUFACTURE,
-                "serial_number": {a_wallbox_obj.get("controllerId")}
+                "serial_number": f"{a_wallbox_obj.get("controllerId")}"
             }
         else:
             # "hw_version": self.coordinator._config_entry.data.get(CONF_DEV_NAME, "UNKNOWN_HW_VERSION"),
@@ -791,9 +791,9 @@ class SenecEntity(CustomFriendlyNameEntity):
                 "identifiers": {(DOMAIN, self.coordinator._host, device)},
                 "name": f"{dtype}: {device}",
                 "model": f"{dmodel}",
-                "sw_version": dversion,
+                "sw_version": f"{dversion}",
                 "manufacturer": MANUFACTURE,
-                "serial_number": dserial
+                "serial_number": f"{dserial}"
             }
 
     @property

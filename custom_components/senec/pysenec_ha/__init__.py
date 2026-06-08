@@ -5744,7 +5744,7 @@ class SenecOnline:
             data = await self._app_do_post_request(wb_url, post_data=None, read_response=True)
             if data is not None:
                 self._app_set_wallbox_object_at_index(idx, data)
-                _LOGGER.debug(f"app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode}): {util.mask_map(data)}")
+                _LOGGER.debug(f"app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode}: {util.mask_map(data)}")
                 return True
             else:
                 _LOGGER.debug(f"app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode} FAILED")
