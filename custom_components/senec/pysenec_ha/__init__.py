@@ -4140,10 +4140,16 @@ class SenecOnline:
                     _LOGGER.debug(f"_app_do_get_request(): PATCH: {a_url}")
                 else:
                     _LOGGER.debug(f"_app_do_get_request(): requesting: {a_url}")
+
                 async with get_or_patch(a_url, headers=req_headers) as res:
+                    data = None
                     try:
                         res.raise_for_status()
-                        if res.status in [200, 201, 202, 204, 205]:
+                        if res.status in [204, 205] or res.content_length == 0:
+                            _LOGGER.warning(f"_app_do_get_request(): {a_url} returned an empty response")
+                            return None
+
+                        elif res.status in [200, 201, 202]:
                             try:
                                 data = await res.json()
                                 _LOGGER.debug(f"_app_do_get_request(): response: {util.mask_map(data)}")
@@ -4167,6 +4173,7 @@ class SenecOnline:
                                 _LOGGER.warning(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
                             _LOGGER.warning(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}]")
+
             except Exception as exc:
                 _LOGGER.warning(f"_app_do_get_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
@@ -4817,7 +4824,7 @@ class SenecOnline:
                                                   to_val    =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
 
         data = await self._app_do_get_request(a_url=a_url)
-        if app_has_dict_timeseries_with_values(data):
+        if data is not None and app_has_dict_timeseries_with_values(data):
             data = app_aggregate_timeseries_data_if_needed(data)
             # adding all from the previous years (all till 01.01.THIS YEAR 'minus 1 second')
             if self._static_TOTAL_SUMS_PREV_YEARS is not None:
