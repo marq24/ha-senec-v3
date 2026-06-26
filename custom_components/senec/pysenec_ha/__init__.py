@@ -251,7 +251,7 @@ class SenecLocal:
         self._raw_version = None
         self._last_version_update = 0
         self._last_system_reset = 0
-        self._timeout = aiohttp.ClientTimeout(total=10, connect=None, sock_connect=None, sock_read=None,
+        self._timeout = aiohttp.ClientTimeout(total=20, connect=None, sock_connect=None, sock_read=None,
                                               ceil_threshold=5)
         self._bridge_to_senec_online = None
 
@@ -291,25 +291,31 @@ class SenecLocal:
         # with NPU 2411 we must start the communication with the backend with this single call…
         # no clue what type of special SENEC-Style security this is?!…
         form = {SENEC_SECTION_FACTORY:{"SYS_TYPE":"","COUNTRY":"","DEVICE_ID":""}}
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-            _LOGGER.debug(f"_init_gui_cookies() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
-            try:
-                res.raise_for_status()
-                data = parse(await res.json())
-                if SET_COOKIE in res.headers:
-                    _LOGGER.debug(f"init-cookies: {util.mask_map(data)} - {res.headers[SET_COOKIE]}")
-                else:
-                    if(retry):
-                        _LOGGER.debug(f"init-cookies: {util.mask_map(data)} - NO COOKIES in RESPONSE (try to logout)")
-                        await asyncio.sleep(1)
-                        await self._senec_local_access_stop_no_checks()
-                        await asyncio.sleep(2)
-                        await self._init_gui_cookies(retry=False)
+        try:
+            async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+                _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
+                try:
+                    res.raise_for_status()
+                    data = parse(await res.json())
+                    if SET_COOKIE in res.headers:
+                        _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(data)} - {res.headers[SET_COOKIE]}")
                     else:
-                        _LOGGER.debug(f"init-cookies: {util.mask_map(data)} - NO COOKIES in RESPONSE")
+                        if(retry):
+                            _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(data)} - NO COOKIES in RESPONSE (try to logout)")
+                            await asyncio.sleep(2)
+                            await self._senec_local_access_stop_no_checks()
+                            await asyncio.sleep(5)
+                            await self._init_gui_cookies(retry=False)
+                        else:
+                            _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(data)} - NO COOKIES in RESPONSE")
 
-            except JSONDecodeError as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"_init_gui_cookies(): JSONDecodeError while 'await res.json()' {exc}")
+
+        except TimeoutError:
+            _LOGGER.info(f"_init_gui_cookies(): TimeoutError (20sec) while posting '{form}'")
+        except BaseException as exe:
+            _LOGGER.warning(f"_init_gui_cookies caused {type(exe).__name__} - {exe}")
 
     async def _read_version(self):
         form = {
@@ -343,14 +349,19 @@ class SenecLocal:
             }
         }
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-            _LOGGER.debug(f"_read_version() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
-            try:
-                res.raise_for_status()
-                self._raw_version = parse(await res.json())
-                self._last_version_update = time()
-            except JSONDecodeError as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+        try:
+            async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+                _LOGGER.debug(f"_read_version() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
+                try:
+                    res.raise_for_status()
+                    self._raw_version = parse(await res.json())
+                    self._last_version_update = time()
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"_read_version(): JSONDecodeError while 'await res.json()' {exc}")
+        except TimeoutError:
+            _LOGGER.info(f"_read_version(): TimeoutError (20sec) while posting '{form}'")
+        except BaseException as exe:
+            _LOGGER.warning(f"_read_version(): caused {type(exe).__name__} - {exe}")
 
     @property
     def number_of_configured_bms_modules(self) -> int:
@@ -483,31 +494,46 @@ class SenecLocal:
                     data = await res.json()
                     self._raw = parse(data)
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"_read_senec_lala(): JSONDecodeError while 'await res.json()' {exc}")
                 except Exception as err:
-                    _LOGGER.warning(f"read_senec_lala caused: {err}")
+                    _LOGGER.warning(f"_read_senec_lala(): read_senec_lala caused: {err}")
+
+        except TimeoutError:
+            _LOGGER.info(f"_read_senec_lala(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as e:
-            _LOGGER.info(f"_read_senec_lala() caused: {type(e)} - {e}")
+            _LOGGER.info(f"_read_senec_lala() caused: {type(e).__name__} - {e}")
 
     async def _read_all_fields(self) -> []:
-        async with self.lala_session.post(self.url, json={"DEBUG": {"SECTIONS": ""}}, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-            try:
-                res.raise_for_status()
-                data = await res.json()
-                obj = parse(data)
-                form = {}
-                for section in obj["DEBUG"]["SECTIONS"]:
-                    form[section] = {}
-            except JSONDecodeError as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+        form = {}
+        try:
+            post_data = {"DEBUG": {"SECTIONS": ""}}
+            async with self.lala_session.post(self.url, json=post_data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+                try:
+                    res.raise_for_status()
+                    data = await res.json()
+                    obj = parse(data)
+                    for section in obj["DEBUG"]["SECTIONS"]:
+                        form[section] = {}
+                except JSONDecodeError as exc:
+                    _LOGGER.warning(f"_read_all_fields(): P1 JSONDecodeError while 'await res.json()' {exc}")
+        except TimeoutError:
+            _LOGGER.info(f"_read_all_fields(): P1 TimeoutError (20sec) while posting '{post_data}'")
+        except BaseException as exe:
+            _LOGGER.warning(f"_read_all_fields P1 caused {type(exe).__name__} - {exe}")
 
-        async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+        if len(form) > 0:
             try:
-                res.raise_for_status()
-                data = await res.json()
-                return parse(data)
-            except JSONDecodeError as exc:
-                _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+                    try:
+                        res.raise_for_status()
+                        data = await res.json()
+                        return parse(data)
+                    except JSONDecodeError as exc:
+                        _LOGGER.warning(f"_read_all_fields(): P2 JSONDecodeError while 'await res.json()' {exc}")
+            except TimeoutError:
+                _LOGGER.info(f"_read_all_fields(): P2 TimeoutError (20sec) while posting '{form}'")
+            except BaseException as exe:
+                _LOGGER.warning(f"_read_all_fields P2 caused {type(exe).__name__} - {exe}")
 
         return None
 
@@ -519,15 +545,20 @@ class SenecLocal:
         await self._write_senec_v31(data)
 
     async def _write_senec_v31(self, data):
-        _LOGGER.debug(f"posting data (raw): {util.mask_map(data)}")
-        async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-            try:
-                res.raise_for_status()
-                self._raw_post = parse(await res.json())
-                _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
-                return self._raw_post
-            except Exception as err:
-                _LOGGER.warning(f"Error while 'posting data' {err}")
+        _LOGGER.debug(f"_write_senec_v31(): posting data (raw): {util.mask_map(data)}")
+        try:
+            async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
+                try:
+                    res.raise_for_status()
+                    self._raw_post = parse(await res.json())
+                    _LOGGER.debug(f"_write_senec_v31(): post result (already parsed): {util.mask_map(self._raw_post)}")
+                    return self._raw_post
+                except Exception as err:
+                    _LOGGER.warning(f"_write_senec_v31(): Error while 'posting data' {err}")
+        except TimeoutError:
+            _LOGGER.info(f"_write_senec_v31(): TimeoutError (20sec) while posting '{util.mask_map(data)}'")
+        except BaseException as e:
+            _LOGGER.info(f"_write_senec_v31() caused: {type(e).__name__} - {e}")
 
     async def _senec_v31_post_plain_form_data(self, form_data_str:str):
         _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data_str}")
@@ -547,15 +578,21 @@ class SenecLocal:
             "Accept": "application/json, text/javascript, */*; q=0.01",
             "Keep-Alive": "timeout=60, max=0",
         }
-        async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None) as res:
-            _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
-            try:
-                res.raise_for_status()
-                self._raw_post = parse(await res.json())
-                _LOGGER.debug(f"post result (already parsed): {util.mask_map(self._raw_post)}")
-                return self._raw_post
-            except Exception as err:
-                _LOGGER.warning(f"Error while 'posting data' {err}")
+
+        try:
+            async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None) as res:
+                _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
+                try:
+                    res.raise_for_status()
+                    self._raw_post = parse(await res.json())
+                    _LOGGER.debug(f"senec_v31_post_plain_form_data(): post result (already parsed): {util.mask_map(self._raw_post)}")
+                    return self._raw_post
+                except Exception as err:
+                    _LOGGER.warning(f"senec_v31_post_plain_form_data(): Error while 'posting data' {err}")
+        except TimeoutError:
+            _LOGGER.info(f"senec_v31_post_plain_form_data(): TimeoutError (20sec) while posting '{form_data_str}'")
+        except BaseException as e:
+            _LOGGER.info(f"senec_v31_post_plain_form_data() caused: {type(e).__name__} - {e}")
 
 
     ###################################
