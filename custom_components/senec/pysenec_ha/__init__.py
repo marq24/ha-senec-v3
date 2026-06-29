@@ -3227,19 +3227,18 @@ class SenecOnline:
         self.TOKEN_URL  = SSO_BASE_URL + "/token"
         self._code_verifier = None
 
+
         APP_SYSTEM_BASE_URL         = "https://senec-app-systems-proxy.prod.senec.dev"
-        self.APP_SYSTEM_LIST        = APP_SYSTEM_BASE_URL + "/v1/systems"
-        self.APP_SYSTEM_DETAILS     = APP_SYSTEM_BASE_URL + "/systems/{master_plant_id}/details"
-        self.APP_SYSTEM_STATUS      = APP_SYSTEM_BASE_URL + "/systems/status/{master_plant_id}"
+        # UPDATED in 2026/06
+        #self.APP_SYSTEM_LIST        = APP_SYSTEM_BASE_URL + "/v1/systems"
+        #self.APP_SYSTEM_DETAILS     = APP_SYSTEM_BASE_URL + "/systems/{master_plant_id}/details"
+        #self.APP_SYSTEM_STATUS      = APP_SYSTEM_BASE_URL + "/systems/status/{master_plant_id}"
+        self.APP_SYSTEM_LIST        = APP_SYSTEM_BASE_URL + "/systems/api/v1"
+        self.APP_SYSTEM_DETAILS     = APP_SYSTEM_BASE_URL + "/systems/api/v1/{master_plant_id}/details"
+        self.APP_SYSTEM_STATUS      = APP_SYSTEM_BASE_URL + "/systems/api/v1/status/{master_plant_id}"
 
-        # post https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{{SENEC_ANLAGE}}/wallboxes/measurements?wallboxIds=1&resolution=HOUR&from=2025-07-20T22%3A00%3A00Z&to=2025-07-21T22%3A00%3A00Z
-        # patch https://senec-app-wallbox-proxy.prod.senec.dev/v1/systems/{{SENEC_ANLAGE}}/wallboxes/1/locked/true
-        # patch https://senec-app-wallbox-proxy.prod.senec.dev/v1/systems/{{SENEC_ANLAGE}}/wallboxes/1/locked/false
-        # THIS IS probably NOT correct!!!
+
         APP_WALLBOX_BASE_URL        = "https://senec-app-wallbox-proxy.prod.senec.dev"
-        # THIS DOES NOT EXISTs anylonger…
-        #self.APP_SET_WALLBOX        = APP_WALLBOX_BASE_URL + "/v1/systems/{master_plant_id}/wallboxes/{wb_id}"
-
         self.APP_WALLBOX_SEARCH         = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/wallboxes/search"
         self.APP_SET_WALLBOX_LOCK_MODE  = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/locked/{lc_lock_state}"
         self.APP_SET_WALLBOX_MODE       = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/charging-mode/{new_mode}"
@@ -3247,18 +3246,49 @@ class SenecOnline:
         self.APP_SET_WALLBOX_SOLAR_MODE_SETTINGS    = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/settings/solar-charge"
         self.APP_SET_WALLBOX_COMFORT_MODE_SETTINGS  = APP_WALLBOX_BASE_URL + "/wallbox/api/v1/systems/{master_plant_id}/wallboxes/{wb_uuid}/comfort-charge-expert-settings"
 
+
         APP_ABILITIES_BASE_URL      = "https://senec-app-abilities-proxy.prod.senec.dev"
-        self.APP_ABILITIES_LIST     = APP_ABILITIES_BASE_URL + "/abilities/packages/{master_plant_id}"
+        # UPDATED in 2026/06
+        # self.APP_ABILITIES_LIST     = APP_ABILITIES_BASE_URL + "/abilities/packages/{master_plant_id}"
+        self.APP_ABILITIES_LIST     = APP_ABILITIES_BASE_URL + "/abilities/api/v1/packages/{master_plant_id}"
+
 
         self.APP_MEASURE_BASE_URL       = "https://senec-app-measurements-proxy.prod.senec.dev"
-        self.APP_MEASURE_DATA_AVAIL     = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
-        self.APP_MEASURE_DASHBOARD      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
-        self.APP_MEASURE_TOTAL          = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
-        self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}&wallboxIds={wb_ids}"
+        # UPDATED in 2026/06
+        #self.APP_MEASURE_DATA_AVAIL     = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
+        #self.APP_MEASURE_DASHBOARD      = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/dashboard"
+        #self.APP_MEASURE_TOTAL          = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
+        #self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_BASE_URL + "/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}&wallboxIds={wb_ids}"
+        self.APP_MEASURE_DATA_AVAIL     = self.APP_MEASURE_BASE_URL + "/measurements/api/v1/systems/{master_plant_id}/data-availability/timespan?timezone={tz}"
+        self.APP_MEASURE_DASHBOARD      = self.APP_MEASURE_BASE_URL + "/measurements/api/v1/systems/{master_plant_id}/dashboard"
+        self.APP_MEASURE_DASHBOARD_WB   = self.APP_MEASURE_BASE_URL + "/measurements/api/v1/systems/{master_plant_id}/dashboard?wallboxIds={wb_uuid}" # this is NOT USED YET!!!
+        self.APP_MEASURE_TOTAL          = self.APP_MEASURE_BASE_URL + "/measurements/api/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}"
+        self.APP_MEASURE_TOTAL_WITH_WB  = self.APP_MEASURE_BASE_URL + "/measurements/api/v1/systems/{master_plant_id}/measurements?resolution={res_type}&from={from_val}&to={to_val}&wallboxIds={wb_uuid}"
+        # NOT UPDATED / ALREADY USED
         self.APP_MEASURE_WB_TOTAL       = self.APP_MEASURE_BASE_URL + "/measurements/api/v1/systems/{master_plant_id}/wallboxes/measurements?wallboxIds={wb_uuid}&resolution={res_type}&from={from_val}&to={to_val}"
 
+
+        # NO CLUE WHERE THIS CAME FROM - BUT CHECK GIT HISTORY...
         # https://senec-app-systems-proxy.prod.senec.dev/systems/settings/user-energy-settings?systemId={master_plant_id}
         # -> http 204 NO-CONTENT
+
+        ##################################
+        # NEW IN 2026/06 -> not USED YET #
+        ##################################
+        # https://senec-app-systems-proxy.prod.senec.dev/systems/api/v1/{master_plant_id}/online-state
+        # {
+        #     "state": "ONLINE",
+        #     "since": "2026-06-27T22:48:16.056703Z",
+        #     "id": "[A-ID-HERE]"
+        # }
+
+        # https://senec-app-systems-proxy.prod.senec.dev/systems/api/v1/settings/forecast-charging-settings/{master_plant_id}
+        # {
+        #     "chargingMode": "SOLAR_OPTIMIZED",
+        #     "warrantyAccepted": false,
+        #     "disclaimerAccepted": false,
+        #     "revocationPolicyAccepted": false
+        # }
 
         # app-token related stuff…
         self._storage_path = storage_path
@@ -3571,9 +3601,15 @@ class SenecOnline:
                     # 15min * 60 sec = 900 sec - 5sec
                     if self._QUERY_TOTALS_TS + 895 < time():
                         the_wb_ids = None
+                        the_wb_uuids = None
                         if self._INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION and self._app_wallbox_num_max > 0:
                             the_wb_ids = ",".join(str(i) for i in range(1, self._app_wallbox_num_max + 1))
-                        await self.app_update_total(wb_ids=the_wb_ids)
+                            the_wb_uuids = ",".join(
+                                self._app_get_wallbox_uuid(idx) or str(idx + 1)
+                                for idx in range(self._app_wallbox_num_max)
+                            )
+
+                        await self.app_update_total(wb_ids=the_wb_ids, wb_uuids=the_wb_uuids)
                         if self._QUERY_WALLBOX:
                             await self.app_update_total_all_wallboxes()
 
@@ -4373,6 +4409,9 @@ class SenecOnline:
 
     async def app_get_system_details(self):
         # https://senec-app-systems-proxy.prod.senec.dev/systems/{master_plant_id}/details
+        # NEW:
+        # https://senec-app-systems-proxy.prod.senec.dev/systems/api/v1/{master_plant_id}/details
+
         # sample_data = {
         #   "systemOverview": {
         #     "systemId": self.master_plant_id,
@@ -4488,6 +4527,8 @@ class SenecOnline:
 
     async def app_get_abilities(self):
         # https://senec-app-abilities-proxy.prod.senec.dev/abilities/packages/{master_plant_id}
+        # NEW:
+        # https://senec-app-abilities-proxy.prod.senec.dev/abilities/api/v1/packages/{master_plant_id}
         # samle_data = {
         #   "warrantyPackage": null,
         #   "packageTypes": [
@@ -4532,6 +4573,9 @@ class SenecOnline:
 
     async def app_get_system_status(self):
         # https://senec-app-systems-proxy.prod.senec.dev/systems/status/{master_plant_id}
+        # Seams to be NEW:
+        # https://senec-app-systems-proxy.prod.senec.dev/systems/api/v1/status/{master_plant_id}
+        #
         # sample_data = {
         #   "name": "LADEN",
         #   "severity": "INFO",
@@ -4559,6 +4603,8 @@ class SenecOnline:
 
     async def app_get_dashboard(self):
         # https://senec-app-measurements-proxy.prod.senec.dev/v1/systems/{master_plant_id}/dashboard
+        # NEW:
+        # https://senec-app-measurements-proxy.prod.senec.dev/measurements/api/v1/systems/{master_plant_id}/dashboard?wallboxIds=[REDACTED: wallbox uuid]
         # sample_data = {
         #   "currently": {
         #     "powerGenerationInW": 1781.0947265625,
@@ -4717,7 +4763,7 @@ class SenecOnline:
     #         pass
     #     return data
 
-    async def app_update_total(self, wb_ids:str=None):
+    async def app_update_total(self, wb_ids:str=None, wb_uuids:str=None):
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
@@ -4757,9 +4803,10 @@ class SenecOnline:
 
             for a_year in range(start_year, current_year_local):
                 _LOGGER.debug(f"app_update_total(): - fetching data for year {a_year}")
-                if wb_ids is not None:
+                if wb_ids is not None or wb_uuids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
-                                                                  wb_ids    =wb_ids,
+                                                                  #wb_ids    =wb_ids,
+                                                                  wb_uuid   =wb_uuids,
                                                                   res_type  ="MONTH",
                                                                   from_val  =quote(app_get_utc_date_start(a_year, 1), safe=''),
                                                                   to_val    =quote(app_get_utc_date_end(a_year, 12), safe=''))
@@ -4788,9 +4835,10 @@ class SenecOnline:
                 self._static_TOTAL_SUMS_PREV_MONTHS = None
             else:
                 _LOGGER.debug(f"app_update_total(): - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
-                if wb_ids is not None:
+                if wb_ids is not None or wb_uuids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
-                                                                  wb_ids    =wb_ids,
+                                                                  #wb_ids    =wb_ids,
+                                                                  wb_uuid   =wb_uuids,
                                                                   res_type  ="MONTH",
                                                                   from_val  =quote(app_get_utc_date_start(current_year_local, 1), safe=''),
                                                                   to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local - 1), safe=''))
@@ -4815,9 +4863,10 @@ class SenecOnline:
                 self._static_TOTAL_SUMS_PREV_DAYS = None
             else:
                 _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
-                if wb_ids is not None:
+                if wb_ids is not None or wb_uuids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
-                                                                  wb_ids    =wb_ids,
+                                                                  #wb_ids    =wb_ids,
+                                                                  wb_uuid   =wb_uuids,
                                                                   res_type  ="MONTH",
                                                                   from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, 1), safe=''),
                                                                   to_val    =quote(app_get_utc_date_end(current_year_local, current_month_local, current_day_local - 1), safe=''))
@@ -4847,9 +4896,10 @@ class SenecOnline:
             await self._app_on_new_token_data_received(self._app_token_object)
 
         # getting TODAY
-        if wb_ids is not None:
+        if wb_ids is not None or wb_uuids is not None:
             a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
-                                                          wb_ids    =wb_ids,
+                                                          #wb_ids    =wb_ids,
+                                                          wb_uuid   =wb_uuids,
                                                           res_type  ="DAY",
                                                           from_val  =quote(app_get_utc_date_start(current_year_local, current_month_local, current_day_local), safe=''),
                                                           to_val    =quote((now_utc + timedelta(hours=24)).strftime(STRFTIME_DATE_FORMAT), safe=''))
