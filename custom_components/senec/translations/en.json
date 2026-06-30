@@ -2,7 +2,7 @@
   "selector": {
     "stype": {
       "options": {
-        "systype_senecv4": "SENEC.Home V4|P4/SENEC.Home V4|P4 hybrid",
+        "systype_senecv4": "SENEC.Home V4|P4|E4/SENEC.Home V4|P4|E4 hybrid",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 or older",
         "systype_webapi": "WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)",
@@ -64,7 +64,7 @@
           "scan_interval": "Polling Interval in seconds"
         },
         "data_description": {
-          "scan_interval": "[> 60 seconds (20 seconds for SENEC.Home V4|P4)]"
+          "scan_interval": "[> 60 seconds (20 seconds for SENEC.Home V4|P4|E4)]"
         },
         "sections": {
           "credentials": {

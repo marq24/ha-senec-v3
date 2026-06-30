@@ -2,7 +2,7 @@
   "selector": {
     "stype": {
       "options": {
-        "systype_senecv4": "SENEC.Home V4|P4/SENEC.Home V4|P4 hybrid",
+        "systype_senecv4": "SENEC.Home V4|P4|E4/SENEC.Home V4|P4|E4 hybrid",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 oder älteres System",
         "systype_webapi": "WEB.API: mein-senec.de Portal (für alle SENEC.Home Varianten einsetzbar)",
@@ -77,7 +77,7 @@
           "scan_interval": "Aktualisierungsintervall in Sekunden"
         },
         "data_description": {
-          "scan_interval": "Der Wert muss > 60 Sekunden (20 Sekunden für SENEC.Home V4|P4) sein"
+          "scan_interval": "Der Wert muss > 60 Sekunden (20 Sekunden für SENEC.Home V4|P4|E4) sein"
         },
         "sections": {
           "credentials": {

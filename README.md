@@ -1,4 +1,4 @@
-# Home Assistant Integration for SENEC.Home V2.x/V3/V4 Systems
+# Home Assistant Integration for SENEC.Home V2.x/V3/V4|P4|E4 Systems
 
 <!--
 > [!NOTE]  
@@ -17,7 +17,7 @@
 > Negative potential consequences of an action.
 -->
 
-This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4 Systems. In addition and where possible functions are provided to control the system.
+This Home Assistant Integration is providing information from SENEC.Home V2.x, SENEC.Home V3 and SENEC.Home V4|P4|E4 Systems. In addition and where possible, functions are provided to control the system.
 
 __Please note__, _that this integration is not official and not supported by the SENEC development team. I am not affiliated with SENEC in any way._
 
@@ -79,7 +79,7 @@ Use the following steps for a manual configuration by adding the custom integrat
     - Provide the update interval
     - Provide the area where the battery is located
 - WebAPI (`WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)`
-  or `SENEC.Home V4/SENEC.Home V4 hybrid`):
+  or `SENEC.Home V4|P4|E4/SENEC.Home V4|P4|E4 hybrid`):
     - Provide display name for the device
     - Provide your mein-senec.de login credentials
 
@@ -125,11 +125,11 @@ So when you have implausible data - please open in the case of the local polling
 
 The following devices are currently supported:
 
-| Device                 | Description                                                                                                                                                                                                                                                                     |
-|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| SENEC.HOME&nbsp;V2.x   | You can use the features and sensors provided by your device via the local polling (via lala.cgi) and the Web API (via mein-senec.de)                                                                                                                                           | 
-| SENEC.HOME&nbsp;V3     | You can use the features and sensors provided by your device via the local polling (via lala.cgi) and the Web API (via mein-senec.de)                                                                                                                                           | 
-| SENEC.HOME&nbsp;V4     | Since the device does not provide local access via a build in webserver, you can just use the features and sensors provided via the Web API (via mein-senec.de).                                                                                                                | 
+| Device                | Description                                                                                                                                                                                                                                                                     |
+|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| SENEC.HOME&nbsp;V2.x  | You can use the features and sensors provided by your device via the local polling (via lala.cgi) and the Web API (via mein-senec.de)                                                                                                                                           | 
+| SENEC.HOME&nbsp;V3    | You can use the features and sensors provided by your device via the local polling (via lala.cgi) and the Web API (via mein-senec.de)                                                                                                                                           | 
+| SENEC.HOME&nbsp;V4\|P4\|E4 | Since the device does not provide local access via a build in webserver, you can just use the features and sensors provided via the Web API (via mein-senec.de).                                                                                                                | 
 | SENEC.Inverter&nbsp;V3 | [When you have connected the internal inverter(s) with your LAN](#build-in-inverters), you will be able to access information via the Local API. Please see: "Connecting the internal (build in) SENEC Inverter Hardware to your LAN and use it in HA" for further information. | 
 
 ### Local Polling
@@ -425,12 +425,12 @@ If you are interested in some details about this implementation and the current 
 
 # Credits / Kudos
 
-| who| what                                                                                                                                                                                                                                                                                              |
-|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|[@marq24](https://github.com/marq24)| @marq24 created this fork, e.g. added several sensors and functions and is maintaining the integration.                                                                                                                                                                                           |
-|[@mstuettgen](https://github.com/mstuettgen)| Provided the initial WEB-API implementation for SENEC.Home V4 web access.                                                                                                                                                                                                                         |
-|[@io-debug](https://github.com/io-debug)| Provided the initial developer documentation and added functionality like the spare capacity management.                                                                                                                                                                                          |
-|[@mchwalisz](https://github.com/mchwalisz)| This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec)<br/>After some firmware updates in 2023 (by SENEC) this original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
+| who                                          | what                                                                                                                                                                                                                                                                                              |
+|----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [@marq24](https://github.com/marq24)         | @marq24 created this fork, e.g. added several sensors and functions and is maintaining the integration.                                                                                                                                                                                           |
+| [@mstuettgen](https://github.com/mstuettgen) | Provided the initial WEB-API implementation that was the base for the initial SENEC.Home V4\|P4\|E4 web access.                                                                                                                                                                                   |
+| [@io-debug](https://github.com/io-debug)     | Provided the initial developer documentation and added functionality like the spare capacity management.                                                                                                                                                                                          |
+| [@mchwalisz](https://github.com/mchwalisz)   | This fork was created from [mchwalisz/home-assistant-senec](https://github.com/mchwalisz/home-assistant-senec)<br/>After some firmware updates in 2023 (by SENEC) this original integration simply does not work any longer - plus: we needed more detailed information and configuration options |
 
 [hacs]: https://github.com/hacs/integration
 [hacsbadge]: https://img.shields.io/badge/HACS-Default-blue.svg?style=for-the-badge&logo=homeassistantcommunitystore&logoColor=ccc
