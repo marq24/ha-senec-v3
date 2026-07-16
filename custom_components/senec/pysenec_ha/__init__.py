@@ -312,7 +312,7 @@ class SenecLocal:
                 except JSONDecodeError as exc:
                     _LOGGER.warning(f"_init_gui_cookies(): JSONDecodeError while 'await res.json()' {exc}")
 
-        except TimeoutError:
+        except asyncio.TimeoutError:
             _LOGGER.info(f"_init_gui_cookies(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as exe:
             _LOGGER.warning(f"_init_gui_cookies caused {type(exe).__name__} - {exe}")
@@ -358,7 +358,7 @@ class SenecLocal:
                     self._last_version_update = time()
                 except JSONDecodeError as exc:
                     _LOGGER.warning(f"_read_version(): JSONDecodeError while 'await res.json()' {exc}")
-        except TimeoutError:
+        except asyncio.TimeoutError:
             _LOGGER.info(f"_read_version(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as exe:
             _LOGGER.warning(f"_read_version(): caused {type(exe).__name__} - {exe}")
@@ -498,7 +498,7 @@ class SenecLocal:
                 except Exception as err:
                     _LOGGER.warning(f"_read_senec_lala(): read_senec_lala caused: {err}")
 
-        except TimeoutError:
+        except asyncio.TimeoutError:
             _LOGGER.info(f"_read_senec_lala(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as e:
             _LOGGER.info(f"_read_senec_lala() caused: {type(e).__name__} - {e}")
@@ -516,7 +516,7 @@ class SenecLocal:
                         form[section] = {}
                 except JSONDecodeError as exc:
                     _LOGGER.warning(f"_read_all_fields(): P1 JSONDecodeError while 'await res.json()' {exc}")
-        except TimeoutError:
+        except asyncio.TimeoutError:
             _LOGGER.info(f"_read_all_fields(): P1 TimeoutError (20sec) while posting '{post_data}'")
         except BaseException as exe:
             _LOGGER.warning(f"_read_all_fields P1 caused {type(exe).__name__} - {exe}")
@@ -530,7 +530,7 @@ class SenecLocal:
                         return parse(data)
                     except JSONDecodeError as exc:
                         _LOGGER.warning(f"_read_all_fields(): P2 JSONDecodeError while 'await res.json()' {exc}")
-            except TimeoutError:
+            except asyncio.TimeoutError:
                 _LOGGER.info(f"_read_all_fields(): P2 TimeoutError (20sec) while posting '{form}'")
             except BaseException as exe:
                 _LOGGER.warning(f"_read_all_fields P2 caused {type(exe).__name__} - {exe}")
@@ -555,7 +555,7 @@ class SenecLocal:
                     return self._raw_post
                 except Exception as err:
                     _LOGGER.warning(f"_write_senec_v31(): Error while 'posting data' {err}")
-        except TimeoutError:
+        except asyncio.TimeoutError:
             _LOGGER.info(f"_write_senec_v31(): TimeoutError (20sec) while posting '{util.mask_map(data)}'")
         except BaseException as e:
             _LOGGER.info(f"_write_senec_v31() caused: {type(e).__name__} - {e}")
@@ -589,7 +589,7 @@ class SenecLocal:
                     return self._raw_post
                 except Exception as err:
                     _LOGGER.warning(f"senec_v31_post_plain_form_data(): Error while 'posting data' {err}")
-        except TimeoutError:
+        except asyncio.TimeoutError:
             _LOGGER.info(f"senec_v31_post_plain_form_data(): TimeoutError (20sec) while posting '{form_data_str}'")
         except BaseException as e:
             _LOGGER.info(f"senec_v31_post_plain_form_data() caused: {type(e).__name__} - {e}")
