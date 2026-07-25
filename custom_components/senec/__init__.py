@@ -10,7 +10,7 @@ from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_N
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry, config_validation as config_val, device_registry as device_reg
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.typing import UNDEFINED
@@ -358,7 +358,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
             # host can be changed in the options...
             self._host = config_entry.data[CONF_HOST]
-            self.senec = InverterLocal(host=self._host, inv_session=async_create_clientsession(hass), integ_version=self._integration_version)
+            self.senec = InverterLocal(host=self._host, inv_session=async_get_clientsession(hass), integ_version=self._integration_version)
 
         # WEB-API Version...
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
@@ -479,7 +479,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # general key - then when we access the web-portal, we will use assigned serial_number to the master_plant_id
             # and then query the web-portal anlagenNummer 0,1,2 ... till we find the one with the matching serial_number
             try:
-                self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_create_clientsession(hass),
+                self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_get_clientsession(hass),
                                          config_entry_serial_number=config_entry_serial_number,
                                          lang=hass.config.language.lower(),
                                          options=opt,
@@ -557,7 +557,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 opt[QUERY_PM1OBJ1_KEY] = True
                 opt[QUERY_BMS_KEY] = True
 
-            self.senec = SenecLocal(host=self._host, use_https=self._use_https, lala_session=async_create_clientsession(hass, verify_ssl=False),
+            self.senec = SenecLocal(host=self._host, use_https=self._use_https, lala_session=async_get_clientsession(hass, verify_ssl=False),
                                     lang=hass.config.language.lower(), options=opt,
                                     integ_version=self._integration_version)
 
@@ -766,7 +766,7 @@ class SenecEntity(CustomFriendlyNameEntity):
                 idx = int(possible_idx_str) - 1
                 a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(self.coordinator.data, idx)
             except ValueError:
-                _LOGGER.debug(f"No valid wallbox index found in key: {self.entity_description.key} - {possible_idx_str}")
+                _LOGGER.debug(f"No valid wallbox index found in key: {self.entity_description.key} [had tried to parse '{possible_idx_str}' as wallbox index] - so this is probably not entity beloging o a wallbox device!")
 
         if a_wallbox_obj is not None:
             #         "id": "1",

@@ -132,6 +132,9 @@ _LOGGER = logging.getLogger(__name__)
 
 SET_COOKIE = "Set-Cookie"
 
+class ServiceUnavailableException(Exception):
+    """Raised when the backend service or device cannot be reached."""
+
 class SenecLocal:
     """Senec Home Battery Sensor"""
 
@@ -144,8 +147,7 @@ class SenecLocal:
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
-        "Connection": "keep-alive",
-        "Keep-Alive": "timeout=60, max=0",
+        "Connection": "close"
     }
 
     def __str__(self) -> str:
@@ -250,6 +252,7 @@ class SenecLocal:
         self._raw = None
         self._raw_version = None
         self._last_version_update = 0
+        self._last_version_attempt = 0
         self._last_system_reset = 0
         self._timeout = aiohttp.ClientTimeout(total=20, connect=None, sock_connect=None, sock_read=None,
                                               ceil_threshold=5)
@@ -279,13 +282,21 @@ class SenecLocal:
     async def update(self):
         if self._raw_version is None or len(self._raw_version) == 0:
             await self.update_version()
+            if self._raw_version is None or len(self._raw_version) == 0:
+                # if we could not read any version data, we should cancel any possible
+                # startup...
+                raise ServiceUnavailableException(f"Could not read version information from lala.cgi @ {self._host}")
+
         await self._read_senec_lala_with_retry(retry=True)
 
     async def update_version(self):
         # we do not expect that the version info will update in the next 60 minutes…
         if self._last_version_update + 3600 < time():
-            await self._init_gui_cookies(retry=True)
-            await self._read_version()
+            # do not hammer the lala cgi with too many requests...
+            if self._last_version_attempt + 120 < time():
+                self._last_version_attempt = time()
+                await self._init_gui_cookies(retry=True)
+                await self._read_version()
 
     async def _init_gui_cookies(self, retry:bool):
         # with NPU 2411 we must start the communication with the backend with this single call…
@@ -381,6 +392,8 @@ class SenecLocal:
             if retry:
                 await asyncio.sleep(5)
                 await self._read_senec_lala_with_retry(retry=False)
+            else:
+                _LOGGER.info(f"_read_senec_lala_with_retry() failed with {type(exc).__name__} - {exc}")
 
     async def _read_senec_lala(self):
         form = {
@@ -576,11 +589,11 @@ class SenecLocal:
             #"sec-ch-ua-platform": "\"Windows\"",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Keep-Alive": "timeout=60, max=0",
+            "Connection": "close"
         }
 
         try:
-            async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None) as res:
+            async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None, timeout=self._timeout) as res:
                 _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
                 try:
                     res.raise_for_status()
@@ -2379,6 +2392,8 @@ class SenecLocal:
                 return self._OVERWRITES[section_key + "_" + array_values_key]["VALUE"]
             else:
                 return self._raw[section_key][array_values_key]
+        else:
+            return None
 
     async def switch_array(self, switch_array_key, array_pos, value):
         return await getattr(self, 'switch_array_' + str(switch_array_key))(array_pos, value)
@@ -2506,11 +2521,36 @@ class SenecLocal:
     async def set_number_value_array(self, array_key: str, array_pos: int, value: float):
         return await getattr(self, 'set_nva_' + str(array_key))(array_pos, value)
 
+    def _local_wallbox_mode_from_lala(self, pos: int) -> str:
+        prohibit_usage = self.read_array_data(SENEC_SECTION_WALLBOX, "PROHIBIT_USAGE")
+        smart_charge_active = self.read_array_data(SENEC_SECTION_WALLBOX, "SMART_CHARGE_ACTIVE")
+        allow_intercharge = self.read_array_data(SENEC_SECTION_WALLBOX, "ALLOW_INTERCHARGE")
+
+        try:
+            if prohibit_usage is not None and int(float(prohibit_usage[pos])) == 1:
+                return LOCAL_WB_MODE_LEGACY_LOCKED
+
+            if smart_charge_active is not None:
+                sca_val = int(float(smart_charge_active[pos]))
+                if sca_val == 3:
+                    return LOCAL_WB_MODE_LEGACY_SSGCM_3
+                if sca_val == 4:
+                    return LOCAL_WB_MODE_LEGACY_SSGCM_4
+                if sca_val == 0:
+                    # "ALLOW_INTERCHARGE" is not an array! - it's just "0" or "1"
+                    if allow_intercharge is not None and int(float(allow_intercharge)) == 1:
+                        return LOCAL_WB_MODE_LEGACY_FAST_WITHBATTERY
+                    else:
+                        return LOCAL_WB_MODE_LEGACY_FAST
+        except (IndexError, TypeError, ValueError):
+            pass
+        return LOCAL_WB_MODE_LEGACY_UNKNOWN
+
     @property
     def wallbox_1_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(0)
-        return LOCAL_WB_MODE_LEGACY_UNKNOWN
+        return self._local_wallbox_mode_from_lala(0)
 
     async def set_string_value_wallbox_1_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(0, value)
@@ -2521,7 +2561,7 @@ class SenecLocal:
     def wallbox_2_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(1)
-        return LOCAL_WB_MODE_LEGACY_UNKNOWN
+        return self._local_wallbox_mode_from_lala(1)
 
     async def set_string_value_wallbox_2_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(1, value)
@@ -2532,7 +2572,7 @@ class SenecLocal:
     def wallbox_3_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(2)
-        return LOCAL_WB_MODE_LEGACY_UNKNOWN
+        return self._local_wallbox_mode_from_lala(2)
 
     async def set_string_value_wallbox_3_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(2, value)
@@ -2543,7 +2583,7 @@ class SenecLocal:
     def wallbox_4_mode_legacy(self) -> str:
         if self._bridge_to_senec_online is not None:
             return self._bridge_to_senec_online._app_get_local_wallbox_mode_from_api_values_legacy(3)
-        return LOCAL_WB_MODE_LEGACY_UNKNOWN
+        return self._local_wallbox_mode_from_lala(3)
 
     async def set_string_value_wallbox_4_mode_legacy(self, value: str):
         await self.set_wallbox_mode_post_int(3, value)
@@ -2621,8 +2661,9 @@ class InverterLocal:
     """Senec Home Inverter addon"""
 
     _keepAliveHeaders = {
-        "Connection": "keep-alive",
-        "Keep-Alive": "timeout=60, max=0",
+        #"Connection": "keep-alive",
+        #"Keep-Alive": "timeout=60, max=0",
+        "Connection": "close",
     }
 
     def __init__(self, host, inv_session, integ_version: str = None):
@@ -3305,6 +3346,8 @@ class SenecOnline:
 
         self._app_token_object = {}
         self._app_is_authenticated = False
+        self._app_next_login_attempt_ts = 0
+        self._app_login_backoff_secs = 60
         self._app_token = None
         # the '_app_master_plant_id' will be used in any further request to
         # the senec endpoints as part of the URL...
@@ -3634,8 +3677,13 @@ class SenecOnline:
 
                 return True
             else:
-                # just brute-force getting a new login…
-                await self._initial_token_request_01_start()
+                if self._app_next_login_attempt_ts <= time():
+                    self._app_next_login_attempt_ts = time() + self._app_login_backoff_secs
+                    self._app_login_backoff_secs = min(self._app_login_backoff_secs * 2, 1800)
+                    await self._initial_token_request_01_start()
+                else:
+                    _LOGGER.debug(f"app_update(): not authenticated - next login attempt not before {strftime('%Y-%m-%d %H:%M:%S', localtime(self._app_next_login_attempt_ts))}")
+
         except BaseException as exc:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
@@ -4177,6 +4225,8 @@ class SenecOnline:
         if self._app_token_object is not None and "access_token" in self._app_token_object:
             self._app_token = f"Bearer {self._app_token_object['access_token']}"
             self._app_is_authenticated  = True
+            self._app_next_login_attempt_ts = 0
+            self._app_login_backoff_secs = 60
             if CONF_APP_SYSTEMID in self._app_token_object and self._app_token_object[CONF_APP_SYSTEMID] is not None:
                 self._app_master_plant_id   = self._app_token_object[CONF_APP_SYSTEMID]
                 self._app_serial_number     = self._app_token_object[CONF_APP_SERIALNUM]
@@ -6541,15 +6591,16 @@ class SenecOnline:
                         _LOGGER.warning(f"web_update_now() JSONDecodeError while 'await res.json()' {exc}")
 
                 else:
-                    self._is_authenticated = False
+                    self._web_is_authenticated = False
                     if retry:
+                        await self.web_authenticate(do_update=False, throw401=False)
                         await self.web_update(retry=False)
 
             except ClientResponseError as exc:
                 if exc.status == 401:
                     self.purge_senec_cookies()
                 if exc.status != 408:
-                    self._is_authenticated = False
+                    self._web_is_authenticated = False
                 if retry:
                     await self.web_update_now(retry=False)
 
@@ -7692,6 +7743,8 @@ class SenecOnline:
 
         self._app_token_object = {}
         self._app_is_authenticated = False
+        self._app_next_login_attempt_ts = 0
+        self._app_login_backoff_secs = 60
         self._app_token = None
         self._app_master_plant_id = None
         self._app_serial_number = None
