@@ -145,9 +145,7 @@ class SenecLocal:
     _lalaHeaders = {
         **_defaultHeaders,
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-        "Connection": "close"
+        "Connection": "keep-alive"
     }
 
     def __str__(self) -> str:
@@ -589,7 +587,7 @@ class SenecLocal:
             #"sec-ch-ua-platform": "\"Windows\"",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Connection": "close"
+            "Connection": "keep-alive"
         }
 
         try:
@@ -2661,9 +2659,7 @@ class InverterLocal:
     """Senec Home Inverter addon"""
 
     _keepAliveHeaders = {
-        #"Connection": "keep-alive",
-        #"Keep-Alive": "timeout=60, max=0",
-        "Connection": "close",
+        "Connection": "keep-alive",
     }
 
     def __init__(self, host, inv_session, integ_version: str = None):
