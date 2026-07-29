@@ -7763,3 +7763,104 @@ class SenecOnline:
         self._static_TOTAL_WALLBOX_DATA = [copy.deepcopy(self._static_A_WALLBOX_STORAGE) for _ in range(4)]
         await self.app_authenticate()
         return True
+
+
+class SenecConnect:
+    _BASE_URL: Final = "https://apim-eds-gwc-prod.azure-api.net/senec-connect"
+    _GENERAL_DEVICE_DATA_PATH: Final = "/v1/systems/device-data/general"
+
+    def __str__(self):
+        return "SenecConnect"
+
+    def __init__(
+            self,
+            subscription_key: str,
+            web_session,
+            use_key_header: bool = True,
+            use_key_query: bool = False,
+            base_url: str = _BASE_URL,
+    ):
+        self._subscription_key = subscription_key
+        self.web_session = web_session
+        self._use_key_header = use_key_header
+        self._use_key_query = use_key_query
+        self._base_url = base_url.rstrip("/")
+        self._raw_general_device_data = None
+
+    @property
+    def raw_general_device_data(self):
+        return self._raw_general_device_data
+
+    @staticmethod
+    def _normalize_include(include: str | Iterable[str] | None) -> str | None:
+        if include is None:
+            return None
+
+        if isinstance(include, str):
+            return include.strip() or None
+
+        values = [str(value).strip() for value in include if str(value).strip()]
+        if len(values) > 0:
+            return ",".join(values)
+
+        return None
+
+    async def get_device_data(self, include: str | Iterable[str] | None = None):
+        if self._subscription_key is None or len(str(self._subscription_key).strip()) == 0:
+            raise ValueError("subscription_key must not be empty")
+
+        req_headers = {}
+        req_params = {}
+
+        if self._use_key_header:
+            req_headers["Ocp-Apim-Subscription-Key"] = self._subscription_key
+        if self._use_key_query:
+            req_params["subscription-key"] = self._subscription_key
+
+        include_value = self._normalize_include(include=include)
+        if include_value is not None:
+            req_params["include"] = include_value
+
+        a_url = f"{self._base_url}{self._GENERAL_DEVICE_DATA_PATH}"
+
+        try:
+            _LOGGER.debug(f"SENEC.Connect requesting: {a_url} params={req_params}")
+            async with self.web_session.get(
+                    a_url,
+                    headers=req_headers if len(req_headers) > 0 else None,
+                    params=req_params if len(req_params) > 0 else None,
+            ) as res:
+                if res.status in [200, 201, 202]:
+                    try:
+                        data = await res.json()
+                        _LOGGER.debug(f"SENEC.Connect response: {util.mask_map(data)}")
+                        self._raw_general_device_data = data
+                        return data
+                    except JSONDecodeError as jexc:
+                        msg = f"SENEC.Connect returned invalid JSON for {a_url}: [Exception: {jexc}]"
+                        _LOGGER.warning(msg)
+                        raise ServiceUnavailableException(msg) from jexc
+
+                response_text = None
+                try:
+                    response_text = await res.text()
+                except Exception:
+                    response_text = None
+
+                msg = f"SENEC.Connect request failed [{res.status}] for {a_url}"
+                if response_text is not None:
+                    msg += f" - {response_text}"
+
+                _LOGGER.warning(msg)
+                raise ServiceUnavailableException(msg)
+
+        except ServiceUnavailableException:
+            raise
+        except (ClientResponseError, ClientConnectionError, asyncio.TimeoutError) as exc:
+            msg = f"SENEC.Connect request error for {a_url}: [Exception: {exc}]"
+            _LOGGER.warning(msg)
+            raise ServiceUnavailableException(msg) from exc
+        except Exception as exc:
+            msg = f"SENEC.Connect unexpected error for {a_url}: [Exception: {exc}]"
+            _LOGGER.warning(msg)
+            raise ServiceUnavailableException(msg) from exc

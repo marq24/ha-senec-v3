@@ -73,8 +73,11 @@ SYSTYPE_WEBAPI: Final = "systype_webapi"
 SYSTYPE_SENECV3: Final = "systype_senecv3"
 SYSTYPE_SENECV2: Final = "systype_senecv2"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
-
 SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
+
+WEBAPI_PUBLIC: Final = "webapi_public"
+WEBAPI_PRIVATE: Final = "webapi_private"
+WEBAPI_TYPES: Final = [WEBAPI_PUBLIC, WEBAPI_PRIVATE]
 
 # the display names of the 3 different implemented backend-types
 SYSTYPE_NAME_SENEC = "SENEC Main-Unit"
@@ -86,7 +89,8 @@ MODE_LOCAL: Final = "mode_local"
 SYSTEM_MODES: Final = [MODE_LOCAL, MODE_WEB]
 
 SETUP_SYS_TYPE: Final = "stype"
-SETUP_SYS_MODE: Final = "smode"
+SETUP_WEBAPI_TYPE: Final = "wtype"
+#SETUP_SYS_MODE: Final = "smode"
 
 CONF_DEV_TYPE_INT: Final = "dtype_int"
 CONF_TOTP_SECRET: Final = "totp_secret"
@@ -105,6 +109,10 @@ CONF_SYSTYPE_SENEC: Final = "senec"
 CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"
 CONF_SYSTYPE_INVERTER: Final = "inverter"
 CONF_SYSTYPE_WEB: Final = "web"
+CONF_SYSTYPE_SENECCONNECT: Final = "senec_connect"
+
+# the access key to SENEC.connect
+CONF_SENECCONENCT_KEY: Final = "senec_connect_key"
 
 CONF_APP_TOKEN: Final = "app_token"
 CONF_APP_SYSTEMID: Final = "app_master_plant_id"
@@ -119,6 +127,7 @@ CONF_MUST_START_POST_MIGRATION_PROCESS: Final = "migration_post_process_must_be_
 
 """Default config for Senec."""
 DEFAULT_SYSTEM: Final = SYSTYPE_SENECV3
+DEFAULT_WEBTYPE: Final = WEBAPI_PRIVATE
 DEFAULT_MODE: Final = MODE_LOCAL
 DEFAULT_HOST: Final = "Senec"
 DEFAULT_HOST_INVERTER: Final = "Inverter"

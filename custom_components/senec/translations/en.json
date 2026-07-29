@@ -2,17 +2,17 @@
   "selector": {
     "stype": {
       "options": {
-        "systype_senecv4": "SENEC.Home V4|P4|E4/SENEC.Home V4|P4|E4 hybrid",
+        "systype_senecv4": "SENEC.Home V4|P4|E4",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 or older",
         "systype_webapi": "WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)",
         "systype_invertv3": "Internal inverter build into SENEC.Home V3 hybrid/hybrid duo"
       }
     },
-    "smode": {
+    "wtype": {
       "options": {
-        "mode_web": "WEB-API: Access via the (un-official) WEB-API of the mein-senec.de Portal",
-        "mode_local": "LAN: Access via local LAN (IP of SENEC.Home or Inverter)"
+        "webapi_public": "SENEC.Connect (registration of an API-Key at developer.senec.com required)",
+        "webapi_private": "Access via the (un-official) WEB-API of the mein-senec.de Portal (user & password)"
       }
     },
     "set_peakshaving_mode_options": {
@@ -48,6 +48,12 @@
           "stype": "Select System type"
         }
       },
+      "webtype": {
+        "description": "### Select your API-Access\n\nFor a SENEC V4|P4|E4 system, this integration supports two different APIs..\n\n1. Official SENEC.Connect API. First, you need to register an API key via developer.senec.de.\n2.Undocumented API of the mein-senec.de portal & SenecApp. Here, you need to enter your login credentials (username & password) into the integration.\n\n\nIf you need help with the configuration have a look here: {repo}",
+        "data": {
+          "stype": "Entscheide Dich für die Art des API-Zugangs, den Du verwenden möchtest"
+        }
+      },
       "localsystem": {
         "description": "If you need help with the configuration have a look here: {repo}",
         "data": {
@@ -57,7 +63,18 @@
           "ignore_system_state": "The values for the battery charge/discharge sensors should not take the system status into account"
         }
       },
-      "websetup": {
+      "webpublicsetup": {
+        "description": "Please provide the primary or secondary key of your SENEC.Data 45000 subscription that you would like to use.\n\nIf you need help with the configuration have a look here: {repo}",
+        "data": {
+          "name": "Display name in HA (optional)",
+          "web_api_primary_key": "Your primary or secondary key",
+          "scan_interval": "Polling Interval in seconds"
+        },
+        "data_description": {
+          "scan_interval": "[> 60 seconds (20 seconds for SENEC.Home V4|P4|E4)]"
+        }
+      },
+      "webprivatesetup": {
         "description": "### Your login credentials for mein-senec.de\n\nPlease provide your mein-senec.de login credentials (eMail and password) in order to connect home assistant with your mein-senec.de account. These are then saved __as plain text__ (unencrypted) in your Home Assistant configuration for this integration.\n\nIf you need help with the configuration have a look here: {repo}\n\n\n### Important information about MFA/OTP/TOTP @ SENEC\n\nIf you have not yet received a request to set up an additional factor (MFA) to access mein-senec.de, entering the OTP auth secret is currently not required.\n\n\nYou should familiarize yourself with the necessary steps now so that you can continue to use this integration in the future. You can find them at {repo}/blob/main/docs/SENEC_OTP_SETUP.md\n\n\nIf you have already set up MFA access, please ensure that you have your 'secret key' for access and enter it under 'OTP-auth-Secret' during setup. You can also find details on the SENEC_OTP_SETUP.md linked above",
         "data" : {
           "name": "Display name",

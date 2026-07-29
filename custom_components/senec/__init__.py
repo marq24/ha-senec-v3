@@ -224,7 +224,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
-    if CONF_TYPE not in config_entry.data or config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2]:
+    config_type_val = config_entry.data.get(CONF_TYPE, CONF_SYSTYPE_SENEC)
+    if config_type_val in [CONF_SYSTYPE_SENEC, CONF_SYSTYPE_SENEC_V2]:
         # after the refresh, we should know if the lala.cgi return STATISTIC data
         # or not...
         coordinator._statistics_available = coordinator.senec.grid_total_export is not None
@@ -252,14 +253,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 coordinator.senec.set_senec_online_instance(a_other_coord.senec)
                 a_other_coord.senec.set_senec_local_instance(coordinator.senec)
 
-    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
+    elif config_type_val == CONF_SYSTYPE_INVERTER:
         await coordinator.senec.update_version()
         coordinator._device_type = SYSTYPE_NAME_INVERTER
         coordinator._device_model = f"{coordinator.senec.device_name} Netbios: {coordinator.senec.device_netbiosname}"
         coordinator._device_serial = coordinator.senec.device_serial
         coordinator._device_version = coordinator.senec.device_versions
 
-    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
+    elif config_type_val == CONF_SYSTYPE_WEB:
         if coordinator.senec.product_name is None or coordinator.senec.product_name == "UNKNOWN_PROD_NAME":
             await coordinator.app_get_system_details()
 
