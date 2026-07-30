@@ -67,11 +67,12 @@
         "description": "Please provide the primary or secondary key of your SENEC.Data 45000 subscription that you would like to use.\n\nIf you need help with the configuration have a look here: {repo}",
         "data": {
           "name": "Display name in HA (optional)",
-          "web_api_primary_key": "Your primary or secondary key",
+          "web_api_primary_key": "Your primary (or secondary) key",
           "scan_interval": "Polling Interval in seconds"
         },
         "data_description": {
-          "scan_interval": "[> 60 seconds (20 seconds for SENEC.Home V4|P4|E4)]"
+          "web_api_primary_key": "Your primary or secondary subscription key from the Senec developer portal",
+          "scan_interval": "A SENEC.Data 45000 subscription means you have an access limit of 45000 requests per month. For this reason, your interval should be longer than 60 seconds (since: 60 requests per hour = 1440 requests per day = 43200 requests over 30 days)."
         }
       },
       "webprivatesetup": {
