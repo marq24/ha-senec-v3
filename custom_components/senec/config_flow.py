@@ -588,8 +588,14 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(title=name_entry, data=local_data)
         else:
             user_input[CONF_NAME] = self._default_name
-            user_input[CONF_SCAN_INTERVAL] = self._default_interval
             user_input[CONF_SENECCONENCT_KEY] = self._default_senecconnectkey
+            if self._default_interval is not None:
+                user_input[CONF_SCAN_INTERVAL] = self._default_interval
+            else:
+                # A SENEC.Data 45000 subscription means you have an access limit of 45000 requests per month.
+                # For this reason, your interval should be longer than 60 seconds (since: 60 requests per hour = 1440
+                # requests per day = 43200 requests over 30 days).
+                user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
 
             # we just need the api-key from the user...
             a_schema = vol.Schema({
