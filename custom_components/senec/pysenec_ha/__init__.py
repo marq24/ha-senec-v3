@@ -2499,15 +2499,21 @@ class SenecLocal:
             local_mode = LOCAL_WB_MODE_LEGACY_SSGCM_3
 
         if local_mode == LOCAL_WB_MODE_LEGACY_SSGCM_3 or local_mode == LOCAL_WB_MODE_LEGACY_SSGCM_4:
-            await self.set_multi_post(4, pos,
+            if SENEC_SECTION_WALLBOX in self._raw and (
+                    "SET_ICMAX" in self._raw[SENEC_SECTION_WALLBOX] and
+                    "MIN_CHARGING_CURRENT" in self._raw[SENEC_SECTION_WALLBOX]):
+
+                await self.set_multi_post(4, pos,
                                       SENEC_SECTION_WALLBOX, "SET_ICMAX", "fl", value,
                                       SENEC_SECTION_WALLBOX, "MIN_CHARGING_CURRENT", "fl", value)
 
-            if sync and self._bridge_to_senec_online is not None:
-                await self._bridge_to_senec_online.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
+                if sync and self._bridge_to_senec_online is not None:
+                    await self._bridge_to_senec_online.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
+            else:
+                _LOGGER.warning(f"No data for '{SENEC_SECTION_WALLBOX}': 'SET_ICMAX' and/or 'MIN_CHARGING_CURRENT' in self._raw!"
+                                f" -> {self._raw.keys()} -> {"NO 'SENEC_SECTION_WALLBOX' PRESENT" if SENEC_SECTION_WALLBOX not in self._raw else self._raw[SENEC_SECTION_WALLBOX].keys()}")
         else:
-            _LOGGER.debug(
-                f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
+            _LOGGER.debug(f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
 
     @property
     def wallbox_set_idefault(self) -> [float]:
@@ -2632,27 +2638,33 @@ class SenecLocal:
         post_data = {}
         self.prepare_post_data(post_data, array_length, pos, section_key1, value_key1, data_type1, value1)
         self.prepare_post_data(post_data, array_length, pos, section_key2, value_key2, data_type2, value2)
-        await self._write(post_data)
+        if len(post_data) > 0:
+            await self._write(post_data)
+        else:
+            _LOGGER.warning(f"No data to write for '{section_key1}': '{value_key1}' and/or '{section_key2}': '{value_key2}'")
 
     def prepare_post_data(self, post_data: dict, array_length: int, pos: int, section_key: str, value_key: str,
                           data_type: str, value):
-        self._OVERWRITES[section_key + "_" + value_key].update({"VALUE": self._raw[section_key][value_key]})
-        self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
-        self._OVERWRITES[section_key + "_" + value_key]["TS"] = time()
-
-        value_data = [""] * array_length
-        self._raw[section_key][value_key][pos] = value
-        if data_type == "u1":
-            value_data[pos] = "u1_" + util.get_as_hex(int(value), 4)
-        elif data_type == "u8":
-            value_data[pos] = "u8_" + util.get_as_hex(int(value), 2)
-        elif data_type == "fl":
-            value_data[pos] = "fl_" + util.get_float_as_IEEE754_hex(float(value))
-
-        if section_key in post_data:
-            post_data[section_key][value_key] = value_data
+        if section_key not in self._raw or value_key not in self._raw[section_key]:
+            _LOGGER.warning(f"Section '{section_key}' or value key '{value_key}' not found in raw data: {self._raw.keys()}")
         else:
-            post_data[section_key] = {value_key: value_data}
+            self._OVERWRITES[section_key + "_" + value_key].update({"VALUE": self._raw[section_key][value_key]})
+            self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
+            self._OVERWRITES[section_key + "_" + value_key]["TS"] = time()
+
+            value_data = [""] * array_length
+            self._raw[section_key][value_key][pos] = value
+            if data_type == "u1":
+                value_data[pos] = "u1_" + util.get_as_hex(int(value), 4)
+            elif data_type == "u8":
+                value_data[pos] = "u8_" + util.get_as_hex(int(value), 2)
+            elif data_type == "fl":
+                value_data[pos] = "fl_" + util.get_float_as_IEEE754_hex(float(value))
+
+            if section_key in post_data:
+                post_data[section_key][value_key] = value_data
+            else:
+                post_data[section_key] = {value_key: value_data}
 
 
 class InverterLocal:
