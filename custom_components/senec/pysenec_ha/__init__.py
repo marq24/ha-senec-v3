@@ -671,7 +671,7 @@ class SenecLocal:
 
     @property
     def safe_charge(self) -> bool:
-        if self._raw is not None:
+        if self._raw is not None and SENEC_SECTION_ENERGY in self._raw:
             # if it just has been switched on/off we provide a FAKE value for 5 sec…
             # since senec unit do not react 'instant' on some requests…
             if self._OVERWRITES["SAFE_CHARGE_RUNNING"]["TS"] + 5 > time():
@@ -702,7 +702,7 @@ class SenecLocal:
 
     @property
     def li_storage_mode(self) -> bool:
-        if self._raw is not None:
+        if self._raw is not None and SENEC_SECTION_ENERGY in self._raw:
             # if it just has been switched on/off we provide a FAKE value for 5 sec…
             # since senec unit do not react 'instant' on some requests…
             if self._OVERWRITES["LI_STORAGE_MODE_RUNNING"]["TS"] + 5 > time():
@@ -2290,39 +2290,40 @@ class SenecLocal:
                 return self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1
 
     async def switch_wallbox_allow_intercharge(self, value: bool, sync: bool = True):
-        # WE must check if the lala ALLOW_INTERCHARGE is already in the state,
-        # that will be requested to set!!!
-        if value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1:
-            _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN ON, since it's already ON")
-        elif not value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 0:
-            _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN OFF, since it's already OFF")
-        else:
-            # BEFORE we can/should switch 'allow_intercharge' we MUST check
-            # if ONE of the active WB's are set to the MODE FAST/FASTWITHBATTERY?!
-            if sync and self._bridge_to_senec_online is not None:
-                if not self._bridge_to_senec_online.app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode():
-                    _LOGGER.warning(f"switch_wallbox_allow_intercharge(): can NOT switch 'allow_intercharge' {value}, since no WB's is in FAST mode!")
-                    return False
-
-            # please note this is not ARRAY data - so we code it here again…
-            self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"VALUE": value})
-            self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"TS": time()})
-            post_data = {}
-            if (value):
-                self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 1
-                post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_01"}}
+        if self._raw is not None and SENEC_SECTION_WALLBOX in self._raw:
+            # WE must check if the lala ALLOW_INTERCHARGE is already in the state,
+            # that will be requested to set!!!
+            if value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1:
+                _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN ON, since it's already ON")
+            elif not value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 0:
+                _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN OFF, since it's already OFF")
             else:
-                self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 0
-                post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_00"}}
+                # BEFORE we can/should switch 'allow_intercharge' we MUST check
+                # if ONE of the active WB's are set to the MODE FAST/FASTWITHBATTERY?!
+                if sync and self._bridge_to_senec_online is not None:
+                    if not self._bridge_to_senec_online.app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode():
+                        _LOGGER.warning(f"switch_wallbox_allow_intercharge(): can NOT switch 'allow_intercharge' {value}, since no WB's is in FAST mode!")
+                        return False
 
-            # 2026/01/17: WHEN we set the allow_intercharge flag locally ON at the senec system, then IMHO
-            # we must ALSO adjust ALL wallbox-modes to FAST! ?!
-            await self._write(post_data)
+                # please note this is not ARRAY data - so we code it here again…
+                self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"VALUE": value})
+                self._OVERWRITES[SENEC_SECTION_WALLBOX + "_ALLOW_INTERCHARGE"].update({"TS": time()})
+                post_data = {}
+                if (value):
+                    self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 1
+                    post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_01"}}
+                else:
+                    self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] = 0
+                    post_data = {SENEC_SECTION_WALLBOX: {"ALLOW_INTERCHARGE": "u8_00"}}
 
-        if sync and self._bridge_to_senec_online is not None:
-            # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting… so we need to push
-            # this to all 4 possible wallboxes…
-            await self._bridge_to_senec_online.app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(value_to_set=value)
+                # 2026/01/17: WHEN we set the allow_intercharge flag locally ON at the senec system, then IMHO
+                # we must ALSO adjust ALL wallbox-modes to FAST! ?!
+                await self._write(post_data)
+
+            if sync and self._bridge_to_senec_online is not None:
+                # ALLOW_INTERCHARGE seams to be a wallbox-number independent setting… so we need to push
+                # this to all 4 possible wallboxes…
+                await self._bridge_to_senec_online.app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(value_to_set=value)
 
     async def switch(self, switch_key, value):
         return await getattr(self, 'switch_' + str(switch_key))(value)
