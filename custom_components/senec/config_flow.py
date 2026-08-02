@@ -351,7 +351,9 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # SenecV4 - WebONLY Option...
             if self._selected_system == SYSTYPE_SENECV4:
-                return await self.async_step_webtype()
+                # NOT implemented in 2026.8.0
+                #return await self.async_step_webtype()
+                return await self.async_step_webprivatesetup()
 
             # the private WebAPI selection
             elif self._selected_system == SYSTYPE_WEBAPI:
