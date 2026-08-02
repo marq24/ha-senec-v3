@@ -72,7 +72,7 @@ Just click the following Button to start the configuration automatically (for th
 Use the following steps for a manual configuration by adding the custom integration using the web interface and follow instruction on screen:
 
 - Go to `Configuration -> Integrations` and add "SENEC.Home" integration
-- Select the Integration Type (basically LAN ot WebApi)
+- Select the Integration Type (basically LAN or WebApi)
 - LAN: (`SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo` or `SENEC.Home V2.1 or older`
   or `Internal inverter build into SENEC.Home V3 hybrid/hybrid duo`)
     - Provide display name for the device and its address (hostname or IP)
@@ -82,6 +82,10 @@ Use the following steps for a manual configuration by adding the custom integrat
   or `SENEC.Home V4|P4|E4/SENEC.Home V4|P4|E4 hybrid`):
     - Provide display name for the device
     - Provide your mein-senec.de login credentials
+- SENEC.Connect (only for `SENEC.Home V4|P4|E4/SENEC.Home V4|P4|E4 hybrid`):
+    - Provide display name for the device
+    - Provide your primary or secondary SENEC.Connect key you have created before @ https://developer.senec.com/
+    - Provide the update interval (should be greater the 60 seconds)
 
 You can repeat this to add additional Integration entries (e.g. LAN + WebAPI)
 
@@ -129,7 +133,7 @@ The following devices are currently supported:
 |-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | SENEC.HOME&nbsp;V2.x  | You can use the features and sensors provided by your device via the local polling (via lala.cgi) and the Web API (via mein-senec.de)                                                                                                                                           | 
 | SENEC.HOME&nbsp;V3    | You can use the features and sensors provided by your device via the local polling (via lala.cgi) and the Web API (via mein-senec.de)                                                                                                                                           | 
-| SENEC.HOME&nbsp;V4\|P4\|E4 | Since the device does not provide local access via a build in webserver, you can just use the features and sensors provided via the Web API (via mein-senec.de).                                                                                                                | 
+| SENEC.HOME&nbsp;V4\|P4\|E4 | Since the device does not provide local access via a build in webserver, you can just use the features and sensors provided via the Web API (via mein-senec.de) or via the SENEC.Connect API (currently 45000 request/month free).                                              | 
 | SENEC.Inverter&nbsp;V3 | [When you have connected the internal inverter(s) with your LAN](#build-in-inverters), you will be able to access information via the Local API. Please see: "Connecting the internal (build in) SENEC Inverter Hardware to your LAN and use it in HA" for further information. | 
 
 ### Local Polling
@@ -270,13 +274,17 @@ The following Sensors are provided by the Web API:
 | WEBAPI Peak Shaving Capacity Limit | When using the Manual Peak Shaving Mode this capacity limit will be used for your battery          | no                 |
 | WEBAPI Peak Shaving End Time       | When using the Manual Peak Shaving Mode, this time releases the capacity limit for the battery     | no                 |
 
+### SENEC.Connect
+
+What should I say – this currently only seams to work for x4 Systems. There are only a handful of read-only sensors available. __Yes__ it exists & __yes__ it's supported by this Integration. Does it generate extra value? At least for x4 owners this can be a backup, when the WebAPI will stop working for whatever reason.
+
 <a href="wb-control"/></a>
 
 ### Wallbox Control
 
-Without this integration owners of a SENEC wallbox, __must__ use the SENEC mobile app in order to control the wallbox device. This 'remote-control-functionality' implies, that it takes a certain amount of time till a change in the mobile app will be synced with your local device. I was not aware of this 'delay'-situation (since I do not have a wallbox installed - and probably I will not get one from SENEC). At the end of December (2023) I was contacted by Sigurd L. and was asked, if it would be possible to support wallbox control with this SENEC.Home Integration.
+Without this integration, owners of a SENEC wallbox __must__ use the SENEC mobile app to control the wallbox device. This 'remote-control-functionality' implies, that it takes a certain amount of time till a change in the mobile app will be synced with your local device. I was not aware of this 'delay'-situation (since I do not have a wallbox installed – and probably I will not get one from SENEC). At the end of December (2023) I was contacted by Sigurd L. and was asked, if it would be possible to support wallbox control with this SENEC.Home Integration.
 
-The challenge for the integration is, that on the one hand it has to be ensured that the appropriate values in the local SENEC device will be set and make sure on the other hand that at the same time, that also the corresponding adjustments will be done in the SENEC Backend infrastructure (where the mobile app going to make the adjustments). And of course all that have to be done without any documentation and a really wired mix of parameter names - so please __use this functionality on your own risk!__.
+The challenge for the integration is that on the one hand, it has to be ensured that the appropriate values in the local SENEC device will be set and make sure, on the other hand, that at the same time, that also the corresponding adjustments will be done in the SENEC Backend infrastructure (where the mobile app is going to make the adjustments). And of course, all that has to be done without any documentation and a really wired mix of parameter names - so please __use this functionality at your own risk!__.
 
 When the Integration would adjust the wallbox setting in the local SENEC device __only__, then these changes will be reverted/overwritten after a short while with the data provided by the central SENEC backend. So this Home Assistant integration will set values in your local SENEC device as well as via the APP-API (web based) __simultaneously__ - so that the central SENEC backend and your local SENEC device are in sync.
 
@@ -307,13 +315,13 @@ Here you will find additional information regarding setup and configuration.
 
 ## Connecting the internal (build in) SENEC Inverter Hardware to your LAN and use it in HA
 
-The __SENEC.Home V3 hybrid duo__ have build in two inverters - called LV and HV. This hardware has its own LAN connectors, but they have not been connected during the installation process (I guess by purpose).
+The __SENEC.Home V3 hybrid duo__ has build-in two inverters – called LV and HV. This hardware has its own LAN connectors, but they have not been connected during the installation process (I guess by purpose).
 
-### __DO THIS ON YOUR OWN RISK!__
+### __DO THIS AT YOUR OWN RISK!__
 
-Nevertheless, when you dismount the front and the right hand side panels you simply can plug in RJ45 LAN cables into both of the inverters LAN connectors and after a short while you should be able to access the web frontends of the inverters via your browser.
+Nevertheless, when you dismount the front and the right-hand side panels, you simply can plug in RJ45 LAN cables into both of the inverter LAN connectors. After a short while you should be able to access the web frontends of the inverters via your browser.
 
-_Don't forget to assign fixed IP's to the additional inverter hardware. You can unplug the LAN cable for a short while in order to make sure that the inverters will make use of the fixed assigned IP's._
+_Don't forget to assign fixed IP's to the additional inverter hardware. You can unplug the LAN cable for a short while to make sure that the inverters will make use of the fixed assigned IP's._
 
 ### Position of SENEC.Inverter V3 LV LAN connector
 

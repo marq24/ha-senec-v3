@@ -7779,30 +7779,45 @@ class SenecOnline:
 
 
 class SenecConnect:
-    _BASE_URL: Final = "https://apim-eds-gwc-prod.azure-api.net/senec-connect"
+    _SENEC_CONNECT_BASE_URL: Final = "https://apim-eds-gwc-prod.azure-api.net/senec-connect"
     _GENERAL_DEVICE_DATA_PATH: Final = "/v1/systems/device-data/general"
 
     def __str__(self):
-        return "SenecConnect"
+        return f"SenecConnect [{self._logger_key}]"
 
-    def __init__(
-            self,
-            subscription_key: str,
-            web_session,
-            use_key_header: bool = True,
-            use_key_query: bool = False,
-            base_url: str = _BASE_URL,
-    ):
+    def __init__(self, subscription_key: str, web_session, use_key_header: bool = True, use_key_query: bool = False):
         self._subscription_key = subscription_key
+        self._logger_key = f"{(subscription_key[:5]).upper()}XXXXXXX"
         self.web_session = web_session
         self._use_key_header = use_key_header
         self._use_key_query = use_key_query
-        self._base_url = base_url.rstrip("/")
-        self._raw_general_device_data = None
+        self._raw_senec_connect = None
+        self._raw_senec_connect_grouped = None
 
-    @property
-    def raw_general_device_data(self):
-        return self._raw_general_device_data
+    async def update(self):
+        await self._request_connect_api()
+
+    def dict_data(self):
+        return {"data": self._raw_senec_connect_grouped, "raw_data": self._raw_senec_connect, "version": {}}
+
+    async def get_all_live_systems(self):
+        if self._raw_senec_connect is None:
+            await self._request_connect_api()
+
+        if self._raw_senec_connect is not None and len(self._raw_senec_connect) > 0:
+            ret = {}
+            for a_system in self._raw_senec_connect:
+                # we must check if there are any 'stall' systems...
+                meter = a_system.get("meter", None)
+                bess = a_system.get("bessNameplate", None)
+                # looks like that a stale system does not provide meter:consumption and meter:production
+                # data [but who knows]
+                if meter and bess:
+                    if "system_id" in bess and ("consumption" in meter or "production" in meter):
+                        ret[bess.get("system_id", "unknown").lower()] = bess
+            return ret
+        _LOGGER.info(f"get_all_live_systems(): could not get any live systems for given key {self._logger_key}")
+        return None
 
     @staticmethod
     def _normalize_include(include: str | Iterable[str] | None) -> str | None:
@@ -7818,7 +7833,7 @@ class SenecConnect:
 
         return None
 
-    async def get_device_data(self, include: str | Iterable[str] | None = None):
+    async def _request_connect_api(self, include: str | Iterable[str] | None = None):
         if self._subscription_key is None or len(str(self._subscription_key).strip()) == 0:
             raise ValueError("subscription_key must not be empty")
 
@@ -7834,7 +7849,7 @@ class SenecConnect:
         if include_value is not None:
             req_params["include"] = include_value
 
-        a_url = f"{self._base_url}{self._GENERAL_DEVICE_DATA_PATH}"
+        a_url = f"{self._SENEC_CONNECT_BASE_URL}{self._GENERAL_DEVICE_DATA_PATH}"
 
         try:
             _LOGGER.debug(f"SENEC.Connect requesting: {a_url} params={req_params}")
@@ -7847,8 +7862,21 @@ class SenecConnect:
                     try:
                         data = await res.json()
                         _LOGGER.debug(f"SENEC.Connect response: {util.mask_map(data)}")
-                        self._raw_general_device_data = data
-                        return data
+                        self._raw_senec_connect = data
+
+                        # generate from the plain list a dict with the system_id as key
+                        # so we can access each system directly (without the need to
+                        # guess each time what index is what)
+                        grouped_data = {}
+                        if self._raw_senec_connect is not None and len(self._raw_senec_connect) > 0:
+                            for a_system in self._raw_senec_connect:
+                                bess = a_system.get("bessNameplate", None)
+                                if bess and "system_id" in bess:
+                                    grouped_data[bess.get("system_id", "unknown").lower()] = a_system
+                            self._raw_senec_connect_grouped = grouped_data
+
+                        return grouped_data if len(grouped_data) > 0 else data
+
                     except JSONDecodeError as jexc:
                         msg = f"SENEC.Connect returned invalid JSON for {a_url}: [Exception: {jexc}]"
                         _LOGGER.warning(msg)
@@ -7877,3 +7905,34 @@ class SenecConnect:
             msg = f"SENEC.Connect unexpected error for {a_url}: [Exception: {exc}]"
             _LOGGER.warning(msg)
             raise ServiceUnavailableException(msg) from exc
+
+    def battery_state_power(self, system_id) -> float:
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("power", None)
+
+    def battery_state_current(self, system_id) -> float:
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("current", None)
+
+    def battery_state_voltage(self, system_id) -> float:
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("voltage", None)
+
+    def battery_charge_percent(self, system_id) -> float:
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("state_of_charge", None)
+
+    def grid_state_power(self, system_id) -> float:
+        """Grid power (+ from grid, − to grid) in watt (W)"""
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("meter", {}).get("grid_power", None)
+
+    def house_total_consumption(self, system_id) -> float:
+        """Total energy used by house (W) - Does not include Wallbox."""
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("meter", {}).get("consumption", None)
+
+    def solar_total_generated(self, system_id) -> float:
+        """Current power generated by solar panels (W)"""
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("meter", {}).get("production", None)

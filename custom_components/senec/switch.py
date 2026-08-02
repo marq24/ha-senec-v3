@@ -18,7 +18,7 @@ from .const import (
     WEB_SWITCH_TYPES,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    ExtSwitchEntityDescription, StaticFuncs
+    ExtSwitchEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,6 +47,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
             entity = SenecSwitch(coordinator, description)
             entities.append(entity)
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info("No switches for SENEC.Connect...")
     else:
         for description in MAIN_SWITCH_TYPES:
             entity = SenecSwitch(coordinator, description)

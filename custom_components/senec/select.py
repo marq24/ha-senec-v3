@@ -14,7 +14,7 @@ from homeassistant.util import slugify
 
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SELECT_TYPES, WEB_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
-    ExtSelectEntityDescription, StaticFuncs
+    ExtSelectEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT
 from .pysenec_ha import LOCAL_WB_MODE_LEGACY_UNKNOWN, LOCAL_WB_MODE_2026_UNKNOWN
 from .pysenec_ha.constants import WALLBOX_CHARGING_MODES_LEGACY_P4, WALLBOX_CHARGING_MODES_2026_P4
 
@@ -59,6 +59,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
             entity = SenecSelect(coordinator, description)
             entities.append(entity)
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info("No selects for SENEC.Connect...")
     else:
         for description in MAIN_SELECT_TYPES:
             entity = SenecSelect(coordinator, description)

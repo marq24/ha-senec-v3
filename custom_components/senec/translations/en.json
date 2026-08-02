@@ -35,6 +35,7 @@
     },
     "error": {
       "login_failed": "Login failed - please check username and/or password",
+      "key_failed": "Login failed - please check API-Key",
       "cannot_connect": "Failed to connect",
       "unknown": "Unknown error",
       "invalid_totp_secret": "OTP-auth-Secret invalid",
@@ -49,7 +50,7 @@
         }
       },
       "webtype": {
-        "description": "### Select your API-Access\n\nFor a SENEC V4|P4|E4 system, this integration supports two different APIs..\n\n1. Official SENEC.Connect API. First, you need to register an API key via developer.senec.de.\n2.Undocumented API of the mein-senec.de portal & SenecApp. Here, you need to enter your login credentials (username & password) into the integration.\n\n\nIf you need help with the configuration have a look here: {repo}",
+        "description": "### Select your API-Access\n\nFor a SENEC V4|P4|E4 system, this integration supports two different APIs..\n\n1. Official SENEC.Connect API. First, you need to register an API key via developer.senec.de.\n2. Undocumented API of the mein-senec.de portal & SenecApp. Here, you need to enter your login credentials (username & password) into the integration.\n\n\nIf you need help with the configuration have a look here: {repo}",
         "data": {
           "stype": "Entscheide Dich für die Art des API-Zugangs, den Du verwenden möchtest"
         }
@@ -67,12 +68,12 @@
         "description": "Please provide the primary or secondary key of your SENEC.Data 45000 subscription that you would like to use.\n\nIf you need help with the configuration have a look here: {repo}",
         "data": {
           "name": "Display name in HA (optional)",
-          "web_api_primary_key": "Your primary (or secondary) key",
+          "senec_connect_key": "Your primary (or secondary) key",
           "scan_interval": "Polling Interval in seconds"
         },
         "data_description": {
-          "web_api_primary_key": "Your primary or secondary subscription key from the Senec developer portal",
-          "scan_interval": "A SENEC.Data 45000 subscription means you have an access limit of 45000 requests per month. For this reason, your interval should be longer than 60 seconds (since: 60 requests per hour = 1440 requests per day = 43200 requests over 30 days)."
+          "senec_connect_key": "Your primary or secondary subscription key from the Senec developer portal",
+          "scan_interval": "A SENEC.Data 45000 subscription means you have an access limit of 45000 requests per month. For this reason, your interval should be greater than 60 seconds (since: 60 requests per hour = 1440 requests per day = 43200 requests over 30 days)."
         }
       },
       "webprivatesetup": {

@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
-from . import SenecDataUpdateCoordinator, SenecEntity
+from . import SenecDataUpdateCoordinator, SenecEntity, CONF_SYSTYPE_SENECCONNECT
 from .const import (
     DOMAIN,
     MAIN_BIN_SENSOR_TYPES,
@@ -45,6 +45,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
             entity = SenecBinarySensor(coordinator, description)
             entities.append(entity)
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info("No binary_sensors for SENEC.Connect...")
     else:
         for description in MAIN_BIN_SENSOR_TYPES:
             entity = SenecBinarySensor(coordinator, description)

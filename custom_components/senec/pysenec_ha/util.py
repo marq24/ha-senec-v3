@@ -7,7 +7,8 @@ _LOGGER = logging.getLogger(__name__)
 _MASKED_VALUES = ["host", "username", "password", "street", "email", "phonenumber", "housenumber", "website",
                   "app_token", "access_token", "refresh_token", "id_token", "totp_secret", "totp_url",
                   "maincontrollerserial", "serial", "serialnumber", "dserial",
-                  "device_id", "controllerid", "systemid", "app_master_plant_id", "controlunitnumber"]
+                  "device_id", "controllerid", "systemid", "app_master_plant_id", "controlunitnumber",
+                  "senec_connect_key", "serial_number", "system_id"]
 
 def mask_map(d: (dict, list)) -> dict:
     if isinstance(d, dict):

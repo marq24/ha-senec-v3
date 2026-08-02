@@ -15,7 +15,7 @@ from .const import (
     WEB_BUTTON_TYPES,
     ExtButtonEntityDescription,
     CONF_SYSTYPE_INVERTER,
-    CONF_SYSTYPE_WEB, StaticFuncs)
+    CONF_SYSTYPE_WEB, StaticFuncs, CONF_SYSTYPE_SENECCONNECT)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +41,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, add_
 
             entity = SenecButton(coordinator, description)
             entities.append(entity)
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info("No bbuttons for SENEC.Connect...")
     else:
         is_2408_or_higher: bool = await coordinator._async_is2408_or_later()
 

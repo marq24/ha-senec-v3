@@ -16,7 +16,7 @@ from .const import (
     MAIN_NUMBER_TYPES,
     WEB_NUMBER_TYPES,
     CONF_SYSTYPE_WEB,
-    CONF_SYSTYPE_INVERTER, StaticFuncs
+    CONF_SYSTYPE_INVERTER, StaticFuncs, CONF_SYSTYPE_SENECCONNECT
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,6 +63,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
             entity = SenecNumber(coordinator, description, False)
             entities.append(entity)
+
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info("No numbers for SENEC.Connect...")
+
     else:
         for description in MAIN_NUMBER_TYPES:
             entity = SenecNumber(coordinator, description, True)

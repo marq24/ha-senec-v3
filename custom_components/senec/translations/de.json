@@ -48,6 +48,7 @@
     },
     "error": {
       "login_failed": "Login fehlgeschlagen - bitte Benutzername und/oder Passwort prüfen",
+      "key_failed": "Login fehlgeschlagen - bitte API-Schlüssel prüfen",
       "cannot_connect": "Keine Verbindung möglich",
       "unknown": "Unbekannter Fehler",
       "invalid_totp_secret": "OTP-auth-Secret ist ungültig",
@@ -80,11 +81,11 @@
         "description": "Bitte gib den Primär- oder Sekundärschlüssel Deines SENEC.Data 45000 Abonnements an, das Du verwenden möchtest.\n\nWenn Du Hilfe benötigst, findest du sie hier: {repo}",
         "data": {
           "name": "Anzeige Name in HA (optional)",
-          "web_api_primary_key": "Primärschlüssel (oder auch Sekundärschlüssel)",
+          "senec_connect_key": "Primärschlüssel (oder auch Sekundärschlüssel)",
           "scan_interval": "Aktualisierungsintervall in Sekunden"
         },
         "data_description": {
-          "web_api_primary_key": "Du musst einen API-Schlüssel über developer.senec.de registriert haben.",
+          "senec_connect_key": "Du musst einen API-Schlüssel über developer.senec.de registriert haben.",
           "scan_interval": "Ein SENEC.Data 45000 Abonnement bedeutet, Du hast ein Zugriffslimit von 45000 Anfragen pro Monat. Aus diesem Grund sollte Dein Interval größer als 60 Sekunden sein (denn: 60 Requests pro Stunde = 1440 Requests pro Tag = 43.00 requests für 30 Tage)."
         }
       },

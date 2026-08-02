@@ -20,7 +20,7 @@ from .const import (
     CONF_SUPPORT_BDC,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    ExtSensorEntityDescription, StaticFuncs
+    ExtSensorEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, SENECCONNECT_SENSOR_TYPES
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -66,6 +66,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
             entity = SenecSensor(coordinator, description)
             entities.append(entity)
 
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        for a_id in coordinator._senec_connect_systems.keys():
+            a_system = coordinator._senec_connect_systems[a_id]
+            a_serial = a_system.get("serial_number", "UNKNOWN").lower().replace("-", "")
+            for description in SENECCONNECT_SENSOR_TYPES:
+                entity = SenecSensor(coordinator, replace(description, serial=a_serial, system_id=a_id))
+                entities.append(entity)
+
     else:
         for description in MAIN_SENSOR_TYPES:
             add_entity = description.controls is None
@@ -101,8 +109,13 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
 
         title = self.coordinator._config_entry.title
         key = self.entity_description.key.lower()
+        self.serial = self.entity_description.serial
+        self.system_id = self.entity_description.system_id
         name = self.entity_description.name
-        self.entity_id = f"sensor.{slugify(title)}_{key}".lower()
+        if self.serial is not None:
+            self.entity_id = f"sensor.{slugify(title)}_{self.serial}_{key}".lower()
+        else:
+            self.entity_id = f"sensor.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
         self._attr_translation_key = key
@@ -138,7 +151,9 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
     @property
     def native_value(self):
         """Return the current state."""
-        if self.entity_description.array_key is not None:
+        if self.system_id is not None:
+            value = getattr(self.coordinator.senec, self.entity_description.key)(self.system_id)
+        elif self.entity_description.array_key is not None:
             data = getattr(self.coordinator.senec, self.entity_description.array_key)
             if data is not None and len(data) > self.entity_description.array_pos:
                 value = data[self.entity_description.array_pos]

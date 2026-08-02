@@ -113,6 +113,7 @@ CONF_SYSTYPE_SENECCONNECT: Final = "senec_connect"
 
 # the access key to SENEC.connect
 CONF_SENECCONENCT_KEY: Final = "senec_connect_key"
+CONF_SENECCONENCT_SYSTEMS: Final = "senec_connect_systems"
 
 CONF_APP_TOKEN: Final = "app_token"
 CONF_APP_SYSTEMID: Final = "app_master_plant_id"
@@ -240,6 +241,8 @@ class StaticFuncs:
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
     senec_lala_section: str | None = None
+    serial: str | None = None
+    system_id: str | None = None
     array_key: str | None = None
     array_pos: int = -1
     require_2408: bool = False
@@ -1327,6 +1330,74 @@ WEB_SELECT_TYPES = [
         update_after_switch_delay_in_sec=2,
     ),
 
+]
+
+SENECCONNECT_SENSOR_TYPES = [
+
+    ExtSensorEntityDescription(
+        key="battery_state_voltage",
+        name="Battery Voltage",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        suggested_display_precision=2,
+        icon="mdi:lightning-bolt",
+        device_class=SensorDeviceClass.VOLTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="battery_state_current",
+        name="Battery Current",
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        suggested_display_precision=2,
+        icon="mdi:current-ac",
+        device_class=SensorDeviceClass.CURRENT,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="battery_state_power",
+        name="Battery Power",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=2,
+        icon="mdi:home-battery",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="battery_charge_percent",
+        name="Battery SOC",
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        icon="mdi:home-battery",
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+
+    ExtSensorEntityDescription(
+        key="grid_state_power",
+        name="Grid power",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=3,
+        icon="mdi:transmission-tower",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="house_total_consumption",
+        name="Grid consumption",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=3,
+        icon="mdi:home-import-outline",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    ExtSensorEntityDescription(
+        key="solar_total_generated",
+        name="Grid production",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=3,
+        icon="mdi:solar-power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
 ]
 
 INVERTER_SENSOR_TYPES = [

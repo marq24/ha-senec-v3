@@ -19,8 +19,7 @@ from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import slugify
 from requests.exceptions import HTTPError, Timeout
 
-from custom_components.senec.pysenec_ha import InverterLocal, util
-from custom_components.senec.pysenec_ha import SenecLocal, SenecOnline
+from custom_components.senec.pysenec_ha import InverterLocal, util, SenecLocal, SenecOnline, SenecConnect, ServiceUnavailableException
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
@@ -47,11 +46,11 @@ from .const import (
     SYSTYPE_NAME_SENEC,
     SYSTYPE_NAME_INVERTER,
     SYSTYPE_NAME_WEBAPI,
-    CONF_SYSTYPE_SENECCONNECT,
 
     SETUP_SYS_TYPE,
     SETUP_WEBAPI_TYPE,
     CONF_SENECCONENCT_KEY,
+    CONF_SENECCONENCT_SYSTEMS,
     CONF_TOTP_SECRET,
     CONF_TOTP_URL,
     CONF_DEV_TYPE,
@@ -64,6 +63,7 @@ from .const import (
     CONF_SYSTYPE_SENEC,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
+    CONF_SYSTYPE_SENECCONNECT,
     CONF_IGNORE_SYSTEM_STATE,
     CONFIG_VERSION,
     CONFIG_MINOR_VERSION,
@@ -209,6 +209,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_interval  = entry_data[CONF_SCAN_INTERVAL]
             self._default_senecconnectkey = entry_data[CONF_SENECCONENCT_KEY]
 
+            return await self.async_step_webpublicsetup()
+
         return self.async_abort(reason="reconfigure_error")
 
     async def _test_connection_senec_local(self, host, use_https):
@@ -344,6 +346,25 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             web_session.detach()
         return False
 
+    async def _test_connection_senec_connect(self, sub_key:str):
+        """Check if we can connect to the Senec WEB."""
+        self._errors = {}
+        web_session = async_create_clientsession(self.hass, auto_cleanup=False)
+        try:
+            senec_connect = SenecConnect(subscription_key=sub_key, web_session=web_session)
+            system_dict = await senec_connect.get_all_live_systems()
+            if system_dict is None or len(system_dict) == 0:
+                return False, None
+            else:
+                return True, system_dict
+
+        except (OSError, HTTPError, Timeout, ClientResponseError, ServiceUnavailableException):
+            self._errors[CONF_SENECCONENCT_KEY] = "key_failed"
+            _LOGGER.warning(f"Could not connect to SENEC.Connect API with provided key: '{senec_connect._logger_key}', check credentials (exception)")
+        finally:
+            web_session.detach()
+        return False, None
+
     async def async_step_user(self, user_input=None):
         self._errors = {}
         if user_input is not None:
@@ -351,9 +372,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # SenecV4 - WebONLY Option...
             if self._selected_system == SYSTYPE_SENECV4:
-                # NOT implemented in 2026.8.0
-                #return await self.async_step_webtype()
-                return await self.async_step_webprivatesetup()
+                return await self.async_step_webtype()
 
             # the private WebAPI selection
             elif self._selected_system == SYSTYPE_WEBAPI:
@@ -569,28 +588,36 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
         if user_input is not None:
             name_entry = user_input[CONF_NAME]
-            # we MUST CHECK THE CONNECTION and fetch SYSTEM DETAILS!
-            local_data = {
-                CONF_TYPE: CONF_SYSTYPE_SENECCONNECT,
-                CONF_NAME: name_entry,
-                CONF_SENECCONENCT_KEY: user_input[CONF_SENECCONENCT_KEY],
-                CONF_SCAN_INTERVAL: max(user_input[CONF_SCAN_INTERVAL], 20),
+            success, system_dict = await self._test_connection_senec_connect(user_input[CONF_SENECCONENCT_KEY].strip())
+            if not success:
+                self._errors["base"] = "no_systems_found"
+                # we will show the form again...
+            else:
+                local_data = {
+                    CONF_TYPE: CONF_SYSTYPE_SENECCONNECT,
+                    CONF_NAME: name_entry,
+                    CONF_SENECCONENCT_KEY: user_input[CONF_SENECCONENCT_KEY],
+                    CONF_SCAN_INTERVAL: max(user_input[CONF_SCAN_INTERVAL], 20),
+                    CONF_SENECCONENCT_SYSTEMS: system_dict,
+                }
 
-                CONF_DEV_TYPE_INT: self._device_type_internal,
-                CONF_DEV_TYPE: self._device_type,
-                CONF_DEV_MODEL: self._device_model,
-                CONF_DEV_SERIAL: self._device_serial,
-                CONF_DEV_VERSION: self._device_version
+                # finally storing/updating the config entry...
+                if self.source == SOURCE_RECONFIGURE:
+                    return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=local_data, reason="reconfigure_successful")
+                else:
+                    return self.async_create_entry(title=name_entry, data=local_data)
+
+        else:
+            user_input = {
+                CONF_NAME: self._default_name,
+                CONF_SENECCONENCT_KEY: self._default_senecconnectkey
             }
 
-            # finally storing/updating the config entry...
-            if self.source == SOURCE_RECONFIGURE:
-                return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=local_data, reason="reconfigure_successful")
+            if self._default_name is not None:
+                user_input[CONF_NAME] = self._default_name
             else:
-                return self.async_create_entry(title=name_entry, data=local_data)
-        else:
-            user_input[CONF_NAME] = self._default_name
-            user_input[CONF_SENECCONENCT_KEY] = self._default_senecconnectkey
+                user_input[CONF_NAME] = "SENEC.Connect"
+
             if self._default_interval is not None:
                 user_input[CONF_SCAN_INTERVAL] = self._default_interval
             else:
@@ -599,114 +626,20 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # requests per day = 43200 requests over 30 days).
                 user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
 
-            # we just need the api-key from the user...
-            a_schema = vol.Schema({
-                vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                vol.Required(CONF_SENECCONENCT_KEY, default=user_input[CONF_SENECCONENCT_KEY]): str,
-                vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
-            })
-            return self.async_show_form(step_id="webpublicsetup",
-                                        data_schema=a_schema,
-                                        description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
-                                        last_step=True,
-                                        errors=self._errors)
-        # if user_input is not None:
-        #     # set some defaults in case we need to return to the form
-        #     name_entry = user_input[CONF_NAME]
-        #
-        #     # check if the input is some sort of valid...
-        #     if self.source == SOURCE_RECONFIGURE:
-        #         self._abort_if_unique_id_configured()
-        #     else:
-        #         if host_in_configuration_exists(self.hass, host_entry):
-        #             self._errors[CONF_HOST] = "already_configured"
-        #             raise data_entry_flow.AbortFlow("already_configured")
-        #
-        #         if title_in_configuration_exists(self.hass, name_entry):
-        #             self._errors[CONF_NAME] = "already_configured"
-        #             raise data_entry_flow.AbortFlow("already_configured")
-        #
-        #     # SENEC.Home stuff
-        #     else:
-        #         if (await self._test_connection_senec_local(host_entry, True) or
-        #                 await self._test_connection_senec_local(host_entry, False)):
-        #             local_data = {
-        #                 CONF_TYPE: CONF_SYSTYPE_SENEC,
-        #                 CONF_NAME: name_entry,
-        #                 CONF_HOST: host_entry,
-        #                 CONF_SCAN_INTERVAL: max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL),
-        #                 CONF_IGNORE_SYSTEM_STATE: user_input[CONF_IGNORE_SYSTEM_STATE],
-        #                 CONF_USE_HTTPS: self._use_https,
-        #                 CONF_DEV_TYPE_INT: self._device_type_internal,
-        #                 CONF_DEV_TYPE: self._device_type,
-        #                 CONF_DEV_MODEL: self._device_model,
-        #                 CONF_DEV_SERIAL: self._device_serial,
-        #                 CONF_DEV_VERSION: self._device_version
-        #             }
-        #             if self.source == SOURCE_RECONFIGURE:
-        #                 return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=local_data, reason="reconfigure_successful")
-        #             elif self.source == SOURCE_REAUTH:
-        #                 return self.async_update_reload_and_abort(entry=self._get_reconfigure_entry(), data=local_data, reason="reauth_successful")
-        #             else:
-        #                 # initial setup...
-        #                 if not self._stats_available:
-        #                     # we have to show the user, that he should add also WEB-API
-        #                     _LOGGER.warning("Need WEB-API for full data...")
-        #                     self._xdata = local_data
-        #                     self._xname = name_entry
-        #                     return self.async_show_form(
-        #                         step_id="optional_websetup_required_info",
-        #                         description_placeholders={
-        #                             "repo": "https://github.com/marq24/ha-senec-v3",
-        #                         },
-        #                         last_step=False,
-        #                         errors=self._errors
-        #                     )
-        #                 else:
-        #                     return self.async_create_entry(title=name_entry, data=local_data)
-        #
-        #         else:
-        #             _LOGGER.warning(f"Could not connect to via http or https to SENEC.Home at {host_entry}, check host ip address")
-        #
-        # else:
-        #     user_input = {
-        #         CONF_IGNORE_SYSTEM_STATE: self._default_ignore_system_state
-        #     }
-        #
-        #     if all(x is not None for x in [self._default_name, self._default_host]):
-        #         user_input[CONF_NAME] = self._default_name
-        #         user_input[CONF_HOST] = self._default_host
-        #     else:
-        #         if self._selected_system == SYSTYPE_INVERTV3:
-        #             user_input[CONF_NAME] = DEFAULT_NAME_INVERTER
-        #             user_input[CONF_HOST] = DEFAULT_HOST_INVERTER
-        #         else:
-        #             user_input[CONF_NAME] = DEFAULT_NAME
-        #             user_input[CONF_HOST] = DEFAULT_HOST
-        #
-        #     if self._default_interval is not None:
-        #         user_input[CONF_SCAN_INTERVAL] = self._default_interval
-        #     else:
-        #         if self._selected_system == SYSTYPE_SENECV2:
-        #             user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_SENECV2
-        #         else:
-        #             user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
-        #
-        #     if self._selected_system in [SYSTYPE_SENECV3, SYSTYPE_SENECV2, CONF_SYSTYPE_SENEC]:
-        #         a_schema = vol.Schema({
-        #             vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-        #             vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
-        #             vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
-        #             vol.Required(CONF_IGNORE_SYSTEM_STATE, default=user_input[CONF_IGNORE_SYSTEM_STATE]): bool}
-        #         )
-        #     else:
-        #         a_schema = vol.Schema({
-        #             vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-        #             vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
-        #             vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
-        #         })
-        #
-        #     return self.async_show_form(step_id="webpublicsetup", data_schema=a_schema, description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"}, last_step=True, errors=self._errors)
+        # we just need the api-key from the user...
+        a_schema = vol.Schema({
+            vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
+            vol.Required(CONF_SENECCONENCT_KEY, description={"suggested_value": user_input[CONF_SENECCONENCT_KEY]}): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+            #vol.Required(CONF_SENECCONENCT_KEY, default=user_input[CONF_SENECCONENCT_KEY]): str,
+            vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
+        })
+        return self.async_show_form(step_id="webpublicsetup",
+                                    data_schema=a_schema,
+                                    description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
+                                    last_step=True,
+                                    errors=self._errors)
 
     async def async_step_webprivatesetup(self, user_input=None):
         key_creden = "credentials"

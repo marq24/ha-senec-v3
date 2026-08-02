@@ -17,7 +17,8 @@ from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.loader import async_get_integration
 
-from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired
+from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired, \
+    SenecConnect
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
     SENEC_SECTION_BMS_CELLS,
@@ -83,7 +84,7 @@ from .const import (
     QUERY_TOTALS_KEY,
     QUERY_SYSTEM_DETAILS_KEY,
     QUERY_SGREADY_KEY,
-    STARTUP_MESSAGE
+    STARTUP_MESSAGE, CONF_SYSTYPE_SENECCONNECT, CONF_SENECCONENCT_KEY, CONF_SENECCONENCT_SYSTEMS
 )
 from .entity import CustomFriendlyNameEntity
 
@@ -289,6 +290,29 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # Register Services
         senec_services = SenecService.SenecService(hass, config_entry, coordinator)
         hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, senec_services.set_peakshaving)
+
+    elif config_type_val == CONF_SYSTYPE_SENECCONNECT:
+        # we can have multiple systems that are still active with the same API-KEY...
+        # make sure that the coordinator knows the "live" systems...
+        connect_systems = await coordinator.senec.get_all_live_systems()
+        if connect_systems and len(connect_systems) > 0:
+            coordinator._senec_connect_systems = connect_systems
+
+            # need to check if we should update the config_entry!
+            backup_systems = config_entry.data.get(CONF_SENECCONENCT_SYSTEMS, {})
+            if len(backup_systems) < len(connect_systems):
+                # updating the config_entry!
+                _LOGGER.debug(f"Updating config_entry for {coordinator.senec._logger_key} with new systems: {connect_systems}")
+                hass.config_entries.async_update_entry(config_entry,data={**config_entry.data, **{CONF_SENECCONENCT_SYSTEMS: connect_systems}})
+
+        elif CONF_SENECCONENCT_SYSTEMS in config_entry.data and config_entry.data[CONF_SENECCONENCT_SYSTEMS] is not None:
+            backuped_systems = config_entry.data[CONF_SENECCONENCT_SYSTEMS]
+            if len(backuped_systems) > 0:
+                coordinator._senec_connect_systems = backuped_systems
+            else:
+                raise ConfigEntryNotReady(f"NO SENEC SYSTEMS FOUND EVEN in BACKUP for {coordinator.senec._logger_key}")
+        else:
+            raise ConfigEntryNotReady(f"NO SENEC SYSTEMS FOUND for {coordinator.senec._logger_key}")
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
@@ -497,6 +521,22 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             self._warning_counter = 0
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
 
+        # SENEC.Connect-API Version...
+        elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+
+            # user & pwd can be changed via the options...
+            api_key = config_entry.data[CONF_SENECCONENCT_KEY]
+
+            try:
+                self.senec = SenecConnect(subscription_key=api_key, web_session=async_get_clientsession(hass))
+            except ReConfigurationRequired as exc:
+                _LOGGER.warning(f"SenecConnect could not be created: {type(exc).__name__} - {exc}")
+                hass.add_job(config_entry.async_start_reauth, hass)
+
+            self._warning_counter = 0
+            self._senec_connect_systems = {}
+            UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
+
         # lala.cgi Version...
         else:
             # host can be changed in the options...
@@ -603,7 +643,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             if data_reload_required:
                 await asyncio.sleep(5)
                 await self.async_refresh()
-
 
     async def _async_is2408_or_later(self) -> bool:
         return await self.senec._is_2408_or_higher_async()
@@ -740,8 +779,19 @@ class SenecEntity(CustomFriendlyNameEntity):
     @property
     def device_info(self) -> dict:
         """Return info for device registry."""
-        # Setup Device
+        # for Senec.Connect we have multiple senec systems!
+        if len(self.coordinator._senec_connect_systems) > 0:
+            if hasattr(self, "system_id"):
+                system_obj = self.coordinator._senec_connect_systems.get(self.system_id, {})
+                if system_obj is not None and len(system_obj) > 0:
+                    return {
+                        "identifiers": {(DOMAIN, self.system_id)},
+                        "model": f"{system_obj.get("model", "UnknownModel")}",
+                        "manufacturer": f"{system_obj.get("manufacturer", MANUFACTURE)}",
+                        "serial_number": f"{system_obj.get("serial_number", "UnknownSerial")}"
+                    }
 
+        # Setup Device
         dtype = self.coordinator._device_type
         if dtype is None:
             dtype = self.coordinator._config_entry.data.get(CONF_DEV_TYPE, "UNKNOWN_TYPE")
