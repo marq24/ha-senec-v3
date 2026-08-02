@@ -534,7 +534,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 hass.add_job(config_entry.async_start_reauth, hass)
 
             self._warning_counter = 0
-            self._senec_connect_systems = {}
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
 
         # lala.cgi Version...
@@ -610,6 +609,10 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         self._device_serial = None
         self._device_version = None
         self._statistics_available = False
+
+        # introduced by SENEC.Connect (but we need to have this available for all Connector types)...
+        self._senec_connect_systems = {}
+
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=UPDATE_INTERVAL_IN_SECONDS))
 
     # Callable[[Event], Any]
