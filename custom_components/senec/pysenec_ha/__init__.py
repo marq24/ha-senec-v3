@@ -7808,14 +7808,18 @@ class SenecConnect:
             ret = {}
             for a_system in self._raw_senec_connect:
                 # we must check if there are any 'stall' systems...
-                meter = a_system.get("meter", None)
+                battery = a_system.get("battery", None)
                 bess = a_system.get("bessNameplate", None)
                 # looks like that a stale system does not provide meter:consumption and meter:production
                 # data [but who knows]
-                if meter and bess:
-                    if "system_id" in bess and ("consumption" in meter or "production" in meter):
+                # 2026/08/12 base on https://github.com/marq24/ha-senec-v3/issues/233 it looks like that
+                # a stale system is better identified by the presence of 'voltage' or 'current' in the
+                # battery object
+                if battery and bess:
+                    if "system_id" in bess and ("voltage" in battery or "current" in battery):
                         ret[bess.get("system_id", "unknown").lower()] = bess
             return ret
+
         _LOGGER.info(f"get_all_live_systems(): could not get any live systems for given key {self._logger_key}")
         return None
 

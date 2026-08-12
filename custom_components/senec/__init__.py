@@ -172,6 +172,21 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
             _LOGGER.info(f"async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
 
+        # update from 2.3 to 2.4 [need to purge all entities of SENEC.Connect]
+        if config_entry.minor_version == 3:
+            if config_entry.data is not None and config_entry.data.get(CONF_TYPE, None) == CONF_SYSTYPE_SENECCONNECT:
+
+                _LOGGER.info(f"async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+                registry = entity_registry.async_get(hass)
+
+                entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
+                for entity in entities:
+                    _LOGGER.info(f"Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} does not contain serial - Will PURGE previous {entity.entity_id}")
+                    registry.async_remove(entity.entity_id)
+
+                _LOGGER.info(f"async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
+            hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
+
     return True
 
 
@@ -858,7 +873,10 @@ class SenecEntity(CustomFriendlyNameEntity):
     @property
     def unique_id(self):
         """Return a unique ID to use for this entity."""
-        return f"{DOMAIN}.{self._name}_{self.entity_description.key}".lower()
+        if hasattr(self, "serial") and self.serial is not None:
+            return f"{DOMAIN}.{self._name}_{self.serial}_{self.entity_description.key}".lower()
+        else:
+            return f"{DOMAIN}.{self._name}_{self.entity_description.key}".lower()
 
     async def async_added_to_hass(self):
         """Connect to dispatcher listening for entity data notifications."""

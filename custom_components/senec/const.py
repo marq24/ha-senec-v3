@@ -66,7 +66,7 @@ If you have any issues with this you need to open an issue here:
 """
 
 CONFIG_VERSION: Final = 2
-CONFIG_MINOR_VERSION: Final = 3
+CONFIG_MINOR_VERSION: Final = 4
 
 SYSTYPE_SENECV4: Final = "systype_senecv4"
 SYSTYPE_WEBAPI: Final = "systype_webapi"
