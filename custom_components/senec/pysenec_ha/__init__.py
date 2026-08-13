@@ -67,6 +67,7 @@ from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_PM1OBJ2,
     SENEC_SECTION_SOCKETS,
     SENEC_SECTION_WALLBOX,
+    SENEC_SECTION_BAT1OBJ1,
 
     SENEC_SECTION_FACTORY,
     SENEC_SECTION_SYS_UPDATE,
@@ -104,7 +105,7 @@ from custom_components.senec.pysenec_ha.constants import (
 
     NO_LIMIT,
     UPDATE_INTERVALS,
-    UPDATE_INTERVAL_OPTIONS
+    UPDATE_INTERVAL_OPTIONS,
 )
 from custom_components.senec.pysenec_ha.phones import PHONE_BUILD_MAPPING
 from custom_components.senec.pysenec_ha.util import parse
@@ -307,16 +308,16 @@ class SenecLocal:
                     res.raise_for_status()
                     data = parse(await res.json())
                     if SET_COOKIE in res.headers:
-                        _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(data)} - {res.headers[SET_COOKIE]}")
+                        _LOGGER.debug(f"_init_gui_cookies(): response {util.mask_map(data)} - {res.headers[SET_COOKIE]}")
                     else:
                         if(retry):
-                            _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(data)} - NO COOKIES in RESPONSE (try to logout)")
+                            _LOGGER.debug(f"_init_gui_cookies(): response {util.mask_map(data)} - NO COOKIES in RESPONSE (try to logout)")
                             await asyncio.sleep(2)
                             await self._senec_local_access_stop_no_checks()
                             await asyncio.sleep(5)
                             await self._init_gui_cookies(retry=False)
                         else:
-                            _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(data)} - NO COOKIES in RESPONSE")
+                            _LOGGER.debug(f"_init_gui_cookies(): response {util.mask_map(data)} - NO COOKIES in RESPONSE")
 
                 except JSONDecodeError as exc:
                     _LOGGER.warning(f"_init_gui_cookies(): JSONDecodeError while 'await res.json()' {exc}")
@@ -394,6 +395,110 @@ class SenecLocal:
                 _LOGGER.info(f"_read_senec_lala_with_retry() failed with {type(exc).__name__} - {exc}")
 
     async def _read_senec_lala(self):
+        # captured 2026/08
+        # form_lala_captured = {
+        #     "PM1OBJ1": {
+        #         "FREQ": "",
+        #         "U_AC": "",
+        #         "I_AC": "",
+        #         "P_AC": "",
+        #         "P_TOTAL": ""
+        #     },
+        #     "PM1OBJ2": {
+        #         "FREQ": "",
+        #         "U_AC": "",
+        #         "I_AC": "",
+        #         "P_AC": "",
+        #         "P_TOTAL": ""
+        #     },
+        #     "ENERGY": {
+        #         "STAT_STATE": "",
+        #         "STAT_HOURS_OF_OPERATION": "",
+        #         "GUI_BAT_DATA_POWER": "",
+        #         "GUI_BAT_DATA_VOLTAGE": "",
+        #         "GUI_BAT_DATA_CURRENT": "",
+        #         "GUI_BAT_DATA_FUEL_CHARGE": "",
+        #         "GUI_HOUSE_POW": "",
+        #         "GUI_INVERTER_POWER": "",
+        #         "STAT_LIMITED_NET_SKEW": ""
+        #     },
+        #     "SYS_UPDATE": {
+        #         "NPU_VER": "",
+        #         "NPU_IMAGE_VERSION": ""
+        #     },
+        #     "PV1": {
+        #         "POWER_RATIO": "",
+        #         "POWER_RATIO_L1": "",
+        #         "POWER_RATIO_L2": "",
+        #         "POWER_RATIO_L3": "",
+        #         "MPP_VOL": "",
+        #         "MPP_CUR": "",
+        #         "MPP_POWER": "",
+        #         "MPP_AVAIL": "",
+        #         "INTERNAL_MD_AVAIL": "",
+        #         "INTERNAL_MD_MODEL": "",
+        #         "INTERNAL_MD_VERSION": ""
+        #     },
+        #     "WIZARD": {
+        #         "MAC_ADDRESS_BYTES": ""
+        #     },
+        #     "BAT1OBJ1": {
+        #         "TEMP1": "",
+        #         "TEMP2": "",
+        #         "TEMP3": "",
+        #         "TEMP4": "",
+        #         "TEMP5": "",
+        #         "S": "",
+        #         "P": "",
+        #         "Q": "",
+        #         "SW_VERSION": "",
+        #         "SW_VERSION2": "",
+        #         "SW_VERSION3": "",
+        #         "I_DC": ""
+        #     },
+        #     "PWR_UNIT": {
+        #         "POWER_L1": "",
+        #         "POWER_L2": "",
+        #         "POWER_L3": ""
+        #     },
+        #     "BAT1": {
+        #         "SPARE_CAPACITY": ""
+        #     },
+        #     "BMS": {
+        #         "NR_INSTALLED": ""
+        #     },
+        #     "WALLBOX": {},
+        #     "GRIDCONFIG": {}
+        # }
+        # form_lala_captured_second = {
+        #     "WIZARD": {
+        #         "GUI_LANG": "",
+        #         "FEATURECODE_ENTERED": "",
+        #         "ZEROMODULE": "",
+        #         "SETUP_NUMBER_WALLBOXES": "",
+        #         "CONFIG_LOADED": ""
+        #     },
+        #     "LOG": {
+        #         "USER_LEVEL": "",
+        #         "USERNAME": "",
+        #         "LOG_IN_NOK_COUNT": ""
+        #     },
+        #     "RTC": {
+        #         "WEB_TIME": ""
+        #     },
+        #     "FEATURES": {},
+        #     "BMS": {
+        #         "WIZARD_STARTDETECTION": "",
+        #         "WIZARD_CONFDETECTION": "",
+        #         "WIZARD_RESDETECTION": "",
+        #         "WIZARD_TIMEOUTDETECTION": "",
+        #         "WIZARD_FINISHEDDETECTION": ""
+        #     },
+        #     "IPU": {
+        #         "VERSION": ""
+        #     }
+        # }
+
         form = {
             SENEC_SECTION_TEMPMEASURE: {
                 "BATTERY_TEMP": "",
@@ -430,6 +535,11 @@ class SenecLocal:
                 form[SENEC_SECTION_LOG] = {"USER_LEVEL": "", "LOG_IN_NOK_COUNT": ""}
 
             form[SENEC_SECTION_BAT1]    = {"SPARE_CAPACITY": ""}
+
+            # 2026/08 - let's see what we will get...
+            # well actually not really valuable data ?!
+            # 'BAT1OBJ1': {'TEMP1': 29, 'TEMP2': 29, 'TEMP3': 0, 'TEMP4': 0, 'TEMP5': 0, 'S': 0, 'P': 0, 'Q': 0, 'SW_VERSION': 51445854, 'SW_VERSION2': 67502419, 'SW_VERSION3': 84213770, 'I_DC': 0.004000000189989805}
+            # form[SENEC_SECTION_BAT1OBJ1] = { "TEMP1": "", "TEMP2": "", "TEMP3": "", "TEMP4": "", "TEMP5": "", "S": "", "P": "", "Q": "", "SW_VERSION": "", "SW_VERSION2": "", "SW_VERSION3": "", "I_DC": ""}
         else:
             if self._QUERY_STATS:
                 form[SENEC_SECTION_STATISTIC] = {}
@@ -497,22 +607,65 @@ class SenecLocal:
                 "PROHIBIT_USAGE": ""
             }
 
+        await self._request_senec_lala_chunked(form)
+
+    async def _request_senec_lala_chunked(self, payload: dict, max_len: int = 600) -> dict:
+        _LOGGER.debug(f"_request_senec_lala_chunked(): request {util.mask_map(payload)} from '{self.url}'")
+        req_min_wait = 0.2
+        def compact_json(data: dict) -> str:
+            # Replicates JS JSON.stringify() character formatting (no spaces)
+            return json.dumps(data, separators=(',', ':'))
+
+        chunk_form_data = {}
+        responses = {}
+        part_count = 0
+
+        # Process key-value pairs and chunk if length limit is reached
+        must_pause = False
+        for key, value in payload.items():
+            # Check if serialized item + current chunk exceeds character limit
+            if len(compact_json(value)) + len(compact_json(chunk_form_data)) >= max_len:
+                if chunk_form_data:
+                    if must_pause:
+                        await asyncio.sleep(req_min_wait)
+                    must_pause = True
+
+                    # Send full chunk
+                    a_chunk_response = await self._request_senec_lala(chunk_form_data, part_count)
+                    part_count += 1
+                    if a_chunk_response is not None:
+                        responses.update(a_chunk_response)
+                    chunk_form_data = {}
+
+            chunk_form_data[key] = value
+
+        # Send remaining payload buffer
+        if chunk_form_data:
+            if must_pause:
+                await asyncio.sleep(req_min_wait)
+            a_chunk_response = await self._request_senec_lala(chunk_form_data, part_count)
+            if a_chunk_response is not None:
+                responses.update(a_chunk_response)
+
+        # finally processing the complete response object (after the requests had been chuncked to max of 600 bytes)
+        self._raw = parse(responses)
+
+    async def _request_senec_lala(self, form:dict, part_count:int):
         try:
             async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-                _LOGGER.debug(f"_read_senec_lala() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
+                _LOGGER.debug(f"_request_senec_lala() form-part[{part_count}] with len: {len(json.dumps(form, separators=(',', ':')))} from '{self.url}' - with headers: {res.request_info.headers}")
                 try:
                     res.raise_for_status()
-                    data = await res.json()
-                    self._raw = parse(data)
+                    return await res.json()
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"_read_senec_lala(): JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"_request_senec_lala(): JSONDecodeError while 'await res.json()' {exc}")
                 except Exception as err:
-                    _LOGGER.warning(f"_read_senec_lala(): read_senec_lala caused: {err}")
+                    _LOGGER.warning(f"_request_senec_lala(): read_senec_lala caused: {err}")
 
         except asyncio.TimeoutError:
-            _LOGGER.info(f"_read_senec_lala(): TimeoutError (20sec) while posting '{form}'")
+            _LOGGER.info(f"_request_senec_lala(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as e:
-            _LOGGER.info(f"_read_senec_lala() caused: {type(e).__name__} - {e}")
+            _LOGGER.info(f"_request_senec_lala() caused: {type(e).__name__} - {e}")
 
     async def _read_all_fields(self) -> []:
         form = {}
@@ -547,7 +700,6 @@ class SenecLocal:
                 _LOGGER.warning(f"_read_all_fields P2 caused {type(exe).__name__} - {exe}")
 
         return None
-
 
     ###################################
     # LOCAL-WRITE

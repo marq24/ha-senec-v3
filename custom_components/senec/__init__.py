@@ -592,7 +592,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                     for a_entity_desc in LOCAL_PLATFORM_MAPPING[a_entity_platform]:
                                         # truncating the stupid possible existing _2, _3 ... _10
                                         # simplest solution, first right trim all digits, then trim the _
-                                        a_id = a_id.rstrip("0123456789").rstrip("_")
+                                        if not(a_id.endswith("_p1") or a_id.endswith("_p2") or a_id.endswith("_p3")):
+                                            a_id = a_id.rstrip("0123456789").rstrip("_")
                                         if a_id.endswith(a_entity_desc.key):
                                             if hasattr(a_entity_desc, "senec_lala_section"):
                                                 a_lala_section  = a_entity_desc.senec_lala_section
@@ -829,13 +830,16 @@ class SenecEntity(CustomFriendlyNameEntity):
         device = self._name
 
         a_wallbox_obj = None
-        if self.entity_description is not None and self.entity_description.key.lower().startswith("wallbox"):
-            possible_idx_str = self.entity_description.key.lower().split('_')[1]
-            try:
-                idx = int(possible_idx_str) - 1
-                a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(self.coordinator.data, idx)
-            except ValueError:
-                _LOGGER.debug(f"No valid wallbox index found in key: {self.entity_description.key} [had tried to parse '{possible_idx_str}' as wallbox index] - so this is probably not entity beloging o a wallbox device!")
+        if self.entity_description is not None:
+            lc_key = self.entity_description.key.lower()
+            # the entity 'wallbox_allow_intercharge' will for sure cause a ValueError - so we ignore that one for sure!
+            if lc_key.startswith("wallbox") and lc_key != "wallbox_allow_intercharge":
+                possible_idx_str = self.entity_description.key.lower().split('_')[1]
+                try:
+                    idx = int(possible_idx_str) - 1
+                    a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(self.coordinator.data, idx)
+                except ValueError:
+                    _LOGGER.debug(f"No valid wallbox index found for entity with the key: {self.entity_description.key} [had tried to parse '{possible_idx_str}' as wallbox index] - so this is probably not entity that belong to a wallbox device!")
 
         if a_wallbox_obj is not None:
             #         "id": "1",
