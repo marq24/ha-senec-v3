@@ -54,7 +54,7 @@ from custom_components.senec.pysenec_ha.constants import (
 
 DOMAIN: Final = "senec"
 MANUFACTURE: Final = "SENEC GmbH"
-NAME: Final = "SENEC.Home V2.x/V3/V4|P4 Integration for Home Assistant"
+NAME: Final = "SENEC.Home V2.x/V3/x4 Integration for Home Assistant"
 ISSUE_URL: Final = "https://github.com/marq24/ha-senec-v3/issues"
 STARTUP_MESSAGE: Final = f"""
 -------------------------------------------------------------------
@@ -241,8 +241,12 @@ class StaticFuncs:
 class ExtSensorEntityDescription(SensorEntityDescription):
     controls: list[str] | None = None
     senec_lala_section: str | None = None
+
+    # serial, wallbox_id, system_id will be only used for SENEC.Connect
     serial: str | None = None
+    wallbox_id: str | None = None
     system_id: str | None = None
+
     array_key: str | None = None
     array_pos: int = -1
     require_2408: bool = False
@@ -260,6 +264,12 @@ class ExtButtonEntityDescription(ButtonEntityDescription):
 class ExtBinarySensorEntityDescription(BinarySensorEntityDescription):
     icon_off: str | None = None
     senec_lala_section: str | None = None
+
+    # serial, wallbox_id, system_id will be only used for SENEC.Connect
+    serial: str | None = None
+    wallbox_id: str | None = None
+    system_id: str | None = None
+
     array_key: str | None = None
     array_pos: int = -1
     on_values: [int] = None
@@ -1109,7 +1119,6 @@ WEB_BIN_SENSOR_TYPES =[
     ),
 ]
 
-"""Supported web switch types."""
 WEB_SWITCH_TYPES = [
     ExtSwitchEntityDescription(
         entity_registry_enabled_default=False,
@@ -1332,6 +1341,8 @@ WEB_SELECT_TYPES = [
 
 ]
 
+
+"""Supported SENEC.Connect stuff"""
 SENECCONNECT_SENSOR_TYPES = [
 
     ExtSensorEntityDescription(
@@ -1400,6 +1411,34 @@ SENECCONNECT_SENSOR_TYPES = [
     ),
 ]
 
+SENECCONNECT_SENSOR_WALLBOX_TYPES = [
+    # WALLBOX POWER...
+    ExtSensorEntityDescription(
+        key="wallbox_charging_power",
+        name="Wallbox charging power",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        suggested_display_precision=2,
+        icon="mdi:lightning-bolt-outline",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+    )
+]
+
+SENECCONNECT_BIN_SENSOR_WALLBOX_TYPES = [
+    ExtBinarySensorEntityDescription(
+        key="wallbox_ev_connected",
+        name="Wallbox EV Connected",
+        icon="mdi:connection",
+    ),
+    ExtBinarySensorEntityDescription(
+        key="wallbox_ev_charging",
+        name="Wallbox EV Connected",
+        icon="mdi:car-electric",
+    ),
+]
+
+
+"""Supported Inverter Sensors."""
 INVERTER_SENSOR_TYPES = [
     ExtSensorEntityDescription(
         key="ac_voltage",
@@ -1623,6 +1662,7 @@ INVERTER_SENSOR_TYPES = [
         state_class=SensorStateClass.TOTAL_INCREASING,
     )
 ]
+
 
 """Supported main unit switch types."""
 MAIN_SWITCH_TYPES = [

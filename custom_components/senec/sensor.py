@@ -17,10 +17,16 @@ from .const import (
     MAIN_SENSOR_TYPES,
     INVERTER_SENSOR_TYPES,
     WEB_SENSOR_TYPES,
+    SENECCONNECT_SENSOR_TYPES,
+    SENECCONNECT_SENSOR_WALLBOX_TYPES,
+
     CONF_SUPPORT_BDC,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    ExtSensorEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, SENECCONNECT_SENSOR_TYPES
+    CONF_SYSTYPE_SENECCONNECT,
+
+    ExtSensorEntityDescription,
+    StaticFuncs,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,6 +80,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                 entity = SenecSensor(coordinator, replace(description, serial=a_serial, system_id=a_id))
                 entities.append(entity)
 
+            # for all systems there could be multiple wallboxes... [I guess also max 4 - but who knows]
+            a_evse_list = a_system.get("evse", None)
+            if a_evse_list is not None and len(a_evse_list) > 0:
+                for evse_id in a_evse_list:
+                    for description in SENECCONNECT_SENSOR_WALLBOX_TYPES:
+                        entity = SenecSensor(coordinator, replace(description, serial=a_serial, wallbox_id=evse_id, system_id=a_id))
+                        entities.append(entity)
+
     else:
         for description in MAIN_SENSOR_TYPES:
             add_entity = description.controls is None
@@ -97,11 +111,11 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
 
     def __init__(
             self,
-            coordinator: SenecDataUpdateCoordinator,
-            description: SensorEntityDescription
+            a_coordinator: SenecDataUpdateCoordinator,
+            a_description: SensorEntityDescription
     ):
         """Initialize a singular value sensor."""
-        super().__init__(coordinator=coordinator, description=description)
+        super().__init__(coordinator=a_coordinator, description=a_description)
         if (hasattr(self.entity_description, 'entity_registry_enabled_default')):
             self._attr_entity_registry_enabled_default = self.entity_description.entity_registry_enabled_default
         else:
@@ -109,31 +123,30 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
 
         title = self.coordinator._config_entry.title
         key = self.entity_description.key.lower()
-        self.serial = self.entity_description.serial
-        self.system_id = self.entity_description.system_id
         name = self.entity_description.name
+        self.serial = self.entity_description.serial
+        self.wallbox_id = self.entity_description.wallbox_id
+        self.system_id = self.entity_description.system_id
         if self.serial is not None:
-            self.entity_id = f"sensor.{slugify(title)}_{self.serial}_{key}".lower()
+            if self.wallbox_id is not None:
+                self.entity_id = f"sensor.{slugify(title)}_{self.serial}_{self.wallbox_id}_{key}".lower()
+            else:
+                self.entity_id = f"sensor.{slugify(title)}_{self.serial}_{key}".lower()
         else:
             self.entity_id = f"sensor.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
         self._attr_translation_key = key
         self._previous_float_value: float | None = None
-        self._is_total_increasing: bool = (description is not None and
-                                           isinstance(description, ExtSensorEntityDescription) and
-                                           hasattr(description, "controls") and
-                                           description.controls is not None and
-                                           "only_increasing" in description.controls)
-
-        self._check_plausibility: bool = (description is not None and
-                                          isinstance(description, ExtSensorEntityDescription) and
-                                          hasattr(description, "controls") and
-                                          description.controls is not None and
-                                          "check_plausibility" in description.controls)
+        can_check_controls = (a_description is not None and
+                              isinstance(a_description, ExtSensorEntityDescription) and
+                              hasattr(a_description, "controls") and
+                              a_description.controls is not None)
+        self._is_total_increasing: bool = can_check_controls and "only_increasing" in a_description.controls
+        self._check_plausibility: bool = can_check_controls and "check_plausibility" in a_description.controls
 
         if self._is_total_increasing:
-            coordinator.add_total_increasing_sensor(self)
+            a_coordinator.add_total_increasing_sensor(self)
 
     @property
     def extra_state_attributes(self):
@@ -152,7 +165,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
     def native_value(self):
         """Return the current state."""
         if self.system_id is not None:
-            value = getattr(self.coordinator.senec, self.entity_description.key)(self.system_id)
+            value = getattr(self.coordinator.senec, self.entity_description.key)(self.system_id, self.wallbox_id)
         elif self.entity_description.array_key is not None:
             data = getattr(self.coordinator.senec, self.entity_description.array_key)
             if data is not None and len(data) > self.entity_description.array_pos:

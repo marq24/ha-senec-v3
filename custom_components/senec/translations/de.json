@@ -416,6 +416,9 @@
       "wallbox_4_prohibit_usage": {
         "name": "gesperrt"
       },
+      "wallbox_ev_connected": {
+        "name": "EV angeschlossen"
+      },
       "wallbox_1_ev_connected": {
         "name": "EV angeschlossen"
       },
@@ -427,6 +430,9 @@
       },
       "wallbox_4_ev_connected": {
         "name": "EV angeschlossen"
+      },
+      "wallbox_ev_charging": {
+        "name": "EV lädt"
       },
       "wallbox_1_ev_charging": {
         "name": "EV lädt"
@@ -1079,6 +1085,9 @@
       },
       "bms_cycles_d": {
         "name": "Module D: Zyklen"
+      },
+      "wallbox_charging_power": {
+        "name": "Ladeleistung"
       },
       "wallbox_1_state": {
         "name": "Wallboxstatus"

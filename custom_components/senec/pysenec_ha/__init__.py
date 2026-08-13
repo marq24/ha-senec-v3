@@ -7969,7 +7969,15 @@ class SenecConnect:
                 # battery object
                 if battery and bess:
                     if "system_id" in bess and ("voltage" in battery or "current" in battery):
-                        ret[bess.get("system_id", "unknown").lower()] = bess
+                        a_system_id = bess.get("system_id", "unknown").lower()
+
+                        # we must insert also the ev-wallbox data dict
+                        if self._raw_senec_connect_grouped is not None:
+                            a_possible_evse_dict = self._raw_senec_connect_grouped[a_system_id].get("evse", None)
+                            if a_possible_evse_dict is not None:
+                                bess["evse"] = list(a_possible_evse_dict.keys())
+
+                        ret[a_system_id] = bess
             return ret
 
         _LOGGER.info(f"get_all_live_systems(): could not get any live systems for given key {self._logger_key}")
@@ -7988,6 +7996,107 @@ class SenecConnect:
             return ",".join(values)
 
         return None
+
+    # async def _request_connect_api_fake(self, include: str | Iterable[str] | None = None):
+    #     static_data = [{
+    #         "battery": {
+    #             "state": 0,
+    #             "state_of_charge": 24,
+    #             "power": 0.0
+    #         },
+    #         "bessNameplate": {
+    #             "manufacturer": "SENEC GmbH",
+    #             "model": "SENEC.Home 4 hybrid / 11.8",
+    #             "serial_number": "v4-serial_004",
+    #             "system_id": "S4H1-XXXX12345-0000-04",
+    #             "design_capacity": 17640,
+    #             "active_charge_power": 10080,
+    #             "active_discharge_power": 12600
+    #         },
+    #         "meter": {
+    #             "grid_power": 0.0
+    #         },
+    #         "evse": []
+    #     }, {
+    #         "battery": {
+    #             "state": 0,
+    #             "state_of_charge": 66,
+    #             "power": 5771.4844,
+    #             "voltage": 609.0,
+    #             "current": 9.5
+    #         },
+    #         "bessNameplate": {
+    #             "manufacturer": "SENEC GmbH",
+    #             "model": "SENEC.Home P4 hybrid / 11.8",
+    #             "serial_number": "v4-serial_003",
+    #             "system_id": "P4H1-XXXX12345-0000-03",
+    #             "design_capacity": 17750,
+    #             "active_charge_power": 12600,
+    #             "active_discharge_power": 11800
+    #         },
+    #         "meter": {
+    #             "grid_power": 0.0,
+    #             "consumption": 468.75,
+    #             "production": 6210.9375
+    #         },
+    #         "evse": []
+    #     }, {
+    #         "battery": {
+    #             "state": 0,
+    #             "state_of_charge": 1,
+    #             "power": 0.0
+    #         },
+    #         "bessNameplate": {
+    #             "manufacturer": "SENEC GmbH",
+    #             "model": "SENEC.Home 4 hybrid / 11.8",
+    #             "serial_number": "v4-serial_002",
+    #             "system_id": "S4H1-XXXX12345-0000-02",
+    #             "design_capacity": 2940,
+    #             "active_charge_power": 1680,
+    #             "active_discharge_power": 2100
+    #         },
+    #         "meter": {
+    #             "grid_power": 439.45312,
+    #             "consumption": 439.45312,
+    #             "production": 0.0
+    #         },
+    #         "evse": [{
+    #             "id": "wb_id_001",
+    #             "ev_connected": True,
+    #             "ev_charging": True,
+    #             "charging_power": 6900.0
+    #         }]
+    #     }, {
+    #         "battery": {
+    #             "state": 0,
+    #             "state_of_charge": 5,
+    #             "power": 1142.5781,
+    #             "voltage": 234.0,
+    #             "current": 4.6
+    #         },
+    #         "bessNameplate": {
+    #             "manufacturer": "SENEC GmbH",
+    #             "model": "SENEC.Home P4 hybrid / 11.8",
+    #             "serial_number": "v4-serial_001",
+    #             "system_id": "P4H1-XXXX12345-0000-01",
+    #             "design_capacity": 7100,
+    #             "active_charge_power": 6680,
+    #             "active_discharge_power": 6680
+    #         },
+    #         "meter": {
+    #             "grid_power": 14.6484375,
+    #             "consumption": 410.15625,
+    #             "production": 1523.4375
+    #         },
+    #         "evse": [{
+    #             "id": "wb_id_002",
+    #             "ev_connected": False,
+    #             "ev_charging": False,
+    #             "charging_power": 0.0
+    #         }]
+    #     }]
+    #     _LOGGER.debug(f"SENEC.Connect FAKE response: {util.mask_map(static_data)}")
+    #     return self._handle_json_response(static_data)
 
     async def _request_connect_api(self, include: str | Iterable[str] | None = None):
         if self._subscription_key is None or len(str(self._subscription_key).strip()) == 0:
@@ -8018,20 +8127,7 @@ class SenecConnect:
                     try:
                         data = await res.json()
                         _LOGGER.debug(f"SENEC.Connect response: {util.mask_map(data)}")
-                        self._raw_senec_connect = data
-
-                        # generate from the plain list a dict with the system_id as key
-                        # so we can access each system directly (without the need to
-                        # guess each time what index is what)
-                        grouped_data = {}
-                        if self._raw_senec_connect is not None and len(self._raw_senec_connect) > 0:
-                            for a_system in self._raw_senec_connect:
-                                bess = a_system.get("bessNameplate", None)
-                                if bess and "system_id" in bess:
-                                    grouped_data[bess.get("system_id", "unknown").lower()] = a_system
-                            self._raw_senec_connect_grouped = grouped_data
-
-                        return grouped_data if len(grouped_data) > 0 else data
+                        return self._handle_json_response(data)
 
                     except JSONDecodeError as jexc:
                         msg = f"SENEC.Connect returned invalid JSON for {a_url}: [Exception: {jexc}]"
@@ -8062,33 +8158,74 @@ class SenecConnect:
             _LOGGER.warning(msg)
             raise ServiceUnavailableException(msg) from exc
 
-    def battery_state_power(self, system_id) -> float:
+    def _handle_json_response(self, data):
+        self._raw_senec_connect = data
+
+        # generate from the plain list a dict with the system_id as key
+        # so we can access each system directly (without the need to
+        # guess each time what index is what)
+        grouped_data = {}
+        if self._raw_senec_connect is not None and len(self._raw_senec_connect) > 0:
+            for a_system_dict in self._raw_senec_connect:
+                # the fucking wallbox data is also just a plain list... how we can be sure
+                # that the order is always the same -> well we can't!
+                evse_list = a_system_dict.get("evse", None)
+                if evse_list is not None and isinstance(evse_list, list) and len(evse_list) > 0:
+                    grouped_evse = {}
+                    for a_evse_obj in evse_list:
+                        grouped_evse[a_evse_obj.get("id", "unknown").lower()] = a_evse_obj
+
+                    a_system_dict["evse"] = grouped_evse
+                else:
+                    a_system_dict.pop("evse")
+
+                bess = a_system_dict.get("bessNameplate", None)
+                if bess and "system_id" in bess:
+                    grouped_data[bess.get("system_id", "unknown").lower()] = a_system_dict
+
+            self._raw_senec_connect_grouped = grouped_data
+
+        return grouped_data if len(grouped_data) > 0 else data
+
+    def battery_state_power(self, system_id, wallbox_id) -> float:
         if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
             return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("power", None)
 
-    def battery_state_current(self, system_id) -> float:
+    def battery_state_current(self, system_id, wallbox_id) -> float:
         if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
             return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("current", None)
 
-    def battery_state_voltage(self, system_id) -> float:
+    def battery_state_voltage(self, system_id, wallbox_id) -> float:
         if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
             return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("voltage", None)
 
-    def battery_charge_percent(self, system_id) -> float:
+    def battery_charge_percent(self, system_id, wallbox_id) -> float:
         if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
             return self._raw_senec_connect_grouped[system_id].get("battery", {}).get("state_of_charge", None)
 
-    def grid_state_power(self, system_id) -> float:
+    def grid_state_power(self, system_id, wallbox_id) -> float:
         """Grid power (+ from grid, − to grid) in watt (W)"""
         if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
             return self._raw_senec_connect_grouped[system_id].get("meter", {}).get("grid_power", None)
 
-    def house_total_consumption(self, system_id) -> float:
+    def house_total_consumption(self, system_id, wallbox_id) -> float:
         """Total energy used by house (W) - Does not include Wallbox."""
         if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
             return self._raw_senec_connect_grouped[system_id].get("meter", {}).get("consumption", None)
 
-    def solar_total_generated(self, system_id) -> float:
+    def solar_total_generated(self, system_id, wallbox_id) -> float:
         """Current power generated by solar panels (W)"""
         if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
             return self._raw_senec_connect_grouped[system_id].get("meter", {}).get("production", None)
+
+    def wallbox_charging_power(self, system_id, wallbox_id) -> float:
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("evse", {}).get(wallbox_id, {}).get("charging_power", None)
+
+    def wallbox_ev_connected(self, system_id, wallbox_id) -> bool:
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("evse", {}).get(wallbox_id, {}).get("ev_connected", None)
+
+    def wallbox_ev_charging(self, system_id, wallbox_id) -> bool:
+        if self._raw_senec_connect_grouped is not None and system_id in self._raw_senec_connect_grouped:
+            return self._raw_senec_connect_grouped[system_id].get("evse", {}).get(wallbox_id, {}).get("ev_charging", None)

@@ -15,21 +15,24 @@ from .const import (
     DOMAIN,
     MAIN_BIN_SENSOR_TYPES,
     WEB_BIN_SENSOR_TYPES,
+    SENECCONNECT_BIN_SENSOR_WALLBOX_TYPES,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    ExtBinarySensorEntityDescription, StaticFuncs
+    CONF_SYSTYPE_SENECCONNECT,
+    ExtBinarySensorEntityDescription,
+    StaticFuncs
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
-                            async_add_entities: AddEntitiesCallback):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     _LOGGER.info("BINARY_SENSOR async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         _LOGGER.info("No binary_sensors for Inverters...")
+
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_BIN_SENSOR_TYPES:
             # when we have wallbox data, we want to enable the entity by default...
@@ -45,23 +48,35 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
             entity = SenecBinarySensor(coordinator, description)
             entities.append(entity)
+
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
-        _LOGGER.info("No binary_sensors for SENEC.Connect...")
+        for a_id in coordinator._senec_connect_systems.keys():
+            a_system = coordinator._senec_connect_systems[a_id]
+            a_serial = a_system.get("serial_number", "UNKNOWN").lower().replace("-", "")
+            # for all systems there could be multiple wallboxes... [I guess also max 4 - but who knows]
+            a_evse_list = a_system.get("evse", None)
+            if a_evse_list is not None and len(a_evse_list) > 0:
+                for evse_id in a_evse_list:
+                    for description in SENECCONNECT_BIN_SENSOR_WALLBOX_TYPES:
+                        entity = SenecBinarySensor(coordinator, replace(description, serial=a_serial, wallbox_id=evse_id, system_id=a_id))
+                        entities.append(entity)
+
     else:
         for description in MAIN_BIN_SENSOR_TYPES:
             entity = SenecBinarySensor(coordinator, description)
             entities.append(entity)
+
     async_add_entities(entities)
 
 
 class SenecBinarySensor(SenecEntity, BinarySensorEntity):
     def __init__(
             self,
-            coordinator: SenecDataUpdateCoordinator,
-            description: ExtBinarySensorEntityDescription
+            a_coordinator: SenecDataUpdateCoordinator,
+            a_description: ExtBinarySensorEntityDescription
     ):
         """Initialize a singular value sensor."""
-        super().__init__(coordinator=coordinator, description=description)
+        super().__init__(coordinator=a_coordinator, description=a_description)
         if (hasattr(self.entity_description, 'entity_registry_enabled_default')):
             self._attr_entity_registry_enabled_default = self.entity_description.entity_registry_enabled_default
         else:
@@ -72,7 +87,17 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
         name = self.entity_description.name
         self._attr_icon = self.entity_description.icon
         self._attr_icon_off = self.entity_description.icon_off
-        self.entity_id = f"binary_sensor.{slugify(title)}_{key}".lower()
+
+        self.serial = self.entity_description.serial
+        self.wallbox_id = self.entity_description.wallbox_id
+        self.system_id = self.entity_description.system_id
+        if self.serial is not None:
+            if self.wallbox_id is not None:
+                self.entity_id = f"binary_sensor.{slugify(title)}_{self.serial}_{self.wallbox_id}_{key}".lower()
+            else:
+                self.entity_id = f"binary_sensor.{slugify(title)}_{self.serial}_{key}".lower()
+        else:
+            self.entity_id = f"binary_sensor.{slugify(title)}_{key}".lower()
 
         # we use the "key" also as our internal translation-key - and EXTREMELY important we have
         self._attr_translation_key = key
@@ -88,7 +113,9 @@ class SenecBinarySensor(SenecEntity, BinarySensorEntity):
             on_vals = [1]
 
         try:
-            if self.entity_description.array_key is not None:
+            if self.system_id is not None:
+                value = getattr(self.coordinator.senec, self.entity_description.key)(self.system_id, self.wallbox_id)
+            elif self.entity_description.array_key is not None:
                 data = getattr(self.coordinator.senec, self.entity_description.array_key)
                 if data is not None and len(data) > self.entity_description.array_pos:
                     value = data[self.entity_description.array_pos] in on_vals

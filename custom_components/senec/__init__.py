@@ -307,15 +307,28 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.services.async_register(DOMAIN, SERVICE_SET_PEAKSHAVING, senec_services.set_peakshaving)
 
     elif config_type_val == CONF_SYSTYPE_SENECCONNECT:
+
+        def has_any_evse_data(systems: dict):
+            if systems is not None and isinstance(systems, dict):
+                for a_system_obj in systems.values():
+                    if "evse" in a_system_obj:
+                        return True
+                return False
+
         # we can have multiple systems that are still active with the same API-KEY...
         # make sure that the coordinator knows the "live" systems...
         connect_systems = await coordinator.senec.get_all_live_systems()
         if connect_systems and len(connect_systems) > 0:
+            has_evse_data = has_any_evse_data(connect_systems)
             coordinator._senec_connect_systems = connect_systems
 
             # need to check if we should update the config_entry!
             backup_systems = config_entry.data.get(CONF_SENECCONENCT_SYSTEMS, {})
-            if len(backup_systems) < len(connect_systems):
+            backup_has_evse_data = has_any_evse_data(backup_systems)
+
+            # we check if the backuped systems are either less - or does not contain all the required
+            # data (like the new wallbox info - evse)
+            if len(backup_systems) < len(connect_systems) or (has_evse_data != backup_has_evse_data):
                 # updating the config_entry!
                 _LOGGER.debug(f"Updating config_entry for {coordinator.senec._logger_key} with new systems: {connect_systems}")
                 hass.config_entries.async_update_entry(config_entry,data={**config_entry.data, **{CONF_SENECCONENCT_SYSTEMS: connect_systems}})
@@ -803,12 +816,20 @@ class SenecEntity(CustomFriendlyNameEntity):
             if hasattr(self, "system_id"):
                 system_obj = self.coordinator._senec_connect_systems.get(self.system_id, {})
                 if system_obj is not None and len(system_obj) > 0:
-                    return {
-                        "identifiers": {(DOMAIN, self.system_id)},
-                        "model": f"{system_obj.get("model", "UnknownModel")}",
-                        "manufacturer": f"{system_obj.get("manufacturer", MANUFACTURE)}",
-                        "serial_number": f"{system_obj.get("serial_number", "UnknownSerial")}"
-                    }
+                    if hasattr(self, "wallbox_id") and self.wallbox_id is not None:
+                        return {
+                            "identifiers": {(DOMAIN, self.system_id, self.wallbox_id)},
+                            "name": f"Wallbox {self.wallbox_id} @ {system_obj.get("serial_number", "UnknownSerial")}",
+                            "manufacturer": MANUFACTURE,
+                            "serial_number": f"{self.wallbox_id}"
+                        }
+                    else:
+                        return {
+                            "identifiers": {(DOMAIN, self.system_id)},
+                            "model": f"{system_obj.get("model", "UnknownModel")}",
+                            "manufacturer": f"{system_obj.get("manufacturer", MANUFACTURE)}",
+                            "serial_number": f"{system_obj.get("serial_number", "UnknownSerial")}"
+                        }
 
         # Setup Device
         dtype = self.coordinator._device_type
@@ -878,7 +899,10 @@ class SenecEntity(CustomFriendlyNameEntity):
     def unique_id(self):
         """Return a unique ID to use for this entity."""
         if hasattr(self, "serial") and self.serial is not None:
-            return f"{DOMAIN}.{self._name}_{self.serial}_{self.entity_description.key}".lower()
+            if hasattr(self, "wallbox_id") and self.wallbox_id is not None:
+                return f"{DOMAIN}.{self._name}_{self.serial}_{self.wallbox_id}_{self.entity_description.key}".lower()
+            else:
+                return f"{DOMAIN}.{self._name}_{self.serial}_{self.entity_description.key}".lower()
         else:
             return f"{DOMAIN}.{self._name}_{self.entity_description.key}".lower()
 
