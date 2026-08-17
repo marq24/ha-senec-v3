@@ -803,7 +803,7 @@ class SenecEntity(CustomFriendlyNameEntity):
     def __init__(
             self, coordinator: SenecDataUpdateCoordinator, description: EntityDescription
     ) -> None:
-        super().__init__(coordinator, description)
+        super().__init__(coordinator)
         self.coordinator = coordinator
         self.entity_description = description
         self._name = coordinator._config_entry.title
@@ -905,11 +905,6 @@ class SenecEntity(CustomFriendlyNameEntity):
                 return f"{DOMAIN}.{self._name}_{self.serial}_{self.entity_description.key}".lower()
         else:
             return f"{DOMAIN}.{self._name}_{self.entity_description.key}".lower()
-
-    async def async_added_to_hass(self):
-        """Connect to dispatcher listening for entity data notifications."""
-        self.async_on_remove(self.coordinator.async_add_listener(self.async_write_ha_state))
-        await super().async_added_to_hass()
 
     def _friendly_name_internal(self) -> str | None:
         """Return the friendly name.

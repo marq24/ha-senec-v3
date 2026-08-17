@@ -1411,31 +1411,31 @@ SENECCONNECT_SENSOR_TYPES = [
     ),
 ]
 
-SENECCONNECT_SENSOR_WALLBOX_TYPES = [
-    # WALLBOX POWER...
-    ExtSensorEntityDescription(
-        key="wallbox_charging_power",
-        name="Wallbox charging power",
-        native_unit_of_measurement=UnitOfPower.WATT,
-        suggested_display_precision=2,
-        icon="mdi:lightning-bolt-outline",
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-    )
-]
+SENECCONNECT_SENSOR_WALLBOX_TYPES = []
+#     # WALLBOX POWER...
+#     ExtSensorEntityDescription(
+#         key="wallbox_charging_power",
+#         name="Wallbox charging power",
+#         native_unit_of_measurement=UnitOfPower.WATT,
+#         suggested_display_precision=2,
+#         icon="mdi:lightning-bolt-outline",
+#         device_class=SensorDeviceClass.POWER,
+#         state_class=SensorStateClass.MEASUREMENT,
+#     )
+# ]
 
-SENECCONNECT_BIN_SENSOR_WALLBOX_TYPES = [
-    ExtBinarySensorEntityDescription(
-        key="wallbox_ev_connected",
-        name="Wallbox EV Connected",
-        icon="mdi:connection",
-    ),
-    ExtBinarySensorEntityDescription(
-        key="wallbox_ev_charging",
-        name="Wallbox EV Connected",
-        icon="mdi:car-electric",
-    ),
-]
+SENECCONNECT_BIN_SENSOR_WALLBOX_TYPES = []
+#     ExtBinarySensorEntityDescription(
+#         key="wallbox_ev_connected",
+#         name="Wallbox EV Connected",
+#         icon="mdi:connection",
+#     ),
+#     ExtBinarySensorEntityDescription(
+#         key="wallbox_ev_charging",
+#         name="Wallbox EV Connected",
+#         icon="mdi:car-electric",
+#     ),
+# ]
 
 
 """Supported Inverter Sensors."""
