@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant, Event
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry, config_validation as config_val, device_registry as device_reg
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.device_registry import DeviceEntry, async_entries_for_config_entry
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.typing import UNDEFINED
@@ -348,17 +348,17 @@ async def check_device_registry(hass: HomeAssistant, config_entry_id:str = None)
             a_device_reg = device_reg.async_get(hass)
             if a_device_reg is not None:
                 key_list_to_be_deleted = []
-                for a_device_entry in list(a_device_reg.devices.values()):
-                    if hasattr(a_device_entry, "identifiers"):
-                        ident_value = a_device_entry.identifiers
-                        if f"{ident_value}".__contains__(DOMAIN):
-                            #if a_device_entry.config_entries is not None and config_entry_id in a_device_entry.config_entries:
-                            #_LOGGER.warning(f"{a_device_entry}")
-                            # ok this is an old 'device' entry (that does not include the
-                            # serial_number)... This will be deleted in
-                            # any case...
-                            if not hasattr(a_device_entry, "serial_number") or a_device_entry.serial_number is None:
-                                key_list_to_be_deleted.append(a_device_entry.id)
+                all_domain_devices = []
+                for a_config_entry in hass.config_entries.async_entries(DOMAIN):
+                    all_domain_devices.extend(async_entries_for_config_entry(a_device_reg, a_config_entry.entry_id))
+                for a_device_entry in all_domain_devices:
+                    #if a_device_entry.config_entries is not None and config_entry_id in a_device_entry.config_entries:
+                    #_LOGGER.warning(f"{a_device_entry}")
+                    # ok this is an old 'device' entry (that does not include the
+                    # serial_number)... This will be deleted in
+                    # any case...
+                    if not hasattr(a_device_entry, "serial_number") or a_device_entry.serial_number is None:
+                        key_list_to_be_deleted.append(a_device_entry.id)
 
                 if len(key_list_to_be_deleted) > 0:
                     key_list_to_be_deleted = list(dict.fromkeys(key_list_to_be_deleted))
