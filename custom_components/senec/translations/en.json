@@ -5,6 +5,7 @@
         "systype_senecv4": "SENEC.Home V4|P4|E4",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 or older",
+        "systype_openapi": "Local SENEC OpenAPI (port 4424)",
         "systype_webapi": "WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)",
         "systype_invertv3": "Internal inverter build into SENEC.Home V3 hybrid/hybrid duo"
       }
@@ -39,6 +40,7 @@
       "cannot_connect": "Failed to connect",
       "unknown": "Unknown error",
       "invalid_totp_secret": "OTP-auth-Secret invalid",
+      "openapi_approval_pending": "Approval is still pending in the mein-senec.de OpenAPI page",
       "no_systems_found": "No SENEC.System could be detected - Do you have a system in the Senec.App?",
       "no_new_systems_found": "No new SENEC.System could be detected - all your SENEC.Systems are already configured!"
     },
@@ -63,6 +65,18 @@
           "scan_interval": "Polling Interval in seconds",
           "ignore_system_state": "The values for the battery charge/discharge sensors should not take the system status into account"
         }
+      },
+      "openapisetup": {
+        "description": "Register Home Assistant with the local SENEC OpenAPI on port 4424. Submitting this form creates a pending **Home Assistant** entry on the OpenAPI page at mein-senec.de",
+        "data": {
+          "name": "Display name",
+          "host": "IP or hostname of the SENEC.Home system",
+          "scan_interval": "Polling interval in seconds"
+        }
+      },
+      "openapiapproval": {
+        "title": "Approve Home Assistant",
+        "description": "Open **OpenAPI** at [mein-senec.de](https://mein-senec.de/endkunde/#/0/senec-open-api) and approve the pending **Home Assistant** entry using the blue check mark. Then return here and submit this step to check the approval."
       },
       "webpublicsetup": {
         "description": "Please provide the primary or secondary key of your SENEC.Data 45000 subscription that you would like to use.\n\nIf you need help with the configuration have a look here: {repo}",
