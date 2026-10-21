@@ -29,6 +29,7 @@ from .const import (
     DEFAULT_NAME_INVERTER,
     DEFAULT_NAME_WEB,
     DEFAULT_NAME_OPENAPI,
+    DEFAULT_OPENAPI_DEVICE_NAME,
     DEFAULT_USERNAME,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL_SENECV2,
@@ -73,6 +74,7 @@ from .const import (
     CONFIG_VERSION,
     CONFIG_MINOR_VERSION,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
+    CONF_OPENAPI_DEVICE_NAME,
     WEBAPI_TYPES,
     WEBAPI_PUBLIC,
     WEBAPI_PRIVATE,
@@ -150,6 +152,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._default_host = None
         self._default_ignore_system_state = False
         self._default_openapi_token = None
+        self._default_openapi_device_name = None
         # web-api defaults
         self._default_user = None
         self._default_pwd = None
@@ -200,6 +203,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._default_interval = entry_data[CONF_SCAN_INTERVAL]
             self._default_host = entry_data[CONF_HOST]
             self._default_openapi_token = entry_data.get(CONF_OPENAPI_TOKEN, None)
+            self._default_openapi_device_name = entry_data.get(CONF_OPENAPI_DEVICE_NAME, None)
             return await self.async_step_openapisetup()
 
         elif self._selected_system == CONF_SYSTYPE_WEB:
@@ -498,6 +502,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_TYPE: CONF_SYSTYPE_OPENAPI,
                 CONF_NAME: name_entry,
                 CONF_HOST: host_entry,
+                CONF_OPENAPI_DEVICE_NAME: user_input[CONF_OPENAPI_DEVICE_NAME] if user_input[CONF_OPENAPI_DEVICE_NAME] else "Your Home Assistant",
                 CONF_SCAN_INTERVAL: max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL),
                 CONF_DEV_TYPE: SYSTYPE_NAME_OPENAPI,
                 CONF_DEV_MODEL: SYSTYPE_NAME_OPENAPI,
@@ -519,8 +524,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             try:
                 self._openapi_token = await client.register(
-                    device_name="Home Assistant",
-                    manufacturer_name="ha-senec-v3",
+                    device_name=self._openapi_entry_data[CONF_OPENAPI_DEVICE_NAME],
+                    manufacturer_name = "SENEC.Home V2.x/V3/V4|P4 Integration for Home Assistant (https://github.com/marq24/ha-senec-v3)",
                 )
                 return await self.async_step_openapiapproval()
             except ServiceUnavailableException:
@@ -529,6 +534,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user_input = {
                 CONF_NAME: self._default_name or DEFAULT_NAME_OPENAPI,
                 CONF_HOST: self._default_host or DEFAULT_HOST,
+                CONF_OPENAPI_DEVICE_NAME: self._default_openapi_device_name or DEFAULT_OPENAPI_DEVICE_NAME,
                 CONF_SCAN_INTERVAL: self._default_interval or DEFAULT_SCAN_INTERVAL,
             }
 
@@ -537,6 +543,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({
                 vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
                 vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
+                vol.Required(CONF_OPENAPI_DEVICE_NAME, default=user_input[CONF_OPENAPI_DEVICE_NAME]): str,
                 vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
             }),
             description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
@@ -555,6 +562,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="openapiapproval",
             data_schema=vol.Schema({}),
+            description_placeholders={
+                "mein_senec_1": "https://mein-senec.de/endkunde/#/0/senec-open-api",
+                "mein_senec_2": "https://mein-senec.de/endkunde/#/1/senec-open-api",
+                "openapi_device_name": str(self._openapi_entry_data[CONF_OPENAPI_DEVICE_NAME])},
             last_step=True,
             errors=self._errors,
         )

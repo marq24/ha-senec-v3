@@ -5,7 +5,7 @@
         "systype_senecv4": "SENEC.Home V4|P4|E4",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 oder älteres System",
-        "systype_openapi": "Lokale SENEC OpenAPI (Port 4424)",
+        "systype_openapi": "LOCAL.OpenAPI: https Zugriff über Port 4424 (experimentell)",
         "systype_webapi": "WEB.API: mein-senec.de Portal (für alle SENEC.Home Varianten einsetzbar)",
         "systype_invertv3": "Interner im SENEC.Home V3 hybrid/hybrid duo verbauter Wechselrichter"
       }
@@ -84,12 +84,16 @@
         "data": {
           "name": "Anzeige Name",
           "host": "IP oder Hostname des SENEC.Home Systems",
+          "openapi_device_name": "Gerätename für das mein-senec.de Portal (Anzeige)",
           "scan_interval": "Aktualisierungsintervall in Sekunden"
+        },
+        "data_description": {
+          "openapi_device_name": "Unter diesem Namen kannst Du im mein-senec.de Portal diese HomeAssistant Installation identifizieren"
         }
       },
       "openapiapproval": {
         "title": "Home Assistant freigeben",
-        "description": "Öffne **OpenAPI** auf [mein-senec.de](https://mein-senec.de/endkunde/#/0/senec-open-api) und bestätige den ausstehenden Eintrag **Home Assistant** mit dem blauen Haken. Kehre anschließend hierher zurück und sende diesen Schritt ab, um die Freigabe zu prüfen."
+        "description": "Öffne den (versteckten) **OpenAPI** Bereich auf [mein-senec.de für die Anlagennummer 0]({mein_senec_1}) (bzw. [mein-senec.de für die Anlagennummer 1]({mein_senec_2}) - ggf. musst Du die Ziffer in der URL noch von Hand für Deine Anlagennummer anpassen).\n\nBestätige den ausstehenden Eintrag **{openapi_device_name}** mit dem blauen Haken.\n\nKehre anschließend hierher zurück und sende diesen Schritt ab, um die erfolgte Freigabe zu prüfen."
       },
       "webpublicsetup": {
         "description": "Bitte gib den Primär- oder Sekundärschlüssel Deines SENEC.Data 45000 Abonnements an, das Du verwenden möchtest.\n\nWenn Du Hilfe benötigst, findest du sie hier: {repo}",

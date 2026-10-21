@@ -5,15 +5,28 @@
         "systype_senecv4": "SENEC.Home V4|P4|E4",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 or older",
-        "systype_openapi": "Local SENEC OpenAPI (port 4424)",
-        "systype_webapi": "WEB.API: mein-senec.de Portal (usable with all SENEC.Home variants)",
+        "systype_openapi": "LOCAL.OpenAPI: https accessible over port 4424 (experimental)",
+        "systype_webapi": "WEB.API: mein-senec.de portal (usable with all SENEC.Home variants)",
         "systype_invertv3": "Internal inverter build into SENEC.Home V3 hybrid/hybrid duo"
       }
     },
     "wtype": {
       "options": {
         "webapi_public": "SENEC.Connect (registration of an API-Key at developer.senec.com required)",
-        "webapi_private": "Access via the (un-official) WEB-API of the mein-senec.de Portal (user & password)"
+        "webapi_private": "Access via the (un-official) WEB-API of the mein-senec.de portal (user & password)"
+      }
+    },
+    "master_plant_number": {
+      "options": {
+        "auto": "Autodetect (default)",
+        "0": "Anlagennummer 0",
+        "1": "Anlagennummer 1",
+        "2": "Anlagennummer 2",
+        "3": "Anlagennummer 3",
+        "4": "Anlagennummer 4",
+        "5": "Anlagennummer 5",
+        "6": "Anlagennummer 6",
+        "7": "Anlagennummer 7"
       }
     },
     "set_peakshaving_mode_options": {
@@ -71,12 +84,16 @@
         "data": {
           "name": "Display name",
           "host": "IP or hostname of the SENEC.Home system",
+          "openapi_device_name": "Device name for the mein-senec.de portal (display)",
           "scan_interval": "Polling interval in seconds"
+        },
+        "data_description": {
+          "openapi_device_name": "You can use this name to identify this Home Assistant installation within the mein-senec.de portal."
         }
       },
       "openapiapproval": {
         "title": "Approve Home Assistant",
-        "description": "Open **OpenAPI** at [mein-senec.de](https://mein-senec.de/endkunde/#/0/senec-open-api) and approve the pending **Home Assistant** entry using the blue check mark. Then return here and submit this step to check the approval."
+        "description": "Open the (hidden) **OpenAPI** section at [mein-senec.de]({mein_senec_1}) or [mein-senec.de]({mein_senec_2}) (you might need to adjust the URL to match your Anlagennummer).\n\nApprove the pending **{openapi_device_name}** entry using the blue check mark.\n\nThen return here and submit this step to check the approval."
       },
       "webpublicsetup": {
         "description": "Please provide the primary or secondary key of your SENEC.Data 45000 subscription that you would like to use.\n\nIf you need help with the configuration have a look here: {repo}",
@@ -139,7 +156,7 @@
       },
       "optional_websetup_required_info": {
         "title": "Important !",
-        "description": "Your SENEC.Home V2/V3 System did not provide any long term statistic data (like total generated solar power).\n\n\nWith this integration you have the option to add an additional 'WEB.API: mein-senec.de Portal' integration entry in order to collect this data from the MySENEC.WebPortal.\n\n\n[However, using the WebAPI is only one option! Alternatively, this data can also be calculated using the Home Assistant 'Riemann sum integral' or 'PowerCalc' platforms. For details open this link.]({repo}/blob/main/docs/STATSENSORS.md)"
+        "description": "Your SENEC.Home V2/V3 System did not provide any long term statistic data (like total generated solar power).\n\n\nWith this integration you have the option to add an additional 'WEB.API: mein-senec.de portal' integration entry in order to collect this data from the MySENEC.WebPortal.\n\n\n[However, using the WebAPI is only one option! Alternatively, this data can also be calculated using the Home Assistant 'Riemann sum integral' or 'PowerCalc' platforms. For details open this link.]({repo}/blob/main/docs/STATSENSORS.md)"
       },
       "reauth_confirm": {
         "title": "Re-Authentication required",

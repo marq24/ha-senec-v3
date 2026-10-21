@@ -119,6 +119,7 @@ CONF_SENECCONENCT_KEY: Final = "senec_connect_key"
 CONF_SENECCONENCT_SYSTEMS: Final = "senec_connect_systems"
 
 CONF_APP_TOKEN: Final = "app_token"
+CONF_OPENAPI_DEVICE_NAME: Final = "openapi_device_name"
 CONF_OPENAPI_TOKEN: Final = "openapi_token"
 CONF_APP_SYSTEMID: Final = "app_master_plant_id"
 CONF_APP_WALLBOX_COUNT: Final = "app_wallbox_num_max"
@@ -141,6 +142,7 @@ DEFAULT_NAME: Final = "senec"
 DEFAULT_NAME_INVERTER: Final = "Inverter"
 DEFAULT_NAME_WEB: Final = "senec_WEBAPI"
 DEFAULT_NAME_OPENAPI: Final = "senec_OpenAPI"
+DEFAULT_OPENAPI_DEVICE_NAME: Final = "HomeAssistant"
 DEFAULT_SCAN_INTERVAL: Final = 30
 DEFAULT_MIN_SCAN_INTERVAL: Final = 1
 DEFAULT_SCAN_INTERVAL_SENECV2: Final = 60

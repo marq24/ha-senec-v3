@@ -168,10 +168,12 @@ class SenecLocalOpenApi:
             ceil_threshold=5,
         )
 
-    async def register(self, device_name: str = "JUNG Visu Pro",
-                       manufacturer_name: str = "Albrecht Jung GmbH & Co. KG") -> str:
+    async def register(self, device_name: str, manufacturer_name: str) -> str:
         """Register a local client and return the token awaiting portal approval."""
         # sample_data = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        if not device_name or not manufacturer_name:
+            raise ServiceUnavailableException("SENEC OpenAPI registration requires device_name and/or manufacturer_name")
+
         payload = json.dumps(
             {
                 "deviceName": device_name,
