@@ -226,7 +226,7 @@ class SenecLocalOpenApi:
         #     "reactivePower": 0,
         #     "voltage": 0,
         #     "current": 0,
-        #     "acRelayConnected": False
+        #     "acRelayConnected": false
         # }
         return await self._authenticated_get(self._BESS_PATH)
 
@@ -236,7 +236,7 @@ class SenecLocalOpenApi:
         #     "manufacturer": "SENEC GmbH",
         #     "model": "SENEC.Home V3 hybrid duo",
         #     "serialNumber": "<serial number>",
-        #     "designCapacity": 0,
+        #     "designCapacity": 10000,
         #     "ratedPower": {
         #         "activeChargePower": 0,
         #         "activeDischargePower": 0,
@@ -252,8 +252,8 @@ class SenecLocalOpenApi:
         #     "devices": [
         #         {
         #             "id": 1,
-        #             "evConnected": True,
-        #             "evCharging": False,
+        #             "evConnected": true,
+        #             "evCharging": false,
         #             "limitationStatus": 0,
         #             "chargingPower": 0
         #         }
