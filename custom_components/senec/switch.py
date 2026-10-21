@@ -18,7 +18,7 @@ from .const import (
     WEB_SWITCH_TYPES,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
-    ExtSwitchEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT
+    ExtSwitchEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, CONF_SYSTYPE_OPENAPI
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,8 +30,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     _LOGGER.info("SWITCH async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
-    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        _LOGGER.info("No switches for Inverters...")
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
+        _LOGGER.info("No switches for Inverters or OpenAPI...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SWITCH_TYPES:
             # when we have wallbox data, we want to enable the entity by default...

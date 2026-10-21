@@ -73,7 +73,8 @@ SYSTYPE_WEBAPI: Final = "systype_webapi"
 SYSTYPE_SENECV3: Final = "systype_senecv3"
 SYSTYPE_SENECV2: Final = "systype_senecv2"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
-SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
+SYSTYPE_OPENAPI: Final = "systype_openapi"
+SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_OPENAPI, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
 
 WEBAPI_PUBLIC: Final = "webapi_public"
 WEBAPI_PRIVATE: Final = "webapi_private"
@@ -83,6 +84,7 @@ WEBAPI_TYPES: Final = [WEBAPI_PUBLIC, WEBAPI_PRIVATE]
 SYSTYPE_NAME_SENEC = "SENEC Main-Unit"
 SYSTYPE_NAME_INVERTER = "SENEC Inverter Module"
 SYSTYPE_NAME_WEBAPI = "SENEC WebAPI"
+SYSTYPE_NAME_OPENAPI = "SENEC Local OpenAPI"
 
 MODE_WEB: Final = "mode_web"
 MODE_LOCAL: Final = "mode_local"
@@ -110,12 +112,14 @@ CONF_SYSTYPE_SENEC_V2: Final = "senec_v2"
 CONF_SYSTYPE_INVERTER: Final = "inverter"
 CONF_SYSTYPE_WEB: Final = "web"
 CONF_SYSTYPE_SENECCONNECT: Final = "senec_connect"
+CONF_SYSTYPE_OPENAPI: Final = "senec_openapi"
 
 # the access key to SENEC.connect
 CONF_SENECCONENCT_KEY: Final = "senec_connect_key"
 CONF_SENECCONENCT_SYSTEMS: Final = "senec_connect_systems"
 
 CONF_APP_TOKEN: Final = "app_token"
+CONF_OPENAPI_TOKEN: Final = "openapi_token"
 CONF_APP_SYSTEMID: Final = "app_master_plant_id"
 CONF_APP_WALLBOX_COUNT: Final = "app_wallbox_num_max"
 CONF_APP_SERIALNUM: Final = "app_serialnumber"
@@ -136,6 +140,7 @@ DEFAULT_USERNAME: Final = "your-eMail"
 DEFAULT_NAME: Final = "senec"
 DEFAULT_NAME_INVERTER: Final = "Inverter"
 DEFAULT_NAME_WEB: Final = "senec_WEBAPI"
+DEFAULT_NAME_OPENAPI: Final = "senec_OpenAPI"
 DEFAULT_SCAN_INTERVAL: Final = 30
 DEFAULT_MIN_SCAN_INTERVAL: Final = 1
 DEFAULT_SCAN_INTERVAL_SENECV2: Final = 60
@@ -4499,4 +4504,31 @@ MAIN_SENSOR_TYPES = [
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:battery-lock"
     ),
+]
+
+
+_OPENAPI_SENSOR_KEYS: Final = {
+    "battery_state_power",
+    "battery_state_voltage",
+    "battery_state_current",
+    "battery_charge_percent",
+    "grid_state_power",
+    "solar_generated_power",
+    "house_power",
+    "wallbox_1_power_alt",
+}
+OPENAPI_SENSOR_TYPES: Final = [
+    description
+    for description in MAIN_SENSOR_TYPES
+    if description.key in _OPENAPI_SENSOR_KEYS
+]
+
+_OPENAPI_BINARY_SENSOR_KEYS: Final = {
+    "wallbox_1_ev_connected",
+    "wallbox_1_ev_charging",
+}
+OPENAPI_BIN_SENSOR_TYPES: Final = [
+    description
+    for description in WEB_BIN_SENSOR_TYPES
+    if description.key in _OPENAPI_BINARY_SENSOR_KEYS
 ]

@@ -17,6 +17,7 @@ from .const import (
     MAIN_SENSOR_TYPES,
     INVERTER_SENSOR_TYPES,
     WEB_SENSOR_TYPES,
+    OPENAPI_SENSOR_TYPES,
     SENECCONNECT_SENSOR_TYPES,
     SENECCONNECT_SENSOR_WALLBOX_TYPES,
 
@@ -24,6 +25,7 @@ from .const import (
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
     CONF_SYSTYPE_SENECCONNECT,
+    CONF_SYSTYPE_OPENAPI,
 
     ExtSensorEntityDescription,
     StaticFuncs,
@@ -71,6 +73,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
             entity = SenecSensor(coordinator, description)
             entities.append(entity)
+
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_OPENAPI:
+        has_wallbox = bool(coordinator.data.get("evse", {}).get("devices", []))
+        for description in OPENAPI_SENSOR_TYPES:
+            if description.key.startswith("wallbox") and has_wallbox:
+                description = replace(description, entity_registry_enabled_default=True)
+            entities.append(SenecSensor(coordinator, description))
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
         for a_id in coordinator._senec_connect_systems.keys():

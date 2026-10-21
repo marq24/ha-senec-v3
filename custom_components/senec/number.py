@@ -16,7 +16,7 @@ from .const import (
     MAIN_NUMBER_TYPES,
     WEB_NUMBER_TYPES,
     CONF_SYSTYPE_WEB,
-    CONF_SYSTYPE_INVERTER, StaticFuncs, CONF_SYSTYPE_SENECCONNECT
+    CONF_SYSTYPE_INVERTER, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, CONF_SYSTYPE_OPENAPI
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,8 +29,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
 
-    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        _LOGGER.info("No numbers for Inverters...")
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
+        _LOGGER.info("No numbers for Inverters or OpenAPI...")
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_NUMBER_TYPES:

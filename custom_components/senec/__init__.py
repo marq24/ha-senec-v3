@@ -18,7 +18,7 @@ from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.loader import async_get_integration
 
-from custom_components.senec.pysenec_ha import SenecLocal, InverterLocal, SenecOnline, util, ReConfigurationRequired, \
+from custom_components.senec.pysenec_ha import SenecLocal, SenecLocalOpenApi, InverterLocal, SenecOnline, util, ReConfigurationRequired, \
     SenecConnect
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
@@ -46,6 +46,7 @@ from .const import (
     SYSTYPE_NAME_SENEC,
     SYSTYPE_NAME_INVERTER,
     SYSTYPE_NAME_WEBAPI,
+    SYSTYPE_NAME_OPENAPI,
 
     CONF_TOTP_SECRET,
     CONF_TOTP_URL,
@@ -58,6 +59,8 @@ from .const import (
     CONF_SYSTYPE_SENEC_V2,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
+    CONF_SYSTYPE_OPENAPI,
+    CONF_OPENAPI_TOKEN,
     CONF_IGNORE_SYSTEM_STATE,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
     CONF_TOTP_ALREADY_USED,
@@ -331,6 +334,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 raise ConfigEntryNotReady(f"NO SENEC SYSTEMS FOUND EVEN in BACKUP for {coordinator.senec._logger_key}")
         else:
             raise ConfigEntryNotReady(f"NO SENEC SYSTEMS FOUND for {coordinator.senec._logger_key}")
+
+    elif config_type_val == CONF_SYSTYPE_OPENAPI:
+        coordinator._device_type = SYSTYPE_NAME_OPENAPI
+        coordinator._device_model = SYSTYPE_NAME_OPENAPI
+        coordinator._device_serial = config_entry.data.get(CONF_HOST, "UNKNOWN_HOST")
+        coordinator._device_version = "v1"
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
@@ -618,6 +627,15 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
             self._warning_counter = 0
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
+
+        # Local OpenAPI Version...
+        elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_OPENAPI:
+            self._host = config_entry.data[CONF_HOST]
+            self.senec = SenecLocalOpenApi(
+                host=self._host,
+                web_session=async_get_clientsession(hass, verify_ssl=False),
+                token=config_entry.data[CONF_OPENAPI_TOKEN],
+            )
 
         # lala.cgi Version...
         else:

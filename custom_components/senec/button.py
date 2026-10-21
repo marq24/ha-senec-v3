@@ -15,7 +15,7 @@ from .const import (
     WEB_BUTTON_TYPES,
     ExtButtonEntityDescription,
     CONF_SYSTYPE_INVERTER,
-    CONF_SYSTYPE_WEB, StaticFuncs, CONF_SYSTYPE_SENECCONNECT)
+    CONF_SYSTYPE_WEB, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, CONF_SYSTYPE_OPENAPI)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,8 +24,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, add_
     _LOGGER.info("BUTTON async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
-    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        _LOGGER.info("No buttons for Inverters...")
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
+        _LOGGER.info("No buttons for Inverters or OpenAPI...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_BUTTON_TYPES:
             # when we have wallbox data, we want to enable the entity by default...

@@ -14,7 +14,7 @@ from homeassistant.util import slugify
 
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SELECT_TYPES, WEB_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
-    ExtSelectEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT
+    ExtSelectEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, CONF_SYSTYPE_OPENAPI
 from .pysenec_ha import LOCAL_WB_MODE_LEGACY_UNKNOWN, LOCAL_WB_MODE_2026_UNKNOWN
 from .pysenec_ha.constants import WALLBOX_CHARGING_MODES_LEGACY_P4, WALLBOX_CHARGING_MODES_2026_P4
 
@@ -27,8 +27,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
     _LOGGER.info("SELECT async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = []
-    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        _LOGGER.info("No selects for Inverters...")
+    if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
+        _LOGGER.info("No selects for Inverters or OpenAPI...")
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SELECT_TYPES:
             # when we have wallbox data, we want to enable the entity by default...

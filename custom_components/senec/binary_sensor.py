@@ -15,10 +15,12 @@ from .const import (
     DOMAIN,
     MAIN_BIN_SENSOR_TYPES,
     WEB_BIN_SENSOR_TYPES,
+    OPENAPI_BIN_SENSOR_TYPES,
     SENECCONNECT_BIN_SENSOR_WALLBOX_TYPES,
     CONF_SYSTYPE_INVERTER,
     CONF_SYSTYPE_WEB,
     CONF_SYSTYPE_SENECCONNECT,
+    CONF_SYSTYPE_OPENAPI,
     ExtBinarySensorEntityDescription,
     StaticFuncs
 )
@@ -48,6 +50,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
             entity = SenecBinarySensor(coordinator, description)
             entities.append(entity)
+
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_OPENAPI:
+        has_wallbox = bool(coordinator.data.get("evse", {}).get("devices", []))
+        for description in OPENAPI_BIN_SENSOR_TYPES:
+            if has_wallbox:
+                description = replace(description, entity_registry_enabled_default=True)
+            entities.append(SenecBinarySensor(coordinator, description))
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
         for a_id in coordinator._senec_connect_systems.keys():
