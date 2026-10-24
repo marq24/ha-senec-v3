@@ -1,7 +1,5 @@
 {
   "name": "SENEC.Home V2.x/V3/V4 Systems",
-  "zip_release": true,
-  "filename": "senec.zip",
   "content_in_root": false,
   "homeassistant": "2023.8.0",
   "hacs": "1.18.0",
