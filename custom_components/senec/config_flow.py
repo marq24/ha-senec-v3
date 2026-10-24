@@ -42,6 +42,7 @@ from .const import (
     SYSTYPE_SENECV2,
     SYSTYPE_SENECV3,
     SYSTYPE_SENECV4,
+    SYSTYPE_LALACGI,
     SYSTYPE_WEBAPI,
     SYSTYPE_INVERTV3,
     SYSTYPE_OPENAPI,
@@ -75,7 +76,9 @@ from .const import (
     CONFIG_MINOR_VERSION,
     CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
     CONF_OPENAPI_DEVICE_NAME,
-    WEBAPI_TYPES,
+    V4_WEBAPI_TYPES,
+    V3_INGRATION_TYPES,
+    V2_INGRATION_TYPES,
     WEBAPI_PUBLIC,
     WEBAPI_PRIVATE,
     DEFAULT_WEBTYPE
@@ -387,29 +390,44 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             web_session.detach()
         return False, None
 
+    async def _test_connection_senec_openapi(self, host: str, token: str) -> bool:
+        """Check whether an OpenAPI token has been approved."""
+        client = SenecLocalOpenApi(
+            host=host,
+            web_session=async_create_clientsession(self.hass, verify_ssl=False),
+            token=token,
+        )
+        try:
+            await client.battery()
+            self._openapi_status = client.last_status
+            return True
+        except ServiceUnavailableException:
+            self._openapi_status = client.last_status
+            if client.last_status == 511:
+                self._errors["base"] = "openapi_approval_pending"
+            elif client.last_status == 401:
+                self._errors["base"] = "invalid_auth"
+            else:
+                self._errors["base"] = "cannot_connect"
+            return False
+
     async def async_step_user(self, user_input=None):
         self._errors = {}
         if user_input is not None:
             self._selected_system = user_input[SETUP_SYS_TYPE]
 
-            # SenecV4 - WebONLY Option...
+            # the V4/P4/E4 systems support local: NONE | web: SENEC.Connect API, none-public API
             if self._selected_system == SYSTYPE_SENECV4:
-                return await self.async_step_webtype()
+                return await self.async_step_senecv4()
 
-            # the private WebAPI selection
-            elif self._selected_system == SYSTYPE_WEBAPI:
-                return await self.async_step_webprivatesetup()
+            # the V2 systems support local: lala.cgi | web: none-public API
+            elif self._selected_system == SYSTYPE_SENECV2:
+                return await self.async_step_senecv2()
 
-            # Inverter option...
-            elif self._selected_system == SYSTYPE_INVERTV3:
-                return await self.async_step_localsystem()
+            # the V3 systems support local: lala.cgi, openAPI, inverter | web: none-public API
+            else: # self._selected_system == SYSTYPE_SENECV3:
+                return await self.async_step_senecv3()
 
-            elif self._selected_system == SYSTYPE_OPENAPI:
-                return await self.async_step_openapisetup()
-
-            else:
-                # return await self.async_step_mode()
-                return await self.async_step_localsystem()
         else:
             user_input = {
                 SETUP_SYS_TYPE: DEFAULT_SYSTEM
@@ -436,137 +454,118 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=self._errors,
         )
 
-    async def _test_connection_senec_openapi(self, host: str, token: str) -> bool:
-        """Check whether an OpenAPI token has been approved."""
-        client = SenecLocalOpenApi(
-            host=host,
-            web_session=async_create_clientsession(self.hass, verify_ssl=False),
-            token=token,
-        )
-        try:
-            await client.battery()
-            self._openapi_status = client.last_status
-            return True
-        except ServiceUnavailableException:
-            self._openapi_status = client.last_status
-            if client.last_status == 511:
-                self._errors["base"] = "openapi_approval_pending"
-            elif client.last_status == 401:
-                self._errors["base"] = "invalid_auth"
-            else:
-                self._errors["base"] = "cannot_connect"
-            return False
-
-    def _finish_openapi_flow(self):
-        openapi_data = {
-            **self._openapi_entry_data,
-            CONF_OPENAPI_TOKEN: self._openapi_token,
-        }
-        if self.source == SOURCE_RECONFIGURE:
-            return self.async_update_reload_and_abort(
-                entry=self._get_reconfigure_entry(),
-                data=openapi_data,
-                reason="reconfigure_successful",
-            )
-        return self.async_create_entry(
-            title=self._openapi_entry_data[CONF_NAME],
-            data=openapi_data,
-        )
-
-    async def async_step_openapisetup(self, user_input=None):
-        """Register Home Assistant with the inverter's local OpenAPI."""
+    # V2 options
+    async def async_step_senecv2(self, user_input=None):
         self._errors = {}
         if user_input is not None:
-            name_entry = user_input[CONF_NAME]
-            host_entry = user_input[CONF_HOST].lower()
-            if host_entry.startswith("http://"):
-                host_entry = host_entry.replace("http://", "", 1)
-            if host_entry.startswith("https://"):
-                host_entry = host_entry.replace("https://", "", 1)
-            host_entry = host_entry.rstrip("/")
+            selected_type = user_input[SETUP_SYS_TYPE]
 
-            if self.source == SOURCE_RECONFIGURE:
-                self._abort_if_unique_id_configured()
-            else:
-                openapi_hosts = [
-                    entry.data.get(CONF_HOST, "").lower()
-                    for entry in self.hass.config_entries.async_entries(DOMAIN)
-                    if entry.data.get(CONF_TYPE, None) == CONF_SYSTYPE_OPENAPI
-                ]
-                if host_entry in openapi_hosts:
-                    raise data_entry_flow.AbortFlow("already_configured")
-                if title_in_configuration_exists(self.hass, name_entry):
-                    raise data_entry_flow.AbortFlow("already_configured")
-
-            self._openapi_entry_data = {
-                CONF_TYPE: CONF_SYSTYPE_OPENAPI,
-                CONF_NAME: name_entry,
-                CONF_HOST: host_entry,
-                CONF_OPENAPI_DEVICE_NAME: user_input[CONF_OPENAPI_DEVICE_NAME] if user_input[CONF_OPENAPI_DEVICE_NAME] else "Your Home Assistant",
-                CONF_SCAN_INTERVAL: max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL),
-                CONF_DEV_TYPE: SYSTYPE_NAME_OPENAPI,
-                CONF_DEV_MODEL: SYSTYPE_NAME_OPENAPI,
-                CONF_DEV_SERIAL: host_entry,
-                CONF_DEV_VERSION: "v1",
-            }
-
-            if self._default_openapi_token is not None:
-                self._openapi_token = self._default_openapi_token
-                if await self._test_connection_senec_openapi(host_entry, self._openapi_token):
-                    return self._finish_openapi_flow()
-                if self._openapi_status == 511:
-                    return await self.async_step_openapiapproval()
-                self._errors = {}
-
-            client = SenecLocalOpenApi(
-                host=host_entry,
-                web_session=async_create_clientsession(self.hass, verify_ssl=False),
-            )
-            try:
-                self._openapi_token = await client.register(
-                    device_name=self._openapi_entry_data[CONF_OPENAPI_DEVICE_NAME],
-                    manufacturer_name = "SENEC.Home V2.x/V3/V4|P4 Integration for Home Assistant (https://github.com/marq24/ha-senec-v3)",
-                )
-                return await self.async_step_openapiapproval()
-            except ServiceUnavailableException:
-                self._errors["base"] = "cannot_connect"
+            if selected_type == SYSTYPE_WEBAPI:
+                return await self.async_step_webprivatesetup()
+            else: #if selected_type == SYSTYPE_LALACGI:
+                return await self.async_step_localsystem()
         else:
             user_input = {
-                CONF_NAME: self._default_name or DEFAULT_NAME_OPENAPI,
-                CONF_HOST: self._default_host or DEFAULT_HOST,
-                CONF_OPENAPI_DEVICE_NAME: self._default_openapi_device_name or DEFAULT_OPENAPI_DEVICE_NAME,
-                CONF_SCAN_INTERVAL: self._default_interval or DEFAULT_SCAN_INTERVAL,
+                SETUP_SYS_TYPE: SYSTYPE_LALACGI
             }
 
         return self.async_show_form(
-            step_id="openapisetup",
-            data_schema=vol.Schema({
-                vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
-                vol.Required(CONF_OPENAPI_DEVICE_NAME, default=user_input[CONF_OPENAPI_DEVICE_NAME]): str,
-                vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
-            }),
-            description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
+            step_id="senecv2",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(SETUP_SYS_TYPE, default=user_input[SETUP_SYS_TYPE]):
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=V2_INGRATION_TYPES,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                                translation_key=SETUP_SYS_TYPE,
+                            )
+                        )
+                }
+            ),
+            description_placeholders={
+                "repo": "https://github.com/marq24/ha-senec-v3",
+            },
             last_step=False,
             errors=self._errors,
         )
 
-    async def async_step_openapiapproval(self, user_input=None):
-        """Wait for the user to approve the pending OpenAPI registration."""
+    # V3 options
+    async def async_step_senecv3(self, user_input=None):
         self._errors = {}
         if user_input is not None:
-            if await self._test_connection_senec_openapi(
-                    self._openapi_entry_data[CONF_HOST], self._openapi_token):
-                return self._finish_openapi_flow()
+            selected_type = user_input[SETUP_SYS_TYPE]
+
+            if selected_type == SYSTYPE_WEBAPI:
+                return await self.async_step_webprivatesetup()
+
+            elif selected_type == SYSTYPE_OPENAPI:
+                return await self.async_step_openapisetup()
+
+            else: #if selected_type in [SYSTYPE_LALACGI, SYSTYPE_INVERTV3]:
+                return await self.async_step_localsystem()
+
+        else:
+            user_input = {
+                SETUP_SYS_TYPE: SYSTYPE_LALACGI
+            }
 
         return self.async_show_form(
-            step_id="openapiapproval",
-            data_schema=vol.Schema({}),
+            step_id="senecv3",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(SETUP_SYS_TYPE, default=user_input[SETUP_SYS_TYPE]):
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=V3_INGRATION_TYPES,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                                translation_key=SETUP_SYS_TYPE,
+                            )
+                        )
+                }
+            ),
             description_placeholders={
-                "mein_senec_1": "https://mein-senec.de/endkunde/#/0/senec-open-api",
-                "mein_senec_2": "https://mein-senec.de/endkunde/#/1/senec-open-api",
-                "openapi_device_name": str(self._openapi_entry_data[CONF_OPENAPI_DEVICE_NAME])},
-            last_step=True,
+                "repo": "https://github.com/marq24/ha-senec-v3",
+            },
+            last_step=False,
+            errors=self._errors,
+        )
+
+    # V3/P4/E4 HANDLING (support for different WEB-API types...)
+    async def async_step_senecv4(self, user_input=None):
+        self._errors = {}
+        if user_input is not None:
+            self._selected_webapi_type = user_input[SETUP_WEBAPI_TYPE]
+
+            # SenecV4 - WebONLY Option...
+            if self._selected_webapi_type == WEBAPI_PUBLIC:
+                return await self.async_step_webpublicsetup()
+            # Inverter option...
+            elif self._selected_webapi_type == WEBAPI_PRIVATE:
+                return await self.async_step_webprivatesetup()
+        else:
+            user_input = {
+                SETUP_WEBAPI_TYPE: DEFAULT_WEBTYPE
+            }
+
+        return self.async_show_form(
+            step_id="senecv4",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(SETUP_WEBAPI_TYPE, default=user_input[SETUP_WEBAPI_TYPE]):
+                        selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=V4_WEBAPI_TYPES,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                                translation_key=SETUP_WEBAPI_TYPE,
+                            )
+                        )
+                }
+            ),
+            description_placeholders={
+                "repo": "https://github.com/marq24/ha-senec-v3",
+            },
+            last_step=False,
             errors=self._errors,
         )
 
@@ -705,43 +704,6 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 })
 
             return self.async_show_form(step_id="localsystem", data_schema=a_schema, description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"}, last_step=True, errors=self._errors)
-
-    async def async_step_webtype(self, user_input=None):
-        self._errors = {}
-        if user_input is not None:
-            self._selected_webapi_type = user_input[SETUP_WEBAPI_TYPE]
-
-            # SenecV4 - WebONLY Option...
-            if self._selected_webapi_type == WEBAPI_PUBLIC:
-                return await self.async_step_webpublicsetup()
-            # Inverter option...
-            elif self._selected_webapi_type == WEBAPI_PRIVATE:
-                return await self.async_step_webprivatesetup()
-        else:
-            user_input = {
-                SETUP_WEBAPI_TYPE: DEFAULT_WEBTYPE
-            }
-
-        return self.async_show_form(
-            step_id="webtype",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(SETUP_WEBAPI_TYPE, default=user_input[SETUP_WEBAPI_TYPE]):
-                        selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=WEBAPI_TYPES,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                translation_key=SETUP_WEBAPI_TYPE,
-                            )
-                        )
-                }
-            ),
-            description_placeholders={
-                "repo": "https://github.com/marq24/ha-senec-v3",
-            },
-            last_step=False,
-            errors=self._errors,
-        )
 
     async def async_step_webpublicsetup(self, user_input=None):
         self._errors = {}
@@ -969,11 +931,11 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_selectserial(self, user_input=None):
         if user_input is not None:
             _LOGGER.debug("async_step_selectserial(): finalize SETUP")
-            a_title = self.cached_login_input[CONF_NAME]
+            a_title = str(self.cached_login_input[CONF_NAME])
             # we must verify again the login - but this time with a valid SERIAL
-            if await self._test_connection_senec_online(self.cached_login_input[CONF_USERNAME],
-                                                        self.cached_login_input[CONF_PASSWORD],
-                                                        self.cached_login_input[CONF_TOTP_SECRET],
+            if await self._test_connection_senec_online(str(self.cached_login_input[CONF_USERNAME]),
+                                                        str(self.cached_login_input[CONF_PASSWORD]),
+                                                        str(self.cached_login_input[CONF_TOTP_SECRET]),
                                                         user_input[CONF_DEV_SERIAL]):
 
                 # updating the other properties of the config entry...
@@ -1006,6 +968,119 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 errors={}
             )
+
+    def _finish_openapi_flow(self):
+        openapi_data = {
+            **self._openapi_entry_data,
+            CONF_OPENAPI_TOKEN: self._openapi_token,
+        }
+        if self.source == SOURCE_RECONFIGURE:
+            return self.async_update_reload_and_abort(
+                entry=self._get_reconfigure_entry(),
+                data=openapi_data,
+                reason="reconfigure_successful",
+            )
+        return self.async_create_entry(
+            title=self._openapi_entry_data[CONF_NAME],
+            data=openapi_data,
+        )
+
+    async def async_step_openapisetup(self, user_input=None):
+        """Register Home Assistant with the inverter's local OpenAPI."""
+        self._errors = {}
+        if user_input is not None:
+            name_entry = user_input[CONF_NAME]
+            host_entry = user_input[CONF_HOST].lower()
+            if host_entry.startswith("http://"):
+                host_entry = host_entry.replace("http://", "", 1)
+            if host_entry.startswith("https://"):
+                host_entry = host_entry.replace("https://", "", 1)
+            host_entry = host_entry.rstrip("/")
+
+            if self.source == SOURCE_RECONFIGURE:
+                self._abort_if_unique_id_configured()
+            else:
+                openapi_hosts = [
+                    entry.data.get(CONF_HOST, "").lower()
+                    for entry in self.hass.config_entries.async_entries(DOMAIN)
+                    if entry.data.get(CONF_TYPE, None) == CONF_SYSTYPE_OPENAPI
+                ]
+                if host_entry in openapi_hosts:
+                    raise data_entry_flow.AbortFlow("already_configured")
+                if title_in_configuration_exists(self.hass, name_entry):
+                    raise data_entry_flow.AbortFlow("already_configured")
+
+            self._openapi_entry_data = {
+                CONF_TYPE: CONF_SYSTYPE_OPENAPI,
+                CONF_NAME: name_entry,
+                CONF_HOST: host_entry,
+                CONF_OPENAPI_DEVICE_NAME: user_input[CONF_OPENAPI_DEVICE_NAME] if user_input[CONF_OPENAPI_DEVICE_NAME] else "Your Home Assistant",
+                CONF_SCAN_INTERVAL: max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL),
+                CONF_DEV_TYPE: SYSTYPE_NAME_OPENAPI,
+                CONF_DEV_MODEL: SYSTYPE_NAME_OPENAPI,
+                CONF_DEV_SERIAL: host_entry,
+                CONF_DEV_VERSION: "v1",
+            }
+
+            if self._default_openapi_token is not None:
+                self._openapi_token = self._default_openapi_token
+                if await self._test_connection_senec_openapi(host_entry, self._openapi_token):
+                    return self._finish_openapi_flow()
+                if self._openapi_status == 511:
+                    return await self.async_step_openapiapproval()
+                self._errors = {}
+
+            client = SenecLocalOpenApi(
+                host=host_entry,
+                web_session=async_create_clientsession(self.hass, verify_ssl=False),
+            )
+            try:
+                self._openapi_token = await client.register(
+                    device_name=str(self._openapi_entry_data[CONF_OPENAPI_DEVICE_NAME]),
+                    manufacturer_name = "SENEC.Home V2.x/V3/V4|P4 Integration for Home Assistant (https://github.com/marq24/ha-senec-v3)",
+                )
+                return await self.async_step_openapiapproval()
+            except ServiceUnavailableException:
+                self._errors["base"] = "cannot_connect"
+        else:
+            user_input = {
+                CONF_NAME: self._default_name or DEFAULT_NAME_OPENAPI,
+                CONF_HOST: self._default_host or DEFAULT_HOST,
+                CONF_OPENAPI_DEVICE_NAME: self._default_openapi_device_name or DEFAULT_OPENAPI_DEVICE_NAME,
+                CONF_SCAN_INTERVAL: self._default_interval or DEFAULT_SCAN_INTERVAL,
+            }
+
+        return self.async_show_form(
+            step_id="openapisetup",
+            data_schema=vol.Schema({
+                vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
+                vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
+                vol.Required(CONF_OPENAPI_DEVICE_NAME, default=user_input[CONF_OPENAPI_DEVICE_NAME]): str,
+                vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
+            }),
+            description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
+            last_step=False,
+            errors=self._errors,
+        )
+
+    async def async_step_openapiapproval(self, user_input=None):
+        """Wait for the user to approve the pending OpenAPI registration."""
+        self._errors = {}
+        if user_input is not None:
+            if await self._test_connection_senec_openapi(
+                    self._openapi_entry_data[CONF_HOST], self._openapi_token):
+                return self._finish_openapi_flow()
+
+        return self.async_show_form(
+            step_id="openapiapproval",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "mein_senec_1": "https://mein-senec.de/endkunde/#/0/senec-open-api",
+                "mein_senec_2": "https://mein-senec.de/endkunde/#/1/senec-open-api",
+                "openapi_device_name": str(self._openapi_entry_data[CONF_OPENAPI_DEVICE_NAME])},
+            last_step=True,
+            errors=self._errors,
+        )
 
     async def async_step_optional_websetup_required_info(self, user_input=None):
         return self.async_create_entry(title=self._xname, data=self._xdata)

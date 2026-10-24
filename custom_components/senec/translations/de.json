@@ -5,9 +5,11 @@
         "systype_senecv4": "SENEC.Home V4|P4|E4",
         "systype_senecv3": "SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo",
         "systype_senecv2": "SENEC.Home V2.1 oder älteres System",
-        "systype_openapi": "LOCAL.OpenAPI: https Zugriff über Port 4424 (experimentell)",
-        "systype_webapi": "WEB.API: mein-senec.de Portal (für alle SENEC.Home Varianten einsetzbar)",
-        "systype_invertv3": "Interner im SENEC.Home V3 hybrid/hybrid duo verbauter Wechselrichter"
+
+        "systype_lalacgi": "Lokaler/LAN Zugriff auf den Speicher (via 'lala.cgi')",
+        "systype_openapi": "Lokaler/LAN via OpenAPI: https Zugriff über Port 4424 (experimentell)",
+        "systype_webapi": "Cloud/WAN via WEB.API: mein-senec.de Portal (keine öffentlich API",
+        "systype_invertv3": "Interner im SENEC.Home V3 hybrid/hybrid duo verbauter Wechselrichter (Lokal über eigene IP)"
       }
     },
     "wtype": {
@@ -59,12 +61,24 @@
     },
     "step": {
       "user": {
-        "description": "Bitte wähle die Version Deines SENEC.Home Systems das Du einbinden möchtest.\n\n\nZusätzliche Informationen zur Einrichtung findest Du hier: {repo}",
+        "description": "## System Auswahl\n\nBitte wähle die Version Deines SENEC.Home Systems das Du einbinden möchtest.\n\n\nZusätzliche Informationen zur Einrichtung findest Du hier: {repo}",
         "data": {
           "stype": "System Version wählen"
         }
       },
-      "webtype": {
+      "senecv2": {
+        "description": "## SENEC.Home V2.1 oder älteres System\n\nBitte wähle den Integrationstyp den Du einrichten möchtest.\n\n\nZusätzliche Informationen zur Einrichtung findest Du hier: {repo}",
+        "data": {
+          "stype": "Welchen Integrationstyp möchtest Du verwenden"
+        }
+      },
+      "senecv3": {
+        "description": "## SENEC.Home V3 hybrid/SENEC.Home V3 hybrid duo\n\nBitte wähle den Integrationstyp den Du einrichten möchtest.\n\n\nZusätzliche Informationen zur Einrichtung findest Du hier: {repo}",
+        "data": {
+          "stype": "Welchen Integrationstyp möchtest Du verwenden"
+        }
+      },
+      "senecv4": {
         "description": "### API-Zugang auswählen\n\nFür ein SENEC V4|P4|E4 System unterstützt diese Integration zwei unterschiedliche APIs.\n\n1. Offizielle SENEC.Connect-API. Hier musst Du zunächst einen API-Schlüssel über developer.senec.de registrieren.\n2. Undokumentierte API des mein-senec.de Portal & der SenecApp. Hier musst Du Deine Zugangsdaten (Benutzername & Passwort) in der Integration eingeben.\n\n\nZusätzliche Informationen zur Einrichtung findest Du hier: {repo}",
         "data": {
           "stype": "Entscheide Dich für die Art des API-Zugangs, den Du verwenden möchtest"

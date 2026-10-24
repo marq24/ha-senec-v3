@@ -1,13 +1,7 @@
 {
   "domain": "senec",
   "name": "SENEC.Home",
-  "codeowners": [
-    "@marq24",
-    "@io-debug",
-    "@WernerSlabon",
-    "@mstuettgen",
-    "@mchwalisz"
-  ],
+  "codeowners": ["@marq24", "@io-debug", "@WernerSlabon", "@mstuettgen", "@mchwalisz"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/marq24/ha-senec-v3/blob/main/README.md",
@@ -15,5 +9,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/marq24/ha-senec-v3/issues",
   "requirements": ["pyotp>=2.8.0", "xmltodict>=0.13.0", "python-dateutil>=2.8.0"],
-  "version": "2026.10.1"
+  "version": "2026.10.7"
 }

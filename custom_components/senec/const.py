@@ -69,16 +69,23 @@ CONFIG_VERSION: Final = 2
 CONFIG_MINOR_VERSION: Final = 4
 
 SYSTYPE_SENECV4: Final = "systype_senecv4"
-SYSTYPE_WEBAPI: Final = "systype_webapi"
 SYSTYPE_SENECV3: Final = "systype_senecv3"
 SYSTYPE_SENECV2: Final = "systype_senecv2"
+SYSTEM_TYPES: Final = [SYSTYPE_SENECV2, SYSTYPE_SENECV3, SYSTYPE_SENECV4]
+
+SYSTYPE_LALACGI: Final = "systype_lalacgi"
 SYSTYPE_INVERTV3: Final = "systype_invertv3"
 SYSTYPE_OPENAPI: Final = "systype_openapi"
-SYSTEM_TYPES: Final = [SYSTYPE_SENECV3, SYSTYPE_SENECV4, SYSTYPE_SENECV2, SYSTYPE_OPENAPI, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
-
+SYSTYPE_WEBAPI: Final = "systype_webapi"
 WEBAPI_PUBLIC: Final = "webapi_public"
 WEBAPI_PRIVATE: Final = "webapi_private"
-WEBAPI_TYPES: Final = [WEBAPI_PUBLIC, WEBAPI_PRIVATE]
+
+# the V4/P4/E4 systems support local: NONE | web: SENEC.Connect API, none-public API
+V4_WEBAPI_TYPES: Final = [WEBAPI_PUBLIC, WEBAPI_PRIVATE]
+# the V3 systems support local: lala.cgi, openAPI, inverter | web: none-public API
+V3_INGRATION_TYPES: Final = [SYSTYPE_LALACGI, SYSTYPE_OPENAPI, SYSTYPE_WEBAPI, SYSTYPE_INVERTV3]
+# the V2 systems support local: lala.cgi | web: none-public API
+V2_INGRATION_TYPES: Final = [SYSTYPE_LALACGI, SYSTYPE_WEBAPI]
 
 # the display names of the 3 different implemented backend-types
 SYSTYPE_NAME_SENEC = "SENEC Main-Unit"
@@ -86,13 +93,8 @@ SYSTYPE_NAME_INVERTER = "SENEC Inverter Module"
 SYSTYPE_NAME_WEBAPI = "SENEC WebAPI"
 SYSTYPE_NAME_OPENAPI = "SENEC Local OpenAPI"
 
-MODE_WEB: Final = "mode_web"
-MODE_LOCAL: Final = "mode_local"
-SYSTEM_MODES: Final = [MODE_LOCAL, MODE_WEB]
-
 SETUP_SYS_TYPE: Final = "stype"
 SETUP_WEBAPI_TYPE: Final = "wtype"
-#SETUP_SYS_MODE: Final = "smode"
 
 CONF_DEV_TYPE_INT: Final = "dtype_int"
 CONF_TOTP_SECRET: Final = "totp_secret"
@@ -134,7 +136,6 @@ CONF_MUST_START_POST_MIGRATION_PROCESS: Final = "migration_post_process_must_be_
 """Default config for Senec."""
 DEFAULT_SYSTEM: Final = SYSTYPE_SENECV3
 DEFAULT_WEBTYPE: Final = WEBAPI_PRIVATE
-DEFAULT_MODE: Final = MODE_LOCAL
 DEFAULT_HOST: Final = "Senec"
 DEFAULT_HOST_INVERTER: Final = "Inverter"
 DEFAULT_USERNAME: Final = "your-eMail"
