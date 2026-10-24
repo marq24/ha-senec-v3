@@ -1,4 +1,4 @@
-# <sub><img src="https://github.com/marq24/ha-senec-v3/raw/refs/heads/main/custom_components/senec/brand/icon.png" style="align:bottom;height:42px;"></sub> Home Assistant Integration for SENEC.Home V2.x/V3/V4|P4|E4 Systems
+# <sub><img src="https://github.com/marq24/ha-senec-v3/raw/refs/heads/main/custom_components/senec/brand/icon48.png" style="align:bottom;"></sub> Home Assistant Integration for SENEC.Home V2.x/V3/V4|P4|E4 Systems
 <!--
 > [!NOTE]  
 > Highlights information that users should take into account, even when skimming.
