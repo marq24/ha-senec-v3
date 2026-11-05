@@ -16,7 +16,7 @@ def mask_map(d: (dict, list)) -> dict:
     elif isinstance(d, list):
         return mask_list_internal(copy.deepcopy(d))
     else:
-        _LOGGER.info(f"mask_map expects a dictionary or list, got '{type(d).__name__}'")
+        _LOGGER.info(f"mask_map(): expects a dictionary or list, got '{type(d).__name__}'")
         return d
 
 def mask_list_internal(lst: list) -> list:
@@ -75,7 +75,7 @@ def parse_value(value: str):
             return value
 
     except Exception as e:
-        _LOGGER.warning(f"Error parsing value: {value} - {e}")
+        _LOGGER.warning(f"parse_value(): Error parsing value: {value} - {e}")
         return value
 
     # if key == "u8":

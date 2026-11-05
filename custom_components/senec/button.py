@@ -21,11 +21,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, add_entity_cb: AddEntitiesCallback):
-    _LOGGER.info("BUTTON async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.info(f"{coordinator.LOGPREFIX}BUTTON async_setup_entry")
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
-        _LOGGER.info("No buttons for Inverters or OpenAPI...")
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No buttons for Inverters or OpenAPI...")
+
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No bbuttons for SENEC.Connect...")
+
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_BUTTON_TYPES:
             # when we have wallbox data, we want to enable the entity by default...
@@ -37,12 +41,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, add_
                     if a_wallbox_obj is not None:
                         description = replace(description, entity_registry_enabled_default=True)
                 except ValueError:
-                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+                    _LOGGER.debug(f"{coordinator.LOGPREFIX}No valid wallbox index found in key: {description.key} - {possible_idx_str}")
 
             entity = SenecButton(coordinator, description)
             entities.append(entity)
-    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
-        _LOGGER.info("No bbuttons for SENEC.Connect...")
     else:
         is_2408_or_higher: bool = await coordinator._async_is2408_or_later()
 

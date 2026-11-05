@@ -37,8 +37,8 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
     """Initialize sensor platform from config entry."""
-    _LOGGER.info("SENSOR async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.info(f"{coordinator.LOGPREFIX}SENSOR async_setup_entry")
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
         is_bdc_inverter = config_entry.data[CONF_SUPPORT_BDC]
@@ -69,7 +69,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                     if a_wallbox_obj is not None:
                         description = replace(description, entity_registry_enabled_default=True)
                 except ValueError:
-                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+                    _LOGGER.debug(f"{coordinator.LOGPREFIX}No valid wallbox index found in key: {description.key} - {possible_idx_str}")
 
             entity = SenecSensor(coordinator, description)
             entities.append(entity)
@@ -209,12 +209,12 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                     if str(value).lower() == "1e-05":
                         # we ignore, the 1e-05 in any case - even if the '_previous_float_value' is None, we will
                         # return this _previous_float_value
-                        _LOGGER.info(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
+                        _LOGGER.info(f"{self.coordinator.LOGPREFIX}Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
                         return self._previous_float_value
                     elif int(value) == 0:
                         if (self._previous_float_value is not None) and (self._previous_float_value > 5):
                             # if the previous value was larger than 5, we return the previous value
-                            _LOGGER.info(f"Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
+                            _LOGGER.info(f"{self.coordinator.LOGPREFIX}Thanks for nothing Senec! - API provided '{value}' for key {self._attr_translation_key} - but last known value before was: {self._previous_float_value}")
                             return self._previous_float_value
                     else:
                         self._previous_float_value = value
@@ -229,13 +229,13 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                     if (self._previous_float_value is not None) and (value < self._previous_float_value):
                         delta = self._previous_float_value - value
                         if delta > 0.01:
-                            _LOGGER.info(f"Thanks for nothing Senec! previous stored value is larger than the new value | for key '{self._attr_translation_key}' - delta: {delta} - previous: '{self._previous_float_value}' new: '{value}'")
+                            _LOGGER.info(f"{self.coordinator.LOGPREFIX}Thanks for nothing Senec! previous stored value is larger than the new value | for key '{self._attr_translation_key}' - delta: {delta} - previous: '{self._previous_float_value}' new: '{value}'")
                         else:
                             # Format as a string with 6 decimal places
                             d1 = f"{delta:.5f}"  # Returns "0.00000"
                             # Or use scientific notation with 6 significant digits
                             d2 = f"{delta:.4e}"
-                            _LOGGER.debug(f"Just a rounding issue | for key '{self._attr_translation_key}' - delta: {d1} [{d2}] - previous: '{self._previous_float_value}' new: '{value}'")
+                            _LOGGER.debug(f"{self.coordinator.LOGPREFIX}Just a rounding issue | for key '{self._attr_translation_key}' - delta: {d1} [{d2}] - previous: '{self._previous_float_value}' new: '{value}'")
                         return self._previous_float_value
                     else:
                         self._previous_float_value = value
@@ -254,7 +254,7 @@ class SenecSensor(SenecEntity, SensorEntity, RestoreEntity):
                 try:
                     a_float_value = float(last_sensor_data.state)
                     self._previous_float_value = a_float_value
-                    _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {a_float_value}")
+                    _LOGGER.debug(f"{self.coordinator.LOGPREFIX}async_added_to_hass(): restored prev value for key {self._attr_translation_key}: {a_float_value}")
                 except:
-                    _LOGGER.debug(f"ignoring prev value for key {self._attr_translation_key}: cause value is: {last_sensor_data.state}")
+                    _LOGGER.debug(f"{self.coordinator.LOGPREFIX}async_added_to_hass(): ignoring prev value for key {self._attr_translation_key}: cause value is: {last_sensor_data.state}")
                     self._previous_float_value = None

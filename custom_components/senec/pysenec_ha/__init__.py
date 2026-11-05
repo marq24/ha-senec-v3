@@ -432,7 +432,7 @@ class SenecLocal:
 
     def __init__(self, host, use_https, lala_session, lang: str = "en", options: dict = None, integ_version: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
-        _LOGGER.info(f"__init__() -> (re)starting SenecLocal (lala.cgi) integration v{self._integration_version} for host: '{host}' with options: {options}")
+        _LOGGER.info(f"[LAN] __init__() -> (re)starting SenecLocal (lala.cgi) integration v{self._integration_version} for host: '{host}' with options: {options}")
         self._lang = lang
 
         # this property will be finally set on config_read
@@ -497,7 +497,7 @@ class SenecLocal:
             the_jar = getattr(self.lala_session, "_cookie_jar")
             if hasattr(the_jar, "_unsafe"):
                 the_jar._unsafe = True
-                _LOGGER.debug("WEB_SESSION cookie_jar accept cookies for IP's")
+                _LOGGER.debug(f"[LAN] WEB_SESSION cookie_jar accept cookies for IP's")
 
 
         # evil HACK - since SENEC does not switch the property fast enough…
@@ -542,20 +542,20 @@ class SenecLocal:
         #try:
         #    asyncio.create_task(self.update_version())
         #except Exception as exc:
-        #    _LOGGER.debug(f"Exception while try to call 'self.update_version()': {exc}")
+        #    _LOGGER.debug(f"[LAN] Exception while try to call 'self.update_version()': {exc}")
 
     def set_senec_online_instance(self, a_senec_online):
         if a_senec_online is not None:
-            _LOGGER.info(f"set_senec_online_instance(): SIBLING: SenecLocal: bound a instance of SenecOnline - BRIDGE from LOCAL to ONLINE is establish!")
+            _LOGGER.info(f"[LAN] set_senec_online_instance(): SIBLING: SenecLocal: bound a instance of SenecOnline - BRIDGE from LOCAL to ONLINE is establish!")
             self._bridge_to_senec_online = a_senec_online
             if self._QUERY_WALLBOX_APPAPI:
                 self._bridge_to_senec_online._QUERY_WALLBOX = True
                 # ok let's force an UPDATE of the WEB-API
-                _LOGGER.info("set_senec_online_instance(): force refresh of wallbox-data via app-api…")
+                _LOGGER.info(f"[LAN] set_senec_online_instance(): force refresh of wallbox-data via app-api…")
                 try:
                     asyncio.create_task(self._bridge_to_senec_online.update())
                 except Exception as exc:
-                    _LOGGER.debug(f"set_senec_online_instance(): Exception while try to call 'self._bridge_to_senec_online.update': {exc}")
+                    _LOGGER.debug(f"[LAN] set_senec_online_instance(): Exception while try to call 'self._bridge_to_senec_online.update': {exc}")
 
             # ok after we have set the new SenecOnline Object (to our SenecLocal instance) we can/should patch the remaining
             # min/max values...
@@ -565,7 +565,7 @@ class SenecLocal:
                     the_method_to_call = a_obj["method"]
                     min_max_range = getattr(self, the_method_to_call)
                     if min_max_range is not None and len(min_max_range) > 1:
-                        _LOGGER.debug(f"set_senec_online_instance(): LOCAL: Going to adjust min/max values for '{the_number_entity_to_adjust.entity_description.key}' with min: {min_max_range[0]} and max: {min_max_range[1]}")
+                        _LOGGER.debug(f"[LAN] set_senec_online_instance(): LOCAL: Going to adjust min/max values for '{the_number_entity_to_adjust.entity_description.key}' with min: {min_max_range[0]} and max: {min_max_range[1]}")
                         the_min_val = round(float(min_max_range[0]), 1)
                         the_max_val = round(float(min_max_range[1]), 1)
 
@@ -581,11 +581,11 @@ class SenecLocal:
                             native_max_value=the_max_val
                         )
                     else:
-                        _LOGGER.debug(f"set_senec_online_instance(): LOCAL: No min/max values found for '{the_number_entity_to_adjust.entity_description.key}' - tried to called '{the_method_to_call}', did method exist? {hasattr(self, the_method_to_call)} - DEBUG self: {self}")
+                        _LOGGER.debug(f"[LAN] set_senec_online_instance(): LOCAL: No min/max values found for '{the_number_entity_to_adjust.entity_description.key}' - tried to called '{the_method_to_call}', did method exist? {hasattr(self, the_method_to_call)} - DEBUG self: {self}")
             except BaseException as exc:
-                _LOGGER.debug(f"set_senec_online_instance(): LOCAL: Error while adjusting min/max values: {type(exc).__name__} - {exc}")
+                _LOGGER.debug(f"[LAN] set_senec_online_instance(): LOCAL: Error while adjusting min/max values: {type(exc).__name__} - {exc}")
         else:
-            _LOGGER.info(f"set_senec_online_instance(): SIBLING: SenecLocal: remove reference to SenecOnline - BRIDGE from LOCAL to ONLINE is destroyed!")
+            _LOGGER.info(f"[LAN] set_senec_online_instance(): SIBLING: SenecLocal: remove reference to SenecOnline - BRIDGE from LOCAL to ONLINE is destroyed!")
             self._bridge_to_senec_online = None
 
     async def update(self):
@@ -613,29 +613,29 @@ class SenecLocal:
         form = {SENEC_SECTION_FACTORY:{"SYS_TYPE":"","COUNTRY":"","DEVICE_ID":""}}
         try:
             async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-                _LOGGER.debug(f"_init_gui_cookies(): {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
+                _LOGGER.debug(f"[LAN] _init_gui_cookies(): {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
                 try:
                     res.raise_for_status()
                     data = parse(await res.json())
                     if SET_COOKIE in res.headers:
-                        _LOGGER.debug(f"_init_gui_cookies(): response {util.mask_map(data)} - {res.headers[SET_COOKIE]}")
+                        _LOGGER.debug(f"[LAN] _init_gui_cookies(): response {util.mask_map(data)} - {res.headers[SET_COOKIE]}")
                     else:
                         if(retry):
-                            _LOGGER.debug(f"_init_gui_cookies(): response {util.mask_map(data)} - NO COOKIES in RESPONSE (try to logout)")
+                            _LOGGER.debug(f"[LAN] _init_gui_cookies(): response {util.mask_map(data)} - NO COOKIES in RESPONSE (try to logout)")
                             await asyncio.sleep(2)
                             await self._senec_local_access_stop_no_checks()
                             await asyncio.sleep(5)
                             await self._init_gui_cookies(retry=False)
                         else:
-                            _LOGGER.debug(f"_init_gui_cookies(): response {util.mask_map(data)} - NO COOKIES in RESPONSE")
+                            _LOGGER.debug(f"[LAN] _init_gui_cookies(): response {util.mask_map(data)} - NO COOKIES in RESPONSE")
 
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"_init_gui_cookies(): JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"[LAN] _init_gui_cookies(): JSONDecodeError while 'await res.json()' {exc}")
 
         except asyncio.TimeoutError:
-            _LOGGER.info(f"_init_gui_cookies(): TimeoutError (20sec) while posting '{form}'")
+            _LOGGER.info(f"[LAN] _init_gui_cookies(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as exe:
-            _LOGGER.warning(f"_init_gui_cookies caused {type(exe).__name__} - {exe}")
+            _LOGGER.warning(f"[LAN] _init_gui_cookies caused {type(exe).__name__} - {exe}")
 
     async def _read_version(self):
         form = {
@@ -671,17 +671,17 @@ class SenecLocal:
 
         try:
             async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-                _LOGGER.debug(f"_read_version() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
+                _LOGGER.debug(f"[LAN] _read_version() {util.mask_map(form)} from '{self.url}' - with headers: {res.request_info.headers}")
                 try:
                     res.raise_for_status()
                     self._raw_version = parse(await res.json())
                     self._last_version_update = time()
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"_read_version(): JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"[LAN] _read_version(): JSONDecodeError while 'await res.json()' {exc}")
         except asyncio.TimeoutError:
-            _LOGGER.info(f"_read_version(): TimeoutError (20sec) while posting '{form}'")
+            _LOGGER.info(f"[LAN] _read_version(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as exe:
-            _LOGGER.warning(f"_read_version(): caused {type(exe).__name__} - {exe}")
+            _LOGGER.warning(f"[LAN] _read_version(): caused {type(exe).__name__} - {exe}")
 
     @property
     def number_of_configured_bms_modules(self) -> int:
@@ -697,12 +697,12 @@ class SenecLocal:
         try:
             await self._read_senec_lala()
         except ClientConnectionError as exc:
-            _LOGGER.info(f"{exc}")
+            _LOGGER.info(f"[LAN] {exc}")
             if retry:
                 await asyncio.sleep(5)
                 await self._read_senec_lala_with_retry(retry=False)
             else:
-                _LOGGER.info(f"_read_senec_lala_with_retry() failed with {type(exc).__name__} - {exc}")
+                _LOGGER.info(f"[LAN] _read_senec_lala_with_retry() failed with {type(exc).__name__} - {exc}")
 
     async def _read_senec_lala(self):
         # captured 2026/08
@@ -920,7 +920,7 @@ class SenecLocal:
         await self._request_senec_lala_chunked(form)
 
     async def _request_senec_lala_chunked(self, payload: dict, max_len: int = 600) -> dict:
-        _LOGGER.debug(f"_request_senec_lala_chunked(): request {util.mask_map(payload)} from '{self.url}'")
+        _LOGGER.debug(f"[LAN] _request_senec_lala_chunked(): request {util.mask_map(payload)} from '{self.url}'")
         req_min_wait = 0.2
         def compact_json(data: dict) -> str:
             # Replicates JS JSON.stringify() character formatting (no spaces)
@@ -963,19 +963,19 @@ class SenecLocal:
     async def _request_senec_lala(self, form:dict, part_count:int):
         try:
             async with self.lala_session.post(self.url, json=form, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
-                _LOGGER.debug(f"_request_senec_lala() form-part[{part_count}] with len: {len(json.dumps(form, separators=(',', ':')))} from '{self.url}' - with headers: {res.request_info.headers}")
+                _LOGGER.debug(f"[LAN] _request_senec_lala() form-part[{part_count}] with len: {len(json.dumps(form, separators=(',', ':')))} from '{self.url}' - with headers: {res.request_info.headers}")
                 try:
                     res.raise_for_status()
                     return await res.json()
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"_request_senec_lala(): JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"[LAN] _request_senec_lala(): JSONDecodeError while 'await res.json()' {exc}")
                 except Exception as err:
-                    _LOGGER.warning(f"_request_senec_lala(): read_senec_lala caused: {err}")
+                    _LOGGER.warning(f"[LAN] _request_senec_lala(): read_senec_lala caused: {err}")
 
         except asyncio.TimeoutError:
-            _LOGGER.info(f"_request_senec_lala(): TimeoutError (20sec) while posting '{form}'")
+            _LOGGER.info(f"[LAN] _request_senec_lala(): TimeoutError (20sec) while posting '{form}'")
         except BaseException as e:
-            _LOGGER.info(f"_request_senec_lala() caused: {type(e).__name__} - {e}")
+            _LOGGER.info(f"[LAN] _request_senec_lala() caused: {type(e).__name__} - {e}")
 
     async def _read_all_fields(self) -> []:
         form = {}
@@ -989,11 +989,11 @@ class SenecLocal:
                     for section in obj["DEBUG"]["SECTIONS"]:
                         form[section] = {}
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"_read_all_fields(): P1 JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"[LAN] _read_all_fields(): P1 JSONDecodeError while 'await res.json()' {exc}")
         except asyncio.TimeoutError:
-            _LOGGER.info(f"_read_all_fields(): P1 TimeoutError (20sec) while posting '{post_data}'")
+            _LOGGER.info(f"[LAN] _read_all_fields(): P1 TimeoutError (20sec) while posting '{post_data}'")
         except BaseException as exe:
-            _LOGGER.warning(f"_read_all_fields P1 caused {type(exe).__name__} - {exe}")
+            _LOGGER.warning(f"[LAN] _read_all_fields P1 caused {type(exe).__name__} - {exe}")
 
         if len(form) > 0:
             try:
@@ -1003,11 +1003,11 @@ class SenecLocal:
                         data = await res.json()
                         return parse(data)
                     except JSONDecodeError as exc:
-                        _LOGGER.warning(f"_read_all_fields(): P2 JSONDecodeError while 'await res.json()' {exc}")
+                        _LOGGER.warning(f"[LAN] _read_all_fields(): P2 JSONDecodeError while 'await res.json()' {exc}")
             except asyncio.TimeoutError:
-                _LOGGER.info(f"_read_all_fields(): P2 TimeoutError (20sec) while posting '{form}'")
+                _LOGGER.info(f"[LAN] _read_all_fields(): P2 TimeoutError (20sec) while posting '{form}'")
             except BaseException as exe:
-                _LOGGER.warning(f"_read_all_fields P2 caused {type(exe).__name__} - {exe}")
+                _LOGGER.warning(f"[LAN] _read_all_fields P2 caused {type(exe).__name__} - {exe}")
 
         return None
 
@@ -1018,23 +1018,23 @@ class SenecLocal:
         await self._write_senec_v31(data)
 
     async def _write_senec_v31(self, data):
-        _LOGGER.debug(f"_write_senec_v31(): posting data (raw): {util.mask_map(data)}")
+        _LOGGER.debug(f"[LAN] _write_senec_v31(): posting data (raw): {util.mask_map(data)}")
         try:
             async with self.lala_session.post(self.url, json=data, ssl=False, headers=self._lalaHeaders, timeout=self._timeout) as res:
                 try:
                     res.raise_for_status()
                     self._raw_post = parse(await res.json())
-                    _LOGGER.debug(f"_write_senec_v31(): post result (already parsed): {util.mask_map(self._raw_post)}")
+                    _LOGGER.debug(f"[LAN] _write_senec_v31(): post result (already parsed): {util.mask_map(self._raw_post)}")
                     return self._raw_post
                 except Exception as err:
-                    _LOGGER.warning(f"_write_senec_v31(): Error while 'posting data' {err}")
+                    _LOGGER.warning(f"[LAN] _write_senec_v31(): Error while 'posting data' {err}")
         except asyncio.TimeoutError:
-            _LOGGER.info(f"_write_senec_v31(): TimeoutError (20sec) while posting '{util.mask_map(data)}'")
+            _LOGGER.info(f"[LAN] _write_senec_v31(): TimeoutError (20sec) while posting '{util.mask_map(data)}'")
         except BaseException as e:
-            _LOGGER.info(f"_write_senec_v31() caused: {type(e).__name__} - {e}")
+            _LOGGER.info(f"[LAN] _write_senec_v31() caused: {type(e).__name__} - {e}")
 
     async def _senec_v31_post_plain_form_data(self, form_data_str:str):
-        _LOGGER.debug(f"posting x-www-form-urlencoded: {form_data_str}")
+        _LOGGER.debug(f"[LAN] posting x-www-form-urlencoded: {form_data_str}")
         special_hdrs = {
             "Host": self._host,
             "Origin": self._host_and_schema,
@@ -1054,18 +1054,18 @@ class SenecLocal:
 
         try:
             async with self.lala_session.post(self.url, data=form_data_str, headers=special_hdrs, ssl=False, chunked=None, timeout=self._timeout) as res:
-                _LOGGER.debug(f"senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
+                _LOGGER.debug(f"[LAN] senec_v31_post_plain_form_data() '{self.url}' with headers: {res.request_info.headers}")
                 try:
                     res.raise_for_status()
                     self._raw_post = parse(await res.json())
-                    _LOGGER.debug(f"senec_v31_post_plain_form_data(): post result (already parsed): {util.mask_map(self._raw_post)}")
+                    _LOGGER.debug(f"[LAN] senec_v31_post_plain_form_data(): post result (already parsed): {util.mask_map(self._raw_post)}")
                     return self._raw_post
                 except Exception as err:
-                    _LOGGER.warning(f"senec_v31_post_plain_form_data(): Error while 'posting data' {err}")
+                    _LOGGER.warning(f"[LAN] senec_v31_post_plain_form_data(): Error while 'posting data' {err}")
         except asyncio.TimeoutError:
-            _LOGGER.info(f"senec_v31_post_plain_form_data(): TimeoutError (20sec) while posting '{form_data_str}'")
+            _LOGGER.info(f"[LAN] senec_v31_post_plain_form_data(): TimeoutError (20sec) while posting '{form_data_str}'")
         except BaseException as e:
-            _LOGGER.info(f"senec_v31_post_plain_form_data() caused: {type(e).__name__} - {e}")
+            _LOGGER.info(f"[LAN] senec_v31_post_plain_form_data() caused: {type(e).__name__} - {e}")
 
 
     ###################################
@@ -1108,7 +1108,7 @@ class SenecLocal:
                 await self._write_senec_v31(data)
                 self._last_system_reset = time()
             else:
-                _LOGGER.debug(f"Last Reset too recent…")
+                _LOGGER.debug(f"[LAN] Last Reset too recent…")
 
     ###################################
     # CORE-SWITCHES
@@ -1160,7 +1160,7 @@ class SenecLocal:
             await asyncio.sleep(1)
             await self._read_senec_lala()
         else:
-            _LOGGER.debug(f"Safe Charge already in requested state… requested: {value}  is: {data[SENEC_SECTION_ENERGY]}")
+            _LOGGER.debug(f"[LAN] Safe Charge already in requested state… requested: {value}  is: {data[SENEC_SECTION_ENERGY]}")
 
     @property
     def li_storage_mode(self) -> bool:
@@ -1201,7 +1201,7 @@ class SenecLocal:
     #             await self.write_senec_v31(data)
     #             await self._senec_local_access_stop()
     #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not OFF")
+    #             _LOGGER.debug(f"[LAN] ENERGY GUI_CAP_TEST_STATE unknown or not OFF")
     #
     # async def trigger_cap_test_stop(self):
     #     if await self.is_2408_or_higher_async():
@@ -1213,7 +1213,7 @@ class SenecLocal:
     #             await self.write_senec_v31(data)
     #             await self._senec_local_access_stop()
     #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_CAP_TEST_STATE unknown or not ON")
+    #             _LOGGER.debug(f"[LAN] ENERGY GUI_CAP_TEST_STATE unknown or not ON")
 
     # trigger_load_test_start & trigger_load_test_stop
     # are not really working…
@@ -1231,7 +1231,7 @@ class SenecLocal:
     #             # as soon as we will logout, the test_load will be cancled…
     #             #await self.senec_local_access_stop()
     #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
+    #             _LOGGER.debug(f"[LAN] ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
     #
     # async def trigger_load_test_stop(self):
     #     if await self.is_2408_or_higher_async():
@@ -1247,7 +1247,7 @@ class SenecLocal:
     #             # as soon as we will logout, the test_load will be cancled…
     #             #await self.senec_local_access_stop()
     #         else:
-    #             _LOGGER.debug(f"ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
+    #             _LOGGER.debug(f"[LAN] ENERGY GUI_TEST_CHARGE_STAT unknown or not OFF")
 
 
     ###################################
@@ -1263,7 +1263,7 @@ class SenecLocal:
     @property
     def is_is_user_level_two_or_higher(self) -> bool:
         if not self._QUERY_USER_LEVEL:
-            _LOGGER.warning(f"USER_LEVEL will not be requested")
+            _LOGGER.warning(f"[LAN] USER_LEVEL will not be requested")
 
         if SENEC_SECTION_LOG in self._raw and "USER_LEVEL" in self._raw[SENEC_SECTION_LOG]:
             val = self._raw[SENEC_SECTION_LOG]["USER_LEVEL"]
@@ -1289,7 +1289,7 @@ class SenecLocal:
                 await self._write_senec_v31(data)
                 await asyncio.sleep(2)
                 await self.update()
-                _LOGGER.debug(f"LoginOk? {self._raw[SENEC_SECTION_LOG]}")
+                _LOGGER.debug(f"[LAN] LoginOk? {self._raw[SENEC_SECTION_LOG]}")
 
         self._QUERY_USER_LEVEL = False
 
@@ -2756,15 +2756,15 @@ class SenecLocal:
             # WE must check if the lala ALLOW_INTERCHARGE is already in the state,
             # that will be requested to set!!!
             if value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 1:
-                _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN ON, since it's already ON")
+                _LOGGER.debug(f"[LAN] switch_wallbox_allow_intercharge(): skipp TURN ON, since it's already ON")
             elif not value and self._raw[SENEC_SECTION_WALLBOX]["ALLOW_INTERCHARGE"] == 0:
-                _LOGGER.debug(f"switch_wallbox_allow_intercharge(): skipp TURN OFF, since it's already OFF")
+                _LOGGER.debug(f"[LAN] switch_wallbox_allow_intercharge(): skipp TURN OFF, since it's already OFF")
             else:
                 # BEFORE we can/should switch 'allow_intercharge' we MUST check
                 # if ONE of the active WB's are set to the MODE FAST/FASTWITHBATTERY?!
                 if sync and self._bridge_to_senec_online is not None:
                     if not self._bridge_to_senec_online.app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode():
-                        _LOGGER.warning(f"switch_wallbox_allow_intercharge(): can NOT switch 'allow_intercharge' {value}, since no WB's is in FAST mode!")
+                        _LOGGER.warning(f"[LAN] switch_wallbox_allow_intercharge(): can NOT switch 'allow_intercharge' {value}, since no WB's is in FAST mode!")
                         return False
 
                 # please note this is not ARRAY data - so we code it here again…
@@ -2974,12 +2974,12 @@ class SenecLocal:
                     # DEACTIVATED SYNC CAUSE OF
                     # https://github.com/marq24/ha-senec-v3/issues/234
                     # await self._bridge_to_senec_online.app_set_wallbox_icmax(value_to_set=value, wallbox_num=(pos + 1), sync=False)
-                    _LOGGER.info(f"set_nva_wallbox_set_icmax(): SKIP OnlineSYNC for value: {value} - {(pos + 1)} DEACTIVATED SYNC CAUSE OF https://github.com/marq24/ha-senec-v3/issues/234")
+                    _LOGGER.info(f"[LAN] set_nva_wallbox_set_icmax(): SKIP OnlineSYNC for value: {value} - {(pos + 1)} DEACTIVATED SYNC CAUSE OF https://github.com/marq24/ha-senec-v3/issues/234")
             else:
-                _LOGGER.warning(f"No data for '{SENEC_SECTION_WALLBOX}': 'SET_ICMAX' and/or 'MIN_CHARGING_CURRENT' in self._raw!"
+                _LOGGER.warning(f"[LAN] No data for '{SENEC_SECTION_WALLBOX}': 'SET_ICMAX' and/or 'MIN_CHARGING_CURRENT' in self._raw!"
                                 f" -> {self._raw.keys()} -> {"NO 'SENEC_SECTION_WALLBOX' PRESENT" if SENEC_SECTION_WALLBOX not in self._raw else self._raw[SENEC_SECTION_WALLBOX].keys()}")
         else:
-            _LOGGER.debug(f"Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
+            _LOGGER.debug(f"[LAN] Ignoring 'set_wallbox_{(pos + 1)}_set_icmax' to '{value}' since current mode is: {local_mode}")
 
     @property
     def wallbox_set_idefault(self) -> [float]:
@@ -3107,12 +3107,12 @@ class SenecLocal:
         if len(post_data) > 0:
             await self._write(post_data)
         else:
-            _LOGGER.warning(f"No data to write for '{section_key1}': '{value_key1}' and/or '{section_key2}': '{value_key2}'")
+            _LOGGER.warning(f"[LAN] No data to write for '{section_key1}': '{value_key1}' and/or '{section_key2}': '{value_key2}'")
 
     def prepare_post_data(self, post_data: dict, array_length: int, pos: int, section_key: str, value_key: str,
                           data_type: str, value):
         if section_key not in self._raw or value_key not in self._raw[section_key]:
-            _LOGGER.warning(f"Section '{section_key}' or value key '{value_key}' not found in raw data: {self._raw.keys()}")
+            _LOGGER.warning(f"[LAN] Section '{section_key}' or value key '{value_key}' not found in raw data: {self._raw.keys()}")
         else:
             self._OVERWRITES[section_key + "_" + value_key].update({"VALUE": self._raw[section_key][value_key]})
             self._OVERWRITES[section_key + "_" + value_key]["VALUE"][pos] = value
@@ -3142,7 +3142,7 @@ class InverterLocal:
 
     def __init__(self, host, inv_session, integ_version: str = None):
         self._integration_version = integ_version if integ_version is not None else "UNKNOWN"
-        _LOGGER.info(f"__init__() -> (re)starting Inverter integration v{self._integration_version} for host: '{host}'")
+        _LOGGER.info(f"[INV] __init__() -> (re)starting Inverter integration v{self._integration_version} for host: '{host}'")
         self.host = host
         self.inv_session: aiohttp.websession = inv_session
         self.url1 = f"http://{host}/all.xml"
@@ -3228,7 +3228,7 @@ class InverterLocal:
         try:
             await self.read_inverter()
         except ClientConnectionError as exc:
-            _LOGGER.info(f"{exc}")
+            _LOGGER.info(f"[INV] {exc}")
             if retry:
                 await asyncio.sleep(5)
                 await self.read_inverter_with_retry(retry=False)
@@ -3496,7 +3496,7 @@ def app_has_dict_timeseries_with_values(a_dict:dict, ts_key_name:str="timeSeries
             len(a_dict[ts_key_name]) == 0 or
             "measurements" not in a_dict[ts_key_name][0] or
             "values" not in a_dict[ts_key_name][0]["measurements"]):
-        _LOGGER.debug(f"Data '{a_dict}' does not contain the expected structure for timeseries measurements.")
+        _LOGGER.debug(f"app_has_dict_timeseries_with_values(): Data '{a_dict}' does not contain the expected structure for timeseries measurements.")
         return False
     return True
 
@@ -3579,9 +3579,9 @@ class SenecOnline:
         self._config_entry_serial_number = config_entry_serial_number
 
         if options is not None:
-            _LOGGER.info(f"__init__() -> (re)starting SenecOnline v{self._integration_version} for user: '{util.mask_string(user)}' with options: {options}")
+            _LOGGER.info(f"[WEB] __init__() -> (re)starting SenecOnline v{self._integration_version} for user: '{util.mask_string(user)}' with options: {options}")
         else:
-            _LOGGER.info(f"__init__() -> (re)starting SenecOnline v{self._integration_version} for user: '{util.mask_string(user)}' without options")
+            _LOGGER.info(f"[WEB] __init__() -> (re)starting SenecOnline v{self._integration_version} for user: '{util.mask_string(user)}' without options")
 
         if options is not None and QUERY_WALLBOX_KEY in options:
             self._QUERY_WALLBOX = options[QUERY_WALLBOX_KEY]
@@ -3651,7 +3651,7 @@ class SenecOnline:
                 if len(pyotp.TOTP(totp).now()) != 6:
                     raise ValueError("Invalid TOTP secret length")
             except BaseException as exc:
-                _LOGGER.warning(f"Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc).__name__} - {exc}")
+                _LOGGER.warning(f"[WEB] Invalid TOTP secret: {util.mask_string(totp)} - please check your configuration! - {type(exc).__name__} - {exc}")
                 totp = None
                 raise ReConfigurationRequired(exc)
 
@@ -3860,9 +3860,9 @@ class SenecOnline:
 
         self._bridge_to_senec_local = None
         if self.web_session is not None:
-            _LOGGER.debug(f"SenecOnline initialized SUCCESSFULLY")
+            _LOGGER.debug(f"[WEB] SenecOnline initialized SUCCESSFULLY")
         else:
-            _LOGGER.debug(f"SenecOnline initialized [RAW - no websession]")
+            _LOGGER.debug(f"[WEB] SenecOnline initialized [RAW - no websession]")
 
     @property
     def is_app_master_plant_id_none(self):
@@ -3870,7 +3870,7 @@ class SenecOnline:
 
     def init_config_entry_serial_number(self, config_entry_serial_number:str):
         if config_entry_serial_number is None:
-            _LOGGER.warning(f"init_config_entry_serial_number() CAN'T BE CALLED WITH NONE as 'config_entry_serial_number'")
+            _LOGGER.warning(f"[WEB] init_config_entry_serial_number() CAN'T BE CALLED WITH NONE as 'config_entry_serial_number'")
             return
 
         self._config_entry_serial_number = config_entry_serial_number
@@ -3883,14 +3883,14 @@ class SenecOnline:
 
     def set_senec_local_instance(self, a_senec_local):
         if a_senec_local is not None:
-            _LOGGER.info(f"set_senec_local_instance(): SIBLING: SenecOnline: bound a instance of SenecLocal - BRIDGE from ONLINE to LOCAL is establish!")
+            _LOGGER.info(f"[WEB] set_senec_local_instance(): SIBLING: SenecOnline: bound a instance of SenecLocal - BRIDGE from ONLINE to LOCAL is establish!")
             self._bridge_to_senec_local = a_senec_local
             # ok local-polling (lala.cgi) is already existing…
             if self._bridge_to_senec_local._QUERY_WALLBOX_APPAPI:
                 self._QUERY_WALLBOX = True
-                _LOGGER.info("set_senec_local_instance(): APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
+                _LOGGER.info(f"[WEB] set_senec_local_instance(): APP-API: will query WALLBOX data (cause 'lala_cgi._QUERY_WALLBOX_APPAPI' is True)")
         else:
-            _LOGGER.info(f"set_senec_local_instance(): SIBLING: SenecOnline: remove reference to SenecLocal - BRIDGE from ONLINE to LOCAL is destroyed!")
+            _LOGGER.info(f"[WEB] set_senec_local_instance(): SIBLING: SenecOnline: remove reference to SenecLocal - BRIDGE from ONLINE to LOCAL is destroyed!")
             self._bridge_to_senec_local = None
 
     # async def _rename_token_file_if_needed(self, user:str):
@@ -3903,16 +3903,16 @@ class SenecOnline:
     #     try:
     #         # Check if the legacy file exists
     #         if os.path.isfile(stored_tokens_location_legacy):
-    #             _LOGGER.debug(f"Found legacy token at {stored_tokens_location_legacy}, moving to {self._app_stored_tokens_location}")
+    #             _LOGGER.debug(f"[WEB] Found legacy token at {stored_tokens_location_legacy}, moving to {self._app_stored_tokens_location}")
     #
     #             # Move the file (in executor to avoid blocking)
     #             await asyncio.get_running_loop().run_in_executor(None, lambda: os.rename(stored_tokens_location_legacy, self._app_stored_tokens_location))
-    #             _LOGGER.debug(f"Successfully moved token file to new location")
+    #             _LOGGER.debug(f"[WEB] Successfully moved token file to new location")
     #         else:
-    #             _LOGGER.debug(f"No legacy token file found at {stored_tokens_location_legacy}, nothing to move")
+    #             _LOGGER.debug(f"[WEB] No legacy token file found at {stored_tokens_location_legacy}, nothing to move")
     #
     #     except Exception as e:
-    #         _LOGGER.warning(f"Failed to move token file: {type(e).__name__} - {e}")
+    #         _LOGGER.warning(f"[WEB] Failed to move token file: {type(e).__name__} - {e}")
 
     async def _purge_old_token_files(self):
         if self._storage_path is not None:
@@ -3925,7 +3925,7 @@ class SenecOnline:
                 await asyncio.get_running_loop().run_in_executor(None, self._purge_old_token_files_int, stored_tokens_location)
 
         except Exception as e:
-            _LOGGER.warning(f"Failed to delete orphan token files: {type(e).__name__} - {e}")
+            _LOGGER.warning(f"[WEB] Failed to delete orphan token files: {type(e).__name__} - {e}")
 
     def _purge_old_token_files_int(self, stored_tokens_location):
         try:
@@ -3935,11 +3935,11 @@ class SenecOnline:
                 if "_µ@µ" not in str(a_file) and os.path.isfile(os.path.join(stored_tokens_location, a_file))
             ]
             for b_file in files_to_delete:
-                _LOGGER.info(f"Found legacy token '{os.path.basename(b_file)}' at {stored_tokens_location}")
+                _LOGGER.info(f"[WEB] Found legacy token '{os.path.basename(b_file)}' at {stored_tokens_location}")
                 os.remove(b_file)
 
         except Exception as e:
-            _LOGGER.warning(f"Failed to delete orphan token files (_int): {type(e).__name__} - {e}")
+            _LOGGER.warning(f"[WEB] Failed to delete orphan token files (_int): {type(e).__name__} - {e}")
 
     def _init_user_agents(self):
         self.DEFAULT_USER_AGENT= f"SENEC.Home V2.x/V3/V4 Integration/{self._integration_version} (+https://github.com/marq24/ha-senec-v3)"
@@ -4069,9 +4069,9 @@ class SenecOnline:
                                 "case": a_entry.get("caseNumber", "CASENUMBER"),
                                 "serial": serial
                             }
-                            _LOGGER.info(f"get_all_systems(): Skipping already configured system with serial {serial} - since it is already in the 'already_configured_lc_serials' list {already_configured_lc_serials}")
+                            _LOGGER.info(f"[WEB] get_all_systems(): Skipping already configured system with serial {serial} - since it is already in the 'already_configured_lc_serials' list {already_configured_lc_serials}")
         else:
-            _LOGGER.debug(f"get_all_systems(): self._app_is_authenticated is {self._app_is_authenticated}")
+            _LOGGER.debug(f"[WEB] get_all_systems(): self._app_is_authenticated is {self._app_is_authenticated}")
 
         return systems, already_in_use_systems
 
@@ -4088,12 +4088,12 @@ class SenecOnline:
 
             self._LAST_UPDATE_TS = a_time
         else:
-            _LOGGER.debug(f"update(): SKIPP UPDATE REQUEST - last update was at {strftime('%Y-%m-%d %H:%M:%S', localtime(self._LAST_UPDATE_TS))} and we are still within the update interval of '{self._UPDATE_INTERVAL}' [{UPDATE_INTERVALS[self._UPDATE_INTERVAL]} seconds]")
+            _LOGGER.debug(f"[WEB] update(): SKIPP UPDATE REQUEST - last update was at {strftime('%Y-%m-%d %H:%M:%S', localtime(self._LAST_UPDATE_TS))} and we are still within the update interval of '{self._UPDATE_INTERVAL}' [{UPDATE_INTERVALS[self._UPDATE_INTERVAL]} seconds]")
 
     async def app_update(self):
         try:
             if self._app_is_authenticated:
-                _LOGGER.info("***** app_update(self) ********")
+                _LOGGER.info(f"[WEB] ***** app_update(self) ********")
                 if self._QUERY_SYSTEM_DETAILS or self._app_master_plant_number_must_be_verified_after_init:
                     # 60min * 60 sec = 3600 sec
                     if self._QUERY_SYSTEM_DETAILS_TS + 3595 < time():
@@ -4156,22 +4156,22 @@ class SenecOnline:
                     self._app_login_backoff_secs = min(self._app_login_backoff_secs * 2, 1800)
                     await self._initial_token_request_01_start()
                 else:
-                    _LOGGER.debug(f"app_update(): not authenticated - next login attempt not before {strftime('%Y-%m-%d %H:%M:%S', localtime(self._app_next_login_attempt_ts))}")
+                    _LOGGER.debug(f"[WEB] app_update(): not authenticated - next login attempt not before {strftime('%Y-%m-%d %H:%M:%S', localtime(self._app_next_login_attempt_ts))}")
 
         except BaseException as exc:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
-            _LOGGER.warning(f"app_update() - Exception: {type(exc).__name__} - {exc} -> stack trace:\n{stack_trace_str}")
+            _LOGGER.warning(f"[WEB] app_update() - Exception: {type(exc).__name__} - {exc} -> stack trace:\n{stack_trace_str}")
         return False
 
     async def web_update(self):
         if self.web_totp_required:
-            _LOGGER.info("***** web_update(self) ********")
+            _LOGGER.info(f"[WEB] ***** web_update(self) ********")
             return
 
         try:
             if self._web_is_authenticated:
-                _LOGGER.info("***** web_update(self) ********")
+                _LOGGER.info(f"[WEB] ***** web_update(self) ********")
                 await self.web_update_now()
                 # update totals only every 20 minutes
                 if self._QUERY_TOTALS_TS + 1200 < time():
@@ -4201,7 +4201,7 @@ class SenecOnline:
         except BaseException as exc:
             stack_trace = traceback.format_stack()
             stack_trace_str = ''.join(stack_trace[:-1])  # Exclude the call to this function
-            _LOGGER.warning(f"web_update() - Exception: {type(exc).__name__} - {exc} -> stack trace:\n{stack_trace_str}")
+            _LOGGER.warning(f"[WEB] web_update() - Exception: {type(exc).__name__} - {exc} -> stack trace:\n{stack_trace_str}")
 
 
     """SENEC-APP from here"""
@@ -4219,15 +4219,15 @@ class SenecOnline:
             await self._initial_token_request_01_start()
         else:
             if is_integration_setup_phase:
-                _LOGGER.debug(f"app_authenticate(): app_is_authenticated: {self._app_is_authenticated} - We are in integration setup (no further actions needed)")
+                _LOGGER.debug(f"[WEB] app_authenticate(): app_is_authenticated: {self._app_is_authenticated} - We are in integration setup (no further actions needed)")
             else:
                 if self.is_app_master_plant_id_none:
-                    _LOGGER.debug(f"app_authenticate(): 'app_master_plant_id' is None - calling app_get_master_plant_id()")
+                    _LOGGER.debug(f"[WEB] app_authenticate(): 'app_master_plant_id' is None - calling app_get_master_plant_id()")
                     await self.app_get_master_plant_id()
                     if not self.is_app_master_plant_id_none:
                         self._app_master_plant_number_must_be_verified_after_init = False
 
-                _LOGGER.debug(f"app_authenticate(): app already authenticated [app_serial_number: {util.mask_string(self._app_serial_number)} - app_master_plant_id: {self._app_master_plant_id}]")
+                _LOGGER.debug(f"[WEB] app_authenticate(): app already authenticated [app_serial_number: {util.mask_string(self._app_serial_number)} - app_master_plant_id: {self._app_master_plant_id}]")
 
     @staticmethod
     def _format_timedelta(td):
@@ -4259,7 +4259,7 @@ class SenecOnline:
     """Check if we can write to the file system - should be called from the setup UI"""
     @staticmethod
     def check_general_fs_access(a_storage_path:Path) -> bool:
-        _LOGGER.debug(f"check_general_fs_access(): storage_path is: '{a_storage_path}'")
+        _LOGGER.debug(f"[WEB] check_general_fs_access(): storage_path is: '{a_storage_path}'")
         can_create_file = False
         if a_storage_path is not None:
             testfile = str(a_storage_path.joinpath(DOMAIN, "write_test@file.txt"))
@@ -4271,18 +4271,18 @@ class SenecOnline:
             try:
                 os.makedirs(directory, exist_ok=True)
             except OSError as exc:
-                _LOGGER.warning(f"check_general_fs_access(): could not create directory '{directory}': {type(exc).__name__} - {exc}")
+                _LOGGER.warning(f"[WEB] check_general_fs_access(): could not create directory '{directory}': {type(exc).__name__} - {exc}")
 
         if os.path.exists(directory):
             try:
                 with open(testfile, "w", encoding="utf-8") as outfile:
                     json.dump({"test": "file"}, outfile)
             except OSError as exc:
-                _LOGGER.warning(f"check_general_fs_access(): could not create test file '{testfile}': {type(exc).__name__} - {exc}")
+                _LOGGER.warning(f"[WEB] check_general_fs_access(): could not create test file '{testfile}': {type(exc).__name__} - {exc}")
 
             if os.path.exists(testfile):
                 can_create_file = True
-                _LOGGER.debug(f"check_general_fs_access(): successfully created test file: '{testfile}'")
+                _LOGGER.debug(f"[WEB] check_general_fs_access(): successfully created test file: '{testfile}'")
                 os.remove(testfile)
 
         return can_create_file
@@ -4344,7 +4344,7 @@ class SenecOnline:
 
         async with self.web_session.get(a_url, headers=req_headers) as res:
             try:
-                _LOGGER.debug(f"initial_token_request_01_start(): requesting: {a_url}")
+                _LOGGER.debug(f"[WEB] initial_token_request_01_start(): requesting: {a_url}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     html_content = await res.text()
@@ -4362,11 +4362,11 @@ class SenecOnline:
                             }
                             await self._initial_token_request_02_post_login_substep(form_action_url=the_form_action_url, post_data=login_data)
                     else:
-                        _LOGGER.info(f"initial_token_request_01_start(): did not find the expected form action URL in the response HTML! {html_content}")
+                        _LOGGER.info(f"[WEB] initial_token_request_01_start(): did not find the expected form action URL in the response HTML! {html_content}")
                 else:
-                    _LOGGER.info(f"initial_token_request_01_start(): unexpected [200] response code: {res.status} - {res}")
+                    _LOGGER.info(f"[WEB] initial_token_request_01_start(): unexpected [200] response code: {res.status} - {res}")
             except BaseException as ex:
-                _LOGGER.debug(f"initial_token_request_01_start(): {type(ex).__name__} - {ex}")
+                _LOGGER.debug(f"[WEB] initial_token_request_01_start(): {type(ex).__name__} - {ex}")
 
     async def _initial_token_request_02_post_login_substep(self, form_action_url, post_data:dict):
         req_headers = self._default_app_web_headers.copy()
@@ -4377,7 +4377,7 @@ class SenecOnline:
 
         async with self.web_session.post(form_action_url, data=post_data, allow_redirects=False, headers=req_headers) as res:
             try:
-                _LOGGER.debug(f"_initial_token_request_02_post_login_substep(): requesting: {form_action_url}")
+                _LOGGER.debug(f"[WEB] _initial_token_request_02_post_login_substep(): requesting: {form_action_url}")
                 res.raise_for_status()
                 # checking if OTP code must be submitted
                 if res.status in [200, 201, 202, 204, 205]:
@@ -4401,12 +4401,12 @@ class SenecOnline:
                     if location:
                         await self._initial_token_request_04_get_token(location)
                     else:
-                        _LOGGER.info(f"_initial_token_request_02_post_login_substep(): no 'Location' in response Header")
+                        _LOGGER.info(f"[WEB] _initial_token_request_02_post_login_substep(): no 'Location' in response Header")
                 else:
-                    _LOGGER.info(f"_initial_token_request_02_post_login_substep(): unexpected [302] response code: {res.status} - {res}")
+                    _LOGGER.info(f"[WEB] _initial_token_request_02_post_login_substep(): unexpected [302] response code: {res.status} - {res}")
 
             except BaseException as ex:
-                _LOGGER.info(f"_initial_token_request_02_post_login_substep(): {type(ex).__name__} - {ex}")
+                _LOGGER.info(f"[WEB] _initial_token_request_02_post_login_substep(): {type(ex).__name__} - {ex}")
 
     async def _initial_token_request_03_post_login(self, accept_http_200:bool, form_action_url, post_data:dict):
         req_headers = self._default_app_web_headers.copy()
@@ -4418,9 +4418,9 @@ class SenecOnline:
         async with self.web_session.post(form_action_url, data=post_data, allow_redirects=False, headers=req_headers) as res:
             try:
                 if accept_http_200:
-                    _LOGGER.debug(f"_initial_token_request_03_post_login(): requesting: {form_action_url}")
+                    _LOGGER.debug(f"[WEB] _initial_token_request_03_post_login(): requesting: {form_action_url}")
                 else:
-                    _LOGGER.debug(f"_initial_token_request_03_post_login(): SEND OTP CODE requesting: {form_action_url}")
+                    _LOGGER.debug(f"[WEB] _initial_token_request_03_post_login(): SEND OTP CODE requesting: {form_action_url}")
 
                 res.raise_for_status()
                 # checking if OTP code must be submitted
@@ -4432,22 +4432,22 @@ class SenecOnline:
                             otp_data = {"otp": pyotp.TOTP(self._SENEC_TOTP_SECRET).now()}
                             await self._initial_token_request_03_post_login(accept_http_200=False, form_action_url=the_form_action_url, post_data=otp_data)
                         else:
-                            _LOGGER.warning(f"_initial_token_request_03_post_login(): TOTP Code required, but not configured/provided - need RECONFIG!")
+                            _LOGGER.warning(f"[WEB] _initial_token_request_03_post_login(): TOTP Code required, but not configured/provided - need RECONFIG!")
                             raise ReConfigurationRequired("TOTP Code required, but not configured/provided - need RECONFIG")
                     else:
-                        _LOGGER.info(f"_initial_token_request_03_post_login(): did not find the expected form action URL in the response HTML! {html_content}")
+                        _LOGGER.info(f"[WEB] _initial_token_request_03_post_login(): did not find the expected form action URL in the response HTML! {html_content}")
 
                 elif res.status == 302:
                     location = res.headers.get("Location")
                     if location:
                         await self._initial_token_request_04_get_token(location)
                     else:
-                        _LOGGER.info(f"_initial_token_request_03_post_login(): no 'Location' in response Header")
+                        _LOGGER.info(f"[WEB] _initial_token_request_03_post_login(): no 'Location' in response Header")
                 else:
-                    _LOGGER.info(f"_initial_token_request_03_post_login(): unexpected [302] response code: {res.status} - {res}")
+                    _LOGGER.info(f"[WEB] _initial_token_request_03_post_login(): unexpected [302] response code: {res.status} - {res}")
 
             except BaseException as ex:
-                _LOGGER.info(f"_initial_token_request_03_post_login(): {type(ex).__name__} - {ex}")
+                _LOGGER.info(f"[WEB] _initial_token_request_03_post_login(): {type(ex).__name__} - {ex}")
 
     async def _initial_token_request_04_get_token(self, redirect):
         if redirect.startswith(self.APP_REDIRECT_KEYCLOAK_URI):
@@ -4460,7 +4460,7 @@ class SenecOnline:
             # iss = params.get('iss', [None])[0]
             # session_state = params.get('session_state', [None])[0]
 
-            _LOGGER.debug(f"_initial_token_request_04_get_token(): got final code: '{util.mask_string(code)}' in redirect URL - going to continue…")
+            _LOGGER.debug(f"[WEB] _initial_token_request_04_get_token(): got final code: '{util.mask_string(code)}' in redirect URL - going to continue…")
 
             req_headers = self._default_app_web_headers.copy()
             req_headers["User-Agent"]   = self.DEFAULT_USER_AGENT if self.USE_DEFAULT_USER_AGENT else self.APP_SSO_USER_AGENT
@@ -4478,22 +4478,22 @@ class SenecOnline:
             # we have to follow the redirect…
             async with self.web_session.post(self.TOKEN_URL, data=post_data, headers=req_headers) as res:
                 try:
-                    _LOGGER.debug(f"_initial_token_request_04_get_token(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
+                    _LOGGER.debug(f"[WEB] _initial_token_request_04_get_token(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         token_data = await res.json()
                         if "access_token" in token_data:
-                            _LOGGER.debug(f"_initial_token_request_04_get_token(): received token data: {util.mask_map(token_data)}")
+                            _LOGGER.debug(f"[WEB] _initial_token_request_04_get_token(): received token data: {util.mask_map(token_data)}")
                             await self._app_on_new_token_data_received(token_data)
                         else:
-                            _LOGGER.info(f"_initial_token_request_04_get_token(): NO access_token in {util.mask_map(token_data)}")
+                            _LOGGER.info(f"[WEB] _initial_token_request_04_get_token(): NO access_token in {util.mask_map(token_data)}")
                     else:
-                        _LOGGER.info(f"_initial_token_request_04_get_token(): unexpected [200] response code: {res.status} - {res}")
+                        _LOGGER.info(f"[WEB] _initial_token_request_04_get_token(): unexpected [200] response code: {res.status} - {res}")
 
                 except BaseException as ex:
-                    _LOGGER.info(f"_initial_token_request_04_get_token(): {type(ex).__name__} - {ex}")
+                    _LOGGER.info(f"[WEB] _initial_token_request_04_get_token(): {type(ex).__name__} - {ex}")
         else:
-            _LOGGER.info(f"_initial_token_request_04_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
+            _LOGGER.info(f"[WEB] _initial_token_request_04_get_token(): redirect does not start with the expected schema '{self.APP_REDIRECT_KEYCLOAK_URI}' -> received: '{redirect}')")
 
     async def _refresh_token_request(self, refresh_token):
         req_headers = self._default_app_web_headers.copy()
@@ -4510,20 +4510,20 @@ class SenecOnline:
         # we have to follow the redirect…
         async with self.web_session.post(self.TOKEN_URL, data=post_data, headers=req_headers) as res:
             try:
-                _LOGGER.debug(f"_refresh_token_request(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
+                _LOGGER.debug(f"[WEB] _refresh_token_request(): requesting: {self.TOKEN_URL} with {util.mask_map(post_data)}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     token_data = await res.json()
                     if "access_token" in token_data:
-                        _LOGGER.debug(f"_refresh_token_request(): received token data: {util.mask_map(token_data)}")
+                        _LOGGER.debug(f"[WEB] _refresh_token_request(): received token data: {util.mask_map(token_data)}")
                         await self._app_on_new_token_data_received(token_data)
                     else:
-                        _LOGGER.info(f"_refresh_token_request(): NO access_token in {util.mask_map(token_data)}")
+                        _LOGGER.info(f"[WEB] _refresh_token_request(): NO access_token in {util.mask_map(token_data)}")
                 else:
-                    _LOGGER.info(f"_refresh_token_request(): unexpected [200] response code: {res.status} - {res}")
+                    _LOGGER.info(f"[WEB] _refresh_token_request(): unexpected [200] response code: {res.status} - {res}")
 
             except BaseException as ex:
-                _LOGGER.info(f"_refresh_token_request(): {type(ex).__name__} - {ex}")
+                _LOGGER.info(f"[WEB] _refresh_token_request(): {type(ex).__name__} - {ex}")
 
 
     #####################
@@ -4532,13 +4532,13 @@ class SenecOnline:
     async def _write_token_to_storage(self, token_dict):
         """Save token to file for reuse"""
         if self._app_stored_tokens_location is None:
-            _LOGGER.info(f"_write_token_to_storage(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
+            _LOGGER.info(f"[WEB] _write_token_to_storage(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
             return
 
         if token_dict is None:
-            _LOGGER.debug(f"_write_token_to_storage() - DELETE")
+            _LOGGER.debug(f"[WEB] _write_token_to_storage() - DELETE")
         else:
-            _LOGGER.debug(f"_write_token_to_storage() - SAVE")
+            _LOGGER.debug(f"[WEB] _write_token_to_storage() - SAVE")
 
         # Check if the parent directory exists
         directory = os.path.dirname(self._app_stored_tokens_location)
@@ -4546,7 +4546,7 @@ class SenecOnline:
             try:
                 await asyncio.get_running_loop().run_in_executor(None, lambda: os.makedirs(directory, exist_ok=True))
             except OSError as exc:
-                _LOGGER.warning(f"_write_token_to_storage(): could not create directory '{directory}': {type(exc).__name__} - {exc}")
+                _LOGGER.warning(f"[WEB] _write_token_to_storage(): could not create directory '{directory}': {type(exc).__name__} - {exc}")
 
         # Write the file in executor
         if os.path.exists(directory):
@@ -4555,40 +4555,40 @@ class SenecOnline:
     def __write_token_int(self, token_dict):
         """Synchronous method to write the token file, called from executor."""
         if self._app_stored_tokens_location is None:
-            _LOGGER.info(f"__write_token_int(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
+            _LOGGER.info(f"[WEB] __write_token_int(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
             return
 
         if token_dict is None:
             try:
                 os.remove(self._app_stored_tokens_location)
-                _LOGGER.debug(f"__write_token_int(): Token file deleted: {self._app_stored_tokens_location}")
+                _LOGGER.debug(f"[WEB] __write_token_int(): Token file deleted: {self._app_stored_tokens_location}")
             except FileNotFoundError:
-                _LOGGER.debug(f"__write_token_int(): Token file not found, nothing to delete: {self._app_stored_tokens_location}")
+                _LOGGER.debug(f"[WEB] __write_token_int(): Token file not found, nothing to delete: {self._app_stored_tokens_location}")
             except OSError as exc:
-                _LOGGER.info(f"__write_token_int(): Error deleting token file: {type(exc).__name__} - {exc}")
+                _LOGGER.info(f"[WEB] __write_token_int(): Error deleting token file: {type(exc).__name__} - {exc}")
         else:
             try:
                 with open(self._app_stored_tokens_location, "w", encoding="utf-8") as outfile:
                     json.dump(token_dict, outfile)
             except OSError as exc:
-                _LOGGER.info(f"__write_token_int(): could not write token file: {type(exc).__name__} - {exc}")
+                _LOGGER.info(f"[WEB] __write_token_int(): could not write token file: {type(exc).__name__} - {exc}")
 
     async def _read_token_from_storage(self):
         """Read saved token from a file"""
-        _LOGGER.debug(f"read_token_from_storage()")
+        _LOGGER.debug(f"[WEB] read_token_from_storage()")
         try:
             # Run blocking file operation in executor
             token_data = await asyncio.get_running_loop().run_in_executor(None, self.__read_token_int)
             return token_data
         except ValueError:
-            _LOGGER.warning(f"read_token_from_storage: 'ValueError' invalidate TOKEN FILE -> mark_re_auth_required()")
+            _LOGGER.warning(f"[WEB] read_token_from_storage: 'ValueError' invalidate TOKEN FILE -> mark_re_auth_required()")
             #self.mark_re_auth_required()
         return None
 
     def __read_token_int(self):
         """Synchronous method to read the token file, called from executor."""
         if self._app_stored_tokens_location is None:
-            _LOGGER.info(f"__read_token_int(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
+            _LOGGER.info(f"[WEB] __read_token_int(): self._app_stored_tokens_location is None - NO-ACCESS-TOKEN-FILE will be SAVED")
             return
 
         if os.path.exists(self._app_stored_tokens_location):
@@ -4641,7 +4641,7 @@ class SenecOnline:
             self._app_token_object = stored_data
             if CONF_APP_TOTAL_DATA not in self._app_token_object:
                 # creating an initalized storage…
-                _LOGGER.debug(f"app_has_token(): no '{CONF_APP_TOTAL_DATA}' in _app_token_object: {util.mask_map(self._app_token_object)} - initializing it")
+                _LOGGER.debug(f"[WEB] app_has_token(): no '{CONF_APP_TOTAL_DATA}' in _app_token_object: {util.mask_map(self._app_token_object)} - initializing it")
                 self._app_token_object[CONF_APP_TOTAL_DATA] = {
                     "years":        self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_YEARS,
                     "years_data":   self._static_TOTAL_SUMS_PREV_YEARS,
@@ -4667,32 +4667,32 @@ class SenecOnline:
                 now = datetime.now(timezone.utc)
                 valid_till = datetime.fromtimestamp(self._app_token_object["expires_at"], tz=timezone.utc)
                 if now < valid_till:
-                    _LOGGER.debug(f"app_verify_token(): access_token is VALID [expires in: {self._format_timedelta(valid_till-now)}]")
+                    _LOGGER.debug(f"[WEB] app_verify_token(): access_token is VALID [expires in: {self._format_timedelta(valid_till-now)}]")
                     self.app_ensure_token_is_set()
                 elif "refresh_expires_at" in self._app_token_object:
                     refresh_valid_till = datetime.fromtimestamp(self._app_token_object["refresh_expires_at"], tz=timezone.utc)
                     if now < refresh_valid_till and "refresh_token" in self._app_token_object:
-                        _LOGGER.debug(f"app_verify_token(): access_token EXPIRED [{self._format_timedelta(now-valid_till)} ago] - refresh_token is VALID [expires in: {self._format_timedelta(refresh_valid_till-now)}]")
+                        _LOGGER.debug(f"[WEB] app_verify_token(): access_token EXPIRED [{self._format_timedelta(now-valid_till)} ago] - refresh_token is VALID [expires in: {self._format_timedelta(refresh_valid_till-now)}]")
                         await self._refresh_token_request(self._app_token_object["refresh_token"])
                     else:
-                        _LOGGER.info(f"app_verify_token(): refresh_token EXPIRED [{self._format_timedelta(now-refresh_valid_till)} ago] - need to re-authenticate")
+                        _LOGGER.info(f"[WEB] app_verify_token(): refresh_token EXPIRED [{self._format_timedelta(now-refresh_valid_till)} ago] - need to re-authenticate")
                         await self._initial_token_request_01_start()
                 else:
-                    _LOGGER.info(f"app_verify_token(): access_token EXPIRED [{self._format_timedelta(now-valid_till)} ago] - no refresh_token available - need to re-authenticate")
+                    _LOGGER.info(f"[WEB] app_verify_token(): access_token EXPIRED [{self._format_timedelta(now-valid_till)} ago] - no refresh_token available - need to re-authenticate")
                     await self._initial_token_request_01_start()
             else:
                 can_token_be_restored = await self.app_has_token()
                 if can_token_be_restored and "expires_at" in self._app_token_object:
                     await self.app_verify_token()
                 else:
-                    _LOGGER.info(f"app_verify_token(): no 'expires_at' in _app_token_object: '{self._app_token_object}' - need to re-authenticate")
+                    _LOGGER.info(f"[WEB] app_verify_token(): no 'expires_at' in _app_token_object: '{self._app_token_object}' - need to re-authenticate")
                     await self._initial_token_request_01_start()
         else:
             can_token_be_restored = await self.app_has_token()
             if can_token_be_restored:
                 await self.app_verify_token()
             else:
-                _LOGGER.info("app_verify_token(): '_app_token_object' is None - need to re-authenticate")
+                _LOGGER.info(f"[WEB] app_verify_token(): '_app_token_object' is None - need to re-authenticate")
                 await self._initial_token_request_01_start()
 
     def app_ensure_token_is_set(self):
@@ -4708,7 +4708,7 @@ class SenecOnline:
                 self._app_data_start_ts     = self._app_token_object[CONF_APP_DATA_START]
                 self._app_data_end_ts       = self._app_token_object[CONF_APP_DATA_END]
         else:
-            _LOGGER.info(f"app_ensure_token(): no valid token data found - need to re-authenticate ?")
+            _LOGGER.info(f"[WEB] app_ensure_token(): no valid token data found - need to re-authenticate ?")
             self._app_token = None
             self._app_is_authenticated  = False
             self._app_master_plant_id   = None
@@ -4724,9 +4724,9 @@ class SenecOnline:
     #####################
     async def _app_do_get_request(self, a_url:str, do_as_patch:bool = False):
         if do_as_patch:
-            _LOGGER.debug(f"***** APP-API: _app_do_get(as_patch)_request(self) ********")
+            _LOGGER.debug(f"[WEB] ***** APP-API: _app_do_get(as_patch)_request(self) ********")
         else:
-            _LOGGER.debug(f"***** APP-API: _app_do_get_request(self) ********")
+            _LOGGER.debug(f"[WEB] ***** APP-API: _app_do_get_request(self) ********")
         await self.app_verify_token()
         if self._app_is_authenticated:
             req_headers = self._default_app_headers.copy()
@@ -4734,59 +4734,59 @@ class SenecOnline:
             try:
                 get_or_patch = getattr(self.web_session, "patch" if do_as_patch else "get")
                 if do_as_patch:
-                    _LOGGER.debug(f"_app_do_get_request(): PATCH: {a_url}")
+                    _LOGGER.debug(f"[WEB] _app_do_get_request(): PATCH: {a_url}")
                 else:
-                    _LOGGER.debug(f"_app_do_get_request(): requesting: {a_url}")
+                    _LOGGER.debug(f"[WEB] _app_do_get_request(): requesting: {a_url}")
 
                 async with get_or_patch(a_url, headers=req_headers) as res:
                     data = None
                     try:
                         res.raise_for_status()
                         if res.status in [204, 205] or res.content_length == 0:
-                            _LOGGER.warning(f"_app_do_get_request(): {a_url} returned an empty response")
+                            _LOGGER.warning(f"[WEB] _app_do_get_request(): {a_url} returned an empty response")
                             return None
 
                         elif res.status in [200, 201, 202]:
                             try:
                                 data = await res.json()
-                                _LOGGER.debug(f"_app_do_get_request(): response: {util.mask_map(data)}")
+                                _LOGGER.debug(f"[WEB] _app_do_get_request(): response: {util.mask_map(data)}")
                                 return data
 
                             except JSONDecodeError as jexc:
-                                _LOGGER.info(f"_app_do_get_request(): JSONDecodeError while 'await res.json()' {jexc}")
+                                _LOGGER.info(f"[WEB] _app_do_get_request(): JSONDecodeError while 'await res.json()' {jexc}")
                             except Exception as exc:
                                 if data is not None:
-                                    _LOGGER.warning(f"_app_do_get_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
+                                    _LOGGER.warning(f"[WEB] _app_do_get_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
                                 else:
-                                    _LOGGER.warning(f"_app_do_get_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
+                                    _LOGGER.warning(f"[WEB] _app_do_get_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
                         else:
-                            _LOGGER.warning(f"_app_do_get_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
+                            _LOGGER.warning(f"[WEB] _app_do_get_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
 
                     except Exception as exc:
                         if res is not None:
                             if res.status == 408:
-                                _LOGGER.info(f"_app_do_get_request(): http status 408 while access {a_url}")
+                                _LOGGER.info(f"[WEB] _app_do_get_request(): http status 408 while access {a_url}")
                             else:
-                                _LOGGER.warning(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
+                                _LOGGER.warning(f"[WEB] _app_do_get_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
-                            _LOGGER.warning(f"_app_do_get_request(): Error while access {a_url}: [Exception: {exc}]")
+                            _LOGGER.warning(f"[WEB] _app_do_get_request(): Error while access {a_url}: [Exception: {exc}]")
 
             except Exception as exc:
-                _LOGGER.warning(f"_app_do_get_request(): Error when try to call {a_url}: [Exception: {exc}]")
+                _LOGGER.warning(f"[WEB] _app_do_get_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
-            _LOGGER.warning(f"_app_do_get_request(): 'self._app_is_authenticated' is False")
+            _LOGGER.warning(f"[WEB] _app_do_get_request(): 'self._app_is_authenticated' is False")
 
     async def _app_do_post_request(self, a_url:str,  post_data: dict, read_response: bool = False):
-        _LOGGER.debug("***** APP-API: _app_do_post_request(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: _app_do_post_request(self) ********")
         await self.app_verify_token()
         if self._app_is_authenticated:
             req_headers = self._default_app_headers.copy()
             req_headers["Authorization"] = self._app_token
             try:
                 if post_data is not None:
-                    _LOGGER.debug(f"_app_do_post_request(): requesting: {a_url} - with post_data: {util.mask_map(post_data)}")
+                    _LOGGER.debug(f"[WEB] _app_do_post_request(): requesting: {a_url} - with post_data: {util.mask_map(post_data)}")
                 else:
-                    _LOGGER.debug(f"_app_do_post_request(): requesting: {a_url} - with EMPTY post_data")
+                    _LOGGER.debug(f"[WEB] _app_do_post_request(): requesting: {a_url} - with EMPTY post_data")
 
                 async with self.web_session.post(a_url, headers=req_headers, json=post_data) as res:
                     try:
@@ -4795,45 +4795,45 @@ class SenecOnline:
                             if read_response:
                                 try:
                                     data = await res.json()
-                                    _LOGGER.debug(f"_app_do_post_request(): response: {util.mask_map(data)}")
+                                    _LOGGER.debug(f"[WEB] _app_do_post_request(): response: {util.mask_map(data)}")
                                     return data
                                 except JSONDecodeError as jexc:
-                                    _LOGGER.info(f"_app_do_post_request(): JSONDecodeError while 'await res.json()' {jexc}")
+                                    _LOGGER.info(f"[WEB] _app_do_post_request(): JSONDecodeError while 'await res.json()' {jexc}")
                                 except Exception as exc:
                                     if data is not None:
-                                        _LOGGER.warning(f"_app_do_post_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
+                                        _LOGGER.warning(f"[WEB] _app_do_post_request(): Error when handling [Response: {res}] - Data: '{util.mask_map(data)}' - [Exception: {exc}]")
                                     else:
-                                        _LOGGER.warning(f"_app_do_post_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
+                                        _LOGGER.warning(f"[WEB] _app_do_post_request(): Error when handling [Response: {res}] - [Exception: {exc}]")
                             else:
                                 if post_data is not None:
-                                    _LOGGER.debug(f"APP-API HTTP:200 for post {util.mask_map(post_data)} to {a_url}")
+                                    _LOGGER.debug(f"[WEB] APP-API HTTP:200 for post {util.mask_map(post_data)} to {a_url}")
                                 else:
-                                    _LOGGER.debug(f"APP-API HTTP:200 for post EMPTY-DATA to {a_url}")
+                                    _LOGGER.debug(f"[WEB] APP-API HTTP:200 for post EMPTY-DATA to {a_url}")
                                 return True
                         else:
-                            _LOGGER.warning(f"_app_do_post_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
+                            _LOGGER.warning(f"[WEB] _app_do_post_request(): unexpected status code [200-205] {res.status} - [Response: {res}]")
 
                     except Exception as exc:
                         if res is not None:
                             if res.status == 408:
-                                _LOGGER.info(f"_app_do_post_request(): http status 408 while access {a_url}")
+                                _LOGGER.info(f"[WEB] _app_do_post_request(): http status 408 while access {a_url}")
                             elif self.is_integration_startup_phase:
-                                _LOGGER.error(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
+                                _LOGGER.error(f"[WEB] _app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                             else:
-                               _LOGGER.info(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
+                               _LOGGER.info(f"[WEB] _app_do_post_request(): Error while access {a_url}: [Exception: {exc}] - [Response: {res}]")
                         else:
-                            _LOGGER.warning(f"_app_do_post_request(): Error while access {a_url}: [Exception: {exc}]")
+                            _LOGGER.warning(f"[WEB] _app_do_post_request(): Error while access {a_url}: [Exception: {exc}]")
             except Exception as exc:
-                _LOGGER.warning(f"_app_do_post_request(): Error when try to call {a_url}: [Exception: {exc}]")
+                _LOGGER.warning(f"[WEB] _app_do_post_request(): Error when try to call {a_url}: [Exception: {exc}]")
         else:
-            _LOGGER.warning(f"_app_do_post_request(): 'self._app_is_authenticated' is False")
+            _LOGGER.warning(f"[WEB] _app_do_post_request(): 'self._app_is_authenticated' is False")
 
         return False
 
     # async def app_post_data(self, a_url: str, post_data: dict, read_response: bool = False) -> bool:
-    #     _LOGGER.debug("***** APP-API: app_post_data(self) ********")
+    #     _LOGGER.debug(f"[WEB] ***** APP-API: app_post_data(self) ********")
     #     if self._app_token is not None:
-    #         _LOGGER.debug(f"APP-API post {post_data} to {a_url}")
+    #         _LOGGER.debug(f"[WEB] APP-API post {post_data} to {a_url}")
     #         try:
     #             headers = {"Authorization": self._app_token, "User-Agent": USER_AGENT}
     #             async with self.web_session.post(url=a_url, headers=headers, json=post_data, ssl=False) as res:
@@ -4842,16 +4842,16 @@ class SenecOnline:
     #                     if read_response:
     #                         try:
     #                             data = await res.json()
-    #                             _LOGGER.debug(f"APP-API HTTP:200 for post {post_data} to {a_url} returned: {data}")
+    #                             _LOGGER.debug(f"[WEB] APP-API HTTP:200 for post {post_data} to {a_url} returned: {data}")
     #                             return True
     #                         except JSONDecodeError as exc:
-    #                             _LOGGER.warning(f"APP-API: JSONDecodeError while 'await res.json()' {exc}")
+    #                             _LOGGER.warning(f"[WEB] APP-API: JSONDecodeError while 'await res.json()' {exc}")
     #                     else:
-    #                         _LOGGER.debug(f"APP-API HTTP:200 for post {post_data} to {a_url}")
+    #                         _LOGGER.debug(f"[WEB] APP-API HTTP:200 for post {post_data} to {a_url}")
     #                         return True
     #
     #                 elif res.status == 500:
-    #                     _LOGGER.info(f"APP-API: Not found {a_url} (http 500)")
+    #                     _LOGGER.info(f"[WEB] APP-API: Not found {a_url} (http 500)")
     #
     #                 else:
     #                     self._app_is_authenticated = False
@@ -4862,18 +4862,18 @@ class SenecOnline:
     #         except Exception as exc:
     #             try:
     #                 if res.status == 500:
-    #                     _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 500]: {exc}")
+    #                     _LOGGER.info(f"[WEB] APP-API: Not found {a_url} [HTTP 500]: {exc}")
     #                 elif res.status == 400:
-    #                     _LOGGER.info(f"APP-API: Not found {a_url} [HTTP 400]: {exc}")
+    #                     _LOGGER.info(f"[WEB] APP-API: Not found {a_url} [HTTP 400]: {exc}")
     #                 elif res.status == 401:
-    #                     _LOGGER.info(f"APP-API: No permission {a_url} [HTTP 401]: {exc}")
+    #                     _LOGGER.info(f"[WEB] APP-API: No permission {a_url} [HTTP 401]: {exc}")
     #                     self._app_is_authenticated = False
     #                     self._app_token = None
     #                     self._app_master_plant_id = None
     #                 else:
-    #                     _LOGGER.warning(f"APP-API: Could not post to {a_url} data: {post_data} causing: {exc}")
+    #                     _LOGGER.warning(f"[WEB] APP-API: Could not post to {a_url} data: {post_data} causing: {exc}")
     #             except NameError:
-    #                 _LOGGER.warning(f"APP-API: NO RES - Could not post to {a_url} data: {post_data} causing: {exc}")
+    #                 _LOGGER.warning(f"[WEB] APP-API: NO RES - Could not post to {a_url} data: {post_data} causing: {exc}")
     #             return False
     #
     #     else:
@@ -4882,32 +4882,32 @@ class SenecOnline:
     #         return False
 
     async def app_get_master_plant_id(self):
-        _LOGGER.debug("***** APP-API: get_master_plant_id(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: get_master_plant_id(self) ********")
 
 
         data = await self._app_do_get_request(self.APP_SYSTEM_LIST)
         if data is not None and isinstance(data, Iterable):
 
             if self._config_entry_serial_number is None or str(self._config_entry_serial_number).lower() == "none":
-                _LOGGER.warning(f"app_get_master_plant_id(): NO serial number in ConfigEntry - please reconfigure the Integration")
+                _LOGGER.warning(f"[WEB] app_get_master_plant_id(): NO serial number in ConfigEntry - please reconfigure the Integration")
                 if len(data) == 1 and "controlUnitNumber" in data[0]:
                     self.init_config_entry_serial_number(data[0]["controlUnitNumber"])
-                    _LOGGER.info(f"app_get_master_plant_id(): NO serial number in ConfigEntry - USING '{util.mask_string(self._config_entry_serial_number)}' as FALLBACK")
+                    _LOGGER.info(f"[WEB] app_get_master_plant_id(): NO serial number in ConfigEntry - USING '{util.mask_string(self._config_entry_serial_number)}' as FALLBACK")
 
             idx = 0
             for a_entry in data:
                 if "controlUnitNumber" in a_entry and a_entry["controlUnitNumber"].lower() == self._config_entry_serial_number.lower():
                     self._app_serial_number = a_entry["controlUnitNumber"]
                     self._app_master_plant_number = idx
-                    _LOGGER.debug(f"app_get_master_plant_id(): set _app_serial_number to {util.mask_string(self._app_serial_number)}")
+                    _LOGGER.debug(f"[WEB] app_get_master_plant_id(): set _app_serial_number to {util.mask_string(self._app_serial_number)}")
 
                     if "id" in a_entry:
                         self._app_master_plant_id = a_entry["id"]
-                        _LOGGER.debug(f"app_get_master_plant_id(): set _app_master_plant_id to {self._app_master_plant_id}")
+                        _LOGGER.debug(f"[WEB] app_get_master_plant_id(): set _app_master_plant_id to {self._app_master_plant_id}")
 
                     if "wallboxIds" in a_entry:
                         self._app_wallbox_num_max = len(a_entry["wallboxIds"])
-                        _LOGGER.debug(f"app_get_master_plant_id(): set _app_wallbox_num_max to {self._app_wallbox_num_max}")
+                        _LOGGER.debug(f"[WEB] app_get_master_plant_id(): set _app_wallbox_num_max to {self._app_wallbox_num_max}")
                     else:
                         self._app_wallbox_num_max = 0
 
@@ -4917,7 +4917,7 @@ class SenecOnline:
                 idx += 1
 
             if self._app_serial_number is None:
-                _LOGGER.warning(f"app_get_master_plant_id() - configured serial number: '{util.mask_string(self._config_entry_serial_number)}' COULD NOT BE FOUND in: {data}")
+                _LOGGER.warning(f"[WEB] app_get_master_plant_id() - configured serial number: '{util.mask_string(self._config_entry_serial_number)}' COULD NOT BE FOUND in: {data}")
                 return
 
             # when we have successfully collected our primary meta-data, then we should also capture the start-end date
@@ -5023,7 +5023,7 @@ class SenecOnline:
         # the 'self.app_get_master_plant_id()'
         # -> see also https://github.com/marq24/ha-senec-v3/issues/180
         if self._app_master_plant_number_must_be_verified_after_init:
-            _LOGGER.debug(f"***** APP-API: _app_master_plant_number_must_be_verified ********")
+            _LOGGER.debug(f"[WEB] ***** APP-API: _app_master_plant_number_must_be_verified ********")
             self._app_master_plant_number_must_be_verified_after_init = False
             await self.app_get_master_plant_id()
 
@@ -5032,9 +5032,9 @@ class SenecOnline:
         if self._app_master_plant_id is None:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: app_get_system_details(self) for: {self._app_master_plant_id} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_get_system_details(self) for: {self._app_master_plant_id} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"app_get_system_details(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] app_get_system_details(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         a_url = self.APP_SYSTEM_DETAILS.format(master_plant_id=self._app_master_plant_id)
@@ -5065,9 +5065,9 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: app_get_abilities(self) for: {self._app_master_plant_id} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_get_abilities(self) for: {self._app_master_plant_id} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"app_get_abilities(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] app_get_abilities(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         a_url = self.APP_ABILITIES_LIST.format(master_plant_id=self._app_master_plant_id)
@@ -5081,9 +5081,9 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: app_get_data_start_and_end_ts(self) for: {self._app_master_plant_id} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_get_data_start_and_end_ts(self) for: {self._app_master_plant_id} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         a_url = self.APP_MEASURE_DATA_AVAIL.format(master_plant_id=self._app_master_plant_id, tz="UTC")
@@ -5111,9 +5111,9 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: app_get_system_status(self) for: {self._app_master_plant_id} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_get_system_status(self) for: {self._app_master_plant_id} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"app_get_system_status(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] app_get_system_status(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         a_url = self.APP_SYSTEM_STATUS.format(master_plant_id=self._app_master_plant_id)
@@ -5162,9 +5162,9 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: app_get_dashboard(self) for: {self._app_master_plant_id} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_get_dashboard(self) for: {self._app_master_plant_id} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"app_get_dashboard(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] app_get_dashboard(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         a_url = self.APP_MEASURE_DASHBOARD.format(master_plant_id=self._app_master_plant_id)
@@ -5260,9 +5260,9 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: app_get_total(self) for: {self._app_master_plant_id} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_get_total(self) for: {self._app_master_plant_id} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"app_get_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] app_get_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
@@ -5277,7 +5277,7 @@ class SenecOnline:
     # async def app_get_total(self):
     #     if self.is_app_master_plant_id_none:
     #         await self.app_get_master_plant_id()
-    #     _LOGGER.debug(f"***** APP-API: app_get_total(self) for: {self._app_master_plant_id} ********")
+    #     _LOGGER.debug(f"[WEB] ***** APP-API: app_get_total(self) for: {self._app_master_plant_id} ********")
     #     a_url = self.APP_MEASURE_TOTAL.format(master_plant_id=self._app_master_plant_id,
     #                                           res_type=type.upper(),
     #                                           from_val=quote(from_value, safe=''),
@@ -5291,9 +5291,9 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: app_update_total(self) for: {self._app_master_plant_id} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_update_total(self) for: {self._app_master_plant_id} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] app_get_data_start_and_end_ts(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         now_utc = datetime.now(timezone.utc)
@@ -5323,10 +5323,10 @@ class SenecOnline:
             start_year = 2018
             if self._app_data_start_ts > 0:
                 start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
-                _LOGGER.debug(f"app_update_total(): - data start year is set to {start_year}")
+                _LOGGER.debug(f"[WEB] app_update_total(): - data start year is set to {start_year}")
 
             for a_year in range(start_year, current_year_local):
-                _LOGGER.debug(f"app_update_total(): - fetching data for year {a_year}")
+                _LOGGER.debug(f"[WEB] app_update_total(): - fetching data for year {a_year}")
                 if wb_ids is not None or wb_uuids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
                                                                   #wb_ids    =wb_ids,
@@ -5344,7 +5344,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
                     data = app_aggregate_timeseries_data_if_needed(data)
-                    _LOGGER.debug(f"app_update_total(): aggregated data for year {a_year} -> {data}")
+                    _LOGGER.debug(f"[WEB] app_update_total(): aggregated data for year {a_year} -> {data}")
                     if self._static_TOTAL_SUMS_PREV_YEARS is None:
                         self._static_TOTAL_SUMS_PREV_YEARS = data
                     else:
@@ -5358,7 +5358,7 @@ class SenecOnline:
             if current_month_local == 1:
                 self._static_TOTAL_SUMS_PREV_MONTHS = None
             else:
-                _LOGGER.debug(f"app_update_total(): - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
+                _LOGGER.debug(f"[WEB] app_update_total(): - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
                 if wb_ids is not None or wb_uuids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
                                                                   #wb_ids    =wb_ids,
@@ -5376,7 +5376,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data):
                     self._static_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data)
-                    _LOGGER.debug(f"app_update_total(): aggregated data for year {current_year_local} month 01 - {(current_month_local-1):02d} -> {self._static_TOTAL_SUMS_PREV_MONTHS}")
+                    _LOGGER.debug(f"[WEB] app_update_total(): aggregated data for year {current_year_local} month 01 - {(current_month_local-1):02d} -> {self._static_TOTAL_SUMS_PREV_MONTHS}")
 
             self._static_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month_local
 
@@ -5386,7 +5386,7 @@ class SenecOnline:
             if current_day_local == 1:
                 self._static_TOTAL_SUMS_PREV_DAYS = None
             else:
-                _LOGGER.debug(f"***** APP-API: app_update_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
+                _LOGGER.debug(f"[WEB] ***** APP-API: app_update_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
                 if wb_ids is not None or wb_uuids is not None:
                     a_url = self.APP_MEASURE_TOTAL_WITH_WB.format(master_plant_id=self._app_master_plant_id,
                                                                   #wb_ids    =wb_ids,
@@ -5465,7 +5465,7 @@ class SenecOnline:
         return data
 
     async def app_update_total_all_wallboxes(self):
-        _LOGGER.debug(f"APP-API app_update_total_all_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
+        _LOGGER.debug(f"[WEB] APP-API app_update_total_all_wallboxes for '{self._app_wallbox_num_max}' wallboxes")
         for idx in range(0, self._app_wallbox_num_max):
             if self._app_wallbox_num_max > idx:
                 await self._app_update_single_wallbox_total(idx)
@@ -5476,9 +5476,9 @@ class SenecOnline:
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
-        _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total(self) for: {self._app_master_plant_id} index: {idx} ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: _app_update_single_wallbox_total(self) for: {self._app_master_plant_id} index: {idx} ********")
         if self.is_app_master_plant_id_none:
-            _LOGGER.warning(f"_app_update_single_wallbox_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
+            _LOGGER.warning(f"[WEB] _app_update_single_wallbox_total(): CANCEL REQUEST cause self._app_master_plant_id is: '{self._app_master_plant_id}'")
             return None
 
         now_utc = datetime.now(timezone.utc)
@@ -5490,7 +5490,7 @@ class SenecOnline:
         the_wb_uuid = self._app_get_wallbox_uuid(idx)
         if the_wb_uuid is None:
             the_wb_uuid = str((idx + 1))
-            _LOGGER.warning(f"_app_update_single_wallbox_total(): there is NO WB-UUID: '{the_wb_uuid}'")
+            _LOGGER.warning(f"[WEB] _app_update_single_wallbox_total(): there is NO WB-UUID: '{the_wb_uuid}'")
 
         # restore the data from our persistent storage
         if CONF_APP_TOTAL_DATA in self._app_token_object and "wallbox" in self._app_token_object[CONF_APP_TOTAL_DATA]:
@@ -5516,10 +5516,10 @@ class SenecOnline:
             start_year = 2018
             if self._app_data_start_ts > 0:
                 start_year = datetime.fromtimestamp(self._app_data_start_ts, tz=timezone.utc).year
-                _LOGGER.debug(f"_app_update_single_wallbox_total() - data start year is set to {start_year} [{self._app_data_start_ts}]")
+                _LOGGER.debug(f"[WEB] _app_update_single_wallbox_total() - data start year is set to {start_year} [{self._app_data_start_ts}]")
 
             for a_year in range(start_year, current_year_local):
-                _LOGGER.debug(f"_app_update_single_wallbox_total() - fetching data for year {a_year}")
+                _LOGGER.debug(f"[WEB] _app_update_single_wallbox_total() - fetching data for year {a_year}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                          wb_uuid=the_wb_uuid,
                                                          res_type="MONTH",
@@ -5529,7 +5529,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
                     data = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
-                    _LOGGER.debug(f"_app_update_single_wallbox_total(): aggregated data for year {a_year} -> {data}")
+                    _LOGGER.debug(f"[WEB] _app_update_single_wallbox_total(): aggregated data for year {a_year} -> {data}")
                     if local_TOTAL_SUMS_PREV_YEARS is None:
                         local_TOTAL_SUMS_PREV_YEARS = data
                     else:
@@ -5543,7 +5543,7 @@ class SenecOnline:
             if current_month_local == 1:
                 local_TOTAL_SUMS_PREV_MONTHS = None
             else:
-                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
+                _LOGGER.debug(f"[WEB] ***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month 01 - {(current_month_local-1):02d}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                       wb_uuid   =the_wb_uuid,
                                                       res_type  ="MONTH",
@@ -5553,7 +5553,7 @@ class SenecOnline:
                 data = await self._app_do_get_request(a_url=a_url)
                 if data is not None and app_has_dict_timeseries_with_values(data, ts_key_name="timeseries"):
                     local_TOTAL_SUMS_PREV_MONTHS = app_aggregate_timeseries_data_if_needed(data, ts_key_name="timeseries")
-                    _LOGGER.debug(f"_app_update_single_wallbox_total(): aggregated data for year {current_year_local} month 01 - {(current_month_local-1):02d} -> {local_TOTAL_SUMS_PREV_MONTHS}")
+                    _LOGGER.debug(f"[WEB] _app_update_single_wallbox_total(): aggregated data for year {current_year_local} month 01 - {(current_month_local-1):02d} -> {local_TOTAL_SUMS_PREV_MONTHS}")
 
             local_TOTAL_SUMS_WAS_FETCHED_FOR_PREV_MONTHS = current_month_local
 
@@ -5563,7 +5563,7 @@ class SenecOnline:
             if current_day_local == 1:
                 local_TOTAL_SUMS_PREV_DAYS = None
             else:
-                _LOGGER.debug(f"***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
+                _LOGGER.debug(f"[WEB] ***** APP-API: _app_update_single_wallbox_total() - fetching data for year {current_year_local} month {current_month_local} - till day: {(current_day_local-1):02d}")
                 a_url = self.APP_MEASURE_WB_TOTAL.format(master_plant_id=self._app_master_plant_id,
                                                          wb_uuid   =the_wb_uuid,
                                                          res_type  ="MONTH",
@@ -5806,7 +5806,7 @@ class SenecOnline:
             if a_wallbox_obj["prohibitUsage"]:
                 return LOCAL_WB_MODE_LEGACY_LOCKED
         elif len(a_wallbox_obj) > 0:
-            _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'prohibitUsage' in {a_wallbox_obj}")
+            _LOGGER.info(f"[WEB] _app_get_webapi_wallbox_mode(): no 'prohibitUsage' in {a_wallbox_obj}")
 
         # step 2 checking the chargingMode…
         return self._app_get_webapi_wallbox_mode_ignore_prohibit(a_wallbox_obj)
@@ -5821,11 +5821,11 @@ class SenecOnline:
                     if a_type.upper() in [APP_API_WB_MODE_2025_SOLAR, APP_API_WB_MODE_2025_FAST, APP_API_WB_MODE_2025_COMFORT]:
                         return a_type.upper()
                     else:
-                        _LOGGER.info(f"_app_get_webapi_wallbox_mode(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+                        _LOGGER.info(f"[WEB] _app_get_webapi_wallbox_mode(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
                 else:
-                    _LOGGER.info(f"_app_get_webapi_wallbox_mode(): 'type' is None in {charging_mode_obj}")
+                    _LOGGER.info(f"[WEB] _app_get_webapi_wallbox_mode(): 'type' is None in {charging_mode_obj}")
             elif len(a_wallbox_obj) > 0:
-                _LOGGER.info(f"_app_get_webapi_wallbox_mode(): no 'type' in {charging_mode_obj}")
+                _LOGGER.info(f"[WEB] _app_get_webapi_wallbox_mode(): no 'type' in {charging_mode_obj}")
 
         return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
@@ -5837,7 +5837,7 @@ class SenecOnline:
             if a_wallbox_obj["prohibitUsage"]:
                 return LOCAL_WB_MODE_LEGACY_LOCKED
         elif len(a_wallbox_obj) > 0:
-            _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_legacy(): no 'prohibitUsage' in {a_wallbox_obj}")
+            _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_legacy(): no 'prohibitUsage' in {a_wallbox_obj}")
 
         # step 2 checking the chargingMode…
         return self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(a_wallbox_obj)
@@ -5876,11 +5876,11 @@ class SenecOnline:
 
                         if charging_mode_obj.get("solarOptimizeSettings", {}).get("preventInterruptions", False):
                             # when 'preventInterruptions' == True, then it's SSGCM_3 (Ladeunterbrechnung verhindern)
-                            #_LOGGER.info(f"---- RETURN MODE 3 [THREE]")
+                            #_LOGGER.info(f"[WEB] ---- RETURN MODE 3 [THREE]")
                             return LOCAL_WB_MODE_LEGACY_SSGCM_3
                         else:
                             # when 'preventInterruptions' == False, then it's SSGCM_4 (Ladeunterbrechungen sind zulässig)
-                            #_LOGGER.info(f"---- RETURN MODE 4 [FOUR]")
+                            #_LOGGER.info(f"[WEB] ---- RETURN MODE 4 [FOUR]")
                             return LOCAL_WB_MODE_LEGACY_SSGCM_4
 
                     # only for P4/V4
@@ -5911,11 +5911,11 @@ class SenecOnline:
                                 return LOCAL_WB_MODE_LEGACY_COMFORT_NIGHT_OFF_DAY_OFF
 
                     else:
-                        _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+                        _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
                 else:
-                    _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): 'type' is None in {charging_mode_obj}")
+                    _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): 'type' is None in {charging_mode_obj}")
             elif len(a_wallbox_obj) > 0:
-                _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): no 'type' in {charging_mode_obj}")
+                _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_legacy(): no 'type' in {charging_mode_obj}")
 
         return LOCAL_WB_MODE_LEGACY_UNKNOWN
 
@@ -5927,7 +5927,7 @@ class SenecOnline:
             if a_wallbox_obj["prohibitUsage"]:
                 return LOCAL_WB_MODE_2026_LOCKED
         elif len(a_wallbox_obj) > 0:
-            _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): no 'prohibitUsage' in {a_wallbox_obj}")
+            _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): no 'prohibitUsage' in {a_wallbox_obj}")
 
         # step 2 checking the chargingMode…
         return self._app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(a_wallbox_obj)
@@ -5950,21 +5950,21 @@ class SenecOnline:
                         return LOCAL_WB_MODE_2026_COMFORT
 
                     else:
-                        _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
+                        _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): UNKNOWN 'type' value: '{type}' in {charging_mode_obj}")
                 else:
-                    _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): 'type' is None in {charging_mode_obj}")
+                    _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): 'type' is None in {charging_mode_obj}")
             elif len(a_wallbox_obj) > 0:
-                _LOGGER.info(f"_app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): no 'type' in {charging_mode_obj}")
+                _LOGGER.info(f"[WEB] _app_get_local_wallbox_mode_from_api_values_ignore_prohibit_2026(): no 'type' in {charging_mode_obj}")
 
         return LOCAL_WB_MODE_2026_UNKNOWN
 
     async def app_update_all_wallboxes(self):
-        _LOGGER.debug("***** APP-API: app_update_all_wallboxes(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_update_all_wallboxes(self) ********")
         if self.is_integration_startup_phase:
-            _LOGGER.info(f"app_update_all_wallboxes(): INITIAL STARTUP - searching ONCE for possible existing wallboxes")
+            _LOGGER.info(f"[WEB] app_update_all_wallboxes(): INITIAL STARTUP - searching ONCE for possible existing wallboxes")
 
         if self._app_master_plant_id is None:
-            _LOGGER.warning(f"app_update_all_wallboxes(): self._app_master_plant_id is NONE!")
+            _LOGGER.warning(f"[WEB] app_update_all_wallboxes(): self._app_master_plant_id is NONE!")
             return
 
         data = await self._app_do_post_request(self.APP_WALLBOX_SEARCH, post_data={"systemIds":[self._app_master_plant_id]}, read_response=True)
@@ -5977,23 +5977,23 @@ class SenecOnline:
         if request_is_invalid or not data_is_list:
             if self.is_integration_startup_phase:
                 if request_is_invalid:
-                    _LOGGER.error(f"app_update_all_wallboxes(): Senec backend probably respond wih HTTP-status 401 to the initial wallbox search - this will cause fatal issues during restart - please check yor provided credentials and restart the integration!")
+                    _LOGGER.error(f"[WEB] app_update_all_wallboxes(): Senec backend probably respond wih HTTP-status 401 to the initial wallbox search - this will cause fatal issues during restart - please check yor provided credentials and restart the integration!")
                 elif data_is_list and len(data) == 0:
-                    _LOGGER.debug(f"app_update_all_wallboxes(): No Wallbox found - response was: '{data}' - probably this is fine, since you do not own a Senec Wallbox (good for you).")
+                    _LOGGER.debug(f"[WEB] app_update_all_wallboxes(): No Wallbox found - response was: '{data}' - probably this is fine, since you do not own a Senec Wallbox (good for you).")
                 else:
-                    _LOGGER.warning(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+                    _LOGGER.warning(f"[WEB] app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
             else:
-                _LOGGER.debug(f"app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
+                _LOGGER.debug(f"[WEB] app_update_all_wallboxes(): No valid wallbox data received or data is not a list '{data}'")
 
             # we do not update any data in our 'self._app_raw_wallbox[idx]' object (so we keep the old wallbox data)
             return
         else:
             if self.is_integration_startup_phase:
-                _LOGGER.info(f"app_update_all_wallboxes(): INITIAL STARTUP - found {len(data)} wallbox(es)")
+                _LOGGER.info(f"[WEB] app_update_all_wallboxes(): INITIAL STARTUP - found {len(data)} wallbox(es)")
 
         # Check if we have enough data for all expected wallboxes
         if len(data) < self._app_wallbox_num_max:
-            _LOGGER.info(f"app_update_all_wallboxes(): Expected {self._app_wallbox_num_max} wallboxes but only received {len(data)}")
+            _LOGGER.info(f"[WEB] app_update_all_wallboxes(): Expected {self._app_wallbox_num_max} wallboxes but only received {len(data)}")
 
         max_idx = min(len(data), self._app_wallbox_num_max)
 
@@ -6002,7 +6002,7 @@ class SenecOnline:
             self._app_raw_wallbox[idx] = data[idx]
 
     async def app_set_wallbox_mode_legacy(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
-        _LOGGER.debug("***** APP-API: app_set_wallbox_mode_legacy(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_set_wallbox_mode_legacy(self) ********")
         idx = wallbox_num - 1
         the_wb_obj = self._app_get_wallbox_object_at_index(idx)
         if len(the_wb_obj) == 0:
@@ -6010,7 +6010,7 @@ class SenecOnline:
 
         cur_local_mode = self._app_get_local_wallbox_mode_from_api_values_legacy(idx)
         if cur_local_mode == local_mode_to_set:
-            _LOGGER.debug(f"app_set_wallbox_mode_legacy(): skipp mode change since '{local_mode_to_set}' already set")
+            _LOGGER.debug(f"[WEB] app_set_wallbox_mode_legacy(): skipp mode change since '{local_mode_to_set}' already set")
             success = True
         else:
             # first check if we are initialized…
@@ -6035,10 +6035,10 @@ class SenecOnline:
                     data = await self._app_do_get_request(wb_url, do_as_patch=True)
                     if data is not None:
                         self._app_set_wallbox_object_at_index(idx, data)
-                        _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
+                        _LOGGER.debug(f"[WEB] app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
                         success = True
                     else:
-                        _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} LOCK FAILED")
+                        _LOGGER.debug(f"[WEB] app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} LOCK FAILED")
                 else:
                     # when we switch to any other mode, we must check
                     # if we are currently locked - and if we are locked, we
@@ -6051,9 +6051,9 @@ class SenecOnline:
                         data = await self._app_do_get_request(wb_url, do_as_patch=True)
                         if data is not None:
                             self._app_set_wallbox_object_at_index(idx, data)
-                            _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
+                            _LOGGER.debug(f"[WEB] app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
                         else:
-                            _LOGGER.debug(f"app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} UNLOCK FAILED")
+                            _LOGGER.debug(f"[WEB] app_set_wallbox_mode_legacy(): set wallbox {wallbox_num} UNLOCK FAILED")
                             return False
 
                     # OK now the WALLBOX should be UNLOCKED...
@@ -6093,14 +6093,14 @@ class SenecOnline:
                         current_prevent_interruptions = the_solar_optimize_settings.get("preventInterruptions", False)
                         current_compatibilityMode = the_solar_optimize_settings.get("compatibilityMode", False)
 
-                        _LOGGER.info(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
+                        _LOGGER.info(f"[WEB] ---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibilityMode}")
 
                         if local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_3 and not current_prevent_interruptions:
                             the_post_data = {"preventInterruptions": True}
                         elif local_mode_to_set == LOCAL_WB_MODE_LEGACY_SSGCM_4 and current_prevent_interruptions:
                             the_post_data = {"preventInterruptions": False}
 
-                        _LOGGER.info(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} -> {the_post_data}")
+                        _LOGGER.info(f"[WEB] ---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} -> {the_post_data}")
 
                         if the_post_data is not None:
                             # we need to copy over the other post data value(s)...
@@ -6119,7 +6119,7 @@ class SenecOnline:
                             if not await self.app_switch_wallbox_mode(idx, wallbox_num, the_wb_uuid, APP_API_WB_MODE_2025_COMFORT):
                                 return False
 
-                        #_LOGGER.warning(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num}")
+                        #_LOGGER.warning(f"[WEB] ---- continue with mode {local_mode_to_set} for wallbox {wallbox_num}")
 
                         the_post_data = None
                         the_wb_obj = self._app_get_wallbox_object_at_index(idx)
@@ -6139,7 +6139,7 @@ class SenecOnline:
                                 "preventInterruptions": new_prevent_interruptions
                             }
 
-                        #_LOGGER.warning(f"---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} -> {the_post_data}")
+                        #_LOGGER.warning(f"[WEB] ---- continue with mode {local_mode_to_set} for wallbox {wallbox_num} -> {the_post_data}")
 
                         if the_post_data is not None:
                             # we need to copy over the other post data value(s)...
@@ -6157,7 +6157,7 @@ class SenecOnline:
                             success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_COMFORT, wb_url, the_post_data)
 
                     else:
-                        _LOGGER.info(f"app_set_wallbox_mode_legacy(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
+                        _LOGGER.info(f"[WEB] app_set_wallbox_mode_legacy(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
 
                 if success and self._bridge_to_senec_local is not None:
                     # do we need to sync the value back to the 'lala_cgi' integration?
@@ -6206,17 +6206,17 @@ class SenecOnline:
                                 cur_min_current = str(round(self._bridge_to_senec_local.wallbox_set_icmax[idx], 2))
 
                                 if cur_min_current != new_min_current:
-                                    _LOGGER.debug(f"app_set_wallbox_mode_legacy(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                    _LOGGER.debug(f"[WEB] app_set_wallbox_mode_legacy(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
                                     await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx,
                                                                                                 value=float(new_min_current),
                                                                                                 sync=False, verify_state=False)
                                 else:
-                                    _LOGGER.debug(f"app_set_wallbox_mode_legacy(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+                                    _LOGGER.debug(f"[WEB] app_set_wallbox_mode_legacy(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
 
         return success
 
     async def app_set_wallbox_mode_2026(self, local_mode_to_set: str, wallbox_num: int = 1, sync: bool = True):
-        _LOGGER.debug("***** APP-API: app_set_wallbox_mode_2026(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_set_wallbox_mode_2026(self) ********")
         idx = wallbox_num - 1
         the_wb_obj = self._app_get_wallbox_object_at_index(idx)
         if len(the_wb_obj) == 0:
@@ -6224,7 +6224,7 @@ class SenecOnline:
 
         cur_local_mode = self._app_get_local_wallbox_mode_from_api_values_2026(idx)
         if cur_local_mode == local_mode_to_set:
-            _LOGGER.debug(f"app_set_wallbox_mode_2026(): skipp mode change since '{local_mode_to_set}' already set")
+            _LOGGER.debug(f"[WEB] app_set_wallbox_mode_2026(): skipp mode change since '{local_mode_to_set}' already set")
             success = True
         else:
             # first check if we are initialized…
@@ -6249,10 +6249,10 @@ class SenecOnline:
                     data = await self._app_do_get_request(wb_url, do_as_patch=True)
                     if data is not None:
                         self._app_set_wallbox_object_at_index(idx, data)
-                        _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
+                        _LOGGER.debug(f"[WEB] app_set_wallbox_mode_2026(): set wallbox {wallbox_num} to LOCK: {util.mask_map(data)}")
                         success = True
                     else:
-                        _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} LOCK FAILED")
+                        _LOGGER.debug(f"[WEB] app_set_wallbox_mode_2026(): set wallbox {wallbox_num} LOCK FAILED")
                 else:
                     # when we switch to any other mode, we must check
                     # if we are currently locked - and if we are locked, we
@@ -6265,9 +6265,9 @@ class SenecOnline:
                         data = await self._app_do_get_request(wb_url, do_as_patch=True)
                         if data is not None:
                             self._app_set_wallbox_object_at_index(idx, data)
-                            _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
+                            _LOGGER.debug(f"[WEB] app_set_wallbox_mode_2026(): set wallbox {wallbox_num} to UNLOCK: {util.mask_map(data)}")
                         else:
-                            _LOGGER.debug(f"app_set_wallbox_mode_2026(): set wallbox {wallbox_num} UNLOCK FAILED")
+                            _LOGGER.debug(f"[WEB] app_set_wallbox_mode_2026(): set wallbox {wallbox_num} UNLOCK FAILED")
                             return False
 
                     # now setting the final mode…
@@ -6293,7 +6293,7 @@ class SenecOnline:
                                 return False
 
                     else:
-                        _LOGGER.info(f"app_set_wallbox_mode_2026(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
+                        _LOGGER.info(f"[WEB] app_set_wallbox_mode_2026(): UNKNOWN mode to set: '{local_mode_to_set}' - skipping mode change")
 
                 if success and self._bridge_to_senec_local is not None:
                     # do we need to sync the value back to the 'lala_cgi' integration?
@@ -6344,17 +6344,17 @@ class SenecOnline:
                                 cur_min_current = str(round(self._bridge_to_senec_local.wallbox_set_icmax[idx], 2))
 
                                 if cur_min_current != new_min_current:
-                                    _LOGGER.debug(f"app_set_wallbox_mode_2026(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
+                                    _LOGGER.debug(f"[WEB] app_set_wallbox_mode_2026(): 2sec after mode change: local set_ic_max {cur_min_current} will be updated to {new_min_current}")
                                     await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx,
                                                                                                 value=float(new_min_current),
                                                                                                 sync=False, verify_state=False)
                                 else:
-                                    _LOGGER.debug(f"app_set_wallbox_mode_2026(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
+                                    _LOGGER.debug(f"[WEB] app_set_wallbox_mode_2026(): 2sec after mode change: NO CHANGE! - local set_ic_max: {cur_min_current} equals: {new_min_current}]")
 
         return success
 
     async def app_switch_wallbox_mode(self, idx:int, wallbox_num:int, the_wb_uuid:str, mode:str):
-        _LOGGER.debug("***** APP-API: app_switch_wallbox_mode(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_switch_wallbox_mode(self) ********")
         try:
             wb_url = self.APP_SET_WALLBOX_MODE.format(master_plant_id=str(self._app_master_plant_id),
                                                            wb_uuid=the_wb_uuid,
@@ -6362,30 +6362,30 @@ class SenecOnline:
             data = await self._app_do_post_request(wb_url, post_data=None, read_response=True)
             if data is not None:
                 self._app_set_wallbox_object_at_index(idx, data)
-                _LOGGER.debug(f"app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode}: {util.mask_map(data)}")
+                _LOGGER.debug(f"[WEB] app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode}: {util.mask_map(data)}")
                 return True
             else:
-                _LOGGER.debug(f"app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode} FAILED")
+                _LOGGER.debug(f"[WEB] app_switch_wallbox_mode(): set wallbox {wallbox_num} to {mode} FAILED")
                 return False
 
         except BaseException as ex:
-            _LOGGER.warning(f"app_switch_wallbox_mode(): Exception: {type(ex).__name__} - {ex}")
+            _LOGGER.warning(f"[WEB] app_switch_wallbox_mode(): Exception: {type(ex).__name__} - {ex}")
             return False
 
     async def app_update_wallbox_mode_setting(self, idx:int, wallbox_num:int, mode, wb_url, the_post_data):
-        _LOGGER.debug("***** APP-API: app_update_wallbox_mode_setting(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_update_wallbox_mode_setting(self) ********")
         try:
-            _LOGGER.debug(f"app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} final post data: {the_post_data}")
+            _LOGGER.debug(f"[WEB] app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} final post data: {the_post_data}")
             data = await self._app_do_post_request(wb_url, post_data=the_post_data, read_response=True)
             if data is not None:
                 self._app_set_wallbox_object_at_index(idx, data)
-                _LOGGER.debug(f"app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} settings: {util.mask_map(data)}")
+                _LOGGER.debug(f"[WEB] app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} settings: {util.mask_map(data)}")
                 return True
             else:
-                _LOGGER.debug(f"app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} settings FAILED")
+                _LOGGER.debug(f"[WEB] app_update_wallbox_mode_setting(): set wallbox {wallbox_num} {mode} settings FAILED")
 
         except BaseException as ex:
-            _LOGGER.warning(f"app_update_wallbox_mode_setting(): Exception: {type(ex).__name__} - {ex}")
+            _LOGGER.warning(f"[WEB] app_update_wallbox_mode_setting(): Exception: {type(ex).__name__} - {ex}")
 
         return False
 
@@ -6568,11 +6568,11 @@ class SenecOnline:
         current_compatibility_mode = the_solar_optimize_settings.get("compatibilityMode", False)
         if len(the_wb_obj) > 0 and current_prevent_interruptions != enabled:
 
-            _LOGGER.info(f"---- continue with mode SOLAR for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibility_mode}")
+            _LOGGER.info(f"[WEB] ---- continue with mode SOLAR for wallbox {wallbox_num} - preventInterruptions: {current_prevent_interruptions} compatibilityMode: {current_compatibility_mode}")
 
             the_post_data = {"preventInterruptions": enabled}
 
-            _LOGGER.info(f"---- continue with mode SOLAR for wallbox {wallbox_num} -> {the_post_data}")
+            _LOGGER.info(f"[WEB] ---- continue with mode SOLAR for wallbox {wallbox_num} -> {the_post_data}")
 
             # we need to copy over the other post data value(s)...
             for a_field in ["minChargingCurrentInA", "useDynamicTariffs", "priceLimitInCtPerKwh"]:
@@ -6645,7 +6645,7 @@ class SenecOnline:
         return False
 
     async def app_set_wallbox_icmax(self, value_to_set: float, wallbox_num: int = 1, sync: bool = True):
-        _LOGGER.debug("***** APP-API: app_set_wallbox_icmax(self) ********")
+        _LOGGER.debug(f"[WEB] ***** APP-API: app_set_wallbox_icmax(self) ********")
         if self.is_app_master_plant_id_none:
             await self.app_get_master_plant_id()
 
@@ -6706,7 +6706,7 @@ class SenecOnline:
                     wb_url = self.APP_SET_WALLBOX_COMFORT_MODE_SETTINGS.format(master_plant_id=str(self._app_master_plant_id), wb_uuid=the_wb_uuid)
                     success = await self.app_update_wallbox_mode_setting(idx, wallbox_num, APP_API_WB_MODE_2025_COMFORT, wb_url, the_post_data)
             else:
-                _LOGGER.debug(f"app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR or COMFORT, so we cannot set 'minChargingCurrentInA' - current mode: '{the_charging_mode_type}' - wallbox object: {the_wb_obj}")
+                _LOGGER.debug(f"[WEB] app_set_wallbox_icmax(): wallbox {wallbox_num} - current mode is not SOLAR or COMFORT, so we cannot set 'minChargingCurrentInA' - current mode: '{the_charging_mode_type}' - wallbox object: {the_wb_obj}")
 
             if success:
                 # do we need to sync the value back to the 'lala_cgi' integration?
@@ -6714,7 +6714,7 @@ class SenecOnline:
                     # DEACTIVATED SYNC CAUSE OF
                     # https://github.com/marq24/ha-senec-v3/issues/234
                     # await self._bridge_to_senec_local.set_nva_wallbox_set_icmax(pos=idx, value=value_to_set, sync=False)
-                    _LOGGER.info(f"app_set_wallbox_icmax(): SKIP LocalSYNC for value: {value_to_set} - {idx} DEACTIVATED SYNC CAUSE OF https://github.com/marq24/ha-senec-v3/issues/234")
+                    _LOGGER.info(f"[WEB] app_set_wallbox_icmax(): SKIP LocalSYNC for value: {value_to_set} - {idx} DEACTIVATED SYNC CAUSE OF https://github.com/marq24/ha-senec-v3/issues/234")
                     pass
 
     def app_only_for_local_is_any_wallbox_in_fast_or_fastwithbattery_mode(self):
@@ -6730,7 +6730,7 @@ class SenecOnline:
 
     async def app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(self, value_to_set: bool):
         # we don't need a sync:bool here in this method, since this will be only called from SenecLOCAL integration!
-        _LOGGER.debug(f"APP-API app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(): for '{self._app_wallbox_num_max}' wallboxes")
+        _LOGGER.debug(f"[WEB] APP-API app_only_for_local_adjust_mode_on_local_allow_intercharge_switch(): for '{self._app_wallbox_num_max}' wallboxes")
         res = True
         for idx in range(0, self._app_wallbox_num_max):
             if self._app_wallbox_num_max > idx:
@@ -6811,10 +6811,10 @@ class SenecOnline:
     """MEIN-SENEC.DE from here"""
     async def web_authenticate(self, do_update:bool=False, throw401:bool=False):
         if not self._web_is_authenticated:
-            _LOGGER.debug("***** WEB-API: web_authenticate(self) ********")
+            _LOGGER.debug(f"[WEB] ***** WEB-API: web_authenticate(self) ********")
             try:
                 async with (self.web_session.get(self._WEB_BASE_URL, allow_redirects=True, max_redirects=20, headers=self._default_web_headers) as res):
-                    _LOGGER.debug(f"web_authenticate(): requesting: {res.request_info.url}")
+                    _LOGGER.debug(f"[WEB] web_authenticate(): requesting: {res.request_info.url}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         html_content = await res.text()
@@ -6841,17 +6841,17 @@ class SenecOnline:
                         else:
                             if (str(res.request_info.url).lower().startswith(self._WEB_BASE_URL.lower()) or
                                     self._web_validate_html_structure(html_content=html_content)):
-                                _LOGGER.info(f"web_authenticate(): looks like are already authenticated")
+                                _LOGGER.info(f"[WEB] web_authenticate(): looks like are already authenticated")
                                 await self._web_set_is_authenticated(do_update=do_update)
                             else:
-                                _LOGGER.warning(f"web_authenticate(): no form action url could be found {html_content}")
+                                _LOGGER.warning(f"[WEB] web_authenticate(): no form action url could be found {html_content}")
                     else:
-                        _LOGGER.warning(f"web_authenticate(): unexpected status code [200] {res.status} - {res}")
+                        _LOGGER.warning(f"[WEB] web_authenticate(): unexpected status code [200] {res.status} - {res}")
             except Exception as exc:
                 if throw401:
                     raise exc
                 else:
-                    _LOGGER.warning(f"web_authenticate(): Error when try to call {self._WEB_BASE_URL}: [Exception: {exc}]")
+                    _LOGGER.warning(f"[WEB] web_authenticate(): Error when try to call {self._WEB_BASE_URL}: [Exception: {exc}]")
 
     def _web_validate_html_structure(self, html_content: str) -> bool:
         """Quick check for main Angular components in the HTML content"""
@@ -6869,10 +6869,10 @@ class SenecOnline:
                 missing_components.append(component)
 
         if missing_components:
-            _LOGGER.info(f"_web_validate_html_structure(): Missing HTML components: {missing_components}")
+            _LOGGER.info(f"[WEB] _web_validate_html_structure(): Missing HTML components: {missing_components}")
             return False
 
-        _LOGGER.debug("_web_validate_html_structure(): All required HTML components found")
+        _LOGGER.debug(f"[WEB] _web_validate_html_structure(): All required HTML components found")
         return True
 
     async def _web_authenticate_part_02(self, form_action_url, do_update:bool=False, throw401:bool=False):
@@ -6891,25 +6891,25 @@ class SenecOnline:
 
         async with self.web_session.post(form_action_url, data=login_data, allow_redirects=True, max_redirects=20, headers=req_headers) as res:
             try:
-                _LOGGER.debug(f"_web_authenticate_part_02(): requesting: {form_action_url}")
+                _LOGGER.debug(f"[WEB] _web_authenticate_part_02(): requesting: {form_action_url}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     content = await res.text()
                     if "configure_totp" in str(res.request_info.url).lower():
                         self.web_totp_required = True
-                        _LOGGER.warning(f"SENEC require TOTP configuration - currently not supported by the Integration - some features will not work! - {res.request_info.url}")
+                        _LOGGER.warning(f"[WEB] SENEC require TOTP configuration - currently not supported by the Integration - some features will not work! - {res.request_info.url}")
                     else:
-                        _LOGGER.debug(f"finally reached: {res.request_info.url}")
+                        _LOGGER.debug(f"[WEB] finally reached: {res.request_info.url}")
                         await self._web_set_is_authenticated(do_update=do_update)
                 else:
                     self.purge_senec_cookies()
-                    _LOGGER.info(f"_web_authenticate_part_02(): unexpected [200] response code: {res.status} - {res}")
+                    _LOGGER.info(f"[WEB] _web_authenticate_part_02(): unexpected [200] response code: {res.status} - {res}")
 
             except BaseException as exc:
                 if throw401:
                     raise exc
                 else:
-                    _LOGGER.info(f"_web_authenticate_part_02(): status code: {res.status} [{type(exc).__name__} - {exc}]")
+                    _LOGGER.info(f"[WEB] _web_authenticate_part_02(): status code: {res.status} [{type(exc).__name__} - {exc}]")
                     if exc.status == 401:
                         self.purge_senec_cookies()
                         self._web_is_authenticated = False
@@ -6922,16 +6922,16 @@ class SenecOnline:
             await self.web_update_context()
 
         if self._web_master_plant_number is not None:
-            _LOGGER.info("Login successful")
+            _LOGGER.info(f"[WEB] Login successful")
             if do_update:
                 await self.update()
 
     async def web_update_context(self):
         if self.web_totp_required:
-            _LOGGER.info("***** skipped cause TOTP required - web_update_context(self) ********")
+            _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_context(self) ********")
             return
 
-        _LOGGER.debug("***** web_update_context(self) ********")
+        _LOGGER.debug(f"[WEB] ***** web_update_context(self) ********")
         if self._web_is_authenticated:
             await self.web_update_get_customer()
             # do we really want to start always with '0' here?
@@ -6943,44 +6943,44 @@ class SenecOnline:
 
     async def web_update_get_customer(self):
         if self.web_totp_required:
-            _LOGGER.info("***** skipped cause TOTP required - web_update_get_customer(self) ********")
+            _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_get_customer(self) ********")
             return
 
-        _LOGGER.debug("***** web_update_get_customer(self) ********")
+        _LOGGER.debug(f"[WEB] ***** web_update_get_customer(self) ********")
 
         # grab NOW and TODAY stats
         async with self.web_session.get(self._WEB_GET_CUSTOMER, headers=self._default_web_headers, ssl=False) as res:
-            _LOGGER.debug(f"web_update_get_customer(): requesting: {res.request_info.url}")
+            _LOGGER.debug(f"[WEB] web_update_get_customer(): requesting: {res.request_info.url}")
             res.raise_for_status()
             if res.status in [200, 201, 202, 205]:
                 try:
                     r_json = await res.json()
                     self._web_dev_number = r_json["devNumber"]
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"[WEB] JSONDecodeError while 'await res.json()' {exc}")
             else:
                 self._web_is_authenticated = False
                 await self.web_authenticate(do_update=False, throw401=False)
 
     async def web_update_get_systems(self, a_plant_number: int):
         if self.web_totp_required:
-            _LOGGER.info(f"***** skipped cause TOTP required - web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
+            _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_get_systems(self) - trying AnlagenNummer: {a_plant_number} ********")
             return
 
         if a_plant_number > 14:
-            _LOGGER.info(f"web_update_get_systems(): MAX Number of 15 SYSTEMS have been checked! - NO master with corresponding serial number {util.mask_string(self._config_entry_serial_number)} was found")
+            _LOGGER.info(f"[WEB] web_update_get_systems(): MAX Number of 15 SYSTEMS have been checked! - NO master with corresponding serial number {util.mask_string(self._config_entry_serial_number)} was found")
             return
 
-        _LOGGER.debug(f"web_update_get_systems(): - trying AnlagenNummer: {a_plant_number} ********")
+        _LOGGER.debug(f"[WEB] web_update_get_systems(): - trying AnlagenNummer: {a_plant_number} ********")
 
         a_url = self._WEB_GET_SYSTEM_INFO % str(a_plant_number)
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
-            _LOGGER.debug(f"web_update_get_systems(): requesting: {res.request_info.url}")
+            _LOGGER.debug(f"[WEB] web_update_get_systems(): requesting: {res.request_info.url}")
             res.raise_for_status()
             if res.status in [200, 201, 202, 205]:
                 try:
                     r_json = await res.json()
-                    #_LOGGER.debug(f"web_update_get_systems(): - response: {r_json}")
+                    #_LOGGER.debug(f"[WEB] web_update_get_systems(): - response: {r_json}")
 
                     if "master" in r_json and r_json["master"]:
                         # we are cool that's a master-system… so we store our counter…
@@ -6992,10 +6992,10 @@ class SenecOnline:
                             else:
                                 self._web_zone_id = "UNKNOWN"
                             self._web_master_plant_number = a_plant_number
-                            _LOGGER.debug(f"set _web_master_plant_number to {a_plant_number} (Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{self._web_product_name}])")
+                            _LOGGER.debug(f"[WEB] set _web_master_plant_number to {a_plant_number} (Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{self._web_product_name}])")
                         else:
                             # ok it looks like the serial number does not match… let's request another system
-                            _LOGGER.debug(f"web_update_get_systems(): Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{r_json['produktName']}] - but not matching the ConfigEntry serial number: {util.mask_string(self._config_entry_serial_number)}")
+                            _LOGGER.debug(f"[WEB] web_update_get_systems(): Found a web master system with serial number: {util.mask_string(self._web_serial_number)} [{r_json['produktName']}] - but not matching the ConfigEntry serial number: {util.mask_string(self._config_entry_serial_number)}")
                             a_plant_number += 1
                             await self.web_update_get_systems(a_plant_number)
                     else:
@@ -7011,33 +7011,33 @@ class SenecOnline:
                     # let's check if the sytem support's SG-Read…
                     if self._web_master_plant_number is not None:
                         if "sgReadyVisible" in r_json and r_json["sgReadyVisible"]:
-                            _LOGGER.debug("System is SGReady")
+                            _LOGGER.debug(f"[WEB] System is SGReady")
                             self.SGREADY_SUPPORTED = True
                         elif self._QUERY_SGREADY_DATA:
-                            _LOGGER.info(f"web_update_get_systems(): SGReady data is configured, but not available (for plant_number: {a_plant_number}) via mein-senec.de")
+                            _LOGGER.info(f"[WEB] web_update_get_systems(): SGReady data is configured, but not available (for plant_number: {a_plant_number}) via mein-senec.de")
 
                 except JSONDecodeError as exc:
-                    _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                    _LOGGER.warning(f"[WEB] JSONDecodeError while 'await res.json()' {exc}")
             else:
                 self._web_is_authenticated = False
                 await self.web_authenticate(do_update=False, throw401=False)
 
     async def web_update_now(self, retry:bool=True):
         if self.web_totp_required:
-            _LOGGER.info("***** skipped cause TOTP required - web_update_now(self) ********")
+            _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_now(self) ********")
             return
 
-        _LOGGER.debug("***** web_update_now(self) ********")
+        _LOGGER.debug(f"[WEB] ***** web_update_now(self) ********")
         # grab NOW and TODAY stats
         a_url = self._WEB_GET_OVERVIEW_URL % str(self._web_master_plant_number)
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
-                _LOGGER.debug(f"web_update_now() requesting: {a_url}")
+                _LOGGER.debug(f"[WEB] web_update_now() requesting: {a_url}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     try:
                         r_json = await res.json()
-                        _LOGGER.debug(f"web_update_now() response-received: {r_json}")
+                        _LOGGER.debug(f"[WEB] web_update_now() response-received: {r_json}")
                         self._web_raw = parse(r_json)
                         for key in (self._WEB_REQUEST_KEYS + self._WEB_REQUEST_KEYS_EXTRA):
                             if key in r_json:
@@ -7047,26 +7047,26 @@ class SenecOnline:
                                         entity_now_name = str(key + "_now")
                                         self._web_battery_entities[entity_now_name] = value_now
                                     else:
-                                        _LOGGER.info(f"web_update_now() No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                                        _LOGGER.info(f"[WEB] web_update_now() No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
                                 else:
                                     if "now" in r_json[key]:
                                         value_now = r_json[key]["now"]
                                         entity_now_name = str(key + "_now")
                                         self._web_power_entities[entity_now_name] = value_now
                                     else:
-                                        _LOGGER.info(f"web_update_now() No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                                        _LOGGER.info(f"[WEB] web_update_now() No 'now' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
                                     if "today" in r_json[key]:
                                         value_today = r_json[key]["today"]
                                         entity_today_name = str(key + "_today")
                                         self._web_energy_entities[entity_today_name] = value_today
                                     else:
-                                        _LOGGER.info(f"web_update_now() No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
+                                        _LOGGER.info(f"[WEB] web_update_now() No 'today' for key: '{key}' in json: {r_json} when requesting: {a_url}")
 
                             else:
-                                _LOGGER.info(f"web_update_now() No '{key}' in json: {r_json} when requesting: {a_url}")
+                                _LOGGER.info(f"[WEB] web_update_now() No '{key}' in json: {r_json} when requesting: {a_url}")
                     except JSONDecodeError as exc:
-                        _LOGGER.warning(f"web_update_now() JSONDecodeError while 'await res.json()' {exc}")
+                        _LOGGER.warning(f"[WEB] web_update_now() JSONDecodeError while 'await res.json()' {exc}")
 
                 else:
                     self._web_is_authenticated = False
@@ -7084,39 +7084,39 @@ class SenecOnline:
 
     async def web_update_total(self):
         if self.web_totp_required:
-            _LOGGER.info("***** skipped cause TOTP required - web_update_total(self) ********")
+            _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_total(self) ********")
             return
 
         # grab TOTAL stats
         if self._web_master_plant_number is None or self._web_master_plant_number == -1:
-            _LOGGER.warning("web_update_total() called without valid web master plant number, skipping update.")
+            _LOGGER.warning(f"[WEB] web_update_total() called without valid web master plant number, skipping update.")
         else:
-            _LOGGER.debug("***** web_update_total(self) ********")
+            _LOGGER.debug(f"[WEB] ***** web_update_total(self) ********")
             for key in self._WEB_REQUEST_KEYS:
                 a_url = self._WEB_GET_STATUS % (key, str(self._web_master_plant_number))
                 async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                     try:
-                        _LOGGER.debug(f"web_update_total() requesting: {a_url}")
+                        _LOGGER.debug(f"[WEB] web_update_total() requesting: {a_url}")
                         res.raise_for_status()
                         if res.status in [200, 201, 202, 204, 205]:
                             try:
                                 r_json = await res.json()
-                                _LOGGER.debug(f"web_update_total() response-recaived: {r_json}")
+                                _LOGGER.debug(f"[WEB] web_update_total() response-recaived: {r_json}")
                                 if "fullkwh" in r_json:
                                     value = r_json["fullkwh"]
                                     entity_name = str(key + "_total")
                                     self._web_energy_entities[entity_name] = value
                                 else:
-                                    _LOGGER.info(f"web_update_total(): No 'fullkwh' in json: {r_json} when requesting: {a_url}")
+                                    _LOGGER.info(f"[WEB] web_update_total(): No 'fullkwh' in json: {r_json} when requesting: {a_url}")
                             except JSONDecodeError as exc:
-                                _LOGGER.warning(f"web_update_total(): JSONDecodeError while 'await res.json()' {exc}")
+                                _LOGGER.warning(f"[WEB] web_update_total(): JSONDecodeError while 'await res.json()' {exc}")
 
                         else:
-                            _LOGGER.info(f"web_update_total(): while requesting data from {a_url}: {res.status} - {res}")
+                            _LOGGER.info(f"[WEB] web_update_total(): while requesting data from {a_url}: {res.status} - {res}")
                             self._web_is_authenticated = False
 
                     except ClientResponseError as exc:
-                        _LOGGER.info(f"web_update_total(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
+                        _LOGGER.info(f"[WEB] web_update_total(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                         if exc.status == 401:
                             self.purge_senec_cookies()
                         if exc.status != 408:
@@ -7128,14 +7128,14 @@ class SenecOnline:
     """This function will update peak shaving information"""
     async def web_update_peak_shaving(self):
         if self.web_totp_required:
-            _LOGGER.info("***** skipped cause TOTP required - web_update_peak_shaving(self) ********")
+            _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_peak_shaving(self) ********")
             return
 
-        _LOGGER.info("***** web_update_peak_shaving(self) ********")
+        _LOGGER.info(f"[WEB] ***** web_update_peak_shaving(self) ********")
         a_url = f"{self._WEB_GET_PEAK_SHAVING}{self._web_master_plant_number}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
-                _LOGGER.debug(f"web_update_peak_shaving(): requesting: {res.request_info.url}")
+                _LOGGER.debug(f"[WEB] web_update_peak_shaving(): requesting: {res.request_info.url}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     try:
@@ -7148,13 +7148,13 @@ class SenecOnline:
                                                                                                        tz=timezone.utc)  # from miliseconds to seconds
                         self._QUERY_PEAK_SHAVING_TS = time()  # Update timer, that the next update takes place in 24 hours
                     except JSONDecodeError as exc:
-                        _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                        _LOGGER.warning(f"[WEB] JSONDecodeError while 'await res.json()' {exc}")
                 else:
-                    _LOGGER.info(f"web_update_peak_shaving(): while requesting data from {a_url}: {res.status} - {res}")
+                    _LOGGER.info(f"[WEB] web_update_peak_shaving(): while requesting data from {a_url}: {res.status} - {res}")
                     self._web_is_authenticated = False
 
             except ClientResponseError as exc:
-                _LOGGER.info(f"web_update_peak_shaving(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
+                _LOGGER.info(f"[WEB] web_update_peak_shaving(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                 if exc.status == 401:
                     self.purge_senec_cookies()
                 if exc.status != 408:
@@ -7162,17 +7162,17 @@ class SenecOnline:
 
     """This function will set the peak shaving data over the web api"""
     async def set_peak_shaving(self, new_peak_shaving: dict, retry:bool=True):
-        _LOGGER.debug("***** set_peak_shaving(self, new_peak_shaving) ********")
+        _LOGGER.debug(f"[WEB] ***** set_peak_shaving(self, new_peak_shaving) ********")
 
         # Senec self allways sends all get-parameter, even if not needed. So we will do it the same way
         a_url = f"{self._WEB_SET_PEAK_SHAVING}{self._web_master_plant_number}&mode={new_peak_shaving['mode'].upper()}&capacityLimit={new_peak_shaving['capacity']}&endzeit={new_peak_shaving['end_time']}"
 
         async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
-                _LOGGER.debug(f"set_peak_shaving(): requesting: {res.request_info.url}")
+                _LOGGER.debug(f"[WEB] set_peak_shaving(): requesting: {res.request_info.url}")
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
-                    _LOGGER.debug("***** Set Peak Shaving successfully ********")
+                    _LOGGER.debug(f"[WEB] ***** Set Peak Shaving successfully ********")
                     # Reset the timer in order that the Peak Shaving is updated immediately after the change
                     self._QUERY_PEAK_SHAVING_TS = 0
 
@@ -7193,14 +7193,14 @@ class SenecOnline:
     """This function will update the spare capacity over the web api"""
     async def web_update_spare_capacity(self):
         if self.web_totp_required:
-            _LOGGER.info("***** skipped cause TOTP required - web_update_spare_capacity(self) ********")
+            _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_spare_capacity(self) ********")
             return
 
-        _LOGGER.info("***** web_update_spare_capacity(self) ********")
+        _LOGGER.info(f"[WEB] ***** web_update_spare_capacity(self) ********")
         a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_GET_SPARE_CAPACITY}"
         async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
             try:
-                _LOGGER.debug(f"web_update_spare_capacity(): requesting: {res.request_info.url}")
+                _LOGGER.debug(f"[WEB] web_update_spare_capacity(): requesting: {res.request_info.url}")
                 res.raise_for_status()
                 if 200 <= res.status <= 205:
                     content = await res.text()
@@ -7209,17 +7209,17 @@ class SenecOnline:
                             self._web_spare_capacity = int(content)
                             self._QUERY_SPARE_CAPACITY_TS = time()
                         except ValueError as vexc:
-                            _LOGGER.info(f"spare_capacity can't be converted to a number - request to '{a_url}' returned: '{content}' caused {type(vexc).__name__} - {vexc}")
+                            _LOGGER.info(f"[WEB] spare_capacity can't be converted to a number - request to '{a_url}' returned: '{content}' caused {type(vexc).__name__} - {vexc}")
                             self._web_spare_capacity = 0
                     else:
-                        _LOGGER.info(f"spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
+                        _LOGGER.info(f"[WEB] spare_capacity is not a number - request to '{a_url}' returned: '{content}'")
                         self._web_spare_capacity = 0
                 else:
-                    _LOGGER.info(f"web_update_spare_capacity(): while requesting data from {a_url}: {res.status} - {res}")
+                    _LOGGER.info(f"[WEB] web_update_spare_capacity(): while requesting data from {a_url}: {res.status} - {res}")
                     self._web_is_authenticated = False
 
             except ClientResponseError as exc:
-                _LOGGER.info(f"web_update_spare_capacity(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
+                _LOGGER.info(f"[WEB] web_update_spare_capacity(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                 if exc.status == 401:
                     self.purge_senec_cookies()
                 if exc.status != 408:
@@ -7227,7 +7227,7 @@ class SenecOnline:
 
     """This function will set the spare capacity over the web api"""
     async def set_spare_capacity(self, new_spare_capacity: int, retry:bool=True):
-        _LOGGER.debug("***** set_spare_capacity(self) ********")
+        _LOGGER.debug(f"[WEB] ***** set_spare_capacity(self) ********")
         a_url = f"{self._WEB_SPARE_CAPACITY_BASE_URL}{self._web_master_plant_number}{self._WEB_SET_SPARE_CAPACITY}{new_spare_capacity}"
 
         async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False) as res:
@@ -7235,7 +7235,7 @@ class SenecOnline:
                 res.raise_for_status()
                 if res.status in [200, 201, 202, 204, 205]:
                     data = await res.text()
-                    _LOGGER.debug(f"***** Set Spare Capacity successfully {data} ********")
+                    _LOGGER.debug(f"[WEB] ***** Set Spare Capacity successfully {data} ********")
                     # Reset the timer in order that the Spare Capacity is updated immediately after the change
                     self._QUERY_SPARE_CAPACITY_TS = 0
                 else:
@@ -7255,14 +7255,14 @@ class SenecOnline:
     async def web_update_sgready_state(self):
         if self.SGREADY_SUPPORTED:
             if self.web_totp_required:
-                _LOGGER.info("***** skipped cause TOTP required - web_update_sgready_state(self) ********")
+                _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_sgready_state(self) ********")
                 return
 
-            _LOGGER.info("***** web_update_sgready_state(self) ********")
+            _LOGGER.info(f"[WEB] ***** web_update_sgready_state(self) ********")
             a_url = self._WEB_GET_SGREADY_STATE % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
-                    _LOGGER.debug(f"web_update_sgready_state(): requesting: {res.request_info.url}")
+                    _LOGGER.debug(f"[WEB] web_update_sgready_state(): requesting: {res.request_info.url}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         try:
@@ -7280,13 +7280,13 @@ class SenecOnline:
                                     _QUERY_SGREADY_STATE_TS = time()
 
                         except JSONDecodeError as exc:
-                            _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                            _LOGGER.warning(f"[WEB] JSONDecodeError while 'await res.json()' {exc}")
                     else:
-                        _LOGGER.info(f"web_update_sgready_state(): while requesting data from {a_url}: {res.status} - {res}")
+                        _LOGGER.info(f"[WEB] web_update_sgready_state(): while requesting data from {a_url}: {res.status} - {res}")
                         self._web_is_authenticated = False
 
                 except ClientResponseError as exc:
-                    _LOGGER.info(f"web_update_sgready_state(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
+                    _LOGGER.info(f"[WEB] web_update_sgready_state(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                     if exc.status == 401:
                         self.purge_senec_cookies()
                     if exc.status != 408:
@@ -7295,14 +7295,14 @@ class SenecOnline:
     async def web_update_sgready_conf(self):
         if self.SGREADY_SUPPORTED:
             if self.web_totp_required:
-                _LOGGER.info("***** skipped cause TOTP required - web_update_sgready_conf(self) ********")
+                _LOGGER.info(f"[WEB] ***** skipped cause TOTP required - web_update_sgready_conf(self) ********")
                 return
 
-            _LOGGER.info("***** web_update_sgready_conf(self) ********")
+            _LOGGER.info(f"[WEB] ***** web_update_sgready_conf(self) ********")
             a_url = self._WEB_GET_SGREADY_CONF % (str(self._web_master_plant_number))
             async with self.web_session.get(a_url, headers=self._default_web_headers, ssl=False) as res:
                 try:
-                    _LOGGER.debug(f"web_update_sgready_conf(): requesting: {res.request_info.url}")
+                    _LOGGER.debug(f"[WEB] web_update_sgready_conf(): requesting: {res.request_info.url}")
                     res.raise_for_status()
                     if res.status in [200, 201, 202, 204, 205]:
                         try:
@@ -7311,13 +7311,13 @@ class SenecOnline:
                             self._QUERY_SGREADY_CONF_TS = time()
 
                         except JSONDecodeError as exc:
-                            _LOGGER.warning(f"JSONDecodeError while 'await res.json()' {exc}")
+                            _LOGGER.warning(f"[WEB] JSONDecodeError while 'await res.json()' {exc}")
                     else:
-                        _LOGGER.info(f"web_update_sgready_conf(): while requesting data from {a_url}: {res.status} - {res}")
+                        _LOGGER.info(f"[WEB] web_update_sgready_conf(): while requesting data from {a_url}: {res.status} - {res}")
                         self._web_is_authenticated = False
 
                 except ClientResponseError as exc:
-                    _LOGGER.info(f"web_update_sgready_conf(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
+                    _LOGGER.info(f"[WEB] web_update_sgready_conf(): while requesting data from {a_url}: {type(exc).__name__} - {exc}")
                     if exc.status == 401:
                         self.purge_senec_cookies()
                     if exc.status != 408:
@@ -7325,7 +7325,7 @@ class SenecOnline:
 
     async def set_sgready_conf(self, new_sgready_data: dict, retry:bool=True):
         if self.SGREADY_SUPPORTED:
-            _LOGGER.debug(f"***** set_sgready_conf(self, new_sgready_data {new_sgready_data}) ********")
+            _LOGGER.debug(f"[WEB] ***** set_sgready_conf(self, new_sgready_data {new_sgready_data}) ********")
 
             a_url = self._WEB_SET_SGREADY_CONF % (str(self._web_master_plant_number))
 
@@ -7343,10 +7343,10 @@ class SenecOnline:
             if len(post_data) > 0 and post_data_to_backend:
                 async with self.web_session.post(a_url, headers=self._default_web_headers, ssl=False, json=post_data) as res:
                     try:
-                        _LOGGER.debug(f"set_sgready_conf(): requesting: {res.request_info.url}")
+                        _LOGGER.debug(f"[WEB] set_sgready_conf(): requesting: {res.request_info.url}")
                         res.raise_for_status()
                         if res.status in [200, 201, 202, 204, 205]:
-                            _LOGGER.debug("***** Set SG-Ready CONF successfully ********")
+                            _LOGGER.debug(f"[WEB] ***** Set SG-Ready CONF successfully ********")
                             # Reset the timer in order that the SGReady state is updated immediately after the change
                             self._QUERY_SGREADY_STATE_TS = 0
                             self._QUERY_SGREADY_CONF_TS = 0
@@ -7429,7 +7429,7 @@ class SenecOnline:
                 d = bat_inv_obj["firmware"]["firmwareVersionHumanMachineInterface"]
                 e = bat_inv_obj["firmware"]["firmwareVersionPowerUnit"]
                 f = bat_inv_obj["firmware"]["firmwareVersionBidirectionalDcConverter"]
-        # _LOGGER.info(f"VERSION INFO **************** {a} {b} {c} {d} {e} {f} ")
+        # _LOGGER.info(f"[WEB] VERSION INFO **************** {a} {b} {c} {d} {e} {f} ")
         if a is not None and b is not None:
             if c is not None:
                 return f"App:{a} FW:{b} Inverter: v{c}"
@@ -8297,7 +8297,7 @@ class SenecConnect:
                         ret[a_system_id] = bess
             return ret
 
-        _LOGGER.info(f"get_all_live_systems(): could not get any live systems for given key {self._logger_key}")
+        _LOGGER.info(f"SENEC.Connect get_all_live_systems(): could not get any live systems for given key {self._logger_key}")
         return None
 
     @staticmethod

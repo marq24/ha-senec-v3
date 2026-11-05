@@ -24,13 +24,15 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
-    """Initialize number platform from config entry."""
-    _LOGGER.info("NUMBER async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.info(f"{coordinator.LOGPREFIX}NUMBER async_setup_entry")
     entities = []
 
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
-        _LOGGER.info("No numbers for Inverters or OpenAPI...")
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No numbers for Inverters or OpenAPI...")
+
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No numbers for SENEC.Connect...")
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_NUMBER_TYPES:
@@ -43,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                     idx = int(possible_idx_str) - 1
                     a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(coordinator.data, idx)
                 except ValueError:
-                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+                    _LOGGER.debug(f"{coordinator.LOGPREFIX}No valid wallbox index found in key: {description.key} - {possible_idx_str}")
 
                 if a_wallbox_obj is not None:
                     description = replace(description, entity_registry_enabled_default=True)
@@ -59,13 +61,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                                     native_max_value = 12
                                 )
                         except Exception as err:
-                            _LOGGER.warning(f"WEB: Could not fetch min/max values for '{description.key}' - cause: {err}")
+                            _LOGGER.warning(f"{coordinator.LOGPREFIX}Could not fetch min/max values for '{description.key}' - cause: {err}")
 
             entity = SenecNumber(coordinator, description)
             entities.append(entity)
-
-    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
-        _LOGGER.info("No numbers for SENEC.Connect...")
 
     else:
         for description in MAIN_NUMBER_TYPES:
@@ -79,14 +78,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                     # the SenecLocal implementation, the extremas of the wallbox...
                     min_max = getattr(coordinator.senec, f"{description.key}_extrema")
                     if min_max is not None:
-                        _LOGGER.debug(f"NUMBER async_setup_entry(): LOCAL: Going to adjust min/max values for '{description.key}' with min: {min_max[0]} and max: {min_max[1]}")
+                        _LOGGER.debug(f"{coordinator.LOGPREFIX}NUMBER async_setup_entry(): LOCAL: Going to adjust min/max values for '{description.key}' with min: {min_max[0]} and max: {min_max[1]}")
                         description = replace(
                             description,
                             native_min_value=round(float(min_max[0]), 1),
                             native_max_value=round(float(min_max[1]), 1)
                         )
                     else:
-                        _LOGGER.debug(f"NUMBER async_setup_entry(): LOCAL: No min/max values found for '{description.key}'")
+                        _LOGGER.debug(f"{coordinator.LOGPREFIX}NUMBER async_setup_entry(): LOCAL: No min/max values found for '{description.key}'")
 
             entity = SenecNumber(coordinator, description)
             entities.append(entity)

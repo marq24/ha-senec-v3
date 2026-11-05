@@ -99,23 +99,41 @@ CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
 DEVICE_REG_CLEANUP_RUNNING = False
 SKIP_NEXT_RELOAD_OF_WEB = False
 
+
+def get_log_prefix(config_entry: ConfigEntry):
+    if CONF_TYPE in config_entry.data:
+        a_type = config_entry.data[CONF_TYPE]
+        if a_type == CONF_SYSTYPE_INVERTER:
+            return "[INV] "
+        elif a_type == CONF_SYSTYPE_WEB:
+            return "[WEB] "
+        elif a_type == CONF_SYSTYPE_OPENAPI:
+            return "[OPENAPI] "
+        elif a_type == CONF_SYSTYPE_SENECCONNECT:
+            return "[SENECCONNECT] "
+        else:
+            return "[LAN] "
+    return "UNKNOWN"
+
+
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+    LOGPREFIX: Final = get_log_prefix(config_entry)
     if config_entry.version < CONFIG_VERSION:
         if config_entry.data is not None and len(config_entry.data) > 0:
-            _LOGGER.debug(f"Migrating configuration from version {config_entry.version}.{config_entry.minor_version}")
+            _LOGGER.debug(f"{LOGPREFIX}async_migrate_entry(): Migrating configuration from version {config_entry.version}.{config_entry.minor_version}")
             if config_entry.options is not None and len(config_entry.options):
                 new_data = {**config_entry.data, **config_entry.options}
             else:
                 new_data = config_entry.data
             hass.config_entries.async_update_entry(config_entry, data=new_data, options={}, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
-            _LOGGER.debug(f"Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
+            _LOGGER.debug(f"{LOGPREFIX}async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
 
     # update from 2.0 [completed wallbox implementation - and fixed total statistics stuff]
     if config_entry.version == 2:
         if config_entry.minor_version == 0:
-            _LOGGER.info(f"Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+            _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
             if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-                _LOGGER.info("Migration: for WebAPI we must clean the cache file ONCE")
+                _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: for WebAPI we must clean the cache file ONCE")
                 # we need to remove the cache file so that the next time we will
                 # access the webAPI, we will get a fresh copy of the data
                 user = config_entry.data.get(CONF_USERNAME, None)
@@ -128,27 +146,27 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
                     # this will remove the cache file...
                     await web_api._write_token_to_storage(token_dict=None)
-                    _LOGGER.info(f"Migration: cache file cleared for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+                    _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: cache file cleared for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
 
             hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
 
         # update from 2.1 to 2.2 [mark config entry to purge data]
         if config_entry.minor_version == 1:
-            _LOGGER.info(f"Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+            _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
             if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-                _LOGGER.info("Migration: for WebAPI we must mark for clearing ONCE")
+                _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: for WebAPI we must mark for clearing ONCE")
 
                 # we must purge the 'last_stored_value' - but we can do that only during the loading phase of the config_entry
                 new_config_entry_data = {**config_entry.data, **{CONF_MUST_START_POST_MIGRATION_PROCESS: True}}
                 hass.config_entries.async_update_entry(config_entry, data=new_config_entry_data, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
-                _LOGGER.info(f"Migration: cache file marked for clearing for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+                _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: cache file marked for clearing for WebAPI - migrated to version {CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
             else:
                 # do nothing for other system-types (inverter or local, just update the version info...
                 hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
 
         # update from 2.2 to 2.3 [ensure that all unique_id's are lower case!]
         if config_entry.minor_version == 2:
-            _LOGGER.info(f"async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+            _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
             registry = entity_registry.async_get(hass)
 
             # 1'st run - ensure that all 'unique_id' are lower case...
@@ -156,10 +174,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             for entity in entities:
                 if entity.unique_id != entity.unique_id.lower():
                     new_unique_id = entity.unique_id.lower()
-                    _LOGGER.info(f"Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} updated!")
+                    _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} updated!")
                     for already_existing_entity in entities:
                         if already_existing_entity.unique_id == new_unique_id:
-                            _LOGGER.info(f"Entity ID: {entity.entity_id}, Unique ID: {new_unique_id} already exists! - Will PURGE previous {already_existing_entity.entity_id}")
+                            _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Entity ID: {entity.entity_id}, Unique ID: {new_unique_id} already exists! - Will PURGE previous {already_existing_entity.entity_id}")
                             registry.async_remove(already_existing_entity.entity_id)
 
                     registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
@@ -170,25 +188,25 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             for entity in entities:
                 if not entity.unique_id.startswith(prefix):
                     new_unique_id = f"{DOMAIN}.{entity.unique_id}".lower()
-                    _LOGGER.debug(f"Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} will be updated!")
+                    _LOGGER.debug(f"{LOGPREFIX}async_migrate_entry(): Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} will be updated!")
                     registry.async_update_entity(entity.entity_id, new_unique_id=new_unique_id)
 
             hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
-            _LOGGER.info(f"async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
+            _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
 
         # update from 2.3 to 2.4 [need to purge all entities of SENEC.Connect]
         if config_entry.minor_version == 3:
             if config_entry.data is not None and config_entry.data.get(CONF_TYPE, None) == CONF_SYSTYPE_SENECCONNECT:
 
-                _LOGGER.info(f"async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
+                _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration: from v{config_entry.version}.{config_entry.minor_version} to v{CONFIG_VERSION}.{CONFIG_MINOR_VERSION}")
                 registry = entity_registry.async_get(hass)
 
                 entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
                 for entity in entities:
-                    _LOGGER.info(f"Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} does not contain serial - Will PURGE previous {entity.entity_id}")
+                    _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Entity ID: {entity.entity_id}, Unique ID: {entity.unique_id} does not contain serial - Will PURGE previous {entity.entity_id}")
                     registry.async_remove(entity.entity_id)
 
-                _LOGGER.info(f"async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
+                _LOGGER.info(f"{LOGPREFIX}async_migrate_entry(): Migration to configuration version {config_entry.version}.{config_entry.minor_version} successful")
             hass.config_entries.async_update_entry(config_entry, version=CONFIG_VERSION, minor_version=CONFIG_MINOR_VERSION)
 
     return True
@@ -210,8 +228,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     # purge possible devices-check
     asyncio.create_task(check_device_registry(hass, config_entry.entry_id))
 
+    LOGPREFIX: Final = get_log_prefix(config_entry)
     log_scan_interval = timedelta(seconds=config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2))
-    _LOGGER.info(f"Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{log_scan_interval} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
+    _LOGGER.info(f"{LOGPREFIX}Starting SENEC.Home Integration '{config_entry.data.get(CONF_NAME)}' with interval:{log_scan_interval} - ConfigEntry: {util.mask_map(dict(config_entry.as_dict()))}")
 
     # check if we have a valid manifest_version
     coordinator = SenecDataUpdateCoordinator(hass, config_entry, intg_version)
@@ -224,9 +243,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # we need to log in into the SenecApp and authenticate the user via the web-portal
         try:
             await coordinator.senec.authenticate_all()
-            _LOGGER.info(f"authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
+            _LOGGER.info(f"{LOGPREFIX}authenticate_all() completed -> main data: {util.mask_map(coordinator.senec.get_debug_login_data())}")
         except ReConfigurationRequired:
-            _LOGGER.warning("ReConfigurationRequired - we need to re-authenticate the user")
+            _LOGGER.warning(f"{LOGPREFIX}ReConfigurationRequired - we need to re-authenticate the user")
             # we will not do this here, but let the HomeAssistant handle this for us
             # by calling the async_start_reauth() method on the config_entry
             hass.add_job(config_entry.async_start_reauth, hass)
@@ -269,7 +288,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 max_wait_count += 1
 
             if coordinator._device_serial == a_other_coord._device_serial:
-                _LOGGER.info(f"SIBLING: ONLINE Sibling found for this SenecLocal[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
+                _LOGGER.info(f"{LOGPREFIX}SIBLING: ONLINE Sibling found for this SenecLocal[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
                 coordinator.senec.set_senec_online_instance(a_other_coord.senec)
                 a_other_coord.senec.set_senec_local_instance(coordinator.senec)
 
@@ -323,7 +342,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             # data (like the new wallbox info - evse)
             if len(backup_systems) < len(connect_systems) or (has_evse_data != backup_has_evse_data):
                 # updating the config_entry!
-                _LOGGER.debug(f"Updating config_entry for {coordinator.senec._logger_key} with new systems: {connect_systems}")
+                _LOGGER.debug(f"{LOGPREFIX}Updating config_entry for {coordinator.senec._logger_key} with new systems: {connect_systems}")
                 hass.config_entries.async_update_entry(config_entry,data={**config_entry.data, **{CONF_SENECCONENCT_SYSTEMS: connect_systems}})
 
         elif CONF_SENECCONENCT_SYSTEMS in config_entry.data and config_entry.data[CONF_SENECCONENCT_SYSTEMS] is not None:
@@ -331,9 +350,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             if len(backuped_systems) > 0:
                 coordinator._senec_connect_systems = backuped_systems
             else:
-                raise ConfigEntryNotReady(f"NO SENEC SYSTEMS FOUND EVEN in BACKUP for {coordinator.senec._logger_key}")
+                raise ConfigEntryNotReady(f"{LOGPREFIX}NO SENEC SYSTEMS FOUND EVEN in BACKUP for {coordinator.senec._logger_key}")
         else:
-            raise ConfigEntryNotReady(f"NO SENEC SYSTEMS FOUND for {coordinator.senec._logger_key}")
+            raise ConfigEntryNotReady(f"{LOGPREFIX}NO SENEC SYSTEMS FOUND for {coordinator.senec._logger_key}")
 
     elif config_type_val == CONF_SYSTYPE_OPENAPI:
         coordinator._device_type = SYSTYPE_NAME_OPENAPI
@@ -352,7 +371,7 @@ async def check_device_registry(hass: HomeAssistant, config_entry_id:str = None)
     global DEVICE_REG_CLEANUP_RUNNING
     if not DEVICE_REG_CLEANUP_RUNNING:
         DEVICE_REG_CLEANUP_RUNNING = True
-        _LOGGER.debug(f"check device registry for outdated {DOMAIN} devices...")
+        _LOGGER.debug(f"check_device_registry(): check device registry for outdated {DOMAIN} devices...")
         if hass is not None:
             a_device_reg = device_reg.async_get(hass)
             if a_device_reg is not None:
@@ -371,7 +390,7 @@ async def check_device_registry(hass: HomeAssistant, config_entry_id:str = None)
 
                 if len(key_list_to_be_deleted) > 0:
                     key_list_to_be_deleted = list(dict.fromkeys(key_list_to_be_deleted))
-                    _LOGGER.info(f"NEED TO DELETE old {DOMAIN} DeviceEntries: {key_list_to_be_deleted}")
+                    _LOGGER.info(f"check_device_registry(): NEED TO DELETE old {DOMAIN} DeviceEntries: {key_list_to_be_deleted}")
                     for a_device_entry_id in key_list_to_be_deleted:
                         a_device_reg.async_remove_device(device_id=a_device_entry_id)
 
@@ -380,7 +399,8 @@ async def check_device_registry(hass: HomeAssistant, config_entry_id:str = None)
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload Senec config entry."""
-    _LOGGER.debug(f"async_unload_entry() called for entry: {config_entry.entry_id}")
+    LOGPREFIX: Final = get_log_prefix(config_entry)
+    _LOGGER.debug(f"{LOGPREFIX}async_unload_entry() called for entry: {config_entry.entry_id}")
     unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
 
     if unload_ok:
@@ -404,7 +424,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                                     a_other_coord.senec.set_senec_online_instance(None)
 
             except BaseException as exception:
-                _LOGGER.warning(f"async_unload_entry() Exception (fatal): {exception}")
+                _LOGGER.warning(f"{LOGPREFIX}async_unload_entry() Exception (fatal): {exception}")
 
             hass.data[DOMAIN].pop(config_entry.entry_id)
 
@@ -415,12 +435,13 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
 
 async def entry_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    LOGPREFIX: Final = get_log_prefix(config_entry)
     global SKIP_NEXT_RELOAD_OF_WEB
-    _LOGGER.debug(f"entry_update_listener() called for entry: {config_entry.entry_id}")
+    _LOGGER.debug(f"{LOGPREFIX}entry_update_listener() called for entry: {config_entry.entry_id}")
     if config_entry.data.get(CONF_TYPE, None) != CONF_SYSTYPE_WEB or SKIP_NEXT_RELOAD_OF_WEB is False:
         await hass.config_entries.async_reload(config_entry.entry_id)
     else:
-        _LOGGER.info(f"entry_update_listener() was called but the RELOAD will be skipped cause the updated was caused by an integrtaion-internal process - all is fine!")
+        _LOGGER.info(f"{LOGPREFIX}entry_update_listener() was called but the RELOAD will be skipped cause the updated was caused by an integrtaion-internal process - all is fine!")
         SKIP_NEXT_RELOAD_OF_WEB = False
 
 
@@ -466,6 +487,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry, intg_version: str):
         UPDATE_INTERVAL_IN_SECONDS = config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SENECV2)
+        self.LOGPREFIX : Final = get_log_prefix(config_entry)
         self._config_entry_id = config_entry.entry_id
         self._integration_version = intg_version
         self._total_increasing_sensors = []
@@ -496,7 +518,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 # time that it was detected...
                 new_data = {**config_entry.data, CONF_TOTP_ALREADY_USED: True}
                 hass.config_entries.async_update_entry(config_entry, data=new_data)
-                _LOGGER.info("TOTP secret configured for the first time - we must purge any existing auth-tokens")
+                _LOGGER.info(f"{self.LOGPREFIX}TOTP secret configured for the first time - we must purge any existing auth-tokens")
                 must_purge_access_token = True
 
             # defining the default query options for APP & WEB...
@@ -523,16 +545,16 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
 
                 if registry is not None:
                     all_webapi_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
-                    _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_webapi_entities)}")
+                    _LOGGER.debug(f"{self.LOGPREFIX}all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_webapi_entities)}")
                     for a_entity in all_webapi_entities:
                         if a_entity.disabled_by is None:
                             a_id = a_entity.entity_id
-                            _LOGGER.debug(f"Entity '{a_id}' is enabled for {config_entry.title}")
+                            _LOGGER.debug(f"{self.LOGPREFIX}Entity '{a_id}' is enabled for {config_entry.title}")
 
                             if a_id.startswith("sensor."):
                                 if not opt[QUERY_SYSTEM_DETAILS_KEY]:
                                     if a_id.endswith("_system_state") or a_id.endswith("_case_temp"):
-                                        _LOGGER.info("***** QUERY_SYSTEM_DETAILS! ********")
+                                        _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_SYSTEM_DETAILS! ********")
                                         opt[QUERY_SYSTEM_DETAILS_KEY] = True
 
                                 # total statistic values [in the web-portal, each total statistic value
@@ -544,7 +566,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                             "_accuimport_total", "_accuexport_total",
                                             "_gridimport_total", "gridexport_total",
                                             "_wallbox_consumption_total")):
-                                        _LOGGER.info("***** QUERY_TOTALS! ********")
+                                        _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_TOTALS! ********")
                                         opt[QUERY_TOTALS_KEY] = True
 
                                 # Peak Shaving
@@ -552,26 +574,26 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                     if any(a_id.endswith(suffix) for suffix in (
                                             "_gridexport_limit", "_peakshaving_mode",
                                             "_peakshaving_capacitylimit", "_peakshaving_enddate")):
-                                        _LOGGER.info("***** QUERY_PEAK_SHAVING! ********")
+                                        _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_PEAK_SHAVING! ********")
                                         opt[QUERY_PEAK_SHAVING_KEY] = True
 
                             elif a_id.startswith("number."):
                                 # Spare Capacity
                                 if not opt[QUERY_SPARE_CAPACITY_KEY]:
                                     if a_id.endswith("_spare_capacity"):
-                                        _LOGGER.info("***** QUERY_SPARE_CAPACITY! ********")
+                                        _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_SPARE_CAPACITY! ********")
                                         opt[QUERY_SPARE_CAPACITY_KEY] = True
 
                             # brute force for our wallbox stuff
                             if not opt[QUERY_WALLBOX_KEY]:
                                 if "_wallbox_" in a_id:
-                                    _LOGGER.info("***** QUERY_WALLBOX-DATA ********")
+                                    _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_WALLBOX-DATA ********")
                                     opt[QUERY_WALLBOX_KEY] = True
 
                             # brute force for our sgready stuff
                             if not opt[QUERY_SGREADY_KEY]:
                                 if "sgready" in a_id:
-                                    _LOGGER.info("***** QUERY_SGREADY_DATA! ********")
+                                    _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_SGREADY_DATA! ********")
                                     opt[QUERY_SGREADY_KEY] = True
 
                             # when we have ALL, we can break the loop
@@ -582,7 +604,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                     opt[QUERY_WALLBOX_KEY] and
                                     opt[QUERY_SGREADY_KEY]
                             ):
-                                _LOGGER.debug(f"All required options are set: {opt} - can cancel the checking loop")
+                                _LOGGER.debug(f"{self.LOGPREFIX}All required options are set: {opt} - can cancel the checking loop")
                                 break
 
                     # we need to check, if there are any Wallbox entities...
@@ -603,11 +625,11 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                          storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
                                          integ_version=self._integration_version)
             except ReConfigurationRequired as exc:
-                _LOGGER.warning(f"SenecOnline could not be created: {type(exc).__name__} - {exc}")
+                _LOGGER.warning(f"{self.LOGPREFIX} could not be created: {type(exc).__name__} - {exc}")
                 hass.add_job(config_entry.async_start_reauth, hass)
 
             if must_purge_access_token:
-                _LOGGER.info("init(): must_purge_access_token...")
+                _LOGGER.info(f"{self.LOGPREFIX}init(): must_purge_access_token...")
                 hass.async_create_task(self.senec._write_token_to_storage(token_dict=None))
 
             self._warning_counter = 0
@@ -622,7 +644,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             try:
                 self.senec = SenecConnect(subscription_key=api_key, web_session=async_get_clientsession(hass))
             except ReConfigurationRequired as exc:
-                _LOGGER.warning(f"SenecConnect could not be created: {type(exc).__name__} - {exc}")
+                _LOGGER.warning(f"{self.LOGPREFIX} could not be created: {type(exc).__name__} - {exc}")
                 hass.add_job(config_entry.async_start_reauth, hass)
 
             self._warning_counter = 0
@@ -667,11 +689,11 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                     all_local_entities = entity_registry.async_entries_for_config_entry(registry, config_entry.entry_id)
                     if len(all_local_entities) > 0:
                         use_defaults = False
-                        _LOGGER.debug(f"all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_local_entities)}")
+                        _LOGGER.debug(f"{self.LOGPREFIX}all entities for config_entry {config_entry.entry_id} [{config_entry.title}] fetched - total number is: {len(all_local_entities)}")
                         for a_entity in all_local_entities:
                             if a_entity.disabled_by is None:
                                 a_id = a_entity.entity_id
-                                _LOGGER.debug(f"Entity '{a_id}' is enabled for {config_entry.title}")
+                                _LOGGER.debug(f"{self.LOGPREFIX}Entity '{a_id}' is enabled for {config_entry.title}")
                                 # check if the entity is a sensor, binary_sensor, switch, number or select
                                 a_entity_platform = a_id.split(".")[0]
                                 if a_entity_platform in LOCAL_PLATFORM_MAPPING:
@@ -687,14 +709,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                                     query_option_key, a_log_msg = LOCAL_SECTION_MAPPING[a_lala_section]
                                                     if not opt[query_option_key]:
                                                         opt[query_option_key] = True
-                                                        _LOGGER.info(a_log_msg)
+                                                        _LOGGER.info(f"{self.LOGPREFIX}{a_log_msg}")
 
-                                            _LOGGER.debug(f"Found a EntityDescription for '{a_id}' key: {a_entity_desc.key}")
+                                            _LOGGER.debug(f"{self.LOGPREFIX}Found a EntityDescription for '{a_id}' key: {a_entity_desc.key}")
                                             break
 
             if use_defaults:
                 # if there are no entities yet... we slightly adjust our defaults!
-                _LOGGER.info(f"NO entities for config_entry fetched! Using default options")
+                _LOGGER.info(f"{self.LOGPREFIX}NO entities for config_entry fetched! Using default options")
                 opt[QUERY_PV1_KEY] = True
                 opt[QUERY_PM1OBJ1_KEY] = True
                 opt[QUERY_BMS_KEY] = True
@@ -720,14 +742,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
     # Callable[[Event], Any]
     def __call__(self, evt: Event) -> bool:
         # just as testing the 'event.async_track_entity_registry_updated_event'
-        _LOGGER.warning(str(evt))
+        _LOGGER.info(f"{self.LOGPREFIX}{str(evt)}")
         return True
 
     async def check_and_set_senec_online_at_senec_local(self, hass: HomeAssistant):
-        _LOGGER.debug(f"check_and_set_senec_online_at_senec_local() called")
+        _LOGGER.debug(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local() called")
         if not isinstance(self.senec, SenecOnline):
             # this is only for SenecOnline Coordinators...
-            _LOGGER.warning(f"check_and_set_senec_online_at_senec_local(): called for a NON-SenecOnline instance")
+            _LOGGER.warning(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local(): called for a NON-SenecOnline instance")
             return
 
         # Search the (optional) sibling SenecLocal for this SenecOnline via serial-number and connect them
@@ -736,25 +758,25 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 # we must ensure that the 'a_other_coord' have already passed it's initialization-phase...
                 max_wait_count = 0
                 while max_wait_count < 20 and a_other_coord._device_serial is None:
-                    _LOGGER.debug(f"check_and_set_senec_online_at_senec_local(): waiting for a_other_coord._device_serial to be set [count: {max_wait_count}]")
+                    _LOGGER.debug(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local(): waiting for a_other_coord._device_serial to be set [count: {max_wait_count}]")
                     await asyncio.sleep(5)
                     max_wait_count += 1
 
                 if self._device_serial == a_other_coord._device_serial:
-                    _LOGGER.info(f"check_and_set_senec_online_at_senec_local(): SIBLING: LOCAL Sibling found for this SenecOnline[{util.mask_string(self._device_serial)}]: {a_other_coord.senec}")
+                    _LOGGER.info(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local(): SIBLING: LOCAL Sibling found for this SenecOnline[{util.mask_string(self._device_serial)}]: {a_other_coord.senec}")
                     self.senec.set_senec_local_instance(a_other_coord.senec)
                     a_other_coord.senec.set_senec_online_instance(self.senec)
 
     async def check_for_post_migration_tasks(self, hass: HomeAssistant):
-        _LOGGER.debug(f"check_for_post_migration_tasks() called")
+        _LOGGER.debug(f"{self.LOGPREFIX}check_for_post_migration_tasks() called")
         if CONF_MUST_START_POST_MIGRATION_PROCESS in self._config_entry.data:
             data_reload_required = False
-            _LOGGER.info(f"check_for_post_migration_tasks(): 'CONF_MUST_START_POST_MIGRATION_PROCESS' is present WE will perform the actual task in 45sec")
+            _LOGGER.info(f"{self.LOGPREFIX}check_for_post_migration_tasks(): 'CONF_MUST_START_POST_MIGRATION_PROCESS' is present WE will perform the actual task in 45sec")
             await asyncio.sleep(45)
-            _LOGGER.info(f"check_for_post_migration_tasks(): starting 'post_migration_process' now!")
+            _LOGGER.info(f"{self.LOGPREFIX}check_for_post_migration_tasks(): starting 'post_migration_process' now!")
             if self._config_entry.data[CONF_MUST_START_POST_MIGRATION_PROCESS] is True:
                 if self._config_entry.data.get(CONF_TYPE, None) == CONF_SYSTYPE_WEB:
-                    _LOGGER.info("check_for_post_migration_tasks(): we must: 1) reset the access_token 2) reset all our 'total_increasing_values' sensors")
+                    _LOGGER.info(f"{self.LOGPREFIX}check_for_post_migration_tasks(): we must: 1) reset the access_token 2) reset all our 'total_increasing_values' sensors")
                     await self._async_trigger_button(trigger_key="delete_cache", payload="true")
                     self.reset_total_increasing_values()
                     data_reload_required = True
@@ -775,17 +797,17 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         return await self.senec._is_2408_or_higher_async()
 
     async def _async_update_data(self) -> dict:
-        _LOGGER.debug(f"_async_update_data called")
+        _LOGGER.debug(f"{self.LOGPREFIX}_async_update_data called")
         try:
             await self.senec.update()
             data = self.senec.dict_data();
-            _LOGGER.debug(f"read: {util.mask_map(data)}")
+            _LOGGER.debug(f"{self.LOGPREFIX}_async_update_data(): read: {util.mask_map(data)}")
             return data
         except UpdateFailed as exception:
-            _LOGGER.warning(f"UpdateFailed: {exception}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_update_data(): UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_update_data(): Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_to_state(self, switch_key, state):
@@ -793,10 +815,10 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             await self.senec.switch(switch_key, state)
             return self.senec.dict_data()
         except UpdateFailed as exception:
-            _LOGGER.warning(f"UpdateFailed: {exception}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_switch_to_state(): UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_switch_to_state(): Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_switch_array_to_state(self, switch_array_key, array_pos, state):
@@ -804,10 +826,10 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             await self.senec.switch_array(switch_array_key, array_pos, state)
             return self.senec.dict_data()
         except UpdateFailed as exception:
-            _LOGGER.warning(f"UpdateFailed: {exception}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_switch_array_to_state(): UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_switch_array_to_state(): Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_set_string_value(self, set_str_key, value: str):
@@ -815,10 +837,10 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             await self.senec.set_string_value(set_str_key, value)
             return self.senec.dict_data()
         except UpdateFailed as exception:
-            _LOGGER.warning(f"UpdateFailed: {exception}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_set_string_value(): UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_set_string_value(): Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     async def _async_trigger_button(self, trigger_key:str, payload: str):
@@ -826,23 +848,23 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             await self.senec._trigger_button(trigger_key, payload)
             return self.senec.dict_data()
         except UpdateFailed as exception:
-            _LOGGER.warning(f"UpdateFailed: {exception}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_trigger_button(): UpdateFailed: {exception}")
             raise UpdateFailed() from exception
         except BaseException as fatal:
-            _LOGGER.warning(f"Exception (fatal): {type(fatal).__name__} {fatal}")
+            _LOGGER.warning(f"{self.LOGPREFIX}_async_trigger_button(): Exception (fatal): {type(fatal).__name__} {fatal}")
             raise UpdateFailed() from fatal
 
     def add_total_increasing_sensor(self, sensor):
         self._total_increasing_sensors.append(sensor)
-        _LOGGER.debug(f"Added total increasing sensor: {sensor.entity_description.key} to coordinator")
+        _LOGGER.debug(f"{self.LOGPREFIX}add_total_increasing_sensor(): Added total increasing sensor: {sensor.entity_description.key} to coordinator")
 
     def reset_total_increasing_values(self):
         for sensor in self._total_increasing_sensors:
             if hasattr(sensor, "_previous_float_value") and sensor._previous_float_value is not None:
-                _LOGGER.debug(f"Resetting total increasing value for sensor: {sensor.entity_description.key}")
+                _LOGGER.debug(f"{self.LOGPREFIX}reset_total_increasing_values(): Resetting total increasing value for sensor: {sensor.entity_description.key}")
                 sensor._previous_float_value = None
             else:
-                _LOGGER.debug(f"No previous float value to reset for sensor: {sensor.entity_description.key}")
+                _LOGGER.debug(f"{self.LOGPREFIX}reset_total_increasing_values(): No previous float value to reset for sensor: {sensor.entity_description.key}")
 
 class SenecEntity(CustomFriendlyNameEntity):
     """Defines a base Senec entity."""
@@ -909,7 +931,7 @@ class SenecEntity(CustomFriendlyNameEntity):
                     idx = int(possible_idx_str) - 1
                     a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(self.coordinator.data, idx)
                 except ValueError:
-                    _LOGGER.debug(f"No valid wallbox index found for entity with the key: {self.entity_description.key} [had tried to parse '{possible_idx_str}' as wallbox index] - so this is probably not entity that belong to a wallbox device!")
+                    _LOGGER.debug(f"{self.coordinator.LOGPREFIX}device_info(): No valid wallbox index found for entity with the key: {self.entity_description.key} [had tried to parse '{possible_idx_str}' as wallbox index] - so this is probably not entity that belong to a wallbox device!")
 
         if a_wallbox_obj is not None:
             #         "id": "1",

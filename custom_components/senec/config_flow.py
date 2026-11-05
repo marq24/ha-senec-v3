@@ -188,7 +188,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entry_data = self._get_reconfigure_entry().data
         self._selected_system = entry_data.get(CONF_TYPE, None)
         if self._selected_system is None:
-            _LOGGER.error("Reconfigure called without system type, this should not happen!")
+            _LOGGER.error(f"Reconfigure called without system type, this should not happen!")
             return self.async_abort(reason="reconfigure_error")
 
         if self._selected_system in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_SENEC]:
@@ -255,7 +255,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.info(f"Successfully connect to SENEC.Home (using https? {use_https}) at {host}")
             return True
         except (OSError, HTTPError, Timeout, ClientResponseError):
-            # _LOGGER.exception("Please Report @ https://github.com/marq24/ha-senec-v3/issues:")
+            # _LOGGER.exception(f"Please Report @ https://github.com/marq24/ha-senec-v3/issues:")
             self._errors[CONF_HOST] = "cannot_connect"
             _LOGGER.warning(f"Could not connect to SENEC.Home (using https? {use_https}) at {host}, check host ip address")
         return False
@@ -645,7 +645,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         # initial setup...
                         if not self._stats_available:
                             # we have to show the user, that he should add also WEB-API
-                            _LOGGER.warning("Need WEB-API for full data...")
+                            _LOGGER.warning(f"Need WEB-API for full data...")
                             self._xdata = local_data
                             self._xname = name_entry
                             return self.async_show_form(
@@ -927,7 +927,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_selectserial(self, user_input=None):
         if user_input is not None:
-            _LOGGER.debug("async_step_selectserial(): finalize SETUP")
+            _LOGGER.debug(f"async_step_selectserial(): finalize SETUP")
             a_title = str(self.cached_login_input[CONF_NAME])
             # we must verify again the login - but this time with a valid SERIAL
             if await self._test_connection_senec_online(str(self.cached_login_input[CONF_USERNAME]),
@@ -955,7 +955,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 available_serials[a_serial] = f'{a_serial_obj["name"]} - {a_serial_obj["case"]} [Serial: {a_serial}] {a_serial_obj["addr"]}'
 
             if len(available_serials) == 0:
-                _LOGGER.debug("No SENEC.System serials?")
+                _LOGGER.debug(f"No SENEC.System serials?")
                 return self.async_abort(reason="no_systems_found")
 
             return self.async_show_form(

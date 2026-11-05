@@ -27,11 +27,15 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
     """Initialize switch platform from config entry."""
-    _LOGGER.info("SWITCH async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.info(f"{coordinator.LOGPREFIX}SWITCH async_setup_entry")
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
-        _LOGGER.info("No switches for Inverters or OpenAPI...")
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No switches for Inverters or OpenAPI...")
+
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No switches for SENEC.Connect...")
+
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SWITCH_TYPES:
             # when we have wallbox data, we want to enable the entity by default...
@@ -43,12 +47,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                     if a_wallbox_obj is not None:
                         description = replace(description, entity_registry_enabled_default=True)
                 except ValueError:
-                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+                    _LOGGER.debug(f"{coordinator.LOGPREFIX}No valid wallbox index found in key: {description.key} - {possible_idx_str}")
 
             entity = SenecSwitch(coordinator, description)
             entities.append(entity)
-    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
-        _LOGGER.info("No switches for SENEC.Connect...")
     else:
         for description in MAIN_SWITCH_TYPES:
             entity = SenecSwitch(coordinator, description)
@@ -57,11 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
 
 class SenecSwitch(SenecEntity, SwitchEntity):
-    def __init__(
-            self,
-            coordinator: SenecDataUpdateCoordinator,
-            description: ExtSwitchEntityDescription
-    ):
+    def __init__(self, coordinator: SenecDataUpdateCoordinator, description: ExtSwitchEntityDescription):
         """Initialize a singular value sensor."""
         super().__init__(coordinator=coordinator, description=description)
         if (hasattr(self.entity_description, 'entity_registry_enabled_default')):
@@ -91,8 +89,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
                 await self.coordinator._async_switch_to_state(self.entity_description.key,
                                                               False if self.entity_description.inverted else True)
             self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description,
-                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+            if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
                 self.async_schedule_update_ha_state(force_refresh=True)
 
@@ -111,8 +108,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
                 await self.coordinator._async_switch_to_state(self.entity_description.key,
                                                               True if self.entity_description.inverted else False)
             self.async_schedule_update_ha_state(force_refresh=True)
-            if hasattr(self.entity_description,
-                       'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
+            if hasattr(self.entity_description, 'update_after_switch_delay_in_sec') and self.entity_description.update_after_switch_delay_in_sec > 0:
                 await asyncio.sleep(self.entity_description.update_after_switch_delay_in_sec)
                 self.async_schedule_update_ha_state(force_refresh=True)
 
@@ -125,8 +121,7 @@ class SenecSwitch(SenecEntity, SwitchEntity):
         # return self.coordinator.data.get("title", "") == "foo"
         try:
             if self.entity_description.array_key is not None:
-                value = getattr(self.coordinator.senec, self.entity_description.array_key)[
-                            self.entity_description.array_pos] == 1
+                value = getattr(self.coordinator.senec, self.entity_description.array_key)[self.entity_description.array_pos] == 1
             else:
                 value = getattr(self.coordinator.senec, self.entity_description.key)
 

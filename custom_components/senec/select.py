@@ -24,11 +24,15 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback):
     """Initialize select platform from config entry."""
-    _LOGGER.info("SELECT async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.info(f"{coordinator.LOGPREFIX}SELECT async_setup_entry")
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] in [CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_OPENAPI]:
-        _LOGGER.info("No selects for Inverters or OpenAPI...")
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No selects for Inverters or OpenAPI...")
+
+    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No selects for SENEC.Connect...")
+
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_SELECT_TYPES:
             # when we have wallbox data, we want to enable the entity by default...
@@ -39,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
                     idx = int(possible_idx_str) - 1
                     a_wallbox_obj = StaticFuncs.app_get_wallbox_obj(coordinator.data, idx)
                 except ValueError:
-                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+                    _LOGGER.debug(f"{coordinator.LOGPREFIX}No valid wallbox index found in key: {description.key} - {possible_idx_str}")
 
                 if a_wallbox_obj is not None:
                     # the legacy wallbox-mode selector should still be disabled by default!
@@ -59,8 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
 
             entity = SenecSelect(coordinator, description)
             entities.append(entity)
-    elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
-        _LOGGER.info("No selects for SENEC.Connect...")
+
     else:
         for description in MAIN_SELECT_TYPES:
             entity = SenecSelect(coordinator, description)
@@ -151,10 +154,10 @@ class SenecSelect(SenecEntity, SelectEntity, RestoreEntity):
             last_sensor_data = await self.async_get_last_state()
             if last_sensor_data is not None and isinstance(last_sensor_data, State) and last_sensor_data.state is not None:
                 if str(last_sensor_data.state).lower() != "unknown":
-                    _LOGGER.debug(f"restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
+                    _LOGGER.debug(f"{self.coordinator.LOGPREFIX}async_added_to_hass(): restored prev value for key {self._attr_translation_key}: {last_sensor_data.state}")
                     self._previous_value = str(last_sensor_data.state)
                     if self._restore_from_local_persistence:
-                        _LOGGER.debug(f"set restored value '{self._previous_value}' as current value")
+                        _LOGGER.debug(f"{self.coordinator.LOGPREFIX}async_added_to_hass(): set restored value '{self._previous_value}' as current value")
                         await self.async_select_option(self._previous_value)
                 else:
-                    _LOGGER.debug(f"SKIPP restored prev value for key {self._attr_translation_key} cause value is :'{last_sensor_data.state}'")
+                    _LOGGER.debug(f"{self.coordinator.LOGPREFIX}async_added_to_hass(): SKIPP restored prev value for key {self._attr_translation_key} cause value is :'{last_sensor_data.state}'")

@@ -29,11 +29,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    _LOGGER.info("BINARY_SENSOR async_setup_entry")
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    _LOGGER.info(f"{coordinator.LOGPREFIX}BINARY_SENSOR async_setup_entry")
     entities = []
     if CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-        _LOGGER.info("No binary_sensors for Inverters...")
+        _LOGGER.info(f"{coordinator.LOGPREFIX}No binary_sensors for Inverters...")
 
     elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
         for description in WEB_BIN_SENSOR_TYPES:
@@ -46,7 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                     if a_wallbox_obj is not None:
                         description = replace(description, entity_registry_enabled_default=True)
                 except ValueError:
-                    _LOGGER.debug(f"No valid wallbox index found in key: {description.key} - {possible_idx_str}")
+                    _LOGGER.debug(f"{coordinator.LOGPREFIX}No valid wallbox index found in key: {description.key} - {possible_idx_str}")
 
             entity = SenecBinarySensor(coordinator, description)
             entities.append(entity)
