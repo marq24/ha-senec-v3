@@ -142,11 +142,8 @@ def title_in_configuration_exists(hass: HomeAssistant, a_title: str) -> bool:
 
 class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for senec."""
-
     VERSION = CONFIG_VERSION
     MINOR_VERSION = CONFIG_MINOR_VERSION
-
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self):
         self._default_name = None
