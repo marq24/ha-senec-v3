@@ -15,8 +15,7 @@ from homeassistant.util import slugify
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import DOMAIN, MAIN_SELECT_TYPES, WEB_SELECT_TYPES, CONF_SYSTYPE_INVERTER, CONF_SYSTYPE_WEB, \
     ExtSelectEntityDescription, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, CONF_SYSTYPE_OPENAPI
-from .pysenec_ha import LOCAL_WB_MODE_LEGACY_UNKNOWN, LOCAL_WB_MODE_2026_UNKNOWN
-from .pysenec_ha.constants import WALLBOX_CHARGING_MODES_LEGACY_P4, WALLBOX_CHARGING_MODES_2026_P4
+from .pysenec_ha.constants import LOCAL_WB_MODE_LEGACY_UNKNOWN, LOCAL_WB_MODE_2026_UNKNOWN, WALLBOX_CHARGING_MODES_LEGACY_P4, WALLBOX_CHARGING_MODES_2026_P4
 
 _LOGGER = logging.getLogger(__name__)
 

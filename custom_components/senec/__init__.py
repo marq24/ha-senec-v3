@@ -18,8 +18,14 @@ from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.loader import async_get_integration
 
-from custom_components.senec.pysenec_ha import SenecLocal, SenecLocalOpenApi, InverterLocal, SenecOnline, util, ReConfigurationRequired, \
-    SenecConnect
+from custom_components.senec.pysenec_ha.senec_lala import SenecLocal
+from custom_components.senec.pysenec_ha.senec_web import SenecOnline
+from custom_components.senec.pysenec_ha.senec_inverter import InverterLocal
+from custom_components.senec.pysenec_ha.senec_openapi import SenecLocalOpenApi
+from custom_components.senec.pysenec_ha.senec_connect import SenecConnect
+
+from custom_components.senec.pysenec_ha import util, ReConfigurationRequired
+
 from custom_components.senec.pysenec_ha.constants import (
     SENEC_SECTION_BMS,
     SENEC_SECTION_BMS_CELLS,
@@ -217,6 +223,50 @@ async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 
+async def check_and_set_senec_online(hass: HomeAssistant, coordinator: SenecDataUpdateCoordinator):
+    _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_online() called")
+    if not isinstance(coordinator.senec, SenecOnline):
+        # this is only for SenecOnline Coordinators...
+        _LOGGER.warning(f"{coordinator.LOGPREFIX}check_and_set_senec_online(): called for a NONE-SenecOnline instance")
+        return
+
+    # Search the (optional) sibling SenecLocal for this SenecOnline via serial-number and connect them
+    for a_other_coord in hass.data[DOMAIN].values():
+        if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecLocal):
+            # we must ensure that the 'a_other_coord' have already passed it's initialization-phase...
+            max_wait_count = 0
+            while max_wait_count < 20 and a_other_coord._device_serial is None:
+                _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_online(): waiting for a_other_coord._device_serial to be set [count: {max_wait_count}]")
+                await asyncio.sleep(5)
+                max_wait_count += 1
+
+            if coordinator._device_serial == a_other_coord._device_serial:
+                _LOGGER.info(f"{coordinator.LOGPREFIX}check_and_set_senec_online(): SIBLING: LOCAL Sibling found for this SenecOnline[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
+                coordinator.senec.set_senec_local_instance(a_other_coord.senec)
+                a_other_coord.senec.set_senec_online_instance(coordinator.senec)
+
+async def check_and_set_senec_local(hass: HomeAssistant, coordinator: SenecDataUpdateCoordinator):
+    _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_local() called")
+    if not isinstance(coordinator.senec, SenecLocal):
+        # this is only for SenecOnline Coordinators...
+        _LOGGER.warning(f"{coordinator.LOGPREFIX}check_and_set_senec_local(): called for a NONE-SenecLocal instance")
+        return
+
+    # Search the (optional) sibling SenecOnline for this SenecLocal via serial-number and connect them
+    for a_other_coord in hass.data[DOMAIN].values():
+        if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecOnline):
+            # we must ensure that the 'a_other_coord' have already passed it's initialization-phase...
+            max_wait_count = 0
+            while max_wait_count < 20 and a_other_coord._device_serial is None:
+                _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_local(): waiting for a_other_coord._device_serial to be set [count: {max_wait_count}]")
+                await asyncio.sleep(5)
+                max_wait_count += 1
+
+            if coordinator._device_serial == a_other_coord._device_serial:
+                _LOGGER.info(f"{coordinator.LOGPREFIX}check_and_set_senec_local(): SIBLING: WEB Sibling found for this SenecLocal[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
+                coordinator.senec.set_senec_online_instance(a_other_coord.senec)
+                a_other_coord.senec.set_senec_local_instance(coordinator.senec)
+
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
     the_integration = await async_get_integration(hass, DOMAIN)
@@ -279,18 +329,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.versions
 
         # Search the (optional) sibling SenecOnline for this SenecLocal via serialnumber and connect them
-        for a_other_coord in hass.data[DOMAIN].values():
-          if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecOnline):
-            # we must ensure, that the 'a_other_coord' have already passed it's initialization-phase...
-            max_wait_count = 0
-            while max_wait_count < 5 and a_other_coord._device_serial is None:
-                await asyncio.sleep(5)
-                max_wait_count += 1
+        hass.async_create_task(check_and_set_senec_local(hass, coordinator))
 
-            if coordinator._device_serial == a_other_coord._device_serial:
-                _LOGGER.info(f"{LOGPREFIX}SIBLING: ONLINE Sibling found for this SenecLocal[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
-                coordinator.senec.set_senec_online_instance(a_other_coord.senec)
-                a_other_coord.senec.set_senec_local_instance(coordinator.senec)
 
     elif config_type_val == CONF_SYSTYPE_INVERTER:
         await coordinator.senec.update_version()
@@ -312,7 +352,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.async_create_task(coordinator.check_for_post_migration_tasks(hass))
 
         # Search the (optional) sibling SenecLocal for this SenecOnline via serial-number and connect them
-        hass.async_create_task(coordinator.check_and_set_senec_online_at_senec_local(hass))
+        hass.async_create_task(check_and_set_senec_online(hass, coordinator))
 
         # Register Services
         senec_services = SenecService.SenecService(hass, config_entry, coordinator)
@@ -491,6 +531,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         self._config_entry_id = config_entry.entry_id
         self._integration_version = intg_version
         self._total_increasing_sensors = []
+        self._opt = None
 
         """Initialize."""
         # Build-In INVERTER
@@ -498,6 +539,30 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             # host can be changed in the options...
             self._host = config_entry.data[CONF_HOST]
             self.senec = InverterLocal(host=self._host, inv_session=async_get_clientsession(hass), integ_version=self._integration_version)
+
+        # SENEC.Connect-API Version...
+        elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
+
+            # user & pwd can be changed via the options...
+            api_key = config_entry.data[CONF_SENECCONENCT_KEY]
+
+            try:
+                self.senec = SenecConnect(subscription_key=api_key, web_session=async_get_clientsession(hass))
+            except ReConfigurationRequired as exc:
+                _LOGGER.warning(f"{self.LOGPREFIX} could not be created: {type(exc).__name__} - {exc}")
+                hass.add_job(config_entry.async_start_reauth, hass)
+
+            self._warning_counter = 0
+            UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
+
+        # Local OpenAPI Version...
+        elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_OPENAPI:
+            self._host = config_entry.data[CONF_HOST]
+            self.senec = SenecLocalOpenApi(
+                host=self._host,
+                web_session=async_get_clientsession(hass, verify_ssl=False),
+                token=config_entry.data[CONF_OPENAPI_TOKEN],
+            )
 
         # WEB-API Version...
         elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
@@ -522,7 +587,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 must_purge_access_token = True
 
             # defining the default query options for APP & WEB...
-            opt = {
+            self._opt = {
                 # by default, we do not query the Wallbox data for WEB/API -> the SenecLOCAL will turn this on/off
                 QUERY_WALLBOX_KEY: False,
                 QUERY_SPARE_CAPACITY_KEY: False,
@@ -552,14 +617,14 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                             _LOGGER.debug(f"{self.LOGPREFIX}Entity '{a_id}' is enabled for {config_entry.title}")
 
                             if a_id.startswith("sensor."):
-                                if not opt[QUERY_SYSTEM_DETAILS_KEY]:
+                                if not self._opt[QUERY_SYSTEM_DETAILS_KEY]:
                                     if a_id.endswith("_system_state") or a_id.endswith("_case_temp"):
                                         _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_SYSTEM_DETAILS! ********")
-                                        opt[QUERY_SYSTEM_DETAILS_KEY] = True
+                                        self._opt[QUERY_SYSTEM_DETAILS_KEY] = True
 
                                 # total statistic values [in the web-portal, each total statistic value
                                 # would require a separate request]
-                                if not opt[QUERY_TOTALS_KEY]:
+                                if not self._opt[QUERY_TOTALS_KEY]:
                                     #if a_id.endswith("_total"):
                                     if any(a_id.endswith(suffix) for suffix in (
                                             "_consumption_total", "_powergenerated_total",
@@ -567,44 +632,44 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                             "_gridimport_total", "gridexport_total",
                                             "_wallbox_consumption_total")):
                                         _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_TOTALS! ********")
-                                        opt[QUERY_TOTALS_KEY] = True
+                                        self._opt[QUERY_TOTALS_KEY] = True
 
                                 # Peak Shaving
-                                if not opt[QUERY_PEAK_SHAVING_KEY]:
+                                if not self._opt[QUERY_PEAK_SHAVING_KEY]:
                                     if any(a_id.endswith(suffix) for suffix in (
                                             "_gridexport_limit", "_peakshaving_mode",
                                             "_peakshaving_capacitylimit", "_peakshaving_enddate")):
                                         _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_PEAK_SHAVING! ********")
-                                        opt[QUERY_PEAK_SHAVING_KEY] = True
+                                        self._opt[QUERY_PEAK_SHAVING_KEY] = True
 
                             elif a_id.startswith("number."):
                                 # Spare Capacity
-                                if not opt[QUERY_SPARE_CAPACITY_KEY]:
+                                if not self._opt[QUERY_SPARE_CAPACITY_KEY]:
                                     if a_id.endswith("_spare_capacity"):
                                         _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_SPARE_CAPACITY! ********")
-                                        opt[QUERY_SPARE_CAPACITY_KEY] = True
+                                        self._opt[QUERY_SPARE_CAPACITY_KEY] = True
 
                             # brute force for our wallbox stuff
-                            if not opt[QUERY_WALLBOX_KEY]:
+                            if not self._opt[QUERY_WALLBOX_KEY]:
                                 if "_wallbox_" in a_id:
                                     _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_WALLBOX-DATA ********")
-                                    opt[QUERY_WALLBOX_KEY] = True
+                                    self._opt[QUERY_WALLBOX_KEY] = True
 
                             # brute force for our sgready stuff
-                            if not opt[QUERY_SGREADY_KEY]:
+                            if not self._opt[QUERY_SGREADY_KEY]:
                                 if "sgready" in a_id:
                                     _LOGGER.info(f"{self.LOGPREFIX}***** QUERY_SGREADY_DATA! ********")
-                                    opt[QUERY_SGREADY_KEY] = True
+                                    self._opt[QUERY_SGREADY_KEY] = True
 
                             # when we have ALL, we can break the loop
-                            if (opt[QUERY_PEAK_SHAVING_KEY] and
-                                    opt[QUERY_SPARE_CAPACITY_KEY] and
-                                    opt[QUERY_TOTALS_KEY] and
-                                    opt[QUERY_SYSTEM_DETAILS_KEY] and
-                                    opt[QUERY_WALLBOX_KEY] and
-                                    opt[QUERY_SGREADY_KEY]
+                            if (self._opt[QUERY_PEAK_SHAVING_KEY] and
+                                    self._opt[QUERY_SPARE_CAPACITY_KEY] and
+                                    self._opt[QUERY_TOTALS_KEY] and
+                                    self._opt[QUERY_SYSTEM_DETAILS_KEY] and
+                                    self._opt[QUERY_WALLBOX_KEY] and
+                                    self._opt[QUERY_SGREADY_KEY]
                             ):
-                                _LOGGER.debug(f"{self.LOGPREFIX}All required options are set: {opt} - can cancel the checking loop")
+                                _LOGGER.debug(f"{self.LOGPREFIX}All required options are set: {self._opt} - can cancel the checking loop")
                                 break
 
                     # we need to check, if there are any Wallbox entities...
@@ -621,7 +686,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                 self.senec = SenecOnline(user=user, pwd=pwd, totp=totp, web_session=async_get_clientsession(hass),
                                          config_entry_serial_number=config_entry_serial_number,
                                          lang=hass.config.language.lower(),
-                                         options=opt,
+                                         options=self._opt,
                                          storage_path=Path(hass.config.config_dir).joinpath(STORAGE_DIR),
                                          integ_version=self._integration_version)
             except ReConfigurationRequired as exc:
@@ -635,30 +700,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             self._warning_counter = 0
             UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
 
-        # SENEC.Connect-API Version...
-        elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_SENECCONNECT:
-
-            # user & pwd can be changed via the options...
-            api_key = config_entry.data[CONF_SENECCONENCT_KEY]
-
-            try:
-                self.senec = SenecConnect(subscription_key=api_key, web_session=async_get_clientsession(hass))
-            except ReConfigurationRequired as exc:
-                _LOGGER.warning(f"{self.LOGPREFIX} could not be created: {type(exc).__name__} - {exc}")
-                hass.add_job(config_entry.async_start_reauth, hass)
-
-            self._warning_counter = 0
-            UPDATE_INTERVAL_IN_SECONDS = max(20, UPDATE_INTERVAL_IN_SECONDS)
-
-        # Local OpenAPI Version...
-        elif CONF_TYPE in config_entry.data and config_entry.data[CONF_TYPE] == CONF_SYSTYPE_OPENAPI:
-            self._host = config_entry.data[CONF_HOST]
-            self.senec = SenecLocalOpenApi(
-                host=self._host,
-                web_session=async_get_clientsession(hass, verify_ssl=False),
-                token=config_entry.data[CONF_OPENAPI_TOKEN],
-            )
-
         # lala.cgi Version...
         else:
             # host can be changed in the options...
@@ -668,7 +709,7 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             else:
                 self._use_https = False
 
-            opt = {
+            self._opt = {
                 IGNORE_SYSTEM_STATE_KEY: config_entry.data.get(CONF_IGNORE_SYSTEM_STATE, False),
                 QUERY_PV1_KEY: False,
                 QUERY_PM1OBJ1_KEY: False,
@@ -707,8 +748,8 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
                                                 a_lala_section  = a_entity_desc.senec_lala_section
                                                 if a_lala_section in LOCAL_SECTION_MAPPING:
                                                     query_option_key, a_log_msg = LOCAL_SECTION_MAPPING[a_lala_section]
-                                                    if not opt[query_option_key]:
-                                                        opt[query_option_key] = True
+                                                    if not self._opt[query_option_key]:
+                                                        self._opt[query_option_key] = True
                                                         _LOGGER.info(f"{self.LOGPREFIX}{a_log_msg}")
 
                                             _LOGGER.debug(f"{self.LOGPREFIX}Found a EntityDescription for '{a_id}' key: {a_entity_desc.key}")
@@ -717,12 +758,12 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
             if use_defaults:
                 # if there are no entities yet... we slightly adjust our defaults!
                 _LOGGER.info(f"{self.LOGPREFIX}NO entities for config_entry fetched! Using default options")
-                opt[QUERY_PV1_KEY] = True
-                opt[QUERY_PM1OBJ1_KEY] = True
-                opt[QUERY_BMS_KEY] = True
+                self._opt[QUERY_PV1_KEY] = True
+                self._opt[QUERY_PM1OBJ1_KEY] = True
+                self._opt[QUERY_BMS_KEY] = True
 
             self.senec = SenecLocal(host=self._host, use_https=self._use_https, lala_session=async_get_clientsession(hass, verify_ssl=False),
-                                    lang=hass.config.language.lower(), options=opt,
+                                    lang=hass.config.language.lower(), options=self._opt,
                                     integ_version=self._integration_version)
 
         self.name = config_entry.title
@@ -744,28 +785,6 @@ class SenecDataUpdateCoordinator(DataUpdateCoordinator):
         # just as testing the 'event.async_track_entity_registry_updated_event'
         _LOGGER.info(f"{self.LOGPREFIX}{str(evt)}")
         return True
-
-    async def check_and_set_senec_online_at_senec_local(self, hass: HomeAssistant):
-        _LOGGER.debug(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local() called")
-        if not isinstance(self.senec, SenecOnline):
-            # this is only for SenecOnline Coordinators...
-            _LOGGER.warning(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local(): called for a NON-SenecOnline instance")
-            return
-
-        # Search the (optional) sibling SenecLocal for this SenecOnline via serial-number and connect them
-        for a_other_coord in hass.data[DOMAIN].values():
-            if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecLocal):
-                # we must ensure that the 'a_other_coord' have already passed it's initialization-phase...
-                max_wait_count = 0
-                while max_wait_count < 20 and a_other_coord._device_serial is None:
-                    _LOGGER.debug(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local(): waiting for a_other_coord._device_serial to be set [count: {max_wait_count}]")
-                    await asyncio.sleep(5)
-                    max_wait_count += 1
-
-                if self._device_serial == a_other_coord._device_serial:
-                    _LOGGER.info(f"{self.LOGPREFIX}check_and_set_senec_online_at_senec_local(): SIBLING: LOCAL Sibling found for this SenecOnline[{util.mask_string(self._device_serial)}]: {a_other_coord.senec}")
-                    self.senec.set_senec_local_instance(a_other_coord.senec)
-                    a_other_coord.senec.set_senec_online_instance(self.senec)
 
     async def check_for_post_migration_tasks(self, hass: HomeAssistant):
         _LOGGER.debug(f"{self.LOGPREFIX}check_for_post_migration_tasks() called")

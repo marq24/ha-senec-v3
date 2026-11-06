@@ -13,17 +13,19 @@ from homeassistant.util import slugify
 from . import SenecDataUpdateCoordinator, SenecEntity
 from .const import (
     DOMAIN,
+    StaticFuncs,
     MAIN_NUMBER_TYPES,
     WEB_NUMBER_TYPES,
     CONF_SYSTYPE_WEB,
-    CONF_SYSTYPE_INVERTER, StaticFuncs, CONF_SYSTYPE_SENECCONNECT, CONF_SYSTYPE_OPENAPI
+    CONF_SYSTYPE_INVERTER,
+    CONF_SYSTYPE_SENECCONNECT,
+    CONF_SYSTYPE_OPENAPI
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry,
-                            async_add_entities: AddEntitiesCallback):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     _LOGGER.info(f"{coordinator.LOGPREFIX}NUMBER async_setup_entry")
     entities = []

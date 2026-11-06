@@ -19,7 +19,13 @@ from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.util import slugify
 from requests.exceptions import HTTPError, Timeout
 
-from custom_components.senec.pysenec_ha import InverterLocal, util, SenecLocal, SenecLocalOpenApi, SenecOnline, SenecConnect, ServiceUnavailableException
+from custom_components.senec.pysenec_ha import util, ServiceUnavailableException
+from custom_components.senec.pysenec_ha.senec_lala import SenecLocal
+from custom_components.senec.pysenec_ha.senec_web import SenecOnline
+from custom_components.senec.pysenec_ha.senec_inverter import InverterLocal
+from custom_components.senec.pysenec_ha.senec_openapi import SenecLocalOpenApi
+from custom_components.senec.pysenec_ha.senec_connect import SenecConnect
+
 from .const import (
     DOMAIN,
     DEFAULT_SYSTEM,
