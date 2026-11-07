@@ -6,11 +6,12 @@ from typing import Any, Mapping
 from urllib.parse import urlparse, unquote, parse_qs
 
 import pyotp
-import voluptuous as vol
+import probatio
 from aiohttp import ClientResponseError
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.config_entries import ConfigFlowResult, SOURCE_RECONFIGURE, SOURCE_REAUTH
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_SCAN_INTERVAL, CONF_TYPE, CONF_USERNAME, CONF_PASSWORD, \
+    UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
@@ -414,7 +415,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._errors["base"] = "cannot_connect"
             return False
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input=None) -> ConfigFlowResult:
         self._errors = {}
         if user_input is not None:
             self._selected_system = user_input[SETUP_SYS_TYPE]
@@ -438,17 +439,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(SETUP_SYS_TYPE, default=user_input[SETUP_SYS_TYPE]):
-                        selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=SYSTEM_TYPES,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                translation_key=SETUP_SYS_TYPE,
-                            )
-                        )
-                }
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema({
+                    probatio.Required(SETUP_SYS_TYPE):
+                        selector.SelectSelector(selector.SelectSelectorConfig(
+                            options=SYSTEM_TYPES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            translation_key=SETUP_SYS_TYPE))
+                }),
+                {SETUP_SYS_TYPE: user_input[SETUP_SYS_TYPE]},
             ),
             description_placeholders={
                 "repo": "https://github.com/marq24/ha-senec-v3",
@@ -474,17 +473,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="senecv2",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(SETUP_SYS_TYPE, default=user_input[SETUP_SYS_TYPE]):
-                        selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=V2_INGRATION_TYPES,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                translation_key=SETUP_SYS_TYPE,
-                            )
-                        )
-                }
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema({
+                    probatio.Required(SETUP_SYS_TYPE):
+                        selector.SelectSelector(selector.SelectSelectorConfig(
+                            options=V2_INGRATION_TYPES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            translation_key=SETUP_SYS_TYPE))
+                }),
+                {SETUP_SYS_TYPE: user_input[SETUP_SYS_TYPE]},
             ),
             description_placeholders={
                 "repo": "https://github.com/marq24/ha-senec-v3",
@@ -515,17 +512,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="senecv3",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(SETUP_SYS_TYPE, default=user_input[SETUP_SYS_TYPE]):
-                        selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=V3_INGRATION_TYPES,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                translation_key=SETUP_SYS_TYPE,
-                            )
-                        )
-                }
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema({
+                    probatio.Required(SETUP_SYS_TYPE):
+                        selector.SelectSelector(selector.SelectSelectorConfig(
+                            options=V3_INGRATION_TYPES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            translation_key=SETUP_SYS_TYPE))
+                }),
+                {SETUP_SYS_TYPE: user_input[SETUP_SYS_TYPE]},
             ),
             description_placeholders={
                 "repo": "https://github.com/marq24/ha-senec-v3",
@@ -553,17 +548,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="senecv4",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(SETUP_WEBAPI_TYPE, default=user_input[SETUP_WEBAPI_TYPE]):
-                        selector.SelectSelector(
-                            selector.SelectSelectorConfig(
-                                options=V4_WEBAPI_TYPES,
-                                mode=selector.SelectSelectorMode.DROPDOWN,
-                                translation_key=SETUP_WEBAPI_TYPE,
-                            )
-                        )
-                }
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema({
+                    probatio.Required(SETUP_WEBAPI_TYPE):
+                        selector.SelectSelector(selector.SelectSelectorConfig(
+                            options=V4_WEBAPI_TYPES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            translation_key=SETUP_WEBAPI_TYPE))
+                }),
+                {SETUP_WEBAPI_TYPE: user_input[SETUP_WEBAPI_TYPE]},
             ),
             description_placeholders={
                 "repo": "https://github.com/marq24/ha-senec-v3",
@@ -693,19 +686,35 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
 
             if self._selected_system in [SYSTYPE_SENECV3, SYSTYPE_SENECV2, CONF_SYSTYPE_SENEC]:
-                a_schema = vol.Schema({
-                    vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                    vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
-                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
-                    vol.Required(CONF_IGNORE_SYSTEM_STATE, default=user_input[CONF_IGNORE_SYSTEM_STATE]): bool}
-                )
+                a_schema = probatio.Schema({
+                    probatio.Required(CONF_NAME):
+                        selector.TextSelector(),
+                    probatio.Required(CONF_HOST):
+                        selector.TextSelector(),
+                    probatio.Required(CONF_SCAN_INTERVAL):
+                        selector.NumberSelector(selector.NumberSelectorConfig(
+                            step=1,
+                            min=DEFAULT_MIN_SCAN_INTERVAL,
+                            unit_of_measurement=UnitOfTime.SECONDS,
+                            mode=selector.NumberSelectorMode.BOX)),
+                    probatio.Required(CONF_IGNORE_SYSTEM_STATE):
+                        selector.BooleanSelector(),
+                })
             else:
-                a_schema = vol.Schema({
-                    vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                    vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
-                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
+                a_schema = probatio.Schema({
+                    probatio.Required(CONF_NAME):
+                        selector.TextSelector(),
+                    probatio.Required(CONF_HOST):
+                        selector.TextSelector(),
+                    probatio.Required(CONF_SCAN_INTERVAL):
+                        selector.NumberSelector(selector.NumberSelectorConfig(
+                            step=1,
+                            min=DEFAULT_MIN_SCAN_INTERVAL,
+                            unit_of_measurement=UnitOfTime.SECONDS,
+                            mode=selector.NumberSelectorMode.BOX)),
                 })
 
+            a_schema = self.add_suggested_values_to_schema(a_schema, user_input)
             return self.async_show_form(step_id="localsystem", data_schema=a_schema, description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"}, last_step=True, errors=self._errors)
 
     async def async_step_webpublicsetup(self, user_input=None):
@@ -751,14 +760,21 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL_WEB_SENECV4
 
         # we just need the api-key from the user...
-        a_schema = vol.Schema({
-            vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-            vol.Required(CONF_SENECCONENCT_KEY, description={"suggested_value": user_input[CONF_SENECCONENCT_KEY]}): selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-            ),
-            #vol.Required(CONF_SENECCONENCT_KEY, default=user_input[CONF_SENECCONENCT_KEY]): str,
-            vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int
-        })
+        a_schema = self.add_suggested_values_to_schema(
+            probatio.Schema({
+                probatio.Required(CONF_NAME):
+                    selector.TextSelector(),
+                probatio.Required(CONF_SENECCONENCT_KEY):
+                    selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
+                probatio.Required(CONF_SCAN_INTERVAL):
+                    selector.NumberSelector(selector.NumberSelectorConfig(
+                        step=1,
+                        min=20,
+                        unit_of_measurement=UnitOfTime.SECONDS,
+                        mode=selector.NumberSelectorMode.BOX)),
+            }),
+            user_input,
+        )
         return self.async_show_form(step_id="webpublicsetup",
                                     data_schema=a_schema,
                                     description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
@@ -773,11 +789,16 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             name_entry = user_input[CONF_NAME]
             scan_entry = max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL_WEB)
-            user_entry = user_input[key_creden][CONF_USERNAME]
-            pwd_entry = user_input[key_creden][CONF_PASSWORD]
-            totp_entry = user_input[key_creden][CONF_TOTP_SECRET]
+            credentials = user_input.get(key_creden) or {}
+            expert = user_input.get(key_expert) or {}
+            user_entry = credentials.get(CONF_USERNAME, self._default_user or DEFAULT_USERNAME)
+            pwd_entry = credentials.get(CONF_PASSWORD, self._default_pwd or "")
+            totp_entry = credentials.get(CONF_TOTP_SECRET, self._default_totp or "")
             totp_url_entry = None
-            include_wallbox_in_house_consumption = user_input[key_expert][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]
+            include_wallbox_in_house_consumption = expert.get(
+                CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION,
+                self._default_include_wallbox_in_house_consumption,
+            )
 
             if totp_entry is not None:
                 if len(totp_entry) == 0:
@@ -904,29 +925,39 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             return self.async_show_form(
                 step_id="webprivatesetup",
-                data_schema=vol.Schema({
-                    vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                    vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
-                    vol.Optional(key_creden): section(
-                        vol.Schema({
-                            vol.Required(CONF_USERNAME, default=user_input[key_creden][CONF_USERNAME]): str,
-                            vol.Required(CONF_PASSWORD, default=user_input[key_creden][CONF_PASSWORD]): str,
-                            vol.Optional(CONF_TOTP_SECRET, default=user_input[key_creden][CONF_TOTP_SECRET]): str,
-                        }),
-                        {"collapsed": False},
-                    ),
-                    vol.Optional(key_expert): section(
-                        vol.Schema({
-                            vol.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION, default=user_input[key_expert][CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION]): bool,
-                            # WE don't show the (configured) serial - user should not EDIT it!
-                            #vol.Optional(CONF_DEV_SERIAL, default=user_input[key_expert][CONF_DEV_SERIAL]): str,
-                        }),
-                        {"collapsed": True},
-                    )
-                }),
-                description_placeholders={
-                    "repo": "https://github.com/marq24/ha-senec-v3",
-                },
+                data_schema=self.add_suggested_values_to_schema(
+                    probatio.Schema({
+                        probatio.Required(CONF_NAME):
+                            selector.TextSelector(),
+                        probatio.Required(CONF_SCAN_INTERVAL):
+                            selector.NumberSelector(selector.NumberSelectorConfig(
+                                step=1,
+                                min=DEFAULT_MIN_SCAN_INTERVAL_WEB,
+                                unit_of_measurement=UnitOfTime.SECONDS,
+                                mode=selector.NumberSelectorMode.BOX,
+                            )),
+                        probatio.Optional(key_creden):
+                            section(probatio.Schema({
+                                probatio.Required(CONF_USERNAME):
+                                    selector.TextSelector(),
+                                probatio.Required(CONF_PASSWORD):
+                                    selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
+                                probatio.Optional(CONF_TOTP_SECRET):
+                                    selector.TextSelector()
+                            }),
+                            {"collapsed": False},
+                        ),
+                        probatio.Optional(key_expert):
+                            section(probatio.Schema({
+                                probatio.Required(CONF_INCLUDE_WALLBOX_IN_HOUSE_CONSUMPTION):
+                                    selector.BooleanSelector(),
+                            }),
+                            {"collapsed": True},
+                        ),
+                    }),
+                    user_input,
+                ),
+                description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
                 last_step=self.source == SOURCE_RECONFIGURE,
                 errors=self._errors,
             )
@@ -966,9 +997,12 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             return self.async_show_form(
                 step_id="selectserial",
-                data_schema=vol.Schema(
-                    {vol.Required(CONF_DEV_SERIAL): vol.In(available_serials)}
-                ),
+                data_schema=probatio.Schema({
+                    probatio.Required(CONF_DEV_SERIAL):
+                        selector.SelectSelector(selector.SelectSelectorConfig(
+                            options=[selector.SelectOptionDict(value=a_value, label=a_label) for a_value, a_label in available_serials.items()],
+                            mode=selector.SelectSelectorMode.DROPDOWN))
+                }),
                 errors={}
             )
 
@@ -1055,12 +1089,20 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="openapisetup",
-            data_schema=vol.Schema({
-                vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
-                vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
-                vol.Required(CONF_OPENAPI_DEVICE_NAME, default=user_input[CONF_OPENAPI_DEVICE_NAME]): str,
-                vol.Required(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
-            }),
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema({
+                    probatio.Required(CONF_NAME): selector.TextSelector(),
+                    probatio.Required(CONF_HOST): selector.TextSelector(),
+                    probatio.Required(CONF_OPENAPI_DEVICE_NAME): selector.TextSelector(),
+                    probatio.Required(CONF_SCAN_INTERVAL):
+                        selector.NumberSelector(selector.NumberSelectorConfig(
+                            step=1,
+                            min=DEFAULT_MIN_SCAN_INTERVAL,
+                            unit_of_measurement=UnitOfTime.SECONDS,
+                            mode=selector.NumberSelectorMode.BOX)),
+                }),
+                user_input,
+            ),
             description_placeholders={"repo": "https://github.com/marq24/ha-senec-v3"},
             last_step=False,
             errors=self._errors,
@@ -1076,7 +1118,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="openapiapproval",
-            data_schema=vol.Schema({}),
+            data_schema=probatio.Schema({}),
             description_placeholders={
                 "mein_senec_1": "https://mein-senec.de/endkunde/#/0/senec-open-api",
                 "mein_senec_2": "https://mein-senec.de/endkunde/#/1/senec-open-api",
@@ -1096,7 +1138,10 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None):
         """Dialog that informs the user that reauth is required."""
         if user_input is None:
-            return self.async_show_form(step_id="reauth_confirm", data_schema=vol.Schema({}),)
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=probatio.Schema({}),
+            )
 
         if self.reauth_entry is not None and self.reauth_entry.data is not None:
             self._default_name      = self.reauth_entry.data[CONF_NAME]
@@ -1131,261 +1176,3 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if CONF_TOTP_SECRET in self._errors:
             self._errors["base"] = "invalid_totp_secret"
-
-#     @staticmethod
-#     @callback
-#     def async_get_options_flow(config_entry):
-#         return SenecOptionsFlowHandler(config_entry)
-#
-#
-# class SenecOptionsFlowHandler(config_entries.OptionsFlow):
-#     """Config flow options handler for waterkotte_heatpump."""
-#
-#     def __init__(self, config_entry):
-#         """Initialize HACS options flow."""
-#         self.data = dict(config_entry.data);
-#         if len(dict(config_entry.options)) == 0:
-#             self.options = {}
-#         else:
-#             self.options = dict(config_entry.options)
-#
-#     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
-#         """Manage the options."""
-#         if CONF_TYPE in self.data and self.data[CONF_TYPE] == CONF_SYSTYPE_WEB:
-#             return await self.async_step_webprivatesetup()
-#         else:
-#             return await self.async_step_system()
-#
-#     async def async_step_system(self, user_input=None):
-#         """Handle a flow initialized by the user."""
-#         self._errors = {}
-#         if user_input is not None:
-#
-#             # verify the entered host...
-#             host_entry = user_input.get(CONF_HOST, DEFAULT_HOST).lower()
-#             # make sure we just handle host/ip's - removing http/https
-#             if host_entry.startswith("http://"):
-#                 host_entry = host_entry.replace("http://", "")
-#             if host_entry.startswith('https://'):
-#                 host_entry = host_entry.replace("https://", "")
-#
-#             user_input[CONF_HOST] = host_entry
-#
-#             self.options.update(user_input)
-#             if self.data.get(CONF_HOST) != self.options.get(CONF_HOST):
-#                 # ok looks like the host has been changed... we need to do some things...
-#                 if host_in_configuration_exists(self.hass, host_entry):
-#                     self._errors[CONF_HOST] = "already_configured"
-#                 else:
-#                     return self._update_options()
-#             else:
-#                 # host did not change...
-#                 return self._update_options()
-#
-#         if CONF_TYPE in self.data and self.data[CONF_TYPE] == CONF_SYSTYPE_INVERTER:
-#             dataSchema = vol.Schema(
-#                 {
-#                     vol.Required(
-#                         CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME)),
-#                     ): str,
-#                     vol.Required(
-#                         CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
-#                     ): str,  # pylint: disable=line-too-long
-#                     vol.Required(
-#                         CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL,
-#                                                                      self.data.get(CONF_SCAN_INTERVAL,
-#                                                                                    DEFAULT_SCAN_INTERVAL)),
-#                     ): int
-#                 }
-#             )
-#         else:
-#             dataSchema = vol.Schema(
-#                 {
-#                     vol.Required(
-#                         CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME)),
-#                     ): str,
-#                     vol.Required(
-#                         CONF_HOST, default=self.options.get(CONF_HOST, self.data.get(CONF_HOST, DEFAULT_HOST)),
-#                     ): str,  # pylint: disable=line-too-long
-#                     vol.Required(
-#                         CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL,
-#                                                                      self.data.get(CONF_SCAN_INTERVAL,
-#                                                                                    DEFAULT_SCAN_INTERVAL)),
-#                     ): int,  # pylint: disable=line-too-long
-#                     vol.Required(
-#                         CONF_IGNORE_SYSTEM_STATE, default=self.options.get(CONF_IGNORE_SYSTEM_STATE,
-#                                                                            self.data.get(CONF_IGNORE_SYSTEM_STATE,
-#                                                                                          False)),
-#                     ): bool,  # pylint: disable=line-too-long
-#                 }
-#             )
-#         return self.async_show_form(
-#             step_id="system",
-#             data_schema=dataSchema,
-#         )
-#
-#     async def async_step_webprivatesetup(self, user_input=None):
-#         """Handle a flow initialized by the user."""
-#         if user_input is not None:
-#             # we need to check the scan_interval (configured by the user)... we hard code a limit of 1 minute for all
-#             # SENEC.Home V2 & V3 Systems - only V4 can set it to 30 seconds
-#             if "ome V4" in self.data.get(CONF_DEV_TYPE):
-#                 user_input[CONF_SCAN_INTERVAL] = max(user_input.get(CONF_SCAN_INTERVAL), 30)
-#             else:
-#                 user_input[CONF_SCAN_INTERVAL] = max(user_input.get(CONF_SCAN_INTERVAL), 60)
-#             self.options.update(user_input)
-#             return self._update_options()
-#
-#         dataSchema = vol.Schema(
-#             {
-#                 vol.Required(
-#                     CONF_NAME, default=self.options.get(CONF_NAME, self.data.get(CONF_NAME, DEFAULT_NAME_WEB))
-#                 ): str,
-#                 vol.Required(
-#                     CONF_USERNAME,
-#                     default=self.options.get(CONF_USERNAME, self.data.get(CONF_USERNAME, DEFAULT_USERNAME))
-#                 ): str,
-#                 vol.Required(
-#                     CONF_PASSWORD, default=self.options.get(CONF_PASSWORD, self.data.get(CONF_PASSWORD, ""))
-#                 ): str,
-#                 vol.Required(
-#                     CONF_SCAN_INTERVAL, default=self.options.get(CONF_SCAN_INTERVAL, self.data.get(CONF_SCAN_INTERVAL,
-#                                                                                                    DEFAULT_SCAN_INTERVAL)),
-#                 ): int  # pylint: disable=line-too-long
-#             }
-#         )
-#         return self.async_show_form(
-#             step_id="webprivatesetup",
-#             data_schema=dataSchema,
-#         )
-#
-#     def _update_options(self):
-#         """Update config entry options."""
-#         return self.async_create_entry(data=self.options)
-
-
-# # Code:
-#     async def async_step_localai(self, user_input=None):
-#         data_schema = vol.Schema({
-#             vol.Optional("connection_section"): section(
-#                 vol.Schema({
-#                     vol.Required(CONF_IP_ADDRESS): str,
-#                     vol.Required(CONF_PORT, default=8080): int,
-#                     vol.Required(CONF_HTTPS, default=False): bool,
-#                 }),
-#                 {"collapsed": False},
-#             ),
-#             vol.Optional("model_section"): section(
-#                 vol.Schema({
-#                     vol.Optional(CONF_DEFAULT_MODEL, default=DEFAULT_LOCALAI_MODEL): str,
-#                     vol.Optional(CONF_TEMPERATURE, default=0.5): selector({
-#                         "number": {
-#                             "min": 0,
-#                             "max": 1,
-#                             "step": 0.1,
-#                             "mode": "slider"
-#                         }
-#                     }),
-#                     vol.Optional(CONF_TOP_P, default=0.9): selector({
-#                         "number": {
-#                             "min": 0,
-#                             "max": 1,
-#                             "step": 0.1,
-#                             "mode": "slider"
-#                         }
-#                     }),
-#                 }),
-#                 {"collapsed": False},
-#             ),
-#         })
-#
-#         if self.source == config_entries.SOURCE_RECONFIGURE:
-#             # load existing configuration and add it to the dialog
-#             self.init_info = self._get_reconfigure_entry().data
-#             # Re-nest the flat config entry data into sections
-#             suggested = {
-#                 "connection_section": {
-#                     CONF_IP_ADDRESS: self.init_info.get(CONF_IP_ADDRESS),
-#                     CONF_PORT: self.init_info.get(CONF_PORT, 11434),
-#                     CONF_HTTPS: self.init_info.get(CONF_HTTPS, False),
-#                 },
-#                 "model_section": {
-#                     CONF_DEFAULT_MODEL: self.init_info.get(CONF_DEFAULT_MODEL, DEFAULT_LOCALAI_MODEL),
-#                     CONF_TEMPERATURE: self.init_info.get(CONF_TEMPERATURE, 0.5),
-#                     CONF_TOP_P: self.init_info.get(CONF_TOP_P, 0.9),
-#                 },
-#             }
-#             data_schema = self.add_suggested_values_to_schema(
-#                 data_schema, suggested
-#             )
-#
-#         if user_input is not None:
-#             # save provider to user_input
-#             user_input[CONF_PROVIDER] = self.init_info[CONF_PROVIDER]
-#             # flatten dict to remove nested keys
-#             user_input = flatten_dict(user_input)
-#             try:
-#                 localai = LocalAI(self.hass,
-#                                   api_key="",
-#                                   model=user_input[CONF_DEFAULT_MODEL],
-#                                   endpoint={
-#                                       'ip_address': user_input[CONF_IP_ADDRESS],
-#                                       'port': user_input[CONF_PORT],
-#                                       'https': user_input[CONF_HTTPS]
-#                                   })
-#                 await localai.validate()
-#                 # add the mode to user_input
-#                 if self.source == config_entries.SOURCE_RECONFIGURE:
-#                     # we're reconfiguring an existing config
-#                     return self.async_update_reload_and_abort(
-#                         self._get_reconfigure_entry(),
-#                         data_updates=user_input,
-#                     )
-#                 else:
-#                     # New config entry
-#                     return self.async_create_entry(title=f"LocalAI ({user_input[CONF_IP_ADDRESS]})", data=user_input)
-#             except ServiceValidationError as e:
-#                 _LOGGER.warning(f"Validation failed: {e}")
-#                 return self.async_show_form(
-#                     step_id="localai",
-#                     data_schema=data_schema,
-#                     errors={"base": "handshake_failed"}
-#                 )
-#
-#         return self.async_show_form(
-#             step_id="localai",
-#             data_schema=data_schema
-#         )
-# translate....
-#         "localai": {
-#             "title": "LocalAI konfigurieren",
-#             "description": "Gib die IP-Adresse und den Port deines LocalAI Servers an.",
-#             "sections": {
-#                 "connection_section": {
-#                     "name": "Verbindung",
-#                     "description": "LocalAI Server Verbindung",
-#                     "data": {
-#                         "ip_address": "IP-Adresse",
-#                         "port": "Port",
-#                         "https": "HTTPS verwenden"
-#                     },
-#                     "data_description": {
-#                         "https": "Aktiviere diese Option, wenn dein Server HTTPS verwendet."
-#                     }
-#                 },
-#                 "model_section": {
-#                     "name": "Modell",
-#                     "description": "Standardmodell-Parameter festlegen",
-#                     "data": {
-#                         "default_model": "Standardmodell",
-#                         "temperature": "Temperature",
-#                         "top_p": "Top P"
-#                     },
-#                     "data_description": {
-#                         "default_model": "Das Standardmodell, das verwendet wird, wenn kein anderes Modell angegeben ist.",
-#                         "temperature": "Bestimmt die Zufälligkeit der Ausgabe. Niedrigere Werte machen die Ausgabe deterministischer.",
-#                         "top_p": "Bestimmt die Vielfalt der Ausgabe. Niedrigere Werte machen die Ausgabe fokussierter."
-#                     }
-#                 }
-#             }
-#         },
