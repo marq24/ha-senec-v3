@@ -101,7 +101,6 @@ from .entity import CustomFriendlyNameEntity
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["binary_sensor", "button", "number", "select", "sensor", "switch"]
-CONFIG_SCHEMA = config_val.removed(DOMAIN, raise_if_present=False)
 DEVICE_REG_CLEANUP_RUNNING = False
 SKIP_NEXT_RELOAD_OF_WEB = False
 
@@ -223,49 +222,47 @@ async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 
-async def check_and_set_senec_online(hass: HomeAssistant, coordinator: SenecDataUpdateCoordinator):
-    _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_online() called")
-    if not isinstance(coordinator.senec, SenecOnline):
-        # this is only for SenecOnline Coordinators...
-        _LOGGER.warning(f"{coordinator.LOGPREFIX}check_and_set_senec_online(): called for a NONE-SenecOnline instance")
+async def _wait_for_serial(coord) -> bool:
+    """Wait up to 100 seconds (20 x 5s) for the device serial to be set."""
+    for count in range(20):
+        if coord._device_serial is not None:
+            return True
+        _LOGGER.debug(f"{coord.LOGPREFIX}Waiting for _device_serial to be set [count: {count}]")
+        await asyncio.sleep(5)
+    return coord._device_serial is not None
+
+
+async def _check_and_set_senec_sibling(hass: HomeAssistant, coordinator: SenecDataUpdateCoordinator, is_online: bool):
+    expected_type = SenecOnline if is_online else SenecLocal
+    other_type = SenecLocal if is_online else SenecOnline
+
+    _LOGGER.debug(f"{coordinator.LOGPREFIX}_check_and_set_senec_sibling(): called")
+    if not isinstance(coordinator.senec, expected_type):
+        _LOGGER.warning(f"{coordinator.LOGPREFIX}_check_and_set_senec_sibling(): called for a NON-{expected_type.__name__} instance")
         return
 
-    # Search the (optional) sibling SenecLocal for this SenecOnline via serial-number and connect them
     for a_other_coord in hass.data[DOMAIN].values():
-        if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecLocal):
-            # we must ensure that the 'a_other_coord' have already passed it's initialization-phase...
-            max_wait_count = 0
-            while max_wait_count < 20 and a_other_coord._device_serial is None:
-                _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_online(): waiting for a_other_coord._device_serial to be set [count: {max_wait_count}]")
-                await asyncio.sleep(5)
-                max_wait_count += 1
+        if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, other_type):
+            # Ensure that the found sibling has completed its initialization-phase (we need to compare
+            # the serials)
+            if not await _wait_for_serial(a_other_coord):
+                continue
 
             if coordinator._device_serial == a_other_coord._device_serial:
-                _LOGGER.info(f"{coordinator.LOGPREFIX}check_and_set_senec_online(): SIBLING: LOCAL Sibling found for this SenecOnline[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
-                coordinator.senec.set_senec_local_instance(a_other_coord.senec)
-                a_other_coord.senec.set_senec_online_instance(coordinator.senec)
+                masked_serial = util.mask_string(coordinator._device_serial)
+                _LOGGER.info(
+                    f"{coordinator.LOGPREFIX}_check_and_set_senec_sibling(): SIBLING: {other_type} Sibling found "
+                    f"for this {expected_type.__name__}[{masked_serial}]: {a_other_coord.senec}"
+                )
 
-async def check_and_set_senec_local(hass: HomeAssistant, coordinator: SenecDataUpdateCoordinator):
-    _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_local() called")
-    if not isinstance(coordinator.senec, SenecLocal):
-        # this is only for SenecOnline Coordinators...
-        _LOGGER.warning(f"{coordinator.LOGPREFIX}check_and_set_senec_local(): called for a NONE-SenecLocal instance")
-        return
+                # Connect both instances symmetrically
+                online_inst = coordinator.senec if is_online else a_other_coord.senec
+                local_inst = a_other_coord.senec if is_online else coordinator.senec
 
-    # Search the (optional) sibling SenecOnline for this SenecLocal via serial-number and connect them
-    for a_other_coord in hass.data[DOMAIN].values():
-        if isinstance(a_other_coord, SenecDataUpdateCoordinator) and isinstance(a_other_coord.senec, SenecOnline):
-            # we must ensure that the 'a_other_coord' have already passed it's initialization-phase...
-            max_wait_count = 0
-            while max_wait_count < 20 and a_other_coord._device_serial is None:
-                _LOGGER.debug(f"{coordinator.LOGPREFIX}check_and_set_senec_local(): waiting for a_other_coord._device_serial to be set [count: {max_wait_count}]")
-                await asyncio.sleep(5)
-                max_wait_count += 1
+                online_inst.set_senec_local_instance(local_inst)
+                local_inst.set_senec_online_instance(online_inst)
+                break
 
-            if coordinator._device_serial == a_other_coord._device_serial:
-                _LOGGER.info(f"{coordinator.LOGPREFIX}check_and_set_senec_local(): SIBLING: WEB Sibling found for this SenecLocal[{util.mask_string(coordinator._device_serial)}]: {a_other_coord.senec}")
-                coordinator.senec.set_senec_online_instance(a_other_coord.senec)
-                a_other_coord.senec.set_senec_local_instance(coordinator.senec)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up senec from a config entry."""
@@ -329,7 +326,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         coordinator._device_version = coordinator.senec.versions
 
         # Search the (optional) sibling SenecOnline for this SenecLocal via serialnumber and connect them
-        hass.async_create_task(check_and_set_senec_local(hass, coordinator))
+        hass.async_create_task(_check_and_set_senec_sibling(hass, coordinator, is_online=False))
 
 
     elif config_type_val == CONF_SYSTYPE_INVERTER:
@@ -352,7 +349,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.async_create_task(coordinator.check_for_post_migration_tasks(hass))
 
         # Search the (optional) sibling SenecLocal for this SenecOnline via serial-number and connect them
-        hass.async_create_task(check_and_set_senec_online(hass, coordinator))
+        hass.async_create_task(_check_and_set_senec_sibling(hass, coordinator, is_online=True))
 
         # Register Services
         senec_services = SenecService.SenecService(hass, config_entry, coordinator)
@@ -403,6 +400,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
     config_entry.async_on_unload(config_entry.add_update_listener(entry_update_listener))
+    _LOGGER.info(f"{LOGPREFIX}async_setup_entry(): integration setup complete for {config_entry.entry_id}")
     return True
 
 
