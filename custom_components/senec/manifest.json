@@ -1,7 +1,7 @@
 {
   "domain": "senec",
   "name": "SENEC.Home",
-  "codeowners": ["@marq24", "@io-debug", "@WernerSlabon", "@mstuettgen", "@mchwalisz"],
+  "codeowners": ["@marq24", "@io-debug", "@WernerSlabon", "@mstuettgen"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/marq24/ha-senec-v3/blob/main/README.md",

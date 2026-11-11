@@ -10,6 +10,8 @@ This short guide can be used for all my integrations:
 - [ha-goecharger-api2](https://github.com/marq24/ha-goecharger-api2)
 - [ha-fordpass](https://github.com/marq24/ha-fordpass)
 - [ha-fordconnect-query](https://github.com/marq24/ha-fordconnect-query)
+- [ha-bosch-ebike-flow](https://github.com/marq24/ha-bosch-ebike-flow)
+- [ha-justetf-live](https://github.com/marq24/ha-justetf-live)
 
 ## 1) Enable Debug logging for the corresponding integrations
 
@@ -26,6 +28,8 @@ logger:
     custom_components.goecharger_api2: debug
     custom_components.fordpass: debug
     custom_components.fordconnect_query: debug
+    custom_components.bosch_ebike: debug
+    custom_components.justetf_live: debug
 ```
 
 After you modified your configuration.yaml you need to restart home assistant. 
