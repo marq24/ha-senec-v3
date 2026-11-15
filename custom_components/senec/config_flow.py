@@ -122,6 +122,7 @@ def get_configured_web_system_serials(hass: HomeAssistant):
     else:
         return None
 
+
 @staticmethod
 def host_in_configuration_exists(hass: HomeAssistant, host: str) -> bool:
     """Return True if host exists in configuration."""
@@ -494,15 +495,15 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_senecv3(self, user_input=None):
         self._errors = {}
         if user_input is not None:
-            selected_type = user_input[SETUP_SYS_TYPE]
+            self._selected_system = user_input[SETUP_SYS_TYPE]
 
-            if selected_type == SYSTYPE_WEBAPI:
+            if self._selected_system == SYSTYPE_WEBAPI:
                 return await self.async_step_webprivatesetup()
 
-            elif selected_type == SYSTYPE_OPENAPI:
+            elif self._selected_system == SYSTYPE_OPENAPI:
                 return await self.async_step_openapisetup()
 
-            else: #if selected_type in [SYSTYPE_LALACGI, SYSTYPE_INVERTV3]:
+            else: #if self._selected_system in [SYSTYPE_LALACGI, SYSTYPE_INVERTV3]:
                 return await self.async_step_localsystem()
 
         else:
