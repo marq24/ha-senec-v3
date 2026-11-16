@@ -342,7 +342,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_1_is_solar
     ),
     ExtNumberEntityDescription(
@@ -355,7 +355,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_2_is_solar
     ),
     ExtNumberEntityDescription(
@@ -368,7 +368,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_3_is_solar
     ),
     ExtNumberEntityDescription(
@@ -381,7 +381,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_4_is_solar
     ),
     ExtNumberEntityDescription(
@@ -394,7 +394,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_1_is_comfort
     ),
     ExtNumberEntityDescription(
@@ -407,7 +407,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_2_is_comfort
     ),
     ExtNumberEntityDescription(
@@ -420,7 +420,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_3_is_comfort
     ),
     ExtNumberEntityDescription(
@@ -433,7 +433,7 @@ WEB_NUMBER_TYPES = [
         native_min_value=0,
         native_step=1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
         availability_check=StaticFuncs.app_availability_check_wallbox_4_is_comfort
     ),
 ]
@@ -2041,7 +2041,7 @@ MAIN_NUMBER_TYPES = [
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
     ),
     ExtNumberEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
@@ -2056,7 +2056,7 @@ MAIN_NUMBER_TYPES = [
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
     ),
     ExtNumberEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
@@ -2071,7 +2071,7 @@ MAIN_NUMBER_TYPES = [
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
     ),
     ExtNumberEntityDescription(
         senec_lala_section=SENEC_SECTION_WALLBOX,
@@ -2086,7 +2086,7 @@ MAIN_NUMBER_TYPES = [
         native_min_value=0,
         native_step=0.1,
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
-        device_class=SensorDeviceClass.ENERGY,
+        device_class=NumberDeviceClass.CURRENT,
     ),
 
     ExtNumberEntityDescription(
