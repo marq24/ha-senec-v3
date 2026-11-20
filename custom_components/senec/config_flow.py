@@ -628,8 +628,8 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_TYPE: CONF_SYSTYPE_SENEC,
                         CONF_NAME: name_entry,
                         CONF_HOST: host_entry,
-                        CONF_SCAN_INTERVAL: max(user_input[CONF_SCAN_INTERVAL], DEFAULT_MIN_SCAN_INTERVAL),
-                        CONF_IGNORE_SYSTEM_STATE: user_input[CONF_IGNORE_SYSTEM_STATE],
+                        CONF_SCAN_INTERVAL: max(user_input.get(CONF_SCAN_INTERVAL, DEFAULT_MIN_SCAN_INTERVAL), DEFAULT_MIN_SCAN_INTERVAL),
+                        CONF_IGNORE_SYSTEM_STATE: user_input.get(CONF_IGNORE_SYSTEM_STATE, False),
                         CONF_USE_HTTPS: self._use_https,
                         CONF_DEV_TYPE_INT: self._device_type_internal,
                         CONF_DEV_TYPE: self._device_type,
@@ -686,7 +686,7 @@ class SenecConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
 
-            if self._selected_system in [SYSTYPE_SENECV3, SYSTYPE_SENECV2, CONF_SYSTYPE_SENEC]:
+            if self._selected_system in [SYSTYPE_LALACGI, SYSTYPE_SENECV3, SYSTYPE_SENECV2, CONF_SYSTYPE_SENEC]:
                 a_schema = probatio.Schema({
                     probatio.Required(CONF_NAME):
                         selector.TextSelector(),
