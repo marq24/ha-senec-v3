@@ -109,7 +109,13 @@ Please consider [using my personal Tibber invitation link to join Tibber today](
 
 If you used previously the source of this fork created by [@mchwalisz](https://github.com/mchwalisz), please look at "[Switching [to this] Fork](https://github.com/marq24/ha-senec-v3/issues/14)", before using this integration.
 
-## Want to report an issue?
+## Contributing
+
+Bug reports, technical findings and contributions are welcome.
+
+Before opening a feature request or pull request, please read my [contribution guidelines](CONTRIBUTING.md).
+
+### Want to report an issue?
 
 Please use the [GitHub Issues](https://github.com/marq24/ha-senec-v3/issues) for reporting any issues you encounter with this integration. Please be so kind before creating a new issues, check the closed ones, if your problem have been already reported (& solved). Furthermore, I would kindly ask you to check:
 
