@@ -14,9 +14,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, async_entries_for_config_entry
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.storage import STORAGE_DIR
-from homeassistant.helpers.typing import UNDEFINED
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.loader import async_get_integration
+try:
+    from homeassistant.helpers.typing import Undefined as HA_UNDEFINED  # type: ignore[attr-defined]
+except ImportError:
+    from homeassistant.helpers.typing import UNDEFINED as HA_UNDEFINED
 
 from custom_components.senec.pysenec_ha.senec_lala import SenecLocal
 from custom_components.senec.pysenec_ha.senec_web import SenecOnline
@@ -1001,7 +1004,7 @@ class SenecEntity(CustomFriendlyNameEntity):
         If has_entity_name is True, this returns device.name + self.name
         """
         name = self.name
-        if name is UNDEFINED:
+        if name is HA_UNDEFINED:
             name = None
 
         if not self.has_entity_name or not (device_entry := self.device_entry):
